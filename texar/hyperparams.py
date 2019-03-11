@@ -15,34 +15,20 @@
 Hyperparameter manager
 """
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import copy
 import json
-
 
 __all__ = [
     "HParams"
 ]
 
-def _is_callable(x): # pylint: disable=invalid-name
-    """Return `True` if :attr:`x` is callable.
-
-    Copied from `texar.utils.dtypes`
-    """
-    try:
-        __is_callable = callable(x)
-    except: # pylint: disable=bare-except
-        __is_callable = hasattr(x, '__call__')
-    return __is_callable
 
 def _type_name(value):
     return type(value).__name__
 
-class HParams(object):
-    """A class that maintains hyperparameters for configing Texar modules.
+
+class HParams:
+    """A class that maintains hyperparameters for configuring Texar modules.
     The class has several useful features:
 
     - **Auto-completion of missing values.** Users can specify only a subset of\
@@ -148,6 +134,7 @@ class HParams(object):
             :attr:`default_hparams`, except for the case of :attr:`"kwargs"` as
             above.
     """
+
     # - The default hyperparameters in :attr:`"kwargs"` are used (for typecheck\
     # and complementing missing hyperparameters) only when :attr:`"type"` \
     # takes default value (i.e., missing in :attr:`hparams` or set to \
@@ -169,7 +156,7 @@ class HParams(object):
         super(HParams, self).__setattr__('_hparams', parsed_hparams)
 
     @staticmethod
-    def _parse(hparams, # pylint: disable=too-many-branches, too-many-statements
+    def _parse(hparams,  # pylint: disable=too-many-branches,too-many-statements
                default_hparams,
                allow_new_hparam=False):
         """Parses hyperparameters.
@@ -278,7 +265,7 @@ class HParams(object):
                 parsed_hparams[name] = value
             elif isinstance(value, type(default_value)):
                 parsed_hparams[name] = value
-            elif _is_callable(value) and _is_callable(default_value):
+            elif callable(value) and callable(default_value):
                 parsed_hparams[name] = value
             else:
                 try:
@@ -376,4 +363,3 @@ class HParams(object):
             if isinstance(value, HParams):
                 dict_[name] = value.todict()
         return dict_
-
