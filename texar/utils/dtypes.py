@@ -15,26 +15,20 @@
 Utility functions related to data types.
 """
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-
 # pylint: disable=invalid-name, no-member, protected-access
 
-import six
 import numpy as np
-
 
 __all__ = [
     "get_tf_dtype",
-    "is_callable",
     "is_str",
+    "is_callable",
     "maybe_hparams_to_dict",
     "compat_as_text"
 ]
 
-def get_tf_dtype(dtype): # pylint: disable=too-many-return-statements
+
+def get_tf_dtype(dtype):  # pylint: disable=too-many-return-statements
     """Returns equivalent tf dtype.
 
     Args:
@@ -46,20 +40,22 @@ def get_tf_dtype(dtype): # pylint: disable=too-many-return-statements
     """
     raise NotImplementedError
 
+
 def is_callable(x):
     """Return `True` if :attr:`x` is callable.
     """
     try:
         _is_callable = callable(x)
-    except: # pylint: disable=bare-except
+    except:  # pylint: disable=bare-except
         _is_callable = hasattr(x, '__call__')
     return _is_callable
+
 
 def is_str(x):
     """Returns `True` if :attr:`x` is either a str or unicode. Returns `False`
     otherwise.
     """
-    return isinstance(x, six.string_types)
+    return isinstance(x, str)
 
 
 def maybe_hparams_to_dict(hparams):
@@ -73,6 +69,7 @@ def maybe_hparams_to_dict(hparams):
         return hparams
     return hparams.todict()
 
+
 def _maybe_list_to_array(str_list, dtype_as):
     if isinstance(dtype_as, (list, tuple)):
         return type(dtype_as)(str_list)
@@ -80,6 +77,7 @@ def _maybe_list_to_array(str_list, dtype_as):
         return np.array(str_list)
     else:
         return str_list
+
 
 def _as_text(bytes_or_text, encoding='utf-8'):
     """Returns the given argument as a unicode string.
@@ -96,13 +94,14 @@ def _as_text(bytes_or_text, encoding='utf-8'):
     Raises:
         TypeError: If `bytes_or_text` is not a binary or unicode string.
     """
-    if isinstance(bytes_or_text, six.text_type):
+    if isinstance(bytes_or_text, str):
         return bytes_or_text
     elif isinstance(bytes_or_text, bytes):
         return bytes_or_text.decode(encoding)
     else:
         raise TypeError(
-            'Expected binary or unicode string, got %r' % bytes_or_text)
+            f'Expected binary or unicode string, got {bytes_or_text!r}')
+
 
 def compat_as_text(str_):
     r"""Converts strings into `unicode` (Python 2) or `str` (Python 3).
@@ -114,6 +113,7 @@ def compat_as_text(str_):
     Returns:
         The converted strings of the same structure/shape as :attr:`str_`.
     """
+
     def _recur_convert(s):
         if isinstance(s, (list, tuple, np.ndarray)):
             s_ = [_recur_convert(si) for si in s]

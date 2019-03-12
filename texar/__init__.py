@@ -15,12 +15,8 @@
 Modules of texar library.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 # pylint: disable=wildcard-import
 
-from texar.module_base import *
-from texar.hyperparams import *
 from texar import utils
+from texar.hyperparams import *
+from texar.module_base import *
