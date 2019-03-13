@@ -21,4 +21,6 @@ from __future__ import print_function
 
 # pylint: disable=wildcard-import
 
+from texar.utils.utils import *
 from texar.utils.dtypes import *
+from texar.utils.average_recorder import *

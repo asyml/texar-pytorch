@@ -1,4 +1,4 @@
-# Copyright 2019 The Texar Authors. All Rights Reserved.
+# Copyright 2018 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of texar library.
+Texar defined exceptions.
 """
 
+
 from __future__ import absolute_import
-from __future__ import division
 from __future__ import print_function
+from __future__ import division
 
-# pylint: disable=wildcard-import
+__all__ = [
+    "TexarError"
+]
 
-from texar.module_base import *
-from texar.hyperparams import *
-from texar import utils
+class TexarError(Exception):
+    """
+    Texar error.
+    """
+    pass
+

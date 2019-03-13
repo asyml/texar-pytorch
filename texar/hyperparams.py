@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,11 +22,21 @@ from __future__ import division
 import copy
 import json
 
-from texar.utils.dtypes import is_callable
 
 __all__ = [
     "HParams"
 ]
+
+def _is_callable(x): # pylint: disable=invalid-name
+    """Return `True` if :attr:`x` is callable.
+
+    Copied from `texar.utils.dtypes`
+    """
+    try:
+        __is_callable = callable(x)
+    except: # pylint: disable=bare-except
+        __is_callable = hasattr(x, '__call__')
+    return __is_callable
 
 def _type_name(value):
     return type(value).__name__
@@ -268,7 +278,7 @@ class HParams(object):
                 parsed_hparams[name] = value
             elif isinstance(value, type(default_value)):
                 parsed_hparams[name] = value
-            elif is_callable(value) and is_callable(default_value):
+            elif _is_callable(value) and _is_callable(default_value):
                 parsed_hparams[name] = value
             else:
                 try:
