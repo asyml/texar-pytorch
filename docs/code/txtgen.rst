@@ -1,0 +1,4 @@
+Texar
+******
+
+.. automodule:: texar 
