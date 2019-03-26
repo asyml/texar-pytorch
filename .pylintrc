@@ -77,7 +77,8 @@ disable=print-statement,parameter-unpacking,unpacking-in-except,old-raise-syntax
         map-builtin-not-iterating,zip-builtin-not-iterating,
         range-builtin-not-iterating,filter-builtin-not-iterating,using-cmp-argument,
         long-suffix,old-ne-operator,old-octal-literal,suppressed-message,
-        useless-suppression,no-else-return
+        useless-suppression,no-else-return,
+        len-as-condition
 
 
 [REPORTS]

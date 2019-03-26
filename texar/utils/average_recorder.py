@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,10 +15,6 @@
 Utilities for maintaining moving average.
 """
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 from collections import deque
 
 # pylint: disable=invalid-name
@@ -28,7 +24,8 @@ __all__ = [
     "AverageRecorder"
 ]
 
-class _SingleAverageRecorder(object):
+
+class _SingleAverageRecorder:
     """Maintains the moving average (i.e., the average of the latest N records)
     of a single metric.
 
@@ -121,7 +118,8 @@ class _SingleAverageRecorder(object):
         """
         return self.name
 
-class AverageRecorder(object):
+
+class AverageRecorder:
     """Maintains the moving averages (i.e., the average of the latest N
     records) of (possibly multiple) fields.
 
@@ -306,7 +304,7 @@ class AverageRecorder(object):
                 for name, rec in self._recorders.items()}
         str_list = []
         if self._record_type in {list, tuple}:
-            for i in range(len(strs)):# pylint: disable=consider-using-enumerate
+            for i in range(len(strs)):  # pylint: disable=consider-using-enumerate
                 # Enumerates the keys in order, which are the indexes
                 str_list.append(strs[i])
         elif self._record_type == dict:

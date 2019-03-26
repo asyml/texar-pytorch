@@ -1,20 +1,12 @@
-# -*- coding: utf-8 -*-
-#
 """
 Unit tests for utility functions.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-import tempfile
 import unittest
+
 import numpy as np
 
 from texar.utils import utils
-#from texar.data.vocabulary import Vocab
 
 
 class UtilsTest(unittest.TestCase):
@@ -141,7 +133,7 @@ class UtilsTest(unittest.TestCase):
         unique_str = utils.uniquify_str('str', str_set)
         self.assertEqual(unique_str, 'str_3')
 
-    #def test_map_ids_to_strs(self):
+    # def test_map_ids_to_strs(self):
     #    """Tests :func:`texar.utils.map_ids_to_strs`.
     #    """
     #    vocab_list = ['word', '词']
@@ -161,6 +153,6 @@ class UtilsTest(unittest.TestCase):
     #    self.assertEqual(text_[0], 'word 词')
     #    self.assertEqual(text_[1], 'word 词 word 词')
 
+
 if __name__ == "__main__":
     unittest.main()
-

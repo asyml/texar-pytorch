@@ -15,18 +15,14 @@
 Base class for modules.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+import torch.nn
 
-import torch
-
-#from texar.utils.exceptions import TexarError
 from texar.hyperparams import HParams
 
 __all__ = [
     "ModuleBase"
 ]
+
 
 class ModuleBase(torch.nn.Module):
     """Base class inherited by modules that are configurable through
@@ -64,7 +60,7 @@ class ModuleBase(torch.nn.Module):
             "name": "module"
         }
 
-    def forward(self, *input): # pylint: disable=redefined-builtin
+    def forward(self, *input):  # pylint: disable=redefined-builtin
         raise NotImplementedError
 
     @property

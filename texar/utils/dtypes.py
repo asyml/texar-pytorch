@@ -44,11 +44,7 @@ def get_tf_dtype(dtype):  # pylint: disable=too-many-return-statements
 def is_callable(x):
     """Return `True` if :attr:`x` is callable.
     """
-    try:
-        _is_callable = callable(x)
-    except:  # pylint: disable=bare-except
-        _is_callable = hasattr(x, '__call__')
-    return _is_callable
+    return callable(x)
 
 
 def is_str(x):
