@@ -21,9 +21,7 @@ import texar.core.cell_wrappers as wrappers
 from texar.hyperparams import HParams
 from texar.utils import utils
 
-# pylint: disable=redefined-variable-type, invalid-name
-# pylint: disable=too-many-branches, too-many-arguments, too-many-lines
-# pylint: disable=protected-access
+# pylint: disable=too-many-branches
 
 __all__ = [
     "default_rnn_cell_hparams",

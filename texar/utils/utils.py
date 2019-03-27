@@ -65,6 +65,16 @@ __all__ = [
 
 
 def map_structure(fn, obj):
+    r"""
+    Map a function over all elements in a (possibly nested) collection.
+
+    Args:
+        fn (callable): The function to call on elements.
+        obj: The collection to map function over.
+
+    Returns:
+        The collection in the same structure, with elements mapped.
+    """
     if isinstance(obj, list):
         return [map_structure(fn, x) for x in obj]
     if isinstance(obj, tuple):

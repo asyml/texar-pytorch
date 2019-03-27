@@ -15,6 +15,9 @@
 TensorFlow-style RNN cell wrappers.
 """
 
+# pylint: disable=redefined-builtin, arguments-differ, too-many-arguments
+# pylint: disable=invalid-name
+
 from typing import Optional, List, Tuple, Union
 
 import torch
@@ -37,11 +40,21 @@ __all__ = [
 
 RNNState = torch.Tensor
 LSTMState = Tuple[torch.Tensor, torch.Tensor]
-SingleState = Union[RNNState, LSTMState]
-State = Union[SingleState, List[SingleState]]
+State = Union[RNNState, LSTMState]
+MultiState = Union[State, List[State]]
 
 
 def wrap_builtin_cell(cell: nn.RNNCellBase):
+    r"""Convert a built-in :class:`torch.nn.RNNCellBase` derived RNN cell to
+    our wrapped version.
+
+    Args:
+        cell: the RNN cell to wrap around.
+
+    Returns:
+        The wrapped cell derived from
+        :class`texar.core.cell_wrappers.RNNCellBase`.
+    """
     # convert cls to corresponding derived wrapper class
     if isinstance(cell, nn.RNNCell):
         self = RNNCellBase.__new__(RNNCell)
@@ -51,7 +64,7 @@ def wrap_builtin_cell(cell: nn.RNNCellBase):
         self = RNNCellBase.__new__(LSTMCell)
     else:
         raise TypeError(f"Unrecognized class {type(cell)}.")
-    self._cell = cell
+    self._cell = cell  # pylint: disable=protected-access
     return self
 
 
@@ -79,17 +92,31 @@ class RNNCellBase(nn.Module):
 
     @property
     def input_size(self):
+        r"""The number of expected features in the input."""
         return self._cell.input_size
 
     @property
     def hidden_size(self):
+        r"""The number of features in the hidden state."""
         return self._cell.hidden_size
 
     @property
     def _param(self) -> nn.Parameter:
+        r"""Convenience method to access a parameter under the module. Useful
+        when creating tensors of the same attributes using `param.new_*`.
+        """
         return next(self.parameters())
 
-    def zero_state(self, batch_size: int):
+    def zero_state(self, batch_size: int) -> MultiState:
+        """Return zero-filled state tensor(s).
+
+        Args:
+            batch_size: int, the batch size.
+
+        Returns:
+            State tensor(s) initialized to zeros. Note that different subclasses
+            might return tensors of different shapes and structures.
+        """
         if isinstance(self._cell, nn.RNNCellBase):
             state = self._param.new_zeros(
                 batch_size, self.hidden_size, requires_grad=False)
@@ -97,10 +124,11 @@ class RNNCellBase(nn.Module):
             state = self._cell.zero_state(batch_size)
         return state
 
-    def forward(self, input: torch.Tensor, state: Optional[State] = None) \
-            -> Tuple[torch.Tensor, State]:
+    def forward(self, input: torch.Tensor, state: Optional[MultiState] = None) \
+            -> Tuple[torch.Tensor, MultiState]:
         r"""
-        :return: A tuple of (output, state). For single layer RNNs, output is
+        Returns:
+            A tuple of (output, state). For single layer RNNs, output is
             the same as state.
         """
         if state is None:
@@ -157,12 +185,12 @@ class LSTMCell(BuiltinCellWrapper):
                 cell.bias_hh[hidden_size:(2 * hidden_size)].fill_(forget_bias)
         super().__init__(cell)
 
-    def zero_state(self, batch_size: int):
+    def zero_state(self, batch_size: int) -> LSTMState:
         state = super().zero_state(batch_size)
         return (state, state)  # (h, c)
 
-    def forward(self, input: torch.Tensor, state: Optional[State] = None) \
-            -> Tuple[torch.Tensor, State]:
+    def forward(self, input: torch.Tensor, state: Optional[LSTMState] = None) \
+            -> Tuple[torch.Tensor, LSTMState]:
         if state is None:
             batch_size = input.size(0)
             state = self.zero_state(batch_size)
@@ -225,7 +253,7 @@ class DropoutWrapper(RNNCellBase):
         self._recurrent_output_mask = None
         self._recurrent_state_mask = None
 
-    def zero_state(self, batch_size: int):
+    def zero_state(self, batch_size: int) -> State:
         state = super().zero_state(batch_size)
         self._recurrent_input_mask = None
         self._recurrent_output_mask = None
@@ -245,7 +273,7 @@ class DropoutWrapper(RNNCellBase):
         return state
 
     def _dropout(self, tensor: torch.Tensor, keep_prob: float,
-                 mask: Optional[torch.Tensor] = None):
+                 mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         """Decides whether to perform standard dropout or recurrent dropout."""
         if keep_prob == 1.0:
             return tensor
@@ -269,9 +297,6 @@ class DropoutWrapper(RNNCellBase):
 
 class ResidualWrapper(RNNCellBase):
     r"""RNNCell wrapper that ensures cell inputs are added to the outputs."""
-
-    def __init__(self, cell: nn.Module):
-        super().__init__(cell)
 
     def forward(self, input: torch.Tensor, state: Optional[State] = None) \
             -> Tuple[torch.Tensor, State]:
@@ -309,7 +334,7 @@ class HighwayWrapper(RNNCellBase):
         if carry_bias_init is not None:
             nn.init.constant_(self.carry.bias, carry_bias_init)
             if not couple_carry_transform_gates:
-                nn.init.constant_(self.transform.bias, -carry_bias_init)
+                nn.init.constant_(self.transform.bias, -carry_bias_init)  # pylint: disable=invalid-unary-operand-type
 
     def forward(self, input: torch.Tensor, state: Optional[State] = None) \
             -> Tuple[torch.Tensor, State]:
@@ -362,15 +387,16 @@ class MultiRNNCell(RNNCellBase):
         states = [cell.zero_state(batch_size) for cell in self._cell]
         return states
 
-    def forward(self, input: torch.Tensor, state: Optional[State] = None) \
-            -> Tuple[torch.Tensor, State]:
+    def forward(self, input: torch.Tensor,
+                state: Optional[List[State]] = None) \
+            -> Tuple[torch.Tensor, List[State]]:
         """Run this multi-layer cell on inputs, starting from state."""
         if state is None:
             batch_size = input.size(0)
             state = self.zero_state(batch_size)
         new_states = []
         output = input
-        for cell, h in zip(self._cell, state):
-            output, new_state = cell(output, h)
+        for cell, hx in zip(self._cell, state):
+            output, new_state = cell(output, hx)
             new_states.append(new_state)
         return output, new_states

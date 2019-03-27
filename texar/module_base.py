@@ -69,7 +69,7 @@ class ModuleBase(torch.nn.Module):
 
         Both parameters of this module and those of all submodules are included.
         """
-        return [x for x in self.parameters(recurse=True)]
+        return [x for x in self.parameters(recurse=True)]  # pylint: disable=unexpected-keyword-arg
 
     @property
     def hparams(self):
