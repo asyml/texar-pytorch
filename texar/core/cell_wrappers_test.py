@@ -17,11 +17,11 @@ from texar.utils import utils
 
 
 class WrappersTest(unittest.TestCase):
-    """Tests cell wrappers and :func:`~texar.core.layers.get_rnn_cell`.
+    r"""Tests cell wrappers and :func:`~texar.core.layers.get_rnn_cell`.
     """
 
     def test_get_rnn_cell(self):
-        """Tests the HParams class.
+        r"""Tests the HParams class.
         """
         hparams = {
             'type': 'LSTMCell',

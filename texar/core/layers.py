@@ -32,7 +32,7 @@ __all__ = [
 
 
 def default_rnn_cell_hparams():
-    """Returns a `dict` of RNN cell hyperparameters and their default values.
+    r"""Returns a `dict` of RNN cell hyperparameters and their default values.
 
     .. role:: python(code)
        :language: python
@@ -135,7 +135,7 @@ def default_rnn_cell_hparams():
 
 
 def get_rnn_cell(hparams=None):
-    """Creates an RNN cell.
+    r"""Creates an RNN cell.
 
     See :func:`~texar.core.default_rnn_cell_hparams` for all
     hyperparameters and default values.

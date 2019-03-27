@@ -25,7 +25,7 @@ __all__ = [
 
 
 class ModuleBase(torch.nn.Module):
-    """Base class inherited by modules that are configurable through
+    r"""Base class inherited by modules that are configurable through
     hyperparameters.
 
     This is a subclass of :torch_main:`torch.nn.Module <nn/modules/module>`.
@@ -46,7 +46,7 @@ class ModuleBase(torch.nn.Module):
 
     @staticmethod
     def default_hparams():
-        """Returns a `dict` of hyperparameters of the module with default
+        r"""Returns a `dict` of hyperparameters of the module with default
         values. Used to replace the missing values of input `hparams`
         during module construction.
 
@@ -65,7 +65,7 @@ class ModuleBase(torch.nn.Module):
 
     @property
     def trainable_variables(self):
-        """The list of trainable variables (parameters) of the module.
+        r"""The list of trainable variables (parameters) of the module.
 
         Both parameters of this module and those of all submodules are included.
         """
@@ -73,7 +73,7 @@ class ModuleBase(torch.nn.Module):
 
     @property
     def hparams(self):
-        """An :class:`~texar.HParams` instance. The hyperparameters
+        r"""An :class:`~texar.HParams` instance. The hyperparameters
         of the module.
         """
         return self._hparams

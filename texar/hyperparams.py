@@ -159,7 +159,7 @@ class HParams:
     def _parse(hparams,  # pylint: disable=too-many-branches,too-many-statements
                default_hparams,
                allow_new_hparam=False):
-        """Parses hyperparameters.
+        r"""Parses hyperparameters.
 
         Args:
             hparams (dict): Hyperparameters. If `None`, all hyperparameters are
@@ -285,7 +285,7 @@ class HParams:
             return value
 
     def __getattr__(self, name):
-        """Retrieves the value of the hyperparameter.
+        r"""Retrieves the value of the hyperparameter.
         """
         if name == '_hparams':
             return super(HParams, self).__getattribute__('_hparams')
@@ -295,12 +295,12 @@ class HParams:
         return self._hparams[name]
 
     def __getitem__(self, name):
-        """Retrieves the value of the hyperparameter.
+        r"""Retrieves the value of the hyperparameter.
         """
         return self.__getattr__(name)
 
     def __setattr__(self, name, value):
-        """Sets the value of the hyperparameter.
+        r"""Sets the value of the hyperparameter.
         """
         if name not in self._hparams:
             raise ValueError(
@@ -310,12 +310,12 @@ class HParams:
         self._hparams[name] = self._parse_value(value, name)
 
     def items(self):
-        """Returns the list of hyperparam `(name, value)` pairs
+        r"""Returns the list of hyperparam `(name, value)` pairs
         """
         return iter(self)
 
     def keys(self):
-        """Returns the list of hyperparam names
+        r"""Returns the list of hyperparam names
         """
         return self._hparams.keys()
 
@@ -330,13 +330,13 @@ class HParams:
         return name in self._hparams
 
     def __str__(self):
-        """Return a string of the hparams.
+        r"""Return a string of the hparams.
         """
         hparams_dict = self.todict()
         return json.dumps(hparams_dict, sort_keys=True, indent=2)
 
     def get(self, name, default=None):
-        """Returns the hyperparameter value for the given name. If name is not
+        r"""Returns the hyperparameter value for the given name. If name is not
         available then returns :attr:`default`.
 
         Args:
@@ -349,14 +349,14 @@ class HParams:
             return default
 
     def add_hparam(self, name, value):
-        """Adds a new hyperparameter.
+        r"""Adds a new hyperparameter.
         """
         if (name in self._hparams) or hasattr(self, name):
             raise ValueError("Hyperparameter name already exists: %s" % name)
         self._hparams[name] = self._parse_value(value, name)
 
     def todict(self):
-        """Returns a copy of hyperparameters as a dictionary.
+        r"""Returns a copy of hyperparameters as a dictionary.
         """
         dict_ = copy.deepcopy(self._hparams)
         for name, value in self._hparams.items():

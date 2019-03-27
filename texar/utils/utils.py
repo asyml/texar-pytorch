@@ -77,7 +77,7 @@ def map_structure(fn, obj):
 
 
 def get_args(fn):
-    """Gets the arguments of a function.
+    r"""Gets the arguments of a function.
 
     Args:
         fn (callable): The function to inspect.
@@ -98,7 +98,7 @@ def get_args(fn):
 
 
 def get_default_arg_values(fn):
-    """Gets the arguments and respective default values of a function.
+    r"""Gets the arguments and respective default values of a function.
 
     Only arguments with default values are included in the output dictionary.
 
@@ -117,7 +117,7 @@ def get_default_arg_values(fn):
 
 
 def check_or_get_class(class_or_name, module_path=None, superclass=None):
-    """Returns the class and checks if the class inherits :attr:`superclass`.
+    r"""Returns the class and checks if the class inherits :attr:`superclass`.
 
     Args:
         class_or_name: Name or full path to the class, or the class itself.
@@ -149,7 +149,7 @@ def check_or_get_class(class_or_name, module_path=None, superclass=None):
 
 
 def get_class(class_name, module_paths=None):
-    """Returns the class based on class name.
+    r"""Returns the class based on class name.
 
     Args:
         class_name (str): Name or full path to the class.
@@ -181,7 +181,7 @@ def get_class(class_name, module_paths=None):
 
 def check_or_get_instance(ins_or_class_or_name, kwargs, module_paths=None,
                           classtype=None):
-    """Returns a class instance and checks types.
+    r"""Returns a class instance and checks types.
 
     Args:
         ins_or_class_or_name: Can be of 3 types:
@@ -219,7 +219,7 @@ def check_or_get_instance(ins_or_class_or_name, kwargs, module_paths=None,
 
 
 def get_instance(class_or_name, kwargs, module_paths=None):
-    """Creates a class instance.
+    r"""Creates a class instance.
 
     Args:
         class_or_name: A class, or its name or full path to a class to
@@ -260,7 +260,7 @@ def get_instance(class_or_name, kwargs, module_paths=None):
 
 def check_or_get_instance_with_redundant_kwargs(
         ins_or_class_or_name, kwargs, module_paths=None, classtype=None):
-    """Returns a class instance and checks types.
+    r"""Returns a class instance and checks types.
 
     Only those keyword arguments in :attr:`kwargs` that are included in the
     class construction method are used.
@@ -301,7 +301,7 @@ def check_or_get_instance_with_redundant_kwargs(
 
 def get_instance_with_redundant_kwargs(
         class_name, kwargs, module_paths=None):
-    """Creates a class instance.
+    r"""Creates a class instance.
 
     Only those keyword arguments in :attr:`kwargs` that are included in the
     class construction method are used.
@@ -338,7 +338,7 @@ def get_instance_with_redundant_kwargs(
 
 
 def get_function(fn_or_name, module_paths=None):
-    """Returns the function of specified name and module.
+    r"""Returns the function of specified name and module.
 
     Args:
         fn_or_name (str or callable): Name or full path to a function, or the
@@ -369,7 +369,7 @@ def get_function(fn_or_name, module_paths=None):
 
 
 def call_function_with_redundant_kwargs(fn, kwargs):
-    """Calls a function and returns the results.
+    r"""Calls a function and returns the results.
 
     Only those keyword arguments in :attr:`kwargs` that are included in the
     function's argument list are used to call the function.
@@ -401,7 +401,7 @@ def call_function_with_redundant_kwargs(fn, kwargs):
 
 
 def get_instance_kwargs(kwargs, hparams):
-    """Makes a dict of keyword arguments with the following structure:
+    r"""Makes a dict of keyword arguments with the following structure:
 
     `kwargs_ = {'hparams': dict(hparams), **kwargs}`.
 
@@ -428,7 +428,7 @@ def get_instance_kwargs(kwargs, hparams):
 
 
 def dict_patch(tgt_dict, src_dict):
-    """Recursively patch :attr:`tgt_dict` by adding items from :attr:`src_dict`
+    r"""Recursively patch :attr:`tgt_dict` by adding items from :attr:`src_dict`
     that do not exist in :attr:`tgt_dict`.
 
     If respective items in :attr:`src_dict` and :attr:`tgt_dict` are both
@@ -453,7 +453,7 @@ def dict_patch(tgt_dict, src_dict):
 
 
 def dict_lookup(dict_, keys, default=None):
-    """Looks up :attr:`keys` in the dict, returns the corresponding values.
+    r"""Looks up :attr:`keys` in the dict, returns the corresponding values.
 
     The :attr:`default` is used for keys not present in the dict.
 
@@ -474,7 +474,7 @@ def dict_lookup(dict_, keys, default=None):
 
 
 def dict_fetch(src_dict, tgt_dict_or_keys):
-    """Fetches a sub dict of :attr:`src_dict` with the keys in
+    r"""Fetches a sub dict of :attr:`src_dict` with the keys in
     :attr:`tgt_dict_or_keys`.
 
     Args:
@@ -503,7 +503,7 @@ def dict_fetch(src_dict, tgt_dict_or_keys):
 
 
 def dict_pop(dict_, pop_keys, default=None):
-    """Removes keys from a dict and returns their values.
+    r"""Removes keys from a dict and returns their values.
 
     Args:
         dict_ (dict): A dictionary from which items are removed.
@@ -522,7 +522,7 @@ def dict_pop(dict_, pop_keys, default=None):
 
 
 def flatten_dict(dict_, parent_key="", sep="."):
-    """Flattens a nested dictionary. Namedtuples within the dictionary are
+    r"""Flattens a nested dictionary. Namedtuples within the dictionary are
     converted to dicts.
 
     Adapted from:
@@ -552,7 +552,7 @@ def flatten_dict(dict_, parent_key="", sep="."):
 
 
 def default_str(str_, default_str):
-    """Returns :attr:`str_` if it is not `None` or empty, otherwise returns
+    r"""Returns :attr:`str_` if it is not `None` or empty, otherwise returns
     :attr:`default_str`.
 
     Args:
@@ -569,7 +569,7 @@ def default_str(str_, default_str):
 
 
 def uniquify_str(str_, str_set):
-    """Uniquifies :attr:`str_` if :attr:`str_` is included in :attr:`str_set`.
+    r"""Uniquifies :attr:`str_` if :attr:`str_` is included in :attr:`str_set`.
 
     This is done by appending a number to :attr:`str_`. Returns
     :attr:`str_` directly if it is not included in :attr:`str_set`.
@@ -603,7 +603,7 @@ def uniquify_str(str_, str_set):
 
 
 def _recur_split(s, dtype_as):
-    """Splits (possibly nested list of) strings recursively.
+    r"""Splits (possibly nested list of) strings recursively.
     """
     if is_str(s):
         return _maybe_list_to_array(s.split(), dtype_as)
@@ -613,7 +613,7 @@ def _recur_split(s, dtype_as):
 
 
 def strip_token(str_, token, is_token_list=False, compat=True):
-    """Returns a copy of strings with leading and trailing tokens removed.
+    r"""Returns a copy of strings with leading and trailing tokens removed.
 
     Note that besides :attr:`token`, all leading and trailing whitespace
     characters are also removed.
@@ -676,7 +676,7 @@ def strip_token(str_, token, is_token_list=False, compat=True):
 
 
 def strip_eos(str_, eos_token='<EOS>', is_token_list=False, compat=True):
-    """Remove the EOS token and all subsequent tokens.
+    r"""Remove the EOS token and all subsequent tokens.
 
     If :attr:`is_token_list` is False, then the function assumes tokens in
     :attr:`str_` are separated with whitespace character.
@@ -727,7 +727,7 @@ _strip_eos_ = strip_eos
 
 
 def strip_bos(str_, bos_token='<BOS>', is_token_list=False, compat=True):
-    """Remove all leading BOS tokens.
+    r"""Remove all leading BOS tokens.
 
     Note that besides :attr:`bos_token`, all leading and trailing whitespace
     characters are also removed.
@@ -781,7 +781,7 @@ _strip_bos_ = strip_bos
 
 def strip_special_tokens(str_, strip_pad='<PAD>', strip_bos='<BOS>',
                          strip_eos='<EOS>', is_token_list=False, compat=True):
-    """Removes special tokens in strings, including:
+    r"""Removes special tokens in strings, including:
 
         - Removes EOS and all subsequent tokens
         - Removes leading and and trailing PAD tokens
@@ -844,7 +844,7 @@ def strip_special_tokens(str_, strip_pad='<PAD>', strip_bos='<BOS>',
 
 
 def str_join(tokens, sep=' ', compat=True):
-    """Concats :attr:`tokens` along the last dimension with intervening
+    r"""Concats :attr:`tokens` along the last dimension with intervening
     occurrences of :attr:`sep`.
 
     Args:
@@ -876,7 +876,7 @@ def str_join(tokens, sep=' ', compat=True):
 
 def map_ids_to_strs(ids, vocab, join=True, strip_pad='<PAD>',
                     strip_bos='<BOS>', strip_eos='<EOS>', compat=True):
-    """Transforms `int` indexes to strings by mapping ids to tokens,
+    r"""Transforms `int` indexes to strings by mapping ids to tokens,
     concatenating tokens into sentences, and stripping special tokens, etc.
 
     Args:
@@ -940,7 +940,7 @@ def map_ids_to_strs(ids, vocab, join=True, strip_pad='<PAD>',
 
 
 def ceildiv(a, b):
-    """Divides with ceil.
+    r"""Divides with ceil.
 
     E.g., `5 / 2 = 2.5`, `ceildiv(5, 2) = 3`.
 
@@ -955,7 +955,7 @@ def ceildiv(a, b):
 
 
 def straight_through(fw_tensor, bw_tensor):
-    """Use a tensor in forward pass while backpropagating gradient to another.
+    r"""Use a tensor in forward pass while backpropagating gradient to another.
 
     Args:
         fw_tensor: A tensor to be used in the forward pass.

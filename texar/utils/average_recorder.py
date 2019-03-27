@@ -46,7 +46,7 @@ class _SingleAverageRecorder:
         self._name = name
 
     def add(self, record, weight=None):
-        """Appends a new record.
+        r"""Appends a new record.
 
         Args:
             record: A scalar; the new record to append.
@@ -75,14 +75,14 @@ class _SingleAverageRecorder:
         return self.avg()
 
     def avg(self):
-        """Returns the (moving) average.
+        r"""Returns the (moving) average.
         """
         if self._w_sum == 0:
             return 0.
         return self._sum / self._w_sum
 
     def reset(self):
-        """Cleans all records.
+        r"""Cleans all records.
         """
         self._q.clear()
         self._w.clear()
@@ -90,7 +90,7 @@ class _SingleAverageRecorder:
         self._w_sum = 0
 
     def to_str(self, precision=None):
-        """Returns a string of the average value.
+        r"""Returns a string of the average value.
 
         Args:
             precision (int, optional): The number of decimal places to keep in
@@ -114,7 +114,7 @@ class _SingleAverageRecorder:
 
     @property
     def name(self):
-        """The name of the recorder.
+        r"""The name of the recorder.
         """
         return self.name
 
@@ -173,7 +173,7 @@ class AverageRecorder:
         return record_dict
 
     def add(self, record, weight=None):
-        """Appends a new record.
+        r"""Appends a new record.
 
         :attr:`record` can be a `list`, `dict`, or a single scalar. The
         record type is determined at the first time :meth:`add` is called.
@@ -224,7 +224,7 @@ class AverageRecorder:
         return self.avg()
 
     def avg(self, id_or_name=None):
-        """Returns the (moving) average.
+        r"""Returns the (moving) average.
 
         Args:
             id_or_name (optional): A list of or a single element.
@@ -263,7 +263,7 @@ class AverageRecorder:
             return avg[self._default_metric_name]
 
     def reset(self, id_or_name=None):
-        """Resets the record.
+        r"""Resets the record.
 
         Args:
             id_or_name (optional): A list or a single element. Each element is
@@ -281,7 +281,7 @@ class AverageRecorder:
             self._recorders[key].reset()
 
     def to_str(self, precision=None, delimiter=' '):
-        """Returns a string of the average values of the records.
+        r"""Returns a string of the average values of the records.
 
         Args:
             precision (int, optional): The number of decimal places to keep in

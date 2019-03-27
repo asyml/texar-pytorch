@@ -13,11 +13,11 @@ from texar.hyperparams import HParams
 # pylint: disable=no-member
 
 class HParamsTest(unittest.TestCase):
-    """Tests hyperparameter related operations.
+    r"""Tests hyperparameter related operations.
     """
 
     def test_hparams(self):
-        """Tests the HParams class.
+        r"""Tests the HParams class.
         """
         default_hparams = {
             "str": "str",
@@ -92,7 +92,7 @@ class HParamsTest(unittest.TestCase):
         self.assertEqual(hparams_loaded.todict(), hparams_.todict())
 
     def test_typecheck(self):
-        """Tests type-check functionality.
+        r"""Tests type-check functionality.
         """
 
         def _foo():
@@ -113,7 +113,7 @@ class HParamsTest(unittest.TestCase):
         self.assertEqual(hparams_.fn, default_hparams["fn"])
 
     def test_type_kwargs(self):
-        """The the special cases involving "type" and "kwargs"
+        r"""The the special cases involving "type" and "kwargs"
         hyperparameters.
         """
         default_hparams = {

@@ -10,11 +10,11 @@ from texar.utils.average_recorder import _SingleAverageRecorder, AverageRecorder
 # pylint: disable=invalid-name
 
 class AverageRecorderTest(unittest.TestCase):
-    """Tests average recoder.
+    r"""Tests average recoder.
     """
 
     def test_single_average_recoder(self):
-        """Tests :class:`~texar.utils._SingleAverageRecorder`
+        r"""Tests :class:`~texar.utils._SingleAverageRecorder`
         """
         recoder = _SingleAverageRecorder(5)
         for i in range(100):
@@ -27,7 +27,7 @@ class AverageRecorderTest(unittest.TestCase):
             self.assertEqual(recoder.avg(), 1.)
 
         def _cal_ground_truth(n):
-            """Calculates ((n-4)^2 + ... + n^5) / (n-4 + ... + n)
+            r"""Calculates ((n-4)^2 + ... + n^5) / (n-4 + ... + n)
             """
             lb = max(n - 4, 0)
             _sum = 0
@@ -45,7 +45,7 @@ class AverageRecorderTest(unittest.TestCase):
             self.assertEqual(recoder.avg(), _cal_ground_truth(i))
 
     def test_average_recorder(self):
-        """Tests :class:`~texar.utils.AverageRecorder`
+        r"""Tests :class:`~texar.utils.AverageRecorder`
         """
         recorder = AverageRecorder(5)
         for _ in range(100):

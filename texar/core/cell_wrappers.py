@@ -35,7 +35,10 @@ __all__ = [
     'MultiRNNCell',
 ]
 
-State = Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]
+RNNState = torch.Tensor
+LSTMState = Tuple[torch.Tensor, torch.Tensor]
+SingleState = Union[RNNState, LSTMState]
+State = Union[SingleState, List[SingleState]]
 
 
 def wrap_builtin_cell(cell: nn.RNNCellBase):
@@ -53,7 +56,7 @@ def wrap_builtin_cell(cell: nn.RNNCellBase):
 
 
 class RNNCellBase(nn.Module):
-    """The base class for RNN cells in our framework. Major differences over
+    r"""The base class for RNN cells in our framework. Major differences over
     :class:`torch.nn.RNNCell` are two-fold::
 
         1. Holds an :class:`torch.nn.Module` which could either be a built-in
@@ -96,7 +99,7 @@ class RNNCellBase(nn.Module):
 
     def forward(self, input: torch.Tensor, state: Optional[State] = None) \
             -> Tuple[torch.Tensor, State]:
-        """
+        r"""
         :return: A tuple of (output, state). For single layer RNNs, output is
             the same as state.
         """
@@ -107,12 +110,12 @@ class RNNCellBase(nn.Module):
 
 
 class BuiltinCellWrapper(RNNCellBase):
+    r"""Base class for wrappers over built-in :class:`torch.nn.RNNCellBase`
+    RNN cells.
+    """
+
     def forward(self, input: torch.Tensor, state: Optional[State] = None) \
             -> Tuple[torch.Tensor, State]:
-        """
-        :return: A tuple of (output, state). For single layer RNNs, output is
-            the same as state.
-        """
         if state is None:
             batch_size = input.size(0)
             state = self.zero_state(batch_size)
@@ -121,8 +124,7 @@ class BuiltinCellWrapper(RNNCellBase):
 
 
 class RNNCell(BuiltinCellWrapper):
-    """A wrapper over :class:`torch.nn.RNNCell`.
-    """
+    r"""A wrapper over :class:`torch.nn.RNNCell`."""
 
     def __init__(self, input_size, hidden_size, bias=True, nonlinearity="tanh"):
         cell = nn.RNNCell(
@@ -131,8 +133,7 @@ class RNNCell(BuiltinCellWrapper):
 
 
 class GRUCell(BuiltinCellWrapper):
-    """A wrapper over :class:`torch.nn.GRUCell`.
-    """
+    r"""A wrapper over :class:`torch.nn.GRUCell`."""
 
     def __init__(self, input_size, hidden_size, bias=True):
         cell = nn.GRUCell(input_size, hidden_size, bias=bias)
@@ -140,7 +141,7 @@ class GRUCell(BuiltinCellWrapper):
 
 
 class LSTMCell(BuiltinCellWrapper):
-    """A wrapper over :class:`torch.nn.LSTMCell`, additionally providing the
+    r"""A wrapper over :class:`torch.nn.LSTMCell`, additionally providing the
     option to initialize the forget-gate bias to a constant value.
     """
 
@@ -158,7 +159,7 @@ class LSTMCell(BuiltinCellWrapper):
 
     def zero_state(self, batch_size: int):
         state = super().zero_state(batch_size)
-        return (state, state)
+        return (state, state)  # (h, c)
 
     def forward(self, input: torch.Tensor, state: Optional[State] = None) \
             -> Tuple[torch.Tensor, State]:
@@ -170,40 +171,42 @@ class LSTMCell(BuiltinCellWrapper):
 
 
 class DropoutWrapper(RNNCellBase):
-    """Create a cell with added input, state, and/or output dropout.
-
-    If `variational_recurrent` is set to `True` (**NOT** the default behavior),
-    then the same dropout mask is applied at every step, as described in:
-
-    Y. Gal, Z Ghahramani.  "A Theoretically Grounded Application of Dropout in
-    Recurrent Neural Networks".  https://arxiv.org/abs/1512.05287
-
-    Otherwise a different dropout mask is applied at every time step.
-
-    Note, by default (unless a custom `dropout_state_filter` is provided),
-    the memory state (`c` component of any `LSTMStateTuple`) passing through
-    a `DropoutWrapper` is never modified.  This behavior is described in the
-    above article.
-
-    Args:
-      cell: an RNNCell.
-      input_keep_prob: unit Tensor or float between 0 and 1, input keep
-        probability; if it is constant and 1, no input dropout will be added.
-      output_keep_prob: unit Tensor or float between 0 and 1, output keep
-        probability; if it is constant and 1, no output dropout will be added.
-      state_keep_prob: unit Tensor or float between 0 and 1, output keep
-        probability; if it is constant and 1, no output dropout will be added.
-        State dropout is performed on the outgoing states of the cell.
-      variational_recurrent: Python bool.  If `True`, then the same
-        dropout pattern is applied across all time steps for one batch. This
-        is implemented by initializing dropout masks in :meth:`zero_state`.
-    """
+    r"""Operator adding dropout to inputs and outputs of the given cell."""
 
     def __init__(self, cell: nn.Module,
                  input_keep_prob: float = 1.0,
                  output_keep_prob: float = 1.0,
                  state_keep_prob: float = 1.0,
                  variational_recurrent=False):
+        r"""Create a cell with added input, state, and/or output dropout.
+
+        If `variational_recurrent` is set to `True` (**NOT** the default
+        behavior), then the same dropout mask is applied at every step, as
+        described in:
+
+        Y. Gal, Z Ghahramani.  "A Theoretically Grounded Application of Dropout
+        in Recurrent Neural Networks".  https://arxiv.org/abs/1512.05287
+
+        Otherwise a different dropout mask is applied at every time step.
+
+        Note, by default (unless a custom `dropout_state_filter` is provided),
+        the memory state (`c` component of any `LSTMStateTuple`) passing through
+        a `DropoutWrapper` is never modified.  This behavior is described in the
+        above article.
+
+        Args:
+            cell: an RNNCell.
+            input_keep_prob: float between 0 and 1, input keep probability;
+                if it is constant and 1, no input dropout will be added.
+            output_keep_prob: float between 0 and 1, output keep probability;
+                if it is constant and 1, no output dropout will be added.
+            state_keep_prob: float between 0 and 1, output keep probability;
+                if it is constant and 1, no output dropout will be added.
+                State dropout is performed on the outgoing states of the cell.
+            variational_recurrent: bool.  If `True`, then the same dropout
+                pattern is applied across all time steps for one batch. This is
+                implemented by initializing dropout masks in :meth:`zero_state`.
+        """
         super().__init__(cell)
 
         for prob, attr in [(input_keep_prob, "input_keep_prob"),
@@ -243,6 +246,7 @@ class DropoutWrapper(RNNCellBase):
 
     def _dropout(self, tensor: torch.Tensor, keep_prob: float,
                  mask: Optional[torch.Tensor] = None):
+        """Decides whether to perform standard dropout or recurrent dropout."""
         if keep_prob == 1.0:
             return tensor
         if mask is not None:
@@ -264,6 +268,8 @@ class DropoutWrapper(RNNCellBase):
 
 
 class ResidualWrapper(RNNCellBase):
+    r"""RNNCell wrapper that ensures cell inputs are added to the outputs."""
+
     def __init__(self, cell: nn.Module):
         super().__init__(cell)
 
@@ -275,8 +281,24 @@ class ResidualWrapper(RNNCellBase):
 
 
 class HighwayWrapper(RNNCellBase):
+    r"""RNNCell wrapper that adds highway connection on cell input and output.
+
+    Based on:
+        R. K. Srivastava, K. Greff, and J. Schmidhuber, "Highway networks",
+        arXiv preprint arXiv:1505.00387, 2015.
+        https://arxiv.org/abs/1505.00387
+    """
+
     def __init__(self, cell: nn.Module, carry_bias_init: Optional[float] = None,
                  couple_carry_transform_gates=True):
+        r"""Constructs a `HighwayWrapper` for `cell`.
+
+        Args:
+            cell: An instance of `RNNCell`.
+            carry_bias_init: float, carry gates bias initialization.
+            couple_carry_transform_gates: boolean, should the Carry and
+                Transform gate be coupled.
+        """
         super().__init__(cell)
 
         self.carry = nn.Linear(self.input_size, self.input_size)
@@ -302,9 +324,29 @@ class HighwayWrapper(RNNCellBase):
 
 
 class MultiRNNCell(RNNCellBase):
+    """RNN cell composed sequentially of multiple simple cells.
+
+    .. code-block:: python
+
+        sizes = [128, 128, 64]
+        cells = [BasicLSTMCell(input_size, hidden_size)
+                 for input_size, hidden_size in zip(sizes[:-1], sizes[1:])]
+        stacked_rnn_cell = MultiRNNCell(cells)
+    """
+
     _cell: nn.ModuleList
 
     def __init__(self, cells: List[nn.Module]):
+        """Create a RNN cell composed sequentially of a number of RNNCells.
+
+        Args:
+          cells: list of RNNCells that will be composed in this order.
+
+        Raises:
+          ValueError: if cells is empty (not allowed).
+        """
+        if len(cells) == 0:
+            raise ValueError("Parameter 'cells' should not be empty.")
         cell = nn.ModuleList(cells)
         super().__init__(cell)
 
@@ -322,6 +364,7 @@ class MultiRNNCell(RNNCellBase):
 
     def forward(self, input: torch.Tensor, state: Optional[State] = None) \
             -> Tuple[torch.Tensor, State]:
+        """Run this multi-layer cell on inputs, starting from state."""
         if state is None:
             batch_size = input.size(0)
             state = self.zero_state(batch_size)

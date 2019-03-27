@@ -42,20 +42,20 @@ def get_tf_dtype(dtype):  # pylint: disable=too-many-return-statements
 
 
 def is_callable(x):
-    """Return `True` if :attr:`x` is callable.
+    r"""Return `True` if :attr:`x` is callable.
     """
     return callable(x)
 
 
 def is_str(x):
-    """Returns `True` if :attr:`x` is either a str or unicode. Returns `False`
+    r"""Returns `True` if :attr:`x` is either a str or unicode. Returns `False`
     otherwise.
     """
     return isinstance(x, str)
 
 
 def maybe_hparams_to_dict(hparams):
-    """If :attr:`hparams` is an instance of :class:`~texar.HParams`,
+    r"""If :attr:`hparams` is an instance of :class:`~texar.HParams`,
     converts it to a `dict` and returns. If :attr:`hparams` is a `dict`,
     returns as is.
     """
@@ -76,7 +76,7 @@ def _maybe_list_to_array(str_list, dtype_as):
 
 
 def _as_text(bytes_or_text, encoding='utf-8'):
-    """Returns the given argument as a unicode string.
+    r"""Returns the given argument as a unicode string.
 
     Adapted from `tensorflow.compat.as_text`.
 

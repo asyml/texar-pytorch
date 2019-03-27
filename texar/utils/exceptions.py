@@ -21,6 +21,6 @@ __all__ = [
 
 
 class TexarError(Exception):
-    """
+    r"""
     Texar error.
     """
