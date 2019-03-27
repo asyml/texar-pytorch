@@ -34,6 +34,7 @@ from texar.utils.dtypes import is_str, is_callable, compat_as_text, \
 MAX_SEQ_LENGTH = np.iinfo(np.int32).max
 
 __all__ = [
+    "map_structure",
     "get_args",
     "get_default_arg_values",
     "check_or_get_class",
@@ -61,6 +62,18 @@ __all__ = [
     "ceildiv",
     "straight_through"
 ]
+
+
+def map_structure(fn, obj):
+    if isinstance(obj, list):
+        return [map_structure(fn, x) for x in obj]
+    if isinstance(obj, tuple):
+        return tuple(map_structure(fn, x) for x in obj)
+    if isinstance(obj, dict):
+        return {k: map_structure(fn, v) for k, v in obj.items()}
+    if isinstance(obj, set):
+        return {map_structure(fn, x) for x in obj}
+    return fn(obj)
 
 
 def get_args(fn):
