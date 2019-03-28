@@ -15,7 +15,7 @@ from texar.utils import utils
 
 
 # pylint: disable=too-many-locals, protected-access, unused-variable
-# pylint: disable=redefined-builtin
+# pylint: disable=redefined-builtin, invalid-name
 
 class WrappersTest(unittest.TestCase):
     r"""Tests cell wrappers and :func:`~texar.core.layers.get_rnn_cell`.
@@ -29,6 +29,7 @@ class WrappersTest(unittest.TestCase):
             'input_size': 10,
             'kwargs': {
                 'hidden_size': 20,
+                'forget_bias': 1.0,
             },
             'num_layers': 3,
             'dropout': {
@@ -67,6 +68,9 @@ class WrappersTest(unittest.TestCase):
             self.assertIsInstance(dropout, wrappers.DropoutWrapper)
             self.assertIsInstance(lstm, wrappers.LSTMCell)
             self.assertIsInstance(builtin_lstm, nn.LSTMCell)
+            h = hparams.kwargs.hidden_size
+            forget_bias = builtin_lstm.bias_ih[h:(2 * h)]
+            self.assertTrue((forget_bias == hparams.kwargs.forget_bias).all())
 
             for key in ['input', 'output', 'state']:
                 self.assertEqual(getattr(dropout, f'_{key}_keep_prob'),

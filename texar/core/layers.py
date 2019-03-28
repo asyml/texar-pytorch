@@ -15,6 +15,7 @@
 Various neural network layers
 """
 
+import torch
 from torch import nn
 
 import texar.core.cell_wrappers as wrappers
@@ -26,6 +27,7 @@ from texar.utils import utils
 __all__ = [
     "default_rnn_cell_hparams",
     "get_rnn_cell",
+    "identity",
 ]
 
 
@@ -209,3 +211,15 @@ def get_rnn_cell(hparams=None):
         cell = cells[0]
 
     return cell
+
+
+def identity(inputs: torch.Tensor):
+    """Returns a tensor with the same content as the input tensor.
+
+    Arguments:
+        inputs: The input tensor.
+
+    Returns:
+        A tensor of the same shape, type, and content.
+    """
+    return inputs

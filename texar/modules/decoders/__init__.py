@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of texar core.
+Modules of Texar library decoders.
 """
 
-# pylint: disable=wildcard-import
-
-from texar.core.cell_wrappers import *
-from texar.core.layers import *
+from texar.modules.decoders.rnn_decoder_base import *
+from texar.modules.decoders.rnn_decoder_helpers import *
+from texar.modules.decoders.rnn_decoders import *

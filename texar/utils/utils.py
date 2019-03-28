@@ -16,7 +16,7 @@ Miscellaneous Utility functions.
 """
 
 # pylint: disable=invalid-name, no-member, no-name-in-module, protected-access
-# pylint: disable=redefined-outer-name, too-many-arguments
+# pylint: disable=redefined-outer-name, too-many-arguments, too-many-lines
 
 import inspect
 from pydoc import locate
@@ -65,8 +65,7 @@ __all__ = [
 
 
 def map_structure(fn, obj):
-    r"""
-    Map a function over all elements in a (possibly nested) collection.
+    r"""Map a function over all elements in a (possibly nested) collection.
 
     Args:
         fn (callable): The function to call on elements.
@@ -77,13 +76,38 @@ def map_structure(fn, obj):
     """
     if isinstance(obj, list):
         return [map_structure(fn, x) for x in obj]
-    if isinstance(obj, tuple):
-        return tuple(map_structure(fn, x) for x in obj)
+    if isinstance(obj, tuple):  # also namedtuple
+        return type(obj)(*[map_structure(fn, x) for x in obj])
     if isinstance(obj, dict):
         return {k: map_structure(fn, v) for k, v in obj.items()}
     if isinstance(obj, set):
         return {map_structure(fn, x) for x in obj}
     return fn(obj)
+
+
+def map_structure_zip(fn, objs):
+    r"""Map a function over tuples formed by taking one elements from each
+    (possibly nested) collection. Each collection must have identical
+    structures.
+
+    Args:
+        fn (callable): The function to call on elements.
+        objs: The list of collections to map function over.
+
+    Returns:
+        A collection with the same structure, with elements mapped.
+    """
+    obj = objs[0]
+    if isinstance(obj, list):
+        return [map_structure_zip(fn, xs) for xs in zip(*objs)]
+    if isinstance(obj, tuple):  # also namedtuple
+        return type(obj)(*[map_structure_zip(fn, xs) for xs in zip(*objs)])
+    if isinstance(obj, dict):
+        return {k: map_structure_zip(fn, [o[k] for o in objs])
+                for k in obj.keys()}
+    if isinstance(obj, set):
+        return {map_structure_zip(fn, xs) for xs in zip(*objs)}
+    return fn(*objs)
 
 
 def get_args(fn):

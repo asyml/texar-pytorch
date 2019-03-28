@@ -17,6 +17,7 @@ Modules of texar library.
 
 # pylint: disable=wildcard-import
 
+from texar import core
 from texar import utils
 from texar.hyperparams import *
 from texar.module_base import *

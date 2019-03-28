@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of texar core.
+Type annotation helpers.
 """
 
-# pylint: disable=wildcard-import
+from typing import TypeVar, Tuple, Union, List
 
-from texar.core.cell_wrappers import *
-from texar.core.layers import *
+T = TypeVar('T')  # pylint: disable=invalid-name
+MaybeTuple = Union[T, Tuple[T, ...]]
+MaybeList = Union[T, List[T]]
