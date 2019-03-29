@@ -422,17 +422,18 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
         """
         # Helper
         if helper is None:
+            # Prefer creating a new helper when at least one kwarg is specified.
+            prefer_new = (len(kwargs) > 0)
             kwargs.update(infer_mode=infer_mode)
             is_training = (not infer_mode if infer_mode is not None
                            else self.training)
-            if is_training:
-                if self._train_helper is None:
-                    self._train_helper = self.create_helper(**kwargs)
-                helper = self._train_helper
-            else:
-                if self._infer_helper is None:
-                    self._infer_helper = self.create_helper(**kwargs)
-                helper = self._infer_helper
+            helper = self._train_helper if is_training else self._infer_helper
+            if prefer_new or helper is None:
+                helper = self.create_helper(**kwargs)
+                if is_training and self._train_helper is None:
+                    self._train_helper = helper
+                elif not is_training and self._infer_helper is None:
+                    self._infer_helper = helper
 
         if (isinstance(helper, rnn_decoder_helpers.TrainingHelper) and
                 (inputs is None or sequence_length is None)):
