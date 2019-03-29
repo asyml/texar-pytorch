@@ -17,19 +17,20 @@ Miscellaneous Utility functions.
 
 # pylint: disable=invalid-name, no-member, no-name-in-module, protected-access
 # pylint: disable=redefined-outer-name, too-many-arguments, too-many-lines
+# pylint: disable=wildcard-import,unused-wildcard-import
 
+import collections
+import copy
 import inspect
 from pydoc import locate
-import copy
-import collections
-import numpy as np
+from typing import *
+
 import funcsigs
+import numpy as np
 
 from texar.hyperparams import HParams
-from texar.utils.dtypes import is_str, is_callable, compat_as_text, \
-    _maybe_list_to_array
-
-# pylint: disable=anomalous-backslash-in-string
+from texar.utils.dtypes import _maybe_list_to_array
+from texar.utils.types import MaybeSeq, MaybeTuple
 
 MAX_SEQ_LENGTH = np.iinfo(np.int32).max
 
@@ -63,8 +64,18 @@ __all__ = [
     "straight_through"
 ]
 
+T = TypeVar('T')  # type argument
+R = TypeVar('R')  # return type
+Kwargs = Dict[str, Any]
+AnyDict = MutableMapping[str, Any]
+ParamDict = Union[HParams, AnyDict]
 
-def map_structure(fn, obj):
+
+# NestedCollection = Union[T, Collection['NestedCollection']]
+
+
+@no_type_check
+def map_structure(fn: Callable[[T], R], obj: Collection[T]) -> Collection[R]:
     r"""Map a function over all elements in a (possibly nested) collection.
 
     Args:
@@ -76,8 +87,11 @@ def map_structure(fn, obj):
     """
     if isinstance(obj, list):
         return [map_structure(fn, x) for x in obj]
-    if isinstance(obj, tuple):  # also namedtuple
-        return type(obj)(*[map_structure(fn, x) for x in obj])
+    if isinstance(obj, tuple):
+        if hasattr(obj, '_fields'):  # namedtuple
+            return type(obj)(*[map_structure(fn, x) for x in obj])
+        else:
+            return tuple(map_structure(fn, x) for x in obj)
     if isinstance(obj, dict):
         return {k: map_structure(fn, v) for k, v in obj.items()}
     if isinstance(obj, set):
@@ -85,7 +99,9 @@ def map_structure(fn, obj):
     return fn(obj)
 
 
-def map_structure_zip(fn, objs):
+@no_type_check
+def map_structure_zip(fn: Callable[..., R],
+                      objs: Sequence[Collection[T]]) -> Collection[R]:
     r"""Map a function over tuples formed by taking one elements from each
     (possibly nested) collection. Each collection must have identical
     structures.
@@ -100,8 +116,11 @@ def map_structure_zip(fn, objs):
     obj = objs[0]
     if isinstance(obj, list):
         return [map_structure_zip(fn, xs) for xs in zip(*objs)]
-    if isinstance(obj, tuple):  # also namedtuple
-        return type(obj)(*[map_structure_zip(fn, xs) for xs in zip(*objs)])
+    if isinstance(obj, tuple):
+        if hasattr(obj, '_fields'):  # namedtuple
+            return type(obj)(*[map_structure_zip(fn, xs) for xs in zip(*objs)])
+        else:
+            return tuple(map_structure_zip(fn, xs) for xs in zip(*objs))
     if isinstance(obj, dict):
         return {k: map_structure_zip(fn, [o[k] for o in objs])
                 for k in obj.keys()}
@@ -110,7 +129,7 @@ def map_structure_zip(fn, objs):
     return fn(*objs)
 
 
-def get_args(fn):
+def get_args(fn: Callable) -> List[str]:
     r"""Gets the arguments of a function.
 
     Args:
@@ -131,7 +150,7 @@ def get_args(fn):
     return args
 
 
-def get_default_arg_values(fn):
+def get_default_arg_values(fn: Callable) -> Dict[str, Any]:
     r"""Gets the arguments and respective default values of a function.
 
     Only arguments with default values are included in the output dictionary.
@@ -150,7 +169,10 @@ def get_default_arg_values(fn):
     return dict(zip(argspec.args[-num_defaults:], argspec.defaults))
 
 
-def check_or_get_class(class_or_name, module_path=None, superclass=None):
+def check_or_get_class(class_or_name: Union[Type[T], str],
+                       module_paths: Optional[List[str]] = None,
+                       superclass: Optional[MaybeTuple[type]] = None) \
+        -> Type[T]:
     r"""Returns the class and checks if the class inherits :attr:`superclass`.
 
     Args:
@@ -172,8 +194,8 @@ def check_or_get_class(class_or_name, module_path=None, superclass=None):
         TypeError: If class does not inherits :attr:`superclass`.
     """
     class_ = class_or_name
-    if is_str(class_):
-        class_ = get_class(class_, module_path)
+    if isinstance(class_, str):
+        class_ = get_class(class_, module_paths)
     if superclass is not None:
         if not issubclass(class_, superclass):
             raise TypeError(
@@ -182,7 +204,8 @@ def check_or_get_class(class_or_name, module_path=None, superclass=None):
     return class_
 
 
-def get_class(class_name, module_paths=None):
+def get_class(class_name: str,
+              module_paths: Optional[List[str]] = None) -> type:
     r"""Returns the class based on class name.
 
     Args:
@@ -213,8 +236,10 @@ def get_class(class_name, module_paths=None):
     return class_
 
 
-def check_or_get_instance(ins_or_class_or_name, kwargs, module_paths=None,
-                          classtype=None):
+def check_or_get_instance(ins_or_class_or_name: Union[Type[T], T, str],
+                          kwargs: Kwargs,
+                          module_paths: Optional[List[str]] = None,
+                          classtype: Optional[MaybeTuple[type]] = None) -> T:
     r"""Returns a class instance and checks types.
 
     Args:
@@ -243,7 +268,7 @@ def check_or_get_instance(ins_or_class_or_name, kwargs, module_paths=None,
             :attr:`classtype`.
     """
     ret = ins_or_class_or_name
-    if is_str(ret) or isinstance(ret, type):
+    if isinstance(ret, (str, type)):
         ret = get_instance(ret, kwargs, module_paths)
     if classtype is not None:
         if not isinstance(ret, classtype):
@@ -252,7 +277,8 @@ def check_or_get_instance(ins_or_class_or_name, kwargs, module_paths=None,
     return ret
 
 
-def get_instance(class_or_name, kwargs, module_paths=None):
+def get_instance(class_or_name: Union[Type[T], str], kwargs: Kwargs,
+                 module_paths: Optional[List[str]] = None) -> T:
     r"""Creates a class instance.
 
     Args:
@@ -275,11 +301,11 @@ def get_instance(class_or_name, kwargs, module_paths=None):
     """
     # Locate the class
     class_ = class_or_name
-    if is_str(class_):
+    if isinstance(class_, str):
         class_ = get_class(class_, module_paths)
 
     # Check validity of arguments
-    class_args = set(get_args(class_.__init__))
+    class_args = set(get_args(class_.__init__))  # type: ignore
 
     if kwargs is None:
         kwargs = {}
@@ -293,7 +319,9 @@ def get_instance(class_or_name, kwargs, module_paths=None):
 
 
 def check_or_get_instance_with_redundant_kwargs(
-        ins_or_class_or_name, kwargs, module_paths=None, classtype=None):
+        ins_or_class_or_name: Union[Type[T], T, str], kwargs: Kwargs,
+        module_paths: Optional[List[str]] = None,
+        classtype: Optional[Type[T]] = None) -> T:
     r"""Returns a class instance and checks types.
 
     Only those keyword arguments in :attr:`kwargs` that are included in the
@@ -324,7 +352,7 @@ def check_or_get_instance_with_redundant_kwargs(
             :attr:`classtype`.
     """
     ret = ins_or_class_or_name
-    if is_str(ret) or isinstance(ret, type):
+    if isinstance(ret, (str, type)):
         ret = get_instance_with_redundant_kwargs(ret, kwargs, module_paths)
     if classtype is not None:
         if not isinstance(ret, classtype):
@@ -334,7 +362,8 @@ def check_or_get_instance_with_redundant_kwargs(
 
 
 def get_instance_with_redundant_kwargs(
-        class_name, kwargs, module_paths=None):
+        class_name: Union[Type[T], str], kwargs: Kwargs,
+        module_paths: Optional[List[str]] = None) -> T:
     r"""Creates a class instance.
 
     Only those keyword arguments in :attr:`kwargs` that are included in the
@@ -357,11 +386,14 @@ def get_instance_with_redundant_kwargs(
             :attr:`module_paths`.
     """
     # Locate the class
-    class_ = get_class(class_name, module_paths)
+    if isinstance(class_name, str):
+        class_ = get_class(class_name, module_paths)
+    else:
+        class_ = class_name
 
     # Select valid arguments
     selected_kwargs = {}
-    class_args = set(get_args(class_.__init__))
+    class_args = set(get_args(class_.__init__))  # type: ignore
     if kwargs is None:
         kwargs = {}
     for key, value in kwargs.items():
@@ -371,7 +403,8 @@ def get_instance_with_redundant_kwargs(
     return class_(**selected_kwargs)
 
 
-def get_function(fn_or_name, module_paths=None):
+def get_function(fn_or_name: Union[str, Callable],
+                 module_paths: Optional[List[str]] = None) -> Callable:
     r"""Returns the function of specified name and module.
 
     Args:
@@ -385,7 +418,7 @@ def get_function(fn_or_name, module_paths=None):
     Returns:
         A function.
     """
-    if is_callable(fn_or_name):
+    if callable(fn_or_name):
         return fn_or_name
 
     fn = locate(fn_or_name)
@@ -402,7 +435,8 @@ def get_function(fn_or_name, module_paths=None):
     return fn
 
 
-def call_function_with_redundant_kwargs(fn, kwargs):
+def call_function_with_redundant_kwargs(fn: Callable[..., R],
+                                        kwargs: Dict[str, Any]) -> R:
     r"""Calls a function and returns the results.
 
     Only those keyword arguments in :attr:`kwargs` that are included in the
@@ -420,7 +454,7 @@ def call_function_with_redundant_kwargs(fn, kwargs):
     try:
         fn_args = set(get_args(fn))
     except TypeError:
-        fn_args = set(get_args(fn.__call__))
+        fn_args = set(get_args(fn.__call__))  # type: ignore
 
     if kwargs is None:
         kwargs = {}
@@ -434,7 +468,7 @@ def call_function_with_redundant_kwargs(fn, kwargs):
     return fn(**selected_kwargs)
 
 
-def get_instance_kwargs(kwargs, hparams):
+def get_instance_kwargs(kwargs: Kwargs, hparams: ParamDict) -> Kwargs:
     r"""Makes a dict of keyword arguments with the following structure:
 
     `kwargs_ = {'hparams': dict(hparams), **kwargs}`.
@@ -461,7 +495,7 @@ def get_instance_kwargs(kwargs, hparams):
     return kwargs_
 
 
-def dict_patch(tgt_dict, src_dict):
+def dict_patch(tgt_dict: AnyDict, src_dict: AnyDict) -> AnyDict:
     r"""Recursively patch :attr:`tgt_dict` by adding items from :attr:`src_dict`
     that do not exist in :attr:`tgt_dict`.
 
@@ -486,7 +520,8 @@ def dict_patch(tgt_dict, src_dict):
     return tgt_dict
 
 
-def dict_lookup(dict_, keys, default=None):
+def dict_lookup(dict_: AnyDict, keys: np.ndarray,
+                default: Optional[Any] = None) -> np.ndarray:
     r"""Looks up :attr:`keys` in the dict, returns the corresponding values.
 
     The :attr:`default` is used for keys not present in the dict.
@@ -507,7 +542,9 @@ def dict_lookup(dict_, keys, default=None):
     return np.vectorize(lambda x: dict_.get(x, default))(keys)
 
 
-def dict_fetch(src_dict, tgt_dict_or_keys):
+def dict_fetch(src_dict: Optional[ParamDict],
+               tgt_dict_or_keys: Union[ParamDict, List[str]]) \
+        -> Optional[AnyDict]:
     r"""Fetches a sub dict of :attr:`src_dict` with the keys in
     :attr:`tgt_dict_or_keys`.
 
@@ -519,15 +556,15 @@ def dict_fetch(src_dict, tgt_dict_or_keys):
             dict.
 
     Returns:
-        A new dict that is a subdict of :attr:`src_dict`.
+        A new dict that is a sub-dict of :attr:`src_dict`.
     """
     if src_dict is None:
         return src_dict
 
     if isinstance(tgt_dict_or_keys, HParams):
         tgt_dict_or_keys = tgt_dict_or_keys.todict()
-    if isinstance(tgt_dict_or_keys, dict):
-        tgt_dict_or_keys = tgt_dict_or_keys.keys()
+    if isinstance(tgt_dict_or_keys, collections.MutableMapping):
+        tgt_dict_or_keys = tgt_dict_or_keys.keys()  # type: ignore
     keys = list(tgt_dict_or_keys)
 
     if isinstance(src_dict, HParams):
@@ -536,7 +573,8 @@ def dict_fetch(src_dict, tgt_dict_or_keys):
     return {k: src_dict[k] for k in keys if k in src_dict}
 
 
-def dict_pop(dict_, pop_keys, default=None):
+def dict_pop(dict_: MutableMapping[T, Any], pop_keys: MaybeSeq[T],
+             default: Optional[Any] = None) -> Dict[T, Any]:
     r"""Removes keys from a dict and returns their values.
 
     Args:
@@ -550,12 +588,12 @@ def dict_pop(dict_, pop_keys, default=None):
         A `dict` of the items removed from :attr:`dict_`.
     """
     if not isinstance(pop_keys, (list, tuple)):
-        pop_keys = [pop_keys]
+        pop_keys = cast(List[T], [pop_keys])
     ret_dict = {key: dict_.pop(key, default) for key in pop_keys}
     return ret_dict
 
 
-def flatten_dict(dict_, parent_key="", sep="."):
+def flatten_dict(dict_: AnyDict, parent_key: str = "", sep: str = "."):
     r"""Flattens a nested dictionary. Namedtuples within the dictionary are
     converted to dicts.
 
@@ -572,26 +610,28 @@ def flatten_dict(dict_, parent_key="", sep="."):
     Returns:
         A new flattened `dict`.
     """
-    items = []
+    items: List[Tuple[str, Any]] = []
     for key, value in dict_.items():
         key_ = parent_key + sep + key if parent_key else key
         if isinstance(value, collections.MutableMapping):
             items.extend(flatten_dict(value, key_, sep=sep).items())
-        elif isinstance(value, tuple) and hasattr(value, "_asdict"):
-            dict_items = collections.OrderedDict(zip(value._fields, value))
+        elif isinstance(value, tuple) and hasattr(value, '_asdict'):
+            # namedtuple
+            dict_items = collections.OrderedDict(
+                zip(value._fields, value))  # type: ignore
             items.extend(flatten_dict(dict_items, key_, sep=sep).items())
         else:
             items.append((key_, value))
     return dict(items)
 
 
-def default_str(str_, default_str):
+def default_str(str_: Optional[str], default: str) -> str:
     r"""Returns :attr:`str_` if it is not `None` or empty, otherwise returns
     :attr:`default_str`.
 
     Args:
         str_: A string.
-        default_str: A string.
+        default: A string.
 
     Returns:
         Either :attr:`str_` or :attr:`default_str`.
@@ -599,10 +639,10 @@ def default_str(str_, default_str):
     if str_ is not None and str_ != "":
         return str_
     else:
-        return default_str
+        return default
 
 
-def uniquify_str(str_, str_set):
+def uniquify_str(str_: str, str_set: Collection[str]) -> str:
     r"""Uniquifies :attr:`str_` if :attr:`str_` is included in :attr:`str_set`.
 
     This is done by appending a number to :attr:`str_`. Returns
@@ -633,20 +673,22 @@ def uniquify_str(str_, str_set):
             unique_str = str_ + "_%d" % i
             if unique_str not in str_set:
                 return unique_str
-    raise ValueError("Fails to uniquify string: " + str_)
+    raise ValueError("Failed to uniquify string: " + str_)
 
 
-def _recur_split(s, dtype_as):
+def _recur_split(s: MaybeSeq[str],
+                 dtype_as: Collection[str]) -> MaybeSeq[str]:
     r"""Splits (possibly nested list of) strings recursively.
     """
-    if is_str(s):
+    if isinstance(s, str):
         return _maybe_list_to_array(s.split(), dtype_as)
     else:
         s_ = [_recur_split(si, dtype_as) for si in s]
         return _maybe_list_to_array(s_, s)
 
 
-def strip_token(str_, token, is_token_list=False, compat=True):
+def strip_token(str_: MaybeSeq[str], token: str,
+                is_token_list: bool = False) -> MaybeSeq[str]:
     r"""Returns a copy of strings with leading and trailing tokens removed.
 
     Note that besides :attr:`token`, all leading and trailing whitespace
@@ -656,15 +698,13 @@ def strip_token(str_, token, is_token_list=False, compat=True):
     :attr:`str_` are separated with whitespace character.
 
     Args:
-        str\_: A `str`, or an `n`-D numpy array or (possibly nested)
+        str_: A `str`, or an `n`-D numpy array or (possibly nested)
             list of `str`.
         token (str): The token to strip, e.g., the '<PAD>' token defined in
             :class:`~texar.data.SpecialTokens`.PAD
         is_token_list (bool): Whether each sentence in :attr:`str_` is a list
             of tokens. If False, each sentence in :attr:`str_` is assumed to
             contain tokens separated with space character.
-        compat (bool): Whether to convert tokens into `unicode` (Python 2)
-            or `str` (Python 3).
 
     Returns:
         The stripped strings of the same structure/shape as :attr:`str_`.
@@ -683,7 +723,7 @@ def strip_token(str_, token, is_token_list=False, compat=True):
     """
 
     def _recur_strip(s):
-        if is_str(s):
+        if isinstance(s, str):
             if token == "":
                 return ' '.join(s.strip().split())
             else:
@@ -695,11 +735,8 @@ def strip_token(str_, token, is_token_list=False, compat=True):
 
     s = str_
 
-    if compat:
-        s = compat_as_text(s)
-
     if is_token_list:
-        s = str_join(s, compat=False)
+        s = str_join(s)
 
     strp_str = _recur_strip(s)
 
@@ -709,29 +746,28 @@ def strip_token(str_, token, is_token_list=False, compat=True):
     return strp_str
 
 
-def strip_eos(str_, eos_token='<EOS>', is_token_list=False, compat=True):
+def strip_eos(str_: MaybeSeq[str], eos_token: str = '<EOS>',
+              is_token_list: bool = False) -> MaybeSeq[str]:
     r"""Remove the EOS token and all subsequent tokens.
 
     If :attr:`is_token_list` is False, then the function assumes tokens in
     :attr:`str_` are separated with whitespace character.
 
     Args:
-        str\_: A `str`, or an `n`-D numpy array or (possibly nested)
+        str_: A `str`, or an `n`-D numpy array or (possibly nested)
             list of `str`.
         eos_token (str): The EOS token. Default is '<EOS>' as defined in
             :class:`~texar.data.SpecialTokens`.EOS
         is_token_list (bool): Whether each sentence in :attr:`str_` is a list
             of tokens. If False, each sentence in :attr:`str_` is assumed to
             contain tokens separated with space character.
-        compat (bool): Whether to convert tokens into `unicode` (Python 2)
-            or `str` (Python 3).
 
     Returns:
         Strings of the same structure/shape as :attr:`str_`.
     """
 
     def _recur_strip(s):
-        if is_str(s):
+        if isinstance(s, str):
             s_tokens = s.split()
             if eos_token in s_tokens:
                 return ' '.join(s_tokens[:s_tokens.index(eos_token)])
@@ -743,11 +779,8 @@ def strip_eos(str_, eos_token='<EOS>', is_token_list=False, compat=True):
 
     s = str_
 
-    if compat:
-        s = compat_as_text(s)
-
     if is_token_list:
-        s = str_join(s, compat=False)
+        s = str_join(s)
 
     strp_str = _recur_strip(s)
 
@@ -760,7 +793,8 @@ def strip_eos(str_, eos_token='<EOS>', is_token_list=False, compat=True):
 _strip_eos_ = strip_eos
 
 
-def strip_bos(str_, bos_token='<BOS>', is_token_list=False, compat=True):
+def strip_bos(str_: MaybeSeq[str], bos_token: str = '<BOS>',
+              is_token_list: bool = False) -> MaybeSeq[str]:
     r"""Remove all leading BOS tokens.
 
     Note that besides :attr:`bos_token`, all leading and trailing whitespace
@@ -770,22 +804,20 @@ def strip_bos(str_, bos_token='<BOS>', is_token_list=False, compat=True):
     :attr:`str_` are separated with whitespace character.
 
     Args:
-        str\_: A `str`, or an `n`-D numpy array or (possibly nested)
+        str_: A `str`, or an `n`-D numpy array or (possibly nested)
             list of `str`.
         bos_token (str): The BOS token. Default is '<BOS>' as defined in
             :class:`~texar.data.SpecialTokens`.BOS
         is_token_list (bool): Whether each sentence in :attr:`str_` is a list
             of tokens. If False, each sentence in :attr:`str_` is assumed to
             contain tokens separated with space character.
-        compat (bool): Whether to convert tokens into `unicode` (Python 2)
-            or `str` (Python 3).
 
     Returns:
         Strings of the same structure/shape as :attr:`str_`.
     """
 
     def _recur_strip(s):
-        if is_str(s):
+        if isinstance(s, str):
             if bos_token == '':
                 return ' '.join(s.strip().split())
             else:
@@ -796,11 +828,8 @@ def strip_bos(str_, bos_token='<BOS>', is_token_list=False, compat=True):
 
     s = str_
 
-    if compat:
-        s = compat_as_text(s)
-
     if is_token_list:
-        s = str_join(s, compat=False)
+        s = str_join(s)
 
     strp_str = _recur_strip(s)
 
@@ -813,8 +842,11 @@ def strip_bos(str_, bos_token='<BOS>', is_token_list=False, compat=True):
 _strip_bos_ = strip_bos
 
 
-def strip_special_tokens(str_, strip_pad='<PAD>', strip_bos='<BOS>',
-                         strip_eos='<EOS>', is_token_list=False, compat=True):
+def strip_special_tokens(str_: MaybeSeq[str],
+                         strip_pad: Optional[str] = '<PAD>',
+                         strip_bos: Optional[str] = '<BOS>',
+                         strip_eos: Optional[str] = '<EOS>',
+                         is_token_list: bool = False) -> MaybeSeq[str]:
     r"""Removes special tokens in strings, including:
 
         - Removes EOS and all subsequent tokens
@@ -828,7 +860,7 @@ def strip_special_tokens(str_, strip_pad='<PAD>', strip_bos='<BOS>',
     :func:`strip_bos`
 
     Args:
-        str\_: A `str`, or an `n`-D numpy array or (possibly nested)
+        str_: A `str`, or an `n`-D numpy array or (possibly nested)
             list of `str`.
         strip_pad (str): The PAD token to strip from the strings (i.e., remove
             the leading and trailing PAD tokens of the strings). Default
@@ -848,28 +880,20 @@ def strip_special_tokens(str_, strip_pad='<PAD>', strip_bos='<BOS>',
         is_token_list (bool): Whether each sentence in :attr:`str_` is a list
             of tokens. If False, each sentence in :attr:`str_` is assumed to
             contain tokens separated with space character.
-        compat (bool): Whether to convert tokens into `unicode` (Python 2)
-            or `str` (Python 3).
 
     Returns:
         Strings of the same shape of :attr:`str_` with special tokens stripped.
     """
     s = str_
 
-    if compat:
-        s = compat_as_text(s)
-
-    if is_token_list:
-        s = str_join(s, compat=False)
-
     if strip_eos is not None and strip_eos is not False:
-        s = _strip_eos_(s, strip_eos, is_token_list=False, compat=False)
+        s = _strip_eos_(s, strip_eos, is_token_list=False)
 
     if strip_pad is not None and strip_pad is not False:
-        s = strip_token(s, strip_pad, is_token_list=False, compat=False)
+        s = strip_token(s, strip_pad, is_token_list=False)
 
     if strip_bos is not None and strip_bos is not False:
-        s = _strip_bos_(s, strip_bos, is_token_list=False, compat=False)
+        s = _strip_bos_(s, strip_bos, is_token_list=False)
 
     if is_token_list:
         s = _recur_split(s, str_)
@@ -877,15 +901,13 @@ def strip_special_tokens(str_, strip_pad='<PAD>', strip_bos='<BOS>',
     return s
 
 
-def str_join(tokens, sep=' ', compat=True):
+def str_join(tokens: Sequence[str], sep: str = ' ') -> Sequence[str]:
     r"""Concats :attr:`tokens` along the last dimension with intervening
     occurrences of :attr:`sep`.
 
     Args:
         tokens: An `n`-D numpy array or (possibly nested) list of `str`.
         sep (str): The string intervening between the tokens.
-        compat (bool): Whether to convert tokens into `unicode` (Python 2)
-            or `str` (Python 3).
 
     Returns:
         An `(n-1)`-D numpy array (or list) of `str`.
@@ -894,22 +916,22 @@ def str_join(tokens, sep=' ', compat=True):
     def _recur_join(s):
         if len(s) == 0:
             return ''
-        elif is_str(s[0]):
+        elif isinstance(s[0], str):
             return sep.join(s)
         else:
             s_ = [_recur_join(si) for si in s]
             return _maybe_list_to_array(s_, s)
-
-    if compat:
-        tokens = compat_as_text(tokens)
 
     str_ = _recur_join(tokens)
 
     return str_
 
 
-def map_ids_to_strs(ids, vocab, join=True, strip_pad='<PAD>',
-                    strip_bos='<BOS>', strip_eos='<EOS>', compat=True):
+def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]], vocab: 'Vocab',
+                    join: bool = True, strip_pad: Optional[str] = '<PAD>',
+                    strip_bos: Optional[str] = '<BOS>',
+                    strip_eos: Optional[str] = '<EOS>') \
+        -> Union[np.ndarray, List[str]]:
     r"""Transforms `int` indexes to strings by mapping ids to tokens,
     concatenating tokens into sentences, and stripping special tokens, etc.
 
@@ -958,22 +980,18 @@ def map_ids_to_strs(ids, vocab, join=True, strip_pad='<PAD>',
     if isinstance(ids, (list, tuple)):
         tokens = tokens.tolist()
 
-    if compat:
-        tokens = compat_as_text(tokens)
-
-    str_ = str_join(tokens, compat=False)
+    str_ = str_join(tokens)
 
     str_ = strip_special_tokens(
-        str_, strip_pad=strip_pad, strip_bos=strip_bos, strip_eos=strip_eos,
-        compat=False)
+        str_, strip_pad=strip_pad, strip_bos=strip_bos, strip_eos=strip_eos)
 
     if join:
         return str_
     else:
-        return _recur_split(str_, ids)
+        return _recur_split(str_, ids)  # type: ignore
 
 
-def ceildiv(a, b):
+def ceildiv(a: int, b: int) -> int:
     r"""Divides with ceil.
 
     E.g., `5 / 2 = 2.5`, `ceildiv(5, 2) = 3`.

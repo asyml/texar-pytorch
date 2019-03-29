@@ -16,17 +16,19 @@ TensorFlow-style RNN cell wrappers.
 """
 
 # pylint: disable=redefined-builtin, arguments-differ, too-many-arguments
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name, too-few-public-methods
 
-from typing import Optional, List, Tuple, Union
+from typing import Generic, List, Optional, Tuple, TypeVar, Union
 
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
 from texar.utils import utils
+from texar.utils.types import MaybeList
 
 __all__ = [
+    'HiddenState',
     'wrap_builtin_cell',
     'RNNCellBase',
     'RNNCell',
@@ -38,10 +40,11 @@ __all__ = [
     'MultiRNNCell',
 ]
 
+State = TypeVar('State')
 RNNState = torch.Tensor
 LSTMState = Tuple[torch.Tensor, torch.Tensor]
-State = Union[RNNState, LSTMState]
-MultiState = Union[State, List[State]]
+
+HiddenState = MaybeList[Union[RNNState, LSTMState]]
 
 
 def wrap_builtin_cell(cell: nn.RNNCellBase):
@@ -64,11 +67,11 @@ def wrap_builtin_cell(cell: nn.RNNCellBase):
         self = RNNCellBase.__new__(LSTMCell)
     else:
         raise TypeError(f"Unrecognized class {type(cell)}.")
-    self._cell = cell  # pylint: disable=protected-access
+    self._cell = cell  # pylint: disable=protected-access, attribute-defined-outside-init
     return self
 
 
-class RNNCellBase(nn.Module):
+class RNNCellBase(nn.Module, Generic[State]):
     r"""The base class for RNN cells in our framework. Major differences over
     :class:`torch.nn.RNNCell` are two-fold::
 
@@ -115,7 +118,7 @@ class RNNCellBase(nn.Module):
             batch_size: int, the batch size.
         """
 
-    def zero_state(self, batch_size: int) -> MultiState:
+    def zero_state(self, batch_size: int) -> State:
         r"""Return zero-filled state tensor(s).
 
         Args:
@@ -133,8 +136,8 @@ class RNNCellBase(nn.Module):
             state = self._cell.zero_state(batch_size)
         return state
 
-    def forward(self, input: torch.Tensor, state: Optional[MultiState] = None) \
-            -> Tuple[torch.Tensor, MultiState]:
+    def forward(self, input: torch.Tensor, state: Optional[State] = None) \
+            -> Tuple[torch.Tensor, State]:
         r"""
         Returns:
             A tuple of (output, state). For single layer RNNs, output is
@@ -146,7 +149,7 @@ class RNNCellBase(nn.Module):
         return self._cell(input, state)
 
 
-class BuiltinCellWrapper(RNNCellBase):
+class BuiltinCellWrapper(RNNCellBase[State]):
     r"""Base class for wrappers over built-in :class:`torch.nn.RNNCellBase`
     RNN cells.
     """
@@ -160,7 +163,7 @@ class BuiltinCellWrapper(RNNCellBase):
         return new_state, new_state
 
 
-class RNNCell(BuiltinCellWrapper):
+class RNNCell(BuiltinCellWrapper[RNNState]):
     r"""A wrapper over :class:`torch.nn.RNNCell`."""
 
     def __init__(self, input_size, hidden_size, bias=True, nonlinearity="tanh"):
@@ -169,7 +172,7 @@ class RNNCell(BuiltinCellWrapper):
         super().__init__(cell)
 
 
-class GRUCell(BuiltinCellWrapper):
+class GRUCell(BuiltinCellWrapper[RNNState]):
     r"""A wrapper over :class:`torch.nn.GRUCell`."""
 
     def __init__(self, input_size, hidden_size, bias=True):
@@ -177,7 +180,7 @@ class GRUCell(BuiltinCellWrapper):
         super().__init__(cell)
 
 
-class LSTMCell(BuiltinCellWrapper):
+class LSTMCell(BuiltinCellWrapper[LSTMState]):
     r"""A wrapper over :class:`torch.nn.LSTMCell`, additionally providing the
     option to initialize the forget-gate bias to a constant value.
     """
@@ -195,8 +198,10 @@ class LSTMCell(BuiltinCellWrapper):
         super().__init__(cell)
 
     def zero_state(self, batch_size: int) -> LSTMState:
-        state = super().zero_state(batch_size)
-        return (state, state)  # (h, c)
+        r"""Returns the zero state for LSTMs as (h, c)."""
+        state = self._param.new_zeros(
+            batch_size, self.hidden_size, requires_grad=False)
+        return (state, state)
 
     def forward(self, input: torch.Tensor, state: Optional[LSTMState] = None) \
             -> Tuple[torch.Tensor, LSTMState]:
@@ -207,10 +212,10 @@ class LSTMCell(BuiltinCellWrapper):
         return new_state[0], new_state
 
 
-class DropoutWrapper(RNNCellBase):
+class DropoutWrapper(RNNCellBase[State]):
     r"""Operator adding dropout to inputs and outputs of the given cell."""
 
-    def __init__(self, cell: nn.Module,
+    def __init__(self, cell: RNNCellBase[State],
                  input_keep_prob: float = 1.0,
                  output_keep_prob: float = 1.0,
                  state_keep_prob: float = 1.0,
@@ -258,9 +263,9 @@ class DropoutWrapper(RNNCellBase):
         self._state_keep_prob = state_keep_prob
 
         self._variational_recurrent = variational_recurrent
-        self._recurrent_input_mask = None
-        self._recurrent_output_mask = None
-        self._recurrent_state_mask = None
+        self._recurrent_input_mask: Optional[torch.Tensor] = None
+        self._recurrent_output_mask: Optional[torch.Tensor] = None
+        self._recurrent_state_mask: Optional[torch.Tensor] = None
 
     def init_batch(self, batch_size: int):
         r"""Initialize dropout masks for variational dropout.
@@ -307,7 +312,7 @@ class DropoutWrapper(RNNCellBase):
         return output, new_state
 
 
-class ResidualWrapper(RNNCellBase):
+class ResidualWrapper(RNNCellBase[State]):
     r"""RNNCell wrapper that ensures cell inputs are added to the outputs."""
 
     def forward(self, input: torch.Tensor, state: Optional[State] = None) \
@@ -317,7 +322,7 @@ class ResidualWrapper(RNNCellBase):
         return output, new_state
 
 
-class HighwayWrapper(RNNCellBase):
+class HighwayWrapper(RNNCellBase[State]):
     r"""RNNCell wrapper that adds highway connection on cell input and output.
 
     Based on:
@@ -360,7 +365,7 @@ class HighwayWrapper(RNNCellBase):
         return output, new_state
 
 
-class MultiRNNCell(RNNCellBase):
+class MultiRNNCell(RNNCellBase[List[State]]):
     r"""RNN cell composed sequentially of multiple simple cells.
 
     .. code-block:: python
@@ -371,9 +376,9 @@ class MultiRNNCell(RNNCellBase):
         stacked_rnn_cell = MultiRNNCell(cells)
     """
 
-    _cell: List[RNNCellBase]  # for better autocompletion
+    _cell: nn.ModuleList
 
-    def __init__(self, cells: List[nn.Module]):
+    def __init__(self, cells: List[RNNCellBase[State]]):
         r"""Create a RNN cell composed sequentially of a number of RNNCells.
 
         Args:
@@ -399,7 +404,7 @@ class MultiRNNCell(RNNCellBase):
         for cell in self._cell:
             cell.init_batch(batch_size)
 
-    def zero_state(self, batch_size: int):
+    def zero_state(self, batch_size: int) -> List[State]:
         states = [cell.zero_state(batch_size) for cell in self._cell]
         return states
 

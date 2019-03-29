@@ -17,6 +17,8 @@ Hyperparameter manager
 
 import copy
 import json
+from typing import Any, Dict, ItemsView, Iterator, KeysView, \
+    Optional, Tuple, Union
 
 __all__ = [
     "HParams"
@@ -145,7 +147,9 @@ class HParams:
     # value and :attr:`"kwargs"` is missing in :attr:`hparams`, \
     # :attr:`"kwargs"` is set to an empty dictionary.
 
-    def __init__(self, hparams, default_hparams, allow_new_hparam=False):
+    def __init__(self, hparams: Optional[Union['HParams', Dict[str, Any]]],
+                 default_hparams: Optional[Dict[str, Any]],
+                 allow_new_hparam: bool = False):
         if isinstance(hparams, HParams):
             hparams = hparams.todict()
         if default_hparams is not None:
@@ -156,9 +160,9 @@ class HParams:
         super(HParams, self).__setattr__('_hparams', parsed_hparams)
 
     @staticmethod
-    def _parse(hparams,  # pylint: disable=too-many-branches,too-many-statements
-               default_hparams,
-               allow_new_hparam=False):
+    def _parse(hparams: Optional[Dict[str, Any]],  # pylint: disable=too-many-branches,too-many-statements
+               default_hparams: Optional[Dict[str, Any]],
+               allow_new_hparam: bool = False):
         r"""Parses hyperparameters.
 
         Args:
@@ -278,13 +282,13 @@ class HParams:
         return parsed_hparams
 
     @staticmethod
-    def _parse_value(value, name=None):
+    def _parse_value(value: Any, name: Optional[str] = None) -> Any:
         if isinstance(value, dict) and (name is None or name != "kwargs"):
             return HParams(value, None)
         else:
             return value
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         r"""Retrieves the value of the hyperparameter.
         """
         if name == '_hparams':
@@ -294,12 +298,12 @@ class HParams:
             raise AttributeError("Unknown hyperparameter: %s" % name)
         return self._hparams[name]
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> Any:
         r"""Retrieves the value of the hyperparameter.
         """
         return self.__getattr__(name)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any):
         r"""Sets the value of the hyperparameter.
         """
         if name not in self._hparams:
@@ -309,33 +313,33 @@ class HParams:
                 "in default hyperparameters." % name)
         self._hparams[name] = self._parse_value(value, name)
 
-    def items(self):
+    def items(self) -> ItemsView[str, Any]:
         r"""Returns the list of hyperparam `(name, value)` pairs
         """
-        return iter(self)
+        return self._hparams.items()
 
-    def keys(self):
+    def keys(self) -> KeysView[str]:
         r"""Returns the list of hyperparam names
         """
         return self._hparams.keys()
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Tuple[str, Any]]:
         for name, value in self._hparams.items():
             yield name, value
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._hparams)
 
-    def __contains__(self, name):
+    def __contains__(self, name) -> bool:
         return name in self._hparams
 
-    def __str__(self):
+    def __str__(self) -> str:
         r"""Return a string of the hparams.
         """
         hparams_dict = self.todict()
         return json.dumps(hparams_dict, sort_keys=True, indent=2)
 
-    def get(self, name, default=None):
+    def get(self, name: str, default: Optional[Any] = None) -> Any:
         r"""Returns the hyperparameter value for the given name. If name is not
         available then returns :attr:`default`.
 
@@ -348,14 +352,14 @@ class HParams:
         except AttributeError:
             return default
 
-    def add_hparam(self, name, value):
+    def add_hparam(self, name: str, value: Any):
         r"""Adds a new hyperparameter.
         """
         if (name in self._hparams) or hasattr(self, name):
             raise ValueError("Hyperparameter name already exists: %s" % name)
         self._hparams[name] = self._parse_value(value, name)
 
-    def todict(self):
+    def todict(self) -> Dict[str, Any]:
         r"""Returns a copy of hyperparameters as a dictionary.
         """
         dict_ = copy.deepcopy(self._hparams)

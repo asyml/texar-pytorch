@@ -15,14 +15,14 @@
 Various neural network layers
 """
 
+# pylint: disable=too-many-branches
+
 import torch
 from torch import nn
 
 import texar.core.cell_wrappers as wrappers
 from texar.hyperparams import HParams
 from texar.utils import utils
-
-# pylint: disable=too-many-branches
 
 __all__ = [
     "default_rnn_cell_hparams",
@@ -116,21 +116,21 @@ def default_rnn_cell_hparams():
         "num_layers" = 1.
     """
     return {
-        "type": "LSTMCell",
-        "input_size": 256,
-        "kwargs": {
-            "hidden_size": 256,
+        'type': 'LSTMCell',
+        'input_size': 256,
+        'kwargs': {
+            'hidden_size': 256,
         },
-        "num_layers": 1,
-        "dropout": {
-            "input_keep_prob": 1.0,
-            "output_keep_prob": 1.0,
-            "state_keep_prob": 1.0,
-            "variational_recurrent": False,
+        'num_layers': 1,
+        'dropout': {
+            'input_keep_prob': 1.0,
+            'output_keep_prob': 1.0,
+            'state_keep_prob': 1.0,
+            'variational_recurrent': False,
         },
-        "residual": False,
-        "highway": False,
-        "@no_typecheck": ["type"]
+        'residual': False,
+        'highway': False,
+        '@no_typecheck': ['type']
     }
 
 

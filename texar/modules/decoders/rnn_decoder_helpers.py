@@ -15,35 +15,37 @@
 Various helper classes and utilities for RNN decoders.
 """
 
-from typing import Tuple, Optional, Union
+# pylint: disable=too-many-arguments, too-many-instance-attributes
+
+from typing import Callable, Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
 from torch import nn
 from torch.distributions import categorical
 
-from texar.core.cell_wrappers import State
+from texar.core.cell_wrappers import HiddenState
 from texar.utils import utils
 
 # from tensorflow.contrib.distributions import RelaxedOneHotCategorical \
 #     as GumbelSoftmax
 # from texar.modules.embedders.embedder_base import EmbedderBase
 
-# pylint: disable=not-context-manager, too-many-arguments
-# pylint: disable=too-many-instance-attributes
-
 __all__ = [
-    "default_helper_train_hparams",
-    "default_helper_infer_hparams",
-    "get_helper",
-    "_get_training_helper",
+    'Helper',
+    'TrainingHelper',
+    'GreedyEmbeddingHelper',
+    'SampleEmbeddingHelper',
+    'default_helper_train_hparams',
+    'default_helper_infer_hparams',
+    'get_helper',
     "TopKSampleEmbeddingHelper",
     "GumbelSoftmaxEmbeddingHelper",
     "SoftmaxEmbeddingHelper"
 ]
 
 HelperInitTuple = Tuple[torch.ByteTensor, torch.Tensor]
-NextInputTuple = Tuple[torch.ByteTensor, torch.Tensor, State]
+NextInputTuple = Tuple[torch.ByteTensor, torch.Tensor, HiddenState]
 
 
 class Helper:
@@ -73,11 +75,11 @@ class Helper:
         raise NotImplementedError
 
     def sample(self, time: int, outputs: torch.Tensor,
-               state: State) -> torch.LongTensor:
+               state: HiddenState) -> torch.LongTensor:
         r"""Returns `sample_ids`."""
         raise NotImplementedError
 
-    def next_inputs(self, time: int, outputs: torch.Tensor, state: State,
+    def next_inputs(self, time: int, outputs: torch.Tensor, state: HiddenState,
                     sample_ids: torch.LongTensor) -> NextInputTuple:
         r"""Returns `(finished, next_inputs, next_state)`."""
         raise NotImplementedError
@@ -88,6 +90,12 @@ class TrainingHelper(Helper):
 
     Returned sample_ids are the argmax of the RNN output logits.
     """
+    _embedding: Optional[Callable[[torch.LongTensor], torch.Tensor]]
+
+    # the following are set in `initialize`
+    _inputs: torch.Tensor
+    _zero_inputs: torch.Tensor
+    _sequence_length: torch.LongTensor
 
     def __init__(self, embedding: Optional[nn.Module] = None,
                  time_major: bool = False):
@@ -120,11 +128,6 @@ class TrainingHelper(Helper):
 
         self._time_major = time_major
 
-        # the following are set in `initialize`
-        self._zero_inputs = None
-        self._inputs = None
-        self._sequence_length = None
-
     @property
     def sample_ids_shape(self) -> torch.Size:
         return torch.Size()  # scalar
@@ -151,11 +154,11 @@ class TrainingHelper(Helper):
         return (finished, next_inputs)
 
     def sample(self, time: int, outputs: torch.Tensor,
-               state: State) -> torch.LongTensor:
+               state: HiddenState) -> torch.LongTensor:
         sample_ids = torch.argmax(outputs, dim=-1)
         return sample_ids
 
-    def next_inputs(self, time: int, outputs: torch.Tensor, state: State,
+    def next_inputs(self, time: int, outputs: torch.Tensor, state: HiddenState,
                     sample_ids: torch.LongTensor) -> NextInputTuple:
         r"""next_inputs_fn for TrainingHelper."""
         next_time = time + 1
@@ -221,7 +224,7 @@ class GreedyEmbeddingHelper(Helper):
         return (finished, self._embedding(self._start_tokens))
 
     def sample(self, time: int, outputs: torch.Tensor,
-               state: State) -> torch.LongTensor:
+               state: HiddenState) -> torch.LongTensor:
         """sample for GreedyEmbeddingHelper."""
         del time, state  # unused by sample_fn
         # Outputs are logits, use argmax to get the most probable id
@@ -231,7 +234,7 @@ class GreedyEmbeddingHelper(Helper):
         sample_ids = torch.argmax(outputs, dim=-1)
         return sample_ids
 
-    def next_inputs(self, time: int, outputs: torch.Tensor, state: State,
+    def next_inputs(self, time: int, outputs: torch.Tensor, state: HiddenState,
                     sample_ids: torch.LongTensor) -> NextInputTuple:
         """next_inputs_fn for GreedyEmbeddingHelper."""
         del time, outputs  # unused by next_inputs_fn
@@ -275,7 +278,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
         self._softmax_temperature = softmax_temperature
 
     def sample(self, time: int, outputs: torch.Tensor,
-               state: State) -> torch.LongTensor:
+               state: HiddenState) -> torch.LongTensor:
         """sample for SampleEmbeddingHelper."""
         del time, state  # unused by sample_fn
         # Outputs are logits, we sample instead of argmax (greedy).

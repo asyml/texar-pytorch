@@ -20,27 +20,29 @@ Base class for RNN decoders.
 # pylint: disable=arguments-differ, too-many-instance-attributes
 
 import copy
-from typing import Optional, Tuple, TypeVar, Generic
+from typing import Generic, Optional, Tuple, TypeVar
 
 import torch
 from torch import nn
 
 from texar import HParams
 from texar.core import layers
-from texar.core.cell_wrappers import State, MultiState
+from texar.core.cell_wrappers import HiddenState
 from texar.module_base import ModuleBase
 from texar.modules.decoders import rnn_decoder_helpers
 from texar.modules.decoders.rnn_decoder_helpers import Helper
 from texar.utils import utils
 
 __all__ = [
-    "RNNDecoderBase"
+    'DecoderInitTuple',
+    'StepOutputTuple',
+    'RNNDecoderBase',
 ]
 
-DecoderInitTuple = Tuple[torch.ByteTensor, torch.Tensor, State]
+DecoderInitTuple = Tuple[torch.ByteTensor, torch.Tensor, HiddenState]
 
 Output = TypeVar('Output')  # output type can be of any nested structure
-StepOutputTuple = Tuple[Output, State, torch.Tensor, torch.ByteTensor]
+StepOutputTuple = Tuple[Output, HiddenState, torch.Tensor, torch.ByteTensor]
 
 
 class RNNDecoderBase(ModuleBase, Generic[Output]):
@@ -59,8 +61,8 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
                  hparams: Optional[HParams] = None):
         ModuleBase.__init__(self, hparams)
 
-        self._train_helper = None
-        self._infer_helper = None
+        self._train_helper: Optional[Helper] = None
+        self._infer_helper: Optional[Helper] = None
         self._input_time_major = input_time_major
         self._output_time_major = output_time_major
 
@@ -70,20 +72,21 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
 
         # Make the output layer
         self._vocab_size = vocab_size
-        self._output_layer = output_layer
-        if output_layer is None:
-            if self._vocab_size is None:
-                raise ValueError(
-                    "Either `output_layer` or `vocab_size` must be provided. "
-                    "Set `output_layer=texar.core.identity` if no output layer "
-                    "is desired.")
-            self._output_layer = nn.Linear(
-                self._cell.hidden_size, self._vocab_size)
-        elif output_layer is not layers.identity:
-            if not isinstance(output_layer, nn.Module):
+        if output_layer is not None:
+            if (output_layer is not layers.identity and
+                    not isinstance(output_layer, nn.Module)):
                 raise ValueError(
                     "`output_layer` must be either `texar.core.identity` or "
                     "an instance of `nn.Module`.")
+            self._output_layer = output_layer
+        elif self._vocab_size is not None:
+            self._output_layer = nn.Linear(
+                self._cell.hidden_size, self._vocab_size)
+        else:
+            raise ValueError(
+                "Either `output_layer` or `vocab_size` must be provided. "
+                "Set `output_layer=texar.core.identity` if no output layer "
+                "is desired.")
 
     @staticmethod
     def default_hparams():
@@ -280,14 +283,22 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
         """
         if decoding_strategy is not None:
             if decoding_strategy == 'train_greedy':
-                helper = rnn_decoder_helpers.TrainingHelper(
+                helper: Helper = rnn_decoder_helpers.TrainingHelper(
                     embedding, self._input_time_major)
-            elif decoding_strategy == 'infer_greedy':
-                helper = rnn_decoder_helpers.GreedyEmbeddingHelper(
-                    embedding, start_tokens, end_token)
-            elif decoding_strategy == 'infer_sample':
-                helper = rnn_decoder_helpers.SampleEmbeddingHelper(
-                    embedding, start_tokens, end_token, softmax_temperature)
+            elif decoding_strategy in ['infer_greedy', 'infer_sample']:
+                if (embedding is None or
+                        start_tokens is None or
+                        end_token is None):
+                    raise ValueError(
+                        f"When using '{decoding_strategy}' decoding strategy, "
+                        f"'embedding', 'start_tokens', and 'end_token' must not"
+                        f"be `None`.")
+                if decoding_strategy == 'infer_greedy':
+                    helper = rnn_decoder_helpers.GreedyEmbeddingHelper(
+                        embedding, start_tokens, end_token)
+                else:
+                    helper = rnn_decoder_helpers.SampleEmbeddingHelper(
+                        embedding, start_tokens, end_token, softmax_temperature)
             else:
                 raise ValueError(
                     f"Unknown decoding strategy: {decoding_strategy}")
@@ -301,11 +312,11 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
                 kwargs_ = copy.copy(self._hparams.helper_infer.kwargs.todict())
                 helper_type = self._hparams.helper_infer.type
             kwargs_.update({
-                "time_major": self._input_time_major,
-                "embedding": embedding,
-                "start_tokens": start_tokens,
-                "end_token": end_token,
-                "softmax_temperature": softmax_temperature})
+                'time_major': self._input_time_major,
+                'embedding': embedding,
+                'start_tokens': start_tokens,
+                'end_token': end_token,
+                'softmax_temperature': softmax_temperature})
             kwargs_.update(kwargs)
             helper = rnn_decoder_helpers.get_helper(helper_type, **kwargs_)
         return helper
@@ -327,14 +338,14 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
         self._infer_helper = helper
 
     @classmethod
-    def _get_batch_size_from_state(cls, state: MultiState) -> int:
+    def _get_batch_size_from_state(cls, state: HiddenState) -> int:
         if isinstance(state, (list, tuple)):
             return cls._get_batch_size_from_state(state[0])
         return state.size(0)
 
     def forward(self, inputs: Optional[torch.Tensor] = None,
                 sequence_length: Optional[torch.LongTensor] = None,
-                initial_state: Optional[State] = None,
+                initial_state: Optional[HiddenState] = None,
                 helper: Optional[Helper] = None,
                 max_decoding_length: Optional[int] = None,
                 impute_finished: bool = False,
@@ -443,7 +454,7 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
                 max_decoding_length = utils.MAX_SEQ_LENGTH
 
         # Decode
-        finished, step_inputs, state = self.initialize(
+        finished, step_inputs, state = self.initialize(  # type: ignore
             helper, inputs, sequence_length, initial_state)
 
         zero_outputs = step_inputs.new_zeros(
@@ -457,7 +468,8 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
 
         outputs = []
 
-        while not torch.all(finished).item():
+        while (not torch.all(finished).item() and
+               (max_decoding_length is None or time < max_decoding_length)):
             (next_outputs, decoder_state, next_inputs,
              decoder_finished) = self.step(helper, time, step_inputs, state)
 
@@ -468,7 +480,9 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
 
             # Zero out output values past finish
             if impute_finished:
-                emit = torch.where(finished, zero_outputs, next_outputs)
+                emit = utils.map_structure_zip(
+                    lambda new, cur: torch.where(finished, cur, new),
+                    (next_outputs, zero_outputs))
                 next_state = utils.map_structure_zip(
                     lambda new, cur: torch.where(finished, cur, new),
                     (decoder_state, state))
@@ -517,7 +531,7 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
     def initialize(self, helper: Helper,
                    inputs: torch.Tensor,
                    sequence_length: torch.LongTensor,
-                   initial_state: State) -> DecoderInitTuple:
+                   initial_state: HiddenState) -> DecoderInitTuple:
         r"""Called before any decoding iterations.
 
         This methods must compute initial input values and initial state.
@@ -536,7 +550,7 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
         raise NotImplementedError
 
     def step(self, helper: Helper, time: int, inputs: torch.Tensor,
-             state: State) -> StepOutputTuple[Output]:
+             state: HiddenState) -> StepOutputTuple[Output]:
         r"""Called per step of decoding (but only once for dynamic decoding).
 
         Args:
@@ -557,8 +571,9 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
         """
         raise NotImplementedError
 
-    def finalize(self, outputs: Output, final_state: State,
-                 sequence_lengths: torch.LongTensor) -> Tuple[Output, State]:
+    def finalize(self, outputs: Output, final_state: HiddenState,
+                 sequence_lengths: torch.LongTensor) \
+            -> Tuple[Output, HiddenState]:
         r"""Called after all decoding iterations have finished.
 
         Args:

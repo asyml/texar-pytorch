@@ -3,6 +3,9 @@ Unit tests of :mod:`texar.core.cell_wrappers` and
 :func:`~texar.core.layers.get_rnn_cell`.
 """
 
+# pylint: disable=too-many-locals, protected-access, unused-variable
+# pylint: disable=redefined-builtin, invalid-name
+
 import unittest
 
 import torch
@@ -10,12 +13,9 @@ from torch import nn
 
 import texar.core.cell_wrappers as wrappers
 from texar import HParams
-from texar.core.layers import get_rnn_cell, default_rnn_cell_hparams
+from texar.core.layers import default_rnn_cell_hparams, get_rnn_cell
 from texar.utils import utils
 
-
-# pylint: disable=too-many-locals, protected-access, unused-variable
-# pylint: disable=redefined-builtin, invalid-name
 
 class WrappersTest(unittest.TestCase):
     r"""Tests cell wrappers and :func:`~texar.core.layers.get_rnn_cell`.

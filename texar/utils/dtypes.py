@@ -17,28 +17,17 @@ Utility functions related to data types.
 
 # pylint: disable=invalid-name, no-member, protected-access
 
+from typing import Any, Dict, Optional, Union
+
 import numpy as np
 
+from texar.hyperparams import HParams
+
 __all__ = [
-    "get_tf_dtype",
     "is_str",
     "is_callable",
     "maybe_hparams_to_dict",
-    "compat_as_text"
 ]
-
-
-def get_tf_dtype(dtype):  # pylint: disable=too-many-return-statements
-    """Returns equivalent tf dtype.
-
-    Args:
-        dtype: A str, python numeric or string type, numpy data type, or
-            tf dtype.
-
-    Returns:
-        The corresponding tf dtype.
-    """
-    raise NotImplementedError
 
 
 def is_callable(x):
@@ -54,7 +43,8 @@ def is_str(x):
     return isinstance(x, str)
 
 
-def maybe_hparams_to_dict(hparams):
+def maybe_hparams_to_dict(hparams: Optional[Union[HParams, Dict[str, Any]]]) \
+        -> Optional[Dict[str, Any]]:
     r"""If :attr:`hparams` is an instance of :class:`~texar.HParams`,
     converts it to a `dict` and returns. If :attr:`hparams` is a `dict`,
     returns as is.
@@ -97,29 +87,3 @@ def _as_text(bytes_or_text, encoding='utf-8'):
     else:
         raise TypeError(
             f'Expected binary or unicode string, got {bytes_or_text!r}')
-
-
-def compat_as_text(str_):
-    r"""Converts strings into `unicode` (Python 2) or `str` (Python 3).
-
-    Args:
-        str\_: A string or other data types convertible to string, or an
-            `n`-D numpy array or (possibly nested) list of such elements.
-
-    Returns:
-        The converted strings of the same structure/shape as :attr:`str_`.
-    """
-
-    def _recur_convert(s):
-        if isinstance(s, (list, tuple, np.ndarray)):
-            s_ = [_recur_convert(si) for si in s]
-            return _maybe_list_to_array(s_, s)
-        else:
-            try:
-                return _as_text(s)
-            except TypeError:
-                return _as_text(str(s))
-
-    text = _recur_convert(str_)
-
-    return text

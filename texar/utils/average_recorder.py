@@ -15,14 +15,21 @@
 Utilities for maintaining moving average.
 """
 
-from collections import deque
-
 # pylint: disable=invalid-name
+
+from collections import deque
+from typing import Deque, Dict, Optional, Union, no_type_check
+
+from texar.utils.types import MaybeList, MaybeSeq
 
 __all__ = [
     "_SingleAverageRecorder",
     "AverageRecorder"
 ]
+
+Scalar = Union[int, float]
+ID = Union[int, str]
+Record = Union[Dict[ID, Scalar], MaybeSeq[Scalar]]
 
 
 class _SingleAverageRecorder:
@@ -35,17 +42,17 @@ class _SingleAverageRecorder:
         name (str, optional): name of the recorder. Used when printing.
     """
 
-    def __init__(self, size=None, name=None):
+    def __init__(self, size: Optional[int] = None, name: Optional[str] = None):
         if size is not None and size <= 0:
             raise ValueError("`size` must be > 0 or `None`.")
         self._size = size
-        self._q = deque([])
-        self._w = deque([])
+        self._q: Deque[Scalar] = deque([])
+        self._w: Deque[Scalar] = deque([])
         self._sum = 0.
-        self._w_sum = 0
+        self._w_sum: Scalar = 0
         self._name = name
 
-    def add(self, record, weight=None):
+    def add(self, record: Scalar, weight: Optional[Scalar] = None):
         r"""Appends a new record.
 
         Args:
@@ -74,14 +81,14 @@ class _SingleAverageRecorder:
 
         return self.avg()
 
-    def avg(self):
+    def avg(self) -> float:
         r"""Returns the (moving) average.
         """
         if self._w_sum == 0:
             return 0.
         return self._sum / self._w_sum
 
-    def reset(self):
+    def reset(self) -> None:
         r"""Cleans all records.
         """
         self._q.clear()
@@ -89,7 +96,7 @@ class _SingleAverageRecorder:
         self._sum = 0.
         self._w_sum = 0
 
-    def to_str(self, precision=None):
+    def to_str(self, precision: Optional[int] = None) -> str:
         r"""Returns a string of the average value.
 
         Args:
@@ -113,7 +120,7 @@ class _SingleAverageRecorder:
         return avg_str
 
     @property
-    def name(self):
+    def name(self) -> str:
         r"""The name of the recorder.
         """
         return self.name
@@ -154,16 +161,19 @@ class AverageRecorder:
             # avg_rec.avg(0) == 0.12343452
 
     """
+    _recorders: Dict[ID, _SingleAverageRecorder]
+    _record_type: type
 
-    def __init__(self, size=None):
+    def __init__(self, size: Optional[int] = None):
         if size is not None and size <= 0:
             raise ValueError("`size` must be > 0 or `None`.")
         self._size = size
-        self._recorders = None
+        self._recorders = None  # type: ignore
         self._default_metric_name = "metric"
-        self._record_type = None
+        self._record_type = None  # type: ignore
 
-    def _to_dict(self, record):
+    @no_type_check
+    def _to_dict(self, record: Record) -> Dict[ID, Scalar]:
         if isinstance(record, dict):
             record_dict = record
         elif isinstance(record, (list, tuple)):
@@ -172,7 +182,7 @@ class AverageRecorder:
             record_dict = {self._default_metric_name: record}
         return record_dict
 
-    def add(self, record, weight=None):
+    def add(self, record: Record, weight: Optional[Scalar] = None):
         r"""Appends a new record.
 
         :attr:`record` can be a `list`, `dict`, or a single scalar. The
@@ -223,7 +233,7 @@ class AverageRecorder:
 
         return self.avg()
 
-    def avg(self, id_or_name=None):
+    def avg(self, id_or_name: Optional[MaybeList[ID]] = None) -> Record:
         r"""Returns the (moving) average.
 
         Args:
@@ -262,7 +272,7 @@ class AverageRecorder:
         else:
             return avg[self._default_metric_name]
 
-    def reset(self, id_or_name=None):
+    def reset(self, id_or_name: Optional[MaybeList[ID]] = None):
         r"""Resets the record.
 
         Args:
@@ -280,7 +290,8 @@ class AverageRecorder:
         for key in keys:
             self._recorders[key].reset()
 
-    def to_str(self, precision=None, delimiter=' '):
+    def to_str(self, precision: Optional[int] = None,
+               delimiter: str = ' ') -> str:
         r"""Returns a string of the average values of the records.
 
         Args:

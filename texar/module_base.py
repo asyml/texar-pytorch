@@ -14,8 +14,9 @@
 """
 Base class for modules.
 """
+from typing import Optional, Dict, Any, List
 
-import torch.nn
+from torch import nn
 
 from texar.hyperparams import HParams
 
@@ -24,7 +25,7 @@ __all__ = [
 ]
 
 
-class ModuleBase(torch.nn.Module):
+class ModuleBase(nn.Module):
     r"""Base class inherited by modules that are configurable through
     hyperparameters.
 
@@ -40,12 +41,12 @@ class ModuleBase(torch.nn.Module):
             :meth:`default_hparams` for the structure and default values.
     """
 
-    def __init__(self, hparams=None):
+    def __init__(self, hparams: Optional[HParams] = None):
         super(ModuleBase, self).__init__()
         self._hparams = HParams(hparams, self.default_hparams())
 
     @staticmethod
-    def default_hparams():
+    def default_hparams() -> Dict[str, Any]:
         r"""Returns a `dict` of hyperparameters of the module with default
         values. Used to replace the missing values of input `hparams`
         during module construction.
@@ -64,7 +65,7 @@ class ModuleBase(torch.nn.Module):
         raise NotImplementedError
 
     @property
-    def trainable_variables(self):
+    def trainable_variables(self) -> List[nn.Parameter]:
         r"""The list of trainable variables (parameters) of the module.
 
         Both parameters of this module and those of all submodules are included.
@@ -72,7 +73,7 @@ class ModuleBase(torch.nn.Module):
         return [x for x in self.parameters(recurse=True)]  # pylint: disable=unexpected-keyword-arg
 
     @property
-    def hparams(self):
+    def hparams(self) -> HParams:
         r"""An :class:`~texar.HParams` instance. The hyperparameters
         of the module.
         """

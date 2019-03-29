@@ -2,6 +2,9 @@
 Unit tests for RNN decoders.
 """
 
+# pylint: disable=invalid-name, not-callable, too-many-arguments
+# pylint: disable=too-many-locals, protected-access
+
 import unittest
 
 import numpy as np
@@ -10,12 +13,9 @@ import torch.nn.functional as F
 from torch import nn
 
 from texar import HParams
-from texar.modules.decoders.rnn_decoders import BasicRNNDecoder
-from texar.modules.decoders.rnn_decoders import BasicRNNDecoderOutput
+from texar.modules.decoders.rnn_decoders import BasicRNNDecoder, \
+    BasicRNNDecoderOutput
 
-
-# pylint: disable=invalid-name, not-callable, too-many-arguments
-# pylint: disable=too-many-locals, protected-access
 
 class BasicRNNDecoderTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.decoders.rnn_decoders.BasicRNNDecoder`.
@@ -160,8 +160,11 @@ class BasicRNNDecoderTest(unittest.TestCase):
                 start_tokens=start_tokens,
                 end_token=self._vocab_size - 1)
 
+            max_length = 100
             outputs, final_state, sequence_lengths = decoder(
-                helper=helper_infer)
+                helper=helper_infer,
+                max_decoding_length=max_length)
+            self.assertLessEqual(max(sequence_lengths), max_length)
             self._test_outputs(decoder, outputs, final_state, sequence_lengths,
                                test_mode=True)
 

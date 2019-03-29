@@ -22,9 +22,9 @@ from typing import NamedTuple, Tuple
 
 import torch
 
-from texar.core.cell_wrappers import State
-from texar.modules.decoders.rnn_decoder_base import RNNDecoderBase, \
-    DecoderInitTuple, StepOutputTuple
+from texar.core.cell_wrappers import HiddenState
+from texar.modules.decoders.rnn_decoder_base import DecoderInitTuple, \
+    RNNDecoderBase, StepOutputTuple
 from texar.modules.decoders.rnn_decoder_helpers import Helper
 from texar.utils.types import MaybeTuple
 
@@ -230,11 +230,13 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
     def initialize(self, helper: Helper,
                    inputs: torch.Tensor,
                    sequence_length: torch.LongTensor,
-                   initial_state: State) -> DecoderInitTuple:
-        return helper.initialize(inputs, sequence_length) + (initial_state,)
+                   initial_state: HiddenState) -> DecoderInitTuple:
+        initial_finished, initial_inputs = helper.initialize(
+            inputs, sequence_length)
+        return (initial_finished, initial_inputs, initial_state)
 
     def step(self, helper: Helper, time: int, inputs: torch.Tensor,
-             state: State) -> StepOutputTuple[BasicRNNDecoderOutput]:
+             state: HiddenState) -> StepOutputTuple[BasicRNNDecoderOutput]:
         cell_outputs, cell_state = self._cell(inputs, state)
         logits = self._output_layer(cell_outputs)
         sample_ids = helper.sample(
@@ -247,9 +249,9 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
         outputs = BasicRNNDecoderOutput(logits, sample_ids, cell_outputs)
         return (outputs, next_state, next_inputs, finished)
 
-    def finalize(self, outputs: BasicRNNDecoderOutput, final_state: State,
+    def finalize(self, outputs: BasicRNNDecoderOutput, final_state: HiddenState,
                  sequence_lengths: torch.LongTensor) \
-            -> Tuple[BasicRNNDecoderOutput, State]:
+            -> Tuple[BasicRNNDecoderOutput, HiddenState]:
         return outputs, final_state
 
     @property
