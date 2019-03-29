@@ -13,6 +13,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from texar import HParams
+from texar.modules import get_helper
 from texar.modules.decoders.rnn_decoders import BasicRNNDecoder, \
     BasicRNNDecoderOutput
 
@@ -35,17 +36,19 @@ class BasicRNNDecoderTest(unittest.TestCase):
         self._hparams.rnn_cell.input_size = self._emb_dim
 
     def _test_outputs(self, decoder, outputs, final_state, sequence_lengths,
-                      test_mode=False):
+                      test_mode=False, helper=None):
         hidden_size = decoder.hparams.rnn_cell.kwargs.hidden_size
 
         self.assertIsInstance(outputs, BasicRNNDecoderOutput)
-        max_time = self._max_time if not test_mode else max(sequence_lengths)
+        max_time = (self._max_time if not test_mode
+                    else max(sequence_lengths).item())
         self.assertEqual(
             outputs.logits.shape,
             (self._batch_size, max_time, self._vocab_size))
+        sample_id_shape = tuple() if helper is None else helper.sample_ids_shape
         self.assertEqual(
             outputs.sample_id.shape,
-            (self._batch_size, max_time))
+            (self._batch_size, max_time) + sample_id_shape)
         if not test_mode:
             np.testing.assert_array_equal(
                 sequence_lengths, [max_time] * self._batch_size)
@@ -146,27 +149,37 @@ class BasicRNNDecoderTest(unittest.TestCase):
         self._assert_tensor_equal(sequence_lengths, input_lengths)
 
     def test_decode_infer(self):
-        r"""Tests decoding in inference mode.
-        """
+        r"""Tests decoding in inference mode."""
         decoder = BasicRNNDecoder(vocab_size=self._vocab_size,
                                   hparams=self._hparams)
 
         decoder.eval()
         start_tokens = torch.tensor([self._vocab_size - 2] * self._batch_size)
+
+        helpers = []
         for strategy in ['infer_greedy', 'infer_sample']:
-            helper_infer = decoder.create_helper(
+            helper = decoder.create_helper(
                 decoding_strategy=strategy,
                 embedding=self._embedding,
                 start_tokens=start_tokens,
                 end_token=self._vocab_size - 1)
+            helpers.append(helper)
+        for klass in ['TopKSampleEmbeddingHelper', 'SoftmaxEmbeddingHelper',
+                      'GumbelSoftmaxEmbeddingHelper']:
+            helper = get_helper(
+                klass, embedding=self._embedding,
+                start_tokens=start_tokens, end_token=self._vocab_size - 1,
+                top_k=self._vocab_size // 2, tau=2.0,
+                straight_through=True)
+            helpers.append(helper)
 
+        for helper in helpers:
             max_length = 100
             outputs, final_state, sequence_lengths = decoder(
-                helper=helper_infer,
-                max_decoding_length=max_length)
+                helper=helper, max_decoding_length=max_length)
             self.assertLessEqual(max(sequence_lengths), max_length)
             self._test_outputs(decoder, outputs, final_state, sequence_lengths,
-                               test_mode=True)
+                               test_mode=True, helper=helper)
 
 
 if __name__ == "__main__":
