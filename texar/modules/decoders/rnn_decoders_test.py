@@ -33,11 +33,10 @@ class BasicRNNDecoderTest(unittest.TestCase):
         self._embedding = torch.rand(
             self._vocab_size, self._emb_dim, dtype=torch.float)
         self._hparams = HParams(None, BasicRNNDecoder.default_hparams())
-        self._hparams.rnn_cell.input_size = self._emb_dim
 
     def _test_outputs(self, decoder, outputs, final_state, sequence_lengths,
                       test_mode=False, helper=None):
-        hidden_size = decoder.hparams.rnn_cell.kwargs.hidden_size
+        hidden_size = decoder.hparams.rnn_cell.kwargs.num_units
 
         self.assertIsInstance(outputs, BasicRNNDecoderOutput)
         max_time = (self._max_time if not test_mode
@@ -57,7 +56,8 @@ class BasicRNNDecoderTest(unittest.TestCase):
     def test_decode_train(self):
         r"""Tests decoding in training mode.
         """
-        decoder = BasicRNNDecoder(vocab_size=self._vocab_size,
+        decoder = BasicRNNDecoder(input_size=self._emb_dim,
+                                  vocab_size=self._vocab_size,
                                   hparams=self._hparams)
         sequence_length = torch.tensor([self._max_time] * self._batch_size)
 
@@ -105,11 +105,12 @@ class BasicRNNDecoderTest(unittest.TestCase):
     def test_decode_train_with_torch(self):
         r"""Compares decoding results with PyTorch built-in decoder.
         """
-        decoder = BasicRNNDecoder(vocab_size=self._vocab_size,
+        decoder = BasicRNNDecoder(input_size=self._emb_dim,
+                                  vocab_size=self._vocab_size,
                                   hparams=self._hparams)
 
-        input_size = decoder.hparams.rnn_cell.input_size
-        hidden_size = decoder.hparams.rnn_cell.kwargs.hidden_size
+        input_size = self._emb_dim
+        hidden_size = decoder.hparams.rnn_cell.kwargs.num_units
         num_layers = decoder.hparams.rnn_cell.num_layers
         torch_lstm = nn.LSTM(input_size, hidden_size, num_layers,
                              batch_first=True)
@@ -150,7 +151,8 @@ class BasicRNNDecoderTest(unittest.TestCase):
 
     def test_decode_infer(self):
         r"""Tests decoding in inference mode."""
-        decoder = BasicRNNDecoder(vocab_size=self._vocab_size,
+        decoder = BasicRNNDecoder(input_size=self._emb_dim,
+                                  vocab_size=self._vocab_size,
                                   hparams=self._hparams)
 
         decoder.eval()

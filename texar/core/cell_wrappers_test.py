@@ -24,11 +24,11 @@ class WrappersTest(unittest.TestCase):
     def test_get_rnn_cell(self):
         r"""Tests the HParams class.
         """
+        input_size = 10
         hparams = {
             'type': 'LSTMCell',
-            'input_size': 10,
             'kwargs': {
-                'hidden_size': 20,
+                'num_units': 20,
                 'forget_bias': 1.0,
             },
             'num_layers': 3,
@@ -43,17 +43,17 @@ class WrappersTest(unittest.TestCase):
         }
         hparams = HParams(hparams, default_rnn_cell_hparams())
 
-        rnn_cell = get_rnn_cell(hparams)
+        rnn_cell = get_rnn_cell(input_size, hparams)
         self.assertIsInstance(rnn_cell, wrappers.MultiRNNCell)
         self.assertEqual(len(rnn_cell._cell), hparams.num_layers)
-        self.assertEqual(rnn_cell.input_size, hparams.input_size)
-        self.assertEqual(rnn_cell.hidden_size, hparams.kwargs.hidden_size)
+        self.assertEqual(rnn_cell.input_size, input_size)
+        self.assertEqual(rnn_cell.hidden_size, hparams.kwargs.num_units)
 
         for idx, cell in enumerate(rnn_cell._cell):
-            input_size = (hparams.input_size if idx == 0
-                          else hparams.kwargs.hidden_size)
-            self.assertEqual(cell.input_size, input_size)
-            self.assertEqual(cell.hidden_size, hparams.kwargs.hidden_size)
+            layer_input_size = (input_size if idx == 0
+                                else hparams.kwargs.num_units)
+            self.assertEqual(cell.input_size, layer_input_size)
+            self.assertEqual(cell.hidden_size, hparams.kwargs.num_units)
 
             if idx > 0:
                 highway = cell
@@ -68,7 +68,7 @@ class WrappersTest(unittest.TestCase):
             self.assertIsInstance(dropout, wrappers.DropoutWrapper)
             self.assertIsInstance(lstm, wrappers.LSTMCell)
             self.assertIsInstance(builtin_lstm, nn.LSTMCell)
-            h = hparams.kwargs.hidden_size
+            h = hparams.kwargs.num_units
             forget_bias = builtin_lstm.bias_ih[h:(2 * h)]
             self.assertTrue((forget_bias == hparams.kwargs.forget_bias).all())
 
@@ -81,13 +81,13 @@ class WrappersTest(unittest.TestCase):
         seq_len = 6
         state = None
         for step in range(seq_len):
-            input = torch.zeros(batch_size, hparams.input_size)
+            input = torch.zeros(batch_size, input_size)
             output, state = rnn_cell(input, state)
             self.assertEqual(
-                output.shape, (batch_size, hparams.kwargs.hidden_size))
+                output.shape, (batch_size, hparams.kwargs.num_units))
             self.assertEqual(len(state), hparams.num_layers)
             utils.map_structure(lambda s: self.assertEqual(
-                s.shape, (batch_size, hparams.kwargs.hidden_size)), state)
+                s.shape, (batch_size, hparams.kwargs.num_units)), state)
 
 
 if __name__ == "__main__":

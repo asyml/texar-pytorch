@@ -80,9 +80,6 @@ def default_rnn_cell_hparams():
             "type": LSTMCell(hidden_size=100)  # cell instance
             "type": MyCell(...)  # cell instance
 
-    "input_size": int
-        Size of the input to the cell in the first layer.
-
     "kwargs" : dict
         Keyword arguments for the constructor of the cell class.
         A cell is created by :python:`cell_class(**kwargs)`, where
@@ -92,6 +89,9 @@ def default_rnn_cell_hparams():
 
         ..note:: It is unnecessary to specify "input_size" within "kwargs".
             This value will be automatically filled based on layer index.
+
+        ..note:: Although PyTorch uses "hidden_size" to denote the hidden layer
+            size, we follow TensorFlow conventions and use "num_units".
 
     "num_layers" : int
         Number of cell layers. Each layer is a cell created as above, with
@@ -117,9 +117,8 @@ def default_rnn_cell_hparams():
     """
     return {
         'type': 'LSTMCell',
-        'input_size': 256,
         'kwargs': {
-            'hidden_size': 256,
+            'num_units': 256,
         },
         'num_layers': 1,
         'dropout': {
@@ -134,13 +133,14 @@ def default_rnn_cell_hparams():
     }
 
 
-def get_rnn_cell(hparams=None):
+def get_rnn_cell(input_size, hparams=None):
     r"""Creates an RNN cell.
 
     See :func:`~texar.core.default_rnn_cell_hparams` for all
     hyperparameters and default values.
 
     Args:
+        input_size (int): Size of the input to the cell in the first layer.
         hparams (dict or HParams, optional): Cell hyperparameters. Missing
             hyperparameters are set to default values.
 
@@ -163,13 +163,17 @@ def get_rnn_cell(hparams=None):
     state_keep_prob = d_hp['state_keep_prob']
 
     cells = []
-    cell_kwargs = hparams['kwargs'].todict()
     num_layers = hparams['num_layers']
+    cell_kwargs = hparams['kwargs'].todict()
+    # rename 'num_units' to 'hidden_size' following PyTorch conventions
+    cell_kwargs['hidden_size'] = cell_kwargs['num_units']
+    del cell_kwargs['num_units']
+
     for layer_i in range(num_layers):
         # Create the basic cell
         cell_type = hparams["type"]
         if layer_i == 0:
-            cell_kwargs['input_size'] = hparams['input_size']
+            cell_kwargs['input_size'] = input_size
         else:
             cell_kwargs['input_size'] = cell_kwargs['hidden_size']
         if not isinstance(cell_type, str) and not isinstance(cell_type, type):

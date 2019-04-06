@@ -26,7 +26,7 @@ import torch
 from torch import nn
 
 from texar import HParams
-from texar.core import layers
+from texar.core import layers, RNNCellBase
 from texar.core.cell_wrappers import HiddenState
 from texar.module_base import ModuleBase
 from texar.modules.decoders import rnn_decoder_helpers
@@ -53,9 +53,10 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
     """
 
     def __init__(self,
-                 cell=None,
+                 cell: Optional[RNNCellBase] = None,
                  vocab_size: Optional[int] = None,
                  output_layer: Optional[nn.Module] = None,
+                 input_size: Optional[int] = None,
                  input_time_major: bool = False,
                  output_time_major: bool = False,
                  hparams: Optional[HParams] = None):
@@ -67,7 +68,8 @@ class RNNDecoderBase(ModuleBase, Generic[Output]):
         self._output_time_major = output_time_major
 
         # Make RNN cell
-        self._cell = cell or layers.get_rnn_cell(self._hparams.rnn_cell)
+        self._cell = cell or layers.get_rnn_cell(
+            input_size, self._hparams.rnn_cell)
         self._beam_search_cell = None
 
         # Make the output layer
