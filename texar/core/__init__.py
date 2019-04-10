@@ -12,15 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Texar defined exceptions.
+Modules of texar core.
 """
 
-__all__ = [
-    "TexarError"
-]
+# pylint: disable=wildcard-import
 
-
-class TexarError(Exception):
-    r"""
-    Texar error.
-    """
+from texar.core.cell_wrappers import *
+from texar.core.layers import *

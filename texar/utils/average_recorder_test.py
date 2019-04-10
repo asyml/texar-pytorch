@@ -2,22 +2,19 @@
 Unit tests for average recoder.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import unittest
 
 from texar.utils.average_recorder import _SingleAverageRecorder, AverageRecorder
 
+
 # pylint: disable=invalid-name
 
 class AverageRecorderTest(unittest.TestCase):
-    """Tests average recoder.
+    r"""Tests average recoder.
     """
 
     def test_single_average_recoder(self):
-        """Tests :class:`~texar.utils._SingleAverageRecorder`
+        r"""Tests :class:`~texar.utils._SingleAverageRecorder`
         """
         recoder = _SingleAverageRecorder(5)
         for i in range(100):
@@ -30,12 +27,12 @@ class AverageRecorderTest(unittest.TestCase):
             self.assertEqual(recoder.avg(), 1.)
 
         def _cal_ground_truth(n):
-            """Calculates ((n-4)^2 + ... + n^5) / (n-4 + ... + n)
+            r"""Calculates ((n-4)^2 + ... + n^5) / (n-4 + ... + n)
             """
-            lb = max(n-4, 0)
+            lb = max(n - 4, 0)
             _sum = 0
             _w = 0
-            for i in range(lb, n+1):
+            for i in range(lb, n + 1):
                 _sum += i * i
                 _w += i
             if _w == 0:
@@ -48,7 +45,7 @@ class AverageRecorderTest(unittest.TestCase):
             self.assertEqual(recoder.avg(), _cal_ground_truth(i))
 
     def test_average_recorder(self):
-        """Tests :class:`~texar.utils.AverageRecorder`
+        r"""Tests :class:`~texar.utils.AverageRecorder`
         """
         recorder = AverageRecorder(5)
         for _ in range(100):
@@ -68,6 +65,6 @@ class AverageRecorderTest(unittest.TestCase):
             self.assertEqual(recorder.avg('2'), 2.)
             self.assertEqual(recorder.avg(['1', '2']), {'1': 1., '2': 2.})
 
+
 if __name__ == "__main__":
     unittest.main()
-

@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Texar defined exceptions.
+Type annotation helpers.
 """
 
-__all__ = [
-    "TexarError"
-]
+from typing import List, Sequence, Tuple, TypeVar, Union
 
-
-class TexarError(Exception):
-    r"""
-    Texar error.
-    """
+T = TypeVar('T')  # pylint: disable=invalid-name
+MaybeTuple = Union[T, Tuple[T, ...]]
+MaybeList = Union[T, List[T]]
+MaybeSeq = Union[T, Sequence[T]]

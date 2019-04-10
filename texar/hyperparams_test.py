@@ -2,26 +2,22 @@
 Unit tests of :class:`HParams`.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import pickle
-
 import tempfile
 import unittest
 
 from texar.hyperparams import HParams
 
+
 # pylint: disable=no-member
 
 class HParamsTest(unittest.TestCase):
-    """Tests hyperparameter related operations.
+    r"""Tests hyperparameter related operations.
     """
 
     def test_hparams(self):
-        """Tests the HParams class.
+        r"""Tests the HParams class.
         """
         default_hparams = {
             "str": "str",
@@ -95,12 +91,13 @@ class HParamsTest(unittest.TestCase):
             hparams_loaded = pickle.load(hparams_file)
         self.assertEqual(hparams_loaded.todict(), hparams_.todict())
 
-
     def test_typecheck(self):
-        """Tests type-check functionality.
+        r"""Tests type-check functionality.
         """
+
         def _foo():
             pass
+
         def _bar():
             pass
 
@@ -115,9 +112,8 @@ class HParamsTest(unittest.TestCase):
         hparams_ = HParams(hparams, default_hparams)
         self.assertEqual(hparams_.fn, default_hparams["fn"])
 
-
     def test_type_kwargs(self):
-        """The the special cases involving "type" and "kwargs"
+        r"""The the special cases involving "type" and "kwargs"
         hyperparameters.
         """
         default_hparams = {

@@ -15,21 +15,19 @@
 Base class for modules.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from typing import Any, Dict, List, Optional
 
-import torch
+from torch import nn
 
-#from texar.utils.exceptions import TexarError
 from texar.hyperparams import HParams
 
 __all__ = [
-    "ModuleBase"
+    'ModuleBase'
 ]
 
-class ModuleBase(torch.nn.Module):
-    """Base class inherited by modules that are configurable through
+
+class ModuleBase(nn.Module):
+    r"""Base class inherited by modules that are configurable through
     hyperparameters.
 
     This is a subclass of :torch_main:`torch.nn.Module <nn/modules/module>`.
@@ -44,13 +42,13 @@ class ModuleBase(torch.nn.Module):
             :meth:`default_hparams` for the structure and default values.
     """
 
-    def __init__(self, hparams=None):
-        super(ModuleBase, self).__init__()
+    def __init__(self, hparams: Optional[HParams] = None):
+        super().__init__()
         self._hparams = HParams(hparams, self.default_hparams())
 
     @staticmethod
-    def default_hparams():
-        """Returns a `dict` of hyperparameters of the module with default
+    def default_hparams() -> Dict[str, Any]:
+        r"""Returns a `dict` of hyperparameters of the module with default
         values. Used to replace the missing values of input `hparams`
         during module construction.
 
@@ -61,23 +59,23 @@ class ModuleBase(torch.nn.Module):
             }
         """
         return {
-            "name": "module"
+            'name': 'module'
         }
 
-    def forward(self, *input): # pylint: disable=redefined-builtin
+    def forward(self, *input):  # pylint: disable=redefined-builtin
         raise NotImplementedError
 
     @property
-    def trainable_variables(self):
-        """The list of trainable variables (parameters) of the module.
+    def trainable_variables(self) -> List[nn.Parameter]:
+        r"""The list of trainable variables (parameters) of the module.
 
         Both parameters of this module and those of all submodules are included.
         """
-        return [x for x in self.parameters(recurse=True)]
+        return [x for x in self.parameters(recurse=True)]  # pylint: disable=unexpected-keyword-arg
 
     @property
-    def hparams(self):
-        """An :class:`~texar.HParams` instance. The hyperparameters
+    def hparams(self) -> HParams:
+        r"""An :class:`~texar.HParams` instance. The hyperparameters
         of the module.
         """
         return self._hparams

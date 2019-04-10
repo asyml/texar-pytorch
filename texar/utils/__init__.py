@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,12 +15,8 @@
 Modules of texar library utils.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 # pylint: disable=wildcard-import
 
-from texar.utils.utils import *
-from texar.utils.dtypes import *
 from texar.utils.average_recorder import *
+from texar.utils.dtypes import *
+from texar.utils.utils import *

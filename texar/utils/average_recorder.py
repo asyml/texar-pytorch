@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,21 +15,25 @@
 Utilities for maintaining moving average.
 """
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
-from collections import deque
-
 # pylint: disable=invalid-name
 
+from collections import deque
+from typing import Deque, Dict, Optional, Union, no_type_check
+
+from texar.utils.types import MaybeList, MaybeSeq
+
 __all__ = [
-    "_SingleAverageRecorder",
-    "AverageRecorder"
+    '_SingleAverageRecorder',
+    'AverageRecorder',
 ]
 
-class _SingleAverageRecorder(object):
-    """Maintains the moving average (i.e., the average of the latest N records)
+Scalar = Union[int, float]
+ID = Union[int, str]
+Record = Union[Dict[ID, Scalar], MaybeSeq[Scalar]]
+
+
+class _SingleAverageRecorder:
+    r"""Maintains the moving average (i.e., the average of the latest N records)
     of a single metric.
 
     Args:
@@ -38,18 +42,18 @@ class _SingleAverageRecorder(object):
         name (str, optional): name of the recorder. Used when printing.
     """
 
-    def __init__(self, size=None, name=None):
+    def __init__(self, size: Optional[int] = None, name: Optional[str] = None):
         if size is not None and size <= 0:
             raise ValueError("`size` must be > 0 or `None`.")
         self._size = size
-        self._q = deque([])
-        self._w = deque([])
+        self._q: Deque[Scalar] = deque([])
+        self._w: Deque[Scalar] = deque([])
         self._sum = 0.
-        self._w_sum = 0
+        self._w_sum: Scalar = 0
         self._name = name
 
-    def add(self, record, weight=None):
-        """Appends a new record.
+    def add(self, record: Scalar, weight: Optional[Scalar] = None):
+        r"""Appends a new record.
 
         Args:
             record: A scalar; the new record to append.
@@ -77,23 +81,23 @@ class _SingleAverageRecorder(object):
 
         return self.avg()
 
-    def avg(self):
-        """Returns the (moving) average.
+    def avg(self) -> float:
+        r"""Returns the (moving) average.
         """
         if self._w_sum == 0:
             return 0.
         return self._sum / self._w_sum
 
-    def reset(self):
-        """Cleans all records.
+    def reset(self) -> None:
+        r"""Cleans all records.
         """
         self._q.clear()
         self._w.clear()
         self._sum = 0.
         self._w_sum = 0
 
-    def to_str(self, precision=None):
-        """Returns a string of the average value.
+    def to_str(self, precision: Optional[int] = None) -> str:
+        r"""Returns a string of the average value.
 
         Args:
             precision (int, optional): The number of decimal places to keep in
@@ -116,13 +120,14 @@ class _SingleAverageRecorder(object):
         return avg_str
 
     @property
-    def name(self):
-        """The name of the recorder.
+    def name(self) -> str:
+        r"""The name of the recorder.
         """
         return self.name
 
-class AverageRecorder(object):
-    """Maintains the moving averages (i.e., the average of the latest N
+
+class AverageRecorder:
+    r"""Maintains the moving averages (i.e., the average of the latest N
     records) of (possibly multiple) fields.
 
     Fields are determined by the first call of :meth:`add`.
@@ -156,16 +161,19 @@ class AverageRecorder(object):
             # avg_rec.avg(0) == 0.12343452
 
     """
+    _recorders: Dict[ID, _SingleAverageRecorder]
+    _record_type: type
 
-    def __init__(self, size=None):
+    def __init__(self, size: Optional[int] = None):
         if size is not None and size <= 0:
             raise ValueError("`size` must be > 0 or `None`.")
         self._size = size
-        self._recorders = None
+        self._recorders = None  # type: ignore
         self._default_metric_name = "metric"
-        self._record_type = None
+        self._record_type = None  # type: ignore
 
-    def _to_dict(self, record):
+    @no_type_check
+    def _to_dict(self, record: Record) -> Dict[ID, Scalar]:
         if isinstance(record, dict):
             record_dict = record
         elif isinstance(record, (list, tuple)):
@@ -174,8 +182,8 @@ class AverageRecorder(object):
             record_dict = {self._default_metric_name: record}
         return record_dict
 
-    def add(self, record, weight=None):
-        """Appends a new record.
+    def add(self, record: Record, weight: Optional[Scalar] = None):
+        r"""Appends a new record.
 
         :attr:`record` can be a `list`, `dict`, or a single scalar. The
         record type is determined at the first time :meth:`add` is called.
@@ -225,8 +233,8 @@ class AverageRecorder(object):
 
         return self.avg()
 
-    def avg(self, id_or_name=None):
-        """Returns the (moving) average.
+    def avg(self, id_or_name: Optional[MaybeList[ID]] = None) -> Record:
+        r"""Returns the (moving) average.
 
         Args:
             id_or_name (optional): A list of or a single element.
@@ -264,8 +272,8 @@ class AverageRecorder(object):
         else:
             return avg[self._default_metric_name]
 
-    def reset(self, id_or_name=None):
-        """Resets the record.
+    def reset(self, id_or_name: Optional[MaybeList[ID]] = None):
+        r"""Resets the record.
 
         Args:
             id_or_name (optional): A list or a single element. Each element is
@@ -282,8 +290,9 @@ class AverageRecorder(object):
         for key in keys:
             self._recorders[key].reset()
 
-    def to_str(self, precision=None, delimiter=' '):
-        """Returns a string of the average values of the records.
+    def to_str(self, precision: Optional[int] = None,
+               delimiter: str = ' ') -> str:
+        r"""Returns a string of the average values of the records.
 
         Args:
             precision (int, optional): The number of decimal places to keep in
@@ -306,7 +315,7 @@ class AverageRecorder(object):
                 for name, rec in self._recorders.items()}
         str_list = []
         if self._record_type in {list, tuple}:
-            for i in range(len(strs)):# pylint: disable=consider-using-enumerate
+            for i in range(len(strs)):  # pylint: disable=consider-using-enumerate
                 # Enumerates the keys in order, which are the indexes
                 str_list.append(strs[i])
         elif self._record_type == dict:
