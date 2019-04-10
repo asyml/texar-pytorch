@@ -14,14 +14,15 @@
 """
 Base class for modules.
 """
-from typing import Optional, Dict, Any, List
+
+from typing import Any, Dict, List, Optional
 
 from torch import nn
 
 from texar.hyperparams import HParams
 
 __all__ = [
-    "ModuleBase"
+    'ModuleBase'
 ]
 
 
@@ -42,7 +43,7 @@ class ModuleBase(nn.Module):
     """
 
     def __init__(self, hparams: Optional[HParams] = None):
-        super(ModuleBase, self).__init__()
+        super().__init__()
         self._hparams = HParams(hparams, self.default_hparams())
 
     @staticmethod
@@ -58,7 +59,7 @@ class ModuleBase(nn.Module):
             }
         """
         return {
-            "name": "module"
+            'name': 'module'
         }
 
     def forward(self, *input):  # pylint: disable=redefined-builtin

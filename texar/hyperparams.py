@@ -21,7 +21,7 @@ from typing import Any, Dict, ItemsView, Iterator, KeysView, \
     Optional, Tuple, Union
 
 __all__ = [
-    "HParams"
+    'HParams'
 ]
 
 
@@ -30,7 +30,7 @@ def _type_name(value):
 
 
 class HParams:
-    """A class that maintains hyperparameters for configuring Texar modules.
+    r"""A class that maintains hyperparameters for configuring Texar modules.
     The class has several useful features:
 
     - **Auto-completion of missing values.** Users can specify only a subset of\
@@ -193,7 +193,7 @@ class HParams:
         if default_hparams is None:
             raise ValueError("`default_hparams` cannot be `None` if `hparams` "
                              "is not `None`.")
-        no_typecheck_names = default_hparams.get("@no_typecheck", [])
+        no_typecheck_names = default_hparams.get('@no_typecheck', [])
 
         if "kwargs" in default_hparams and "type" not in default_hparams:
             raise ValueError("Ill-defined hyperparameter structure: 'kwargs' "
@@ -205,8 +205,8 @@ class HParams:
         # in `hparams`.
         for name, value in default_hparams.items():
             if name not in hparams and isinstance(value, dict):
-                if name == "kwargs" and "type" in hparams and \
-                        hparams["type"] != default_hparams["type"]:
+                if name == 'kwargs' and 'type' in hparams and \
+                        hparams['type'] != default_hparams['type']:
                     # Set params named "kwargs" to empty dictionary if "type"
                     # takes value other than default.
                     parsed_hparams[name] = HParams({}, {})
@@ -243,7 +243,7 @@ class HParams:
                         (name, _type_name(default_value), _type_name(value)))
                 if name == "kwargs":
                     if "type" in hparams and \
-                            hparams["type"] != default_hparams["type"]:
+                            hparams["type"] != default_hparams['type']:
                         # Leave "kwargs" as-is if "type" takes value
                         # other than default.
                         parsed_hparams[name] = HParams(value, value)
@@ -261,7 +261,7 @@ class HParams:
 
             # Do not type-check hyperparameter named "type" and accompanied
             # with "kwargs"
-            if name == "type" and "kwargs" in default_hparams:
+            if name == 'type' and 'kwargs' in default_hparams:
                 parsed_hparams[name] = value
                 continue
 

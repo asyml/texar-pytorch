@@ -24,9 +24,9 @@ import numpy as np
 from texar.hyperparams import HParams
 
 __all__ = [
-    "is_str",
-    "is_callable",
-    "maybe_hparams_to_dict",
+    'is_str',
+    'is_callable',
+    'maybe_hparams_to_dict',
 ]
 
 
@@ -86,4 +86,4 @@ def _as_text(bytes_or_text, encoding='utf-8'):
         return bytes_or_text.decode(encoding)
     else:
         raise TypeError(
-            f'Expected binary or unicode string, got {bytes_or_text!r}')
+            f"Expected binary or unicode string, got {bytes_or_text!r}")

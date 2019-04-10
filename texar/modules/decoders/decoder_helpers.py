@@ -45,6 +45,8 @@ __all__ = [
     'default_helper_infer_hparams',
     'get_helper',
 ]
+# TODO: Implement `ScheduledEmbeddingTrainingHelper` and
+#     `ScheduledOutputTrainingHelper`
 
 HelperInitTuple = Tuple[torch.ByteTensor, torch.Tensor]
 NextInputTuple = Tuple[torch.ByteTensor, torch.Tensor, HiddenState]
@@ -82,7 +84,7 @@ IDType = TypeVar('IDType', bound=torch.Tensor)
 
 
 class Helper(Generic[IDType], ABC):
-    """Interface for implementing sampling in seq2seq decoders.
+    r"""Interface for implementing sampling in seq2seq decoders.
 
     Helper instances are used by `BasicDecoder`.
     """
@@ -241,7 +243,7 @@ class EmbeddingHelper(Helper[IDType], ABC):
 
 
 class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
-    """A generic helper for use during inference.
+    r"""A generic helper for use during inference.
 
     Based on :class:`~texar.modules.EmbeddingHelper`, this class returns samples
     that are vocabulary indices, and use the corresponding embeddings as the
@@ -254,7 +256,7 @@ class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
 
     def next_inputs(self, time: int, outputs: torch.Tensor, state: HiddenState,
                     sample_ids: torch.LongTensor) -> NextInputTuple:
-        """next_inputs_fn for GreedyEmbeddingHelper."""
+        r"""next_inputs_fn for GreedyEmbeddingHelper."""
         del time, outputs  # unused by next_inputs_fn
         finished = (sample_ids == self._end_token)
         all_finished = torch.all(finished).item()
@@ -265,7 +267,7 @@ class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
 
 
 class GreedyEmbeddingHelper(SingleEmbeddingHelper):
-    """A helper for use during inference.
+    r"""A helper for use during inference.
 
     Uses the argmax of the output (treated as logits) and passes the
     result through an embedding layer to get the next input.
@@ -273,7 +275,7 @@ class GreedyEmbeddingHelper(SingleEmbeddingHelper):
 
     def __init__(self, embedding: Embedding, start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor]):
-        """Initializer.
+        r"""Initializer.
 
         Args:
             embedding: A callable that takes a vector tensor of `ids` (argmax
@@ -290,7 +292,7 @@ class GreedyEmbeddingHelper(SingleEmbeddingHelper):
 
     def sample(self, time: int, outputs: torch.Tensor,
                state: HiddenState) -> torch.LongTensor:
-        """sample for GreedyEmbeddingHelper."""
+        r"""sample for GreedyEmbeddingHelper."""
         del time, state  # unused by sample_fn
         # Outputs are logits, use argmax to get the most probable id
         if not torch.is_tensor(outputs):
@@ -301,7 +303,7 @@ class GreedyEmbeddingHelper(SingleEmbeddingHelper):
 
 
 class SampleEmbeddingHelper(SingleEmbeddingHelper):
-    """A helper for use during inference.
+    r"""A helper for use during inference.
 
     Uses sampling (from a distribution) instead of argmax and passes the
     result through an embedding layer to get the next input.
@@ -310,7 +312,7 @@ class SampleEmbeddingHelper(SingleEmbeddingHelper):
     def __init__(self, embedding: Embedding, start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor],
                  softmax_temperature: Optional[float] = None):
-        """Initializer.
+        r"""Initializer.
 
         Args:
             embedding: A callable that takes a vector tensor of `ids` (argmax
@@ -333,7 +335,7 @@ class SampleEmbeddingHelper(SingleEmbeddingHelper):
 
     def sample(self, time: int, outputs: torch.Tensor,
                state: HiddenState) -> torch.LongTensor:
-        """sample for SampleEmbeddingHelper."""
+        r"""sample for SampleEmbeddingHelper."""
         del time, state  # unused by sample_fn
         # Outputs are logits, we sample instead of argmax (greedy).
         if not torch.is_tensor(outputs):
@@ -478,7 +480,7 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
 
     def next_inputs(self, time: int, outputs: torch.Tensor, state: HiddenState,
                     sample_ids: torch.Tensor) -> NextInputTuple:
-        """next_inputs_fn for SoftmaxEmbeddingHelper."""
+        r"""next_inputs_fn for SoftmaxEmbeddingHelper."""
         del time, outputs  # unused by next_inputs_fn
         if self._use_finish:
             hard_ids = torch.argmax(sample_ids, dim=-1)
@@ -582,8 +584,8 @@ def default_helper_train_hparams():
             }
     """
     return {
-        "type": "TrainingHelper",
-        "kwargs": {}
+        'type': 'TrainingHelper',
+        'kwargs': {}
     }
 
 

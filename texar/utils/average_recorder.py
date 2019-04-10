@@ -23,8 +23,8 @@ from typing import Deque, Dict, Optional, Union, no_type_check
 from texar.utils.types import MaybeList, MaybeSeq
 
 __all__ = [
-    "_SingleAverageRecorder",
-    "AverageRecorder"
+    '_SingleAverageRecorder',
+    'AverageRecorder',
 ]
 
 Scalar = Union[int, float]
@@ -33,7 +33,7 @@ Record = Union[Dict[ID, Scalar], MaybeSeq[Scalar]]
 
 
 class _SingleAverageRecorder:
-    """Maintains the moving average (i.e., the average of the latest N records)
+    r"""Maintains the moving average (i.e., the average of the latest N records)
     of a single metric.
 
     Args:
@@ -127,7 +127,7 @@ class _SingleAverageRecorder:
 
 
 class AverageRecorder:
-    """Maintains the moving averages (i.e., the average of the latest N
+    r"""Maintains the moving averages (i.e., the average of the latest N
     records) of (possibly multiple) fields.
 
     Fields are determined by the first call of :meth:`add`.

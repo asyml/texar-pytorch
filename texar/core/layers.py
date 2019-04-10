@@ -16,6 +16,8 @@ Various neural network layers
 """
 
 # pylint: disable=too-many-branches
+import functools
+from typing import Optional, Callable
 
 import torch
 from torch import nn
@@ -25,9 +27,9 @@ from texar.hyperparams import HParams
 from texar.utils import utils
 
 __all__ = [
-    "default_rnn_cell_hparams",
-    "get_rnn_cell",
-    "identity",
+    'default_rnn_cell_hparams',
+    'get_rnn_cell',
+    'identity',
 ]
 
 
@@ -218,7 +220,7 @@ def get_rnn_cell(input_size, hparams=None):
 
 
 def identity(inputs: torch.Tensor):
-    """Returns a tensor with the same content as the input tensor.
+    r"""Returns a tensor with the same content as the input tensor.
 
     Arguments:
         inputs: The input tensor.
@@ -227,3 +229,54 @@ def identity(inputs: torch.Tensor):
         A tensor of the same shape, type, and content.
     """
     return inputs
+
+
+def get_initializer(hparams: Optional[HParams] = None) \
+        -> Optional[Callable[[torch.Tensor], None]]:
+    r"""Returns an initializer instance.
+
+    .. role:: python(code)
+       :language: python
+
+    Args:
+        hparams (dict or HParams, optional): Hyperparameters with the structure
+
+            .. code-block:: python
+
+                {
+                    "type": "initializer_class_or_function",
+                    "kwargs": {
+                        #...
+                    }
+                }
+
+            The "type" field can be a initializer class, its name or module
+            path, or class instance. If class name is provided, the class must
+            be from one the following modules:
+            :tf_main:`tf.initializers <initializers>`,
+            :tf_main:`tf.keras.initializers <keras/initializers>`,
+            :tf_main:`tf < >`, and :mod:`texar.custom`. The class is created
+            by :python:`initializer_class(**kwargs)`. If a class instance
+            is given, "kwargs" is ignored and can be omitted.
+
+            Besides, the "type" field can also be an initialization function
+            called with :python:`initialization_fn(**kwargs)`. In this case
+            "type" can be the function, or its name or module path. If
+            function name is provided, the function must be from one of the
+            above modules or module `tf.contrib.layers`. If no
+            keyword argument is required, "kwargs" can be omitted.
+
+    Returns:
+        An initializer instance. `None` if :attr:`hparams` is `None`.
+    """
+    if hparams is None:
+        return None
+
+    kwargs = hparams.get('kwargs', {})
+    if isinstance(kwargs, HParams):
+        kwargs = kwargs.todict()
+    modules = ['torch.nn.init', 'torch', 'texar.custom']
+    initializer_fn = utils.get_function(hparams["type"], modules)
+    initializer = functools.partial(initializer_fn, **kwargs)
+
+    return initializer
