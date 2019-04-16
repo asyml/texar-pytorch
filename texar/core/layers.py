@@ -25,11 +25,14 @@ from torch import nn
 import texar.core.cell_wrappers as wrappers
 from texar.hyperparams import HParams
 from texar.utils import utils
+from texar.utils.dtypes import is_str
 
 __all__ = [
     'default_rnn_cell_hparams',
     'get_rnn_cell',
     'identity',
+    'get_initializer',
+    'get_layer'
 ]
 
 
@@ -280,3 +283,102 @@ def get_initializer(hparams: Optional[HParams] = None) \
     initializer = functools.partial(initializer_fn, **kwargs)
 
     return initializer
+
+def get_layer(hparams):
+    """Makes a layer instance.
+
+    The layer must be an instance of :tf_main:`tf.layers.Layer <layers/Layer>`.
+
+    Args:
+        hparams (dict or HParams): Hyperparameters of the layer, with
+            structure:
+
+            .. code-block:: python
+
+                {
+                    "type": "LayerClass",
+                    "kwargs": {
+                        # Keyword arguments of the layer class
+                        # ...
+                    }
+                }
+
+            Here:
+
+            "type" : str or layer class or layer instance
+                The layer type. This can be
+
+                - The string name or full module path of a layer class. If \
+                the class name is provided, the class must be in module \
+                :tf_main:`tf.layers <layers>`, :mod:`texar.core`, \
+                or :mod:`texar.custom`.
+                - A layer class.
+                - An instance of a layer class.
+
+                For example
+
+                .. code-block:: python
+
+                    "type": "Conv1D" # class name
+                    "type": "texar.core.MaxReducePooling1D" # module path
+                    "type": "my_module.MyLayer" # module path
+                    "type": tf.layers.Conv2D # class
+                    "type": Conv1D(filters=10, kernel_size=2) # cell instance
+                    "type": MyLayer(...) # cell instance
+
+            "kwargs" : dict
+                A dictionary of keyword arguments for constructor of the
+                layer class. Ignored if :attr:`"type"` is a layer instance.
+
+                - Arguments named "activation" can be a callable, \
+                or a `str` of \
+                the name or module path to the activation function.
+                - Arguments named "\*_regularizer" and "\*_initializer" \
+                can be a class instance, or a `dict` of \
+                hyperparameters of \
+                respective regularizers and initializers. See
+                - Arguments named "\*_constraint" can be a callable, or a \
+                `str` of the name or full path to the constraint function.
+
+    Returns:
+        A layer instance. If hparams["type"] is a layer instance, returns it
+        directly.
+
+    Raises:
+        ValueError: If :attr:`hparams` is `None`.
+        ValueError: If the resulting layer is not an instance of
+            :tf_main:`tf.layers.Layer <layers/Layer>`.
+    """
+    if hparams is None:
+        raise ValueError("`hparams` must not be `None`.")
+
+    layer_type = hparams["type"]
+    if not is_str(layer_type) and not isinstance(layer_type, type):
+        layer = layer_type
+    else:
+        layer_modules = ["tensorflow.layers", "texar.core", "texar.costum"]
+        layer_class = utils.check_or_get_class(layer_type, layer_modules)
+        if isinstance(hparams, dict):
+            default_kwargs = _layer_class_to_default_kwargs_map.get(layer_class,
+                                                                    {})
+            default_hparams = {"type": layer_type, "kwargs": default_kwargs}
+            hparams = HParams(hparams, default_hparams)
+
+        kwargs = {}
+        for k, v in hparams.kwargs.items():
+            if k.endswith('_regularizer'):
+                kwargs[k] = get_regularizer(v)
+            elif k.endswith('_initializer'):
+                kwargs[k] = get_initializer(v)
+            elif k.endswith('activation'):
+                kwargs[k] = get_activation_fn(v)
+            elif k.endswith('_constraint'):
+                kwargs[k] = get_constraint_fn(v)
+            else:
+                kwargs[k] = v
+        layer = utils.get_instance(layer_type, kwargs, layer_modules)
+
+    if not isinstance(layer, tf.layers.Layer):
+        raise ValueError("layer must be an instance of `tf.layers.Layer`.")
+
+    return layer
