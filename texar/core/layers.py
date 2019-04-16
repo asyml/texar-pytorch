@@ -296,7 +296,6 @@ def get_regularizer(hparams=None):
         ValueError: The resulting regularizer is not an instance of
             :class:`~texar.core.regularizers.Regularizer`.
     """
-
     if hparams is None:
         return None
 
@@ -404,7 +403,6 @@ def get_activation_fn(fn_name: Optional[Union[str,
     if kwargs is not None:
         if isinstance(kwargs, HParams):
             kwargs = kwargs.todict()
-
         def _partial_fn(features):
             return activation_fn_(features, **kwargs)
         activation_fn = _partial_fn
