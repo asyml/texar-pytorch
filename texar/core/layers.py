@@ -22,7 +22,8 @@ from typing import Optional, Callable
 import torch
 from torch import nn
 
-import texar.core.cell_wrappers as wrappers
+#import texar.core.cell_wrappers as wrappers
+from texar.core import cell_wrappers as wrappers
 from texar.hyperparams import HParams
 from texar.utils import utils
 
@@ -134,6 +135,30 @@ def default_rnn_cell_hparams():
         '@no_typecheck': ['type']
     }
 
+def default_regularizer_hparams():
+    """Returns the hyperparameters and their default values of a variable
+    regularizer:
+
+    .. code-block:: python
+
+        {
+            "type": "L1L2",
+            "kwargs": {
+                "l1": 0.,
+                "l2": 0.
+            }
+        }
+
+    The default value corresponds to :tf_main:`L1L2 <keras/regularizers/L1L2>`
+    and, with `(l1=0, l2=0)`, disables regularization.
+    """
+    return {
+        "type": "L1L2",
+        "kwargs": {
+            "l1": 0.,
+            "l2": 0.
+        }
+    }
 
 def get_rnn_cell(input_size, hparams=None):
     r"""Creates an RNN cell.
