@@ -81,12 +81,13 @@ class EmbedderBase(ModuleBase):
                 noise_shape = np.concatenate((np.array(dropout_input.shape[:ids_rank]), np.ones([self._dim_rank], dtype=np.int32)), axis=0).tolist()
             elif st == 'item_type':
                 noise_shape = [dropout_input.shape[0]] + [1] * self._dim_rank
+                #noise_shape = [1] + [1] * self._dim_rank
             else:
                 raise ValueError('Unknown dropout strategy: {}'.format(st))
 
             '''dropout_layer = tf.layers.Dropout(
                 rate=hparams.dropout_rate, noise_shape=noise_shape)'''
-            print("hparams.dropout_rate", hparams.dropout_rate)
+            #print("hparams.dropout_rate", hparams.dropout_rate)
             if noise_shape is not None:
                 dropout_layer = Dropout_with_mask(rate=hparams.dropout_rate, noise_shape=noise_shape)
             else:

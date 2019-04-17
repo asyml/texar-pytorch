@@ -201,11 +201,6 @@ def get_embedding(hparams=None,
         dim = hparams["dim"]
         if not isinstance(hparams["dim"], (list, tuple)):
             dim = [dim]
-        '''embedding = tf.get_variable(name='w',
-                                    shape=[num_embeds] + dim,
-                                    initializer=initializer,
-                                    regularizer=regularizer,
-                                    trainable=hparams["trainable"])'''
         embedding = torch.empty(size=[num_embeds] + dim)
         # initializer should be set by layers.get_initializer
         if initializer:
@@ -215,10 +210,6 @@ def get_embedding(hparams=None,
         #if regularizer:
         #    embedding = regularizer(embedding)
     else:
-        '''embedding = tf.get_variable(name='w',
-                                    initializer=tf.to_float(init_value),
-                                    regularizer=regularizer,
-                                    trainable=hparams["trainable"])'''
         embedding = torch.tensor(init_value, dtype=torch.float)
         #if regularizer:
         #    embedding = regularizer(embedding)

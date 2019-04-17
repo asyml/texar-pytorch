@@ -28,20 +28,17 @@ class GetEmbeddingTest(unittest.TestCase):
         self.assertEqual(emb.shape[1],
                          embedder_utils.default_embedding_hparams()["dim"])
 
-        '''hparams = {
+        hparams = {
             "initializer": {
-                "type": tf.random_uniform_initializer(minval=-0.1, maxval=0.1)
-            },
-            "regularizer": {
-                "type": tf.keras.regularizers.L1L2(0.1, 0.1)
+                "type": torch.nn.init.uniform_,
+                "kwargs": {'a': -0.1, 'b': 0.1}
             }
         }
         emb = embedder_utils.get_embedding(
-            hparams=hparams, num_embeds=vocab_size,
-            variable_scope='embedding_2')
-        self.assertEqual(emb.shape[0].value, vocab_size)
-        self.assertEqual(emb.shape[1].value,
-                         embedder_utils.default_embedding_hparams()["dim"])'''
+            hparams=hparams, num_embeds=vocab_size,)
+        self.assertEqual(emb.shape[0], vocab_size)
+        self.assertEqual(emb.shape[1],
+                         embedder_utils.default_embedding_hparams()["dim"])
 
 
 if __name__ == "__main__":
