@@ -15,18 +15,12 @@
 Various position embedders.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import math
 
-#import tensorflow as tf
 import torch
 
 from texar.modules.embedders.embedder_base import EmbedderBase
 from texar.modules.embedders import embedder_utils
-#from texar.utils.mode import is_train_mode
 from texar.utils.shapes import mask_sequences
 
 # pylint: disable=arguments-differ, invalid-name
@@ -154,17 +148,12 @@ class PositionEmbedder(EmbedderBase):
             if sequence_length is None:
                 raise ValueError(
                     'Either `positions` or `sequence_length` is required.')
-            #max_length = tf.reduce_max(sequence_length)
             max_length = torch.max(sequence_length)
-            #single_inputs = tf.range(start=0, limit=max_length, dtype=tf.int32)
             single_inputs = torch.arange(start=0, end=max_length, dtype=torch.int32)
             # Expands `single_inputs` to have shape [batch_size, max_length]
-            #expander = tf.expand_dims(tf.ones_like(sequence_length), -1)
             expander = torch.unsqueeze(torch.ones_like(sequence_length), -1)
-            #inputs = expander * tf.expand_dims(single_inputs, 0)
             inputs = expander * torch.unsqueeze(single_inputs, 0)
         ids_rank = len(list(inputs.shape))
-
         embedding = self._embedding
 
         #is_training = is_train_mode(mode)
@@ -183,12 +172,9 @@ class PositionEmbedder(EmbedderBase):
             dropout_layer = self._get_dropout_layer(
                 self._hparams, dropout_strategy=st, dropout_input=embedding)
             if dropout_layer:
-                '''embedding = dropout_layer.apply(inputs=embedding,
-                                                training=is_training)'''
                 embedding = dropout_layer(embedding)
 
         # Embeds
-        #outputs = tf.nn.embedding_lookup(embedding, inputs, **kwargs)
         outputs = embedder_utils.embedding_lookup(embedding, inputs, **kwargs)
 
         # Dropouts as 'item' or 'elements' after embedding
@@ -197,8 +183,6 @@ class PositionEmbedder(EmbedderBase):
                 self._hparams, ids_rank=ids_rank, dropout_input=outputs,
                 dropout_strategy=st)
             if dropout_layer:
-                '''outputs = dropout_layer.apply(inputs=outputs,
-                                              training=is_training)'''
                 outputs = dropout_layer(outputs)
 
         # Optionally masks
@@ -264,16 +248,16 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         min_timescale = self._hparams.min_timescale
         max_timescale = self._hparams.max_timescale
 
-        positions = tf.to_float(tf.range(position_size, dtype=tf.int32))
+        positions = torch.arange(position_size, dtype=torch.int32).type(torch.float)
         log_timescale_increment = (
             math.log(float(max_timescale) / float(min_timescale)) /
-            (tf.to_float(num_timescales) - 1))
-        inv_timescales = min_timescale * tf.exp(
-            tf.to_float(tf.range(num_timescales)) * -log_timescale_increment)
-        scaled_time = tf.expand_dims(positions, 1) \
-            * tf.expand_dims(inv_timescales, 0)
-        signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
-        signal = tf.pad(signal, [[0, 0], [0, tf.mod(dim, 2)]])
+            (torch.tensor(num_timescales).type(torch.float) - 1))
+        inv_timescales = min_timescale * torch.exp(
+            torch.arange.range(num_timescales).type(torch.float) * -log_timescale_increment)
+        scaled_time = torch.unsqueeze(positions, 1) \
+            * torch.unsqueeze(inv_timescales, 0)
+        signal = torch.cat([torch.sin(scaled_time), torch.cos(scaled_time)], dim=1)
+        signal = torch.pad(signal, [[0, 0], [0, torch.remainder(dim, 2)]])
         self.signal = signal
 
     def default_hparams(self):
@@ -324,13 +308,13 @@ class SinusoidsPositionEmbedder(EmbedderBase):
             if sequence_length is None:
                 raise ValueError(
                     'Either `positions` or `sequence_length` is required.')
-            max_length = tf.reduce_max(sequence_length)
-            single_inputs = tf.range(start=0, limit=max_length, dtype=tf.int32)
+            max_length = torch.max(sequence_length)
+            single_inputs = torch.arange(start=0, limit=max_length, dtype=tf.int32)
             # Expands `single_inputs` to have shape [batch_size, max_length]
-            expander = tf.expand_dims(tf.ones_like(sequence_length), -1)
-            inputs = expander * tf.expand_dims(single_inputs, 0)
+            expander = torch.unsqueeze(torch.ones_like(sequence_length), -1)
+            inputs = expander * torch.unsqueeze(single_inputs, 0)
 
         embedding = self.signal
-        outputs = tf.nn.embedding_lookup(embedding, inputs)
+        outputs = torch.nn.functional.embedding(inputs.type(torch.long), embedding, **kwargs)
         return outputs
 

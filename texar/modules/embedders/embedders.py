@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,10 +14,6 @@
 """
 Various embedders.
 """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 #import tensorflow as tf
 import torch
@@ -243,7 +239,6 @@ class WordEmbedder(EmbedderBase):
             outputs = embedder_utils.soft_embedding_lookup(embedding, soft_ids)
 
         if self._hparams.dropout_strategy != 'item_type':
-            print("outputs", type(outputs))
             dropout_layer = self._get_dropout_layer(self._hparams, ids_rank=ids_rank, dropout_input=outputs)
             if dropout_layer:
                 embedding = dropout_layer(outputs)

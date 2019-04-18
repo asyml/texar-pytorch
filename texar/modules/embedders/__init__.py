@@ -23,4 +23,4 @@ from __future__ import print_function
 
 from texar.modules.embedders.embedder_base import *
 from texar.modules.embedders.embedders import *
-#from texar.modules.embedders.position_embedders import *
+from texar.modules.embedders.position_embedders import *

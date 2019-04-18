@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,13 +15,8 @@
 The base embedder class.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-#import tensorflow as tf
 import torch
-import numpy as np
+
 from texar.module_base import ModuleBase
 from texar.modules.embedders import embedder_utils
 
@@ -78,20 +73,13 @@ class EmbedderBase(ModuleBase):
             if st == 'element':
                 noise_shape = None
             elif st == 'item':
-                noise_shape = np.concatenate((np.array(dropout_input.shape[:ids_rank]), np.ones([self._dim_rank], dtype=np.int32)), axis=0).tolist()
+                noise_shape = torch.cat((torch.tensor(dropout_input.shape[:ids_rank]).type(torch.int32), torch.ones([self._dim_rank], dtype=torch.int32)), dim=0).tolist()
             elif st == 'item_type':
-                noise_shape = [dropout_input.shape[0]] + [1] * self._dim_rank
-                #noise_shape = [1] + [1] * self._dim_rank
+                noise_shape = [self._num_embeds] + [1] * self._dim_rank
             else:
                 raise ValueError('Unknown dropout strategy: {}'.format(st))
 
-            '''dropout_layer = tf.layers.Dropout(
-                rate=hparams.dropout_rate, noise_shape=noise_shape)'''
-            #print("hparams.dropout_rate", hparams.dropout_rate)
-            if noise_shape is not None:
-                dropout_layer = Dropout_with_mask(rate=hparams.dropout_rate, noise_shape=noise_shape)
-            else:
-                dropout_layer = torch.nn.Dropout(p=hparams.dropout_rate)
+            dropout_layer = EmbeddingDropout(rate=hparams.dropout_rate, noise_shape=noise_shape)
 
         return dropout_layer
 
@@ -118,23 +106,20 @@ class EmbedderBase(ModuleBase):
         """
         return self._num_embeds
 
-class Dropout_with_mask(ModuleBase):
+class EmbeddingDropout(ModuleBase):
     def __init__(self, rate=None, noise_shape=None, hparams=None):
         ModuleBase.__init__(self, hparams)
         self._rate = rate
         self._noise_shape=noise_shape
-        if noise_shape is not None:
-            keep_rate = 1 - rate
-            mask = torch.empty(noise_shape).fill_(keep_rate)
-            mask += torch.empty(noise_shape).uniform_(0, 1)
-            mask = torch.floor(mask).div_(keep_rate)
-            self._mask = mask
 
     def forward(self, input_tensor):
-        if self._noise_shape is not None:
-            print("=" * 80)
-            print("self._noise_shape", self._noise_shape)
-            print("self._mask.shape", self._mask.shape)
-            print("input_tensor.shape", input_tensor.shape)
-            print(self._mask)
-            return input_tensor * self._mask
+        if not self.training or self._rate == 0:
+            return input_tensor
+        if self._noise_shape is None:
+            self._noise_shape = input_tensor.shape
+        keep_rate = 1 - self._rate
+        mask = torch.empty(self._noise_shape).fill_(keep_rate)
+        mask += torch.empty(self._noise_shape).uniform_(0, 1)
+        mask = torch.floor(mask).div_(keep_rate)
+        return input_tensor * mask
+    

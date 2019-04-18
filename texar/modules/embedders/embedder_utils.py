@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,6 @@
 # limitations under the License.
 """Utils of embedder.
 """
-
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
 
 import torch
 import numpy as np
@@ -195,7 +191,6 @@ def get_embedding(hparams=None,
     """
     if hparams is None or isinstance(hparams, dict):
         hparams = HParams(hparams, default_embedding_hparams())
-    #regularizer = layers.get_regularizer(hparams["regularizer"])
     if init_value is None:
         initializer = layers.get_initializer(hparams["initializer"])
         dim = hparams["dim"]
@@ -207,12 +202,8 @@ def get_embedding(hparams=None,
             embedding = initializer(embedding)
         else:
             embedding = torch.nn.init.xavier_uniform_(embedding)
-        #if regularizer:
-        #    embedding = regularizer(embedding)
     else:
         embedding = torch.tensor(init_value, dtype=torch.float)
-        #if regularizer:
-        #    embedding = regularizer(embedding)
 
     return embedding
 
@@ -244,67 +235,4 @@ def soft_embedding_lookup(embedding, soft_ids):
         soft_seq_emb = soft_embedding_lookup(
             embedding, tf.nn.softmax(decoder_outputs.logits))
     """
-    #return tf.tensordot(tf.to_float(soft_ids), embedding, [-1, 0])
-    return tensordot_pytorch(torch.tensor(soft_ids, dtype=torch.float), embedding, [-1, 0])
-
-def tensordot_pytorch(a, b, axes=2):
-    # code adapted from numpy
-    try:
-        iter(axes)
-    except Exception:
-        axes_a = list(range(-axes, 0))
-        axes_b = list(range(0, axes))
-    else:
-        axes_a, axes_b = axes
-    try:
-        na = len(axes_a)
-        axes_a = list(axes_a)
-    except TypeError:
-        axes_a = [axes_a]
-        na = 1
-    try:
-        nb = len(axes_b)
-        axes_b = list(axes_b)
-    except TypeError:
-        axes_b = [axes_b]
-        nb = 1
-    # uncomment in pytorch >= 0.5
-    # a, b = torch.as_tensor(a), torch.as_tensor(b)
-    as_ = a.shape
-    nda = a.dim()
-    bs = b.shape
-    ndb = b.dim()
-    equal = True
-    if na != nb:
-        equal = False
-    else:
-        for k in range(na):
-            if as_[axes_a[k]] != bs[axes_b[k]]:
-                equal = False
-                break
-            if axes_a[k] < 0:
-                axes_a[k] += nda
-            if axes_b[k] < 0:
-                axes_b[k] += ndb
-    if not equal:
-        raise ValueError("shape-mismatch for sum")
-    # Move the axes to sum over to the end of "a"
-    # and to the front of "b"
-    notin = [k for k in range(nda) if k not in axes_a]
-    newaxes_a = notin + axes_a
-    N2 = 1
-    for axis in axes_a:
-        N2 *= as_[axis]
-    newshape_a = (int(np.multiply.reduce([as_[ax] for ax in notin])), N2)
-    olda = [as_[axis] for axis in notin]
-    notin = [k for k in range(ndb) if k not in axes_b]
-    newaxes_b = axes_b + notin
-    N2 = 1
-    for axis in axes_b:
-        N2 *= bs[axis]
-    newshape_b = (N2, int(np.multiply.reduce([bs[ax] for ax in notin])))
-    oldb = [bs[axis] for axis in notin]
-    at = a.permute(newaxes_a).reshape(newshape_a)
-    bt = b.permute(newaxes_b).reshape(newshape_b)
-    res = at.matmul(bt)
-    return res.reshape(olda + oldb)
+    return torch.tensordot(soft_ids.type(torch.float), embedding, dims=([-1], [0]))

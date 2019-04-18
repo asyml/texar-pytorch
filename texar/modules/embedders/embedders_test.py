@@ -3,11 +3,6 @@
 Unit tests for embedders.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 # pylint: disable=no-member
 
 import numpy as np
@@ -19,7 +14,6 @@ import unittest
 
 from texar.modules.embedders.embedders import WordEmbedder
 from texar.modules.embedders.position_embedders import PositionEmbedder
-#from texar.context import global_mode
 
 class EmbedderTest(unittest.TestCase):
     """Tests parameterized embedder.
@@ -74,18 +68,8 @@ class EmbedderTest(unittest.TestCase):
         self.assertEqual(list(outputs.shape), [64, 16] + emb_dim)
         self.assertEqual(emb_dim, hparams_dim)
         self.assertEqual(embedder.position_size, 100)
-        #self.assertEqual(len(embedder.trainable_variables), 1)
-        #seq_length = torch.random_uniform([64], maxval=pos_size, dtype=torch.int32)
-        seq_length = torch.from_numpy(np.random.uniform(high=pos_size, size=[64])).type(torch.int32)
+        seq_length = torch.empty([64]).uniform_(pos_size).type(torch.int32)
         outputs = embedder(sequence_length=seq_length)
-        print(outputs.shape)
-        '''with self.test_session() as sess:
-            sess.run(tf.global_variables_initializer())
-            outputs_, max_seq_length = sess.run(
-                [outputs, tf.reduce_max(seq_length)],
-                feed_dict={global_mode(): tf.estimator.ModeKeys.TRAIN})
-            self.assertEqual(outputs_.shape,
-                             (64, max_seq_length) + tuple(emb_dim))'''
 
     def test_embedder(self):
         """Tests various embedders.
