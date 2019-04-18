@@ -2,6 +2,8 @@
 Unit tests for utility functions.
 """
 
+# pylint: disable=no-self-use
+
 import unittest
 
 import numpy as np
@@ -15,6 +17,8 @@ class UtilsTest(unittest.TestCase):
     """
 
     def test_sequence_mask(self):
+        r"""Tests :meth:`texar.utils.sequence_mask`.
+        """
         mask1 = utils.sequence_mask([1, 3, 2], 5).numpy()
         expected1 = np.asarray(
             [[True, False, False, False, False],
