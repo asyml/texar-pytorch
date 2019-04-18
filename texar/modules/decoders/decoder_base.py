@@ -379,11 +379,10 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         """
         raise NotImplementedError
 
-    def initialize(self, helper: Helper,
-                   inputs: Optional[torch.Tensor],
+    def initialize(self, helper: Helper, inputs: Optional[torch.Tensor],
                    sequence_length: Optional[torch.LongTensor],
                    initial_state: Optional[State]) \
-            -> Tuple[torch.ByteTensor, torch.Tensor, Optional[State]]:
+            -> Tuple[torch.ByteTensor, torch.Tensor, State]:
         r"""Called before any decoding iterations.
 
         This methods must compute initial input values and initial state.
@@ -399,9 +398,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             `(finished, initial_inputs, initial_state)`: initial values of
             'finished' flags, inputs and state.
         """
-        initial_finished, initial_inputs = helper.initialize(
-            inputs, sequence_length)
-        return (initial_finished, initial_inputs, initial_state)
+        raise NotImplementedError
 
     def step(self, helper: Helper, time: int,
              inputs: torch.Tensor, state: Optional[State]) \

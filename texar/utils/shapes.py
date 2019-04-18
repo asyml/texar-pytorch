@@ -231,7 +231,7 @@ def pad_and_concat(values: List[torch.Tensor], axis: int,
     for pad_dim in pad_axis:
         max_dim_size = max(v.size(pad_dim) for v in values)
         for i, v in enumerate(values):
-            pad_shape = list(v.size())
+            pad_shape: List[int] = list(v.size())
             if pad_shape[pad_dim] == max_dim_size:
                 continue
             pad_shape[pad_dim] = max_dim_size - pad_shape[pad_dim]

@@ -225,27 +225,18 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
         """
         raise NotImplementedError
 
+    def initialize(self, helper: Helper, inputs: Optional[torch.Tensor],
+                   sequence_length: Optional[torch.LongTensor],
+                   initial_state: Optional[HiddenState]) \
+            -> Tuple[torch.ByteTensor, torch.Tensor, HiddenState]:
+        initial_finished, initial_inputs = helper.initialize(
+            inputs, sequence_length)
+        state = initial_state or self._cell.init_batch(initial_inputs.size(0))
+        return (initial_finished, initial_inputs, state)
+
     def step(self, helper: Helper, time: int,
              inputs: torch.Tensor, state: Optional[HiddenState]) \
             -> Tuple[Output, HiddenState, torch.Tensor, torch.ByteTensor]:
-        r"""Called per step of decoding (but only once for dynamic decoding).
-
-        Args:
-            helper: The :class:`~texar.modules.Helper` instance to use.
-            time: Scalar `int32` tensor. Current step number.
-            inputs: RNNCell input (possibly nested tuple of) tensor[s] for this
-                time step.
-            state: RNNCell state (possibly nested tuple of) tensor[s] from
-                previous time step.
-
-        Returns:
-            `(outputs, next_state, next_inputs, finished)`: `outputs` is an
-            object containing the decoder output, `next_state` is a (structure
-            of) state tensors and TensorArrays, `next_inputs` is the tensor that
-            should be used as input for the next step, `finished` is a boolean
-            tensor telling whether the sequence is complete, for each sequence
-            in the batch.
-        """
         raise NotImplementedError
 
     @property
