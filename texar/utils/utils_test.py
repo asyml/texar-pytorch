@@ -5,6 +5,7 @@ Unit tests for utility functions.
 import unittest
 
 import numpy as np
+import torch
 
 from texar.utils import utils
 
@@ -12,6 +13,24 @@ from texar.utils import utils
 class UtilsTest(unittest.TestCase):
     r"""Tests utility functions.
     """
+
+    def test_sequence_mask(self):
+        mask1 = utils.sequence_mask([1, 3, 2], 5).numpy()
+        expected1 = np.asarray(
+            [[True, False, False, False, False],
+             [True, True, True, False, False],
+             [True, True, False, False, False]]
+        )
+        np.testing.assert_array_equal(mask1, expected1)
+
+        mask2 = utils.sequence_mask(torch.tensor([[1, 3], [2, 0]]))
+        expected2 = np.asarray(
+            [[[True, False, False],
+              [True, True, True]],
+             [[True, True, False],
+              [False, False, False]]]
+        )
+        np.testing.assert_array_equal(mask2, expected2)
 
     def test_dict_patch(self):
         r"""Tests :meth:`texar.utils.dict_patch`.
