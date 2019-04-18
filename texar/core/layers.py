@@ -28,12 +28,18 @@ from texar.hyperparams import HParams
 from texar.utils import utils
 from texar.utils.dtypes import is_str
 
+
 __all__ = [
     'default_rnn_cell_hparams',
     'get_rnn_cell',
     'identity',
+    'default_regularizer_hparams',
+    'get_regularizer',
     'get_initializer',
-    'get_layer'
+    'get_activation_fn',
+    'get_constraint_fn',
+    'get_layer',
+    'default_linear_kwargs'
 ]
 
 
@@ -259,6 +265,76 @@ def identity(inputs: torch.Tensor):
     return inputs
 
 
+def default_regularizer_hparams():
+    """Returns the hyperparameters and their default values of a variable
+    regularizer:
+
+    .. code-block:: python
+
+        {
+            "type": "L1L2",
+            "kwargs": {
+                "l1": 0.,
+                "l2": 0.
+            }
+        }
+
+    The default value corresponds to :tf_main:`L1L2 <keras/regularizers/L1L2>`
+    and, with `(l1=0, l2=0)`, disables regularization.
+    """
+    return {
+        "type": "L1L2",
+        "kwargs": {
+            "l1": 0.,
+            "l2": 0.
+        }
+    }
+
+
+def get_regularizer(hparams=None):
+    """Returns a variable regularizer instance.
+
+    See :func:`~texar.core.default_regularizer_hparams` for all
+    hyperparameters and default values.
+
+    The "type" field can be a subclass
+    of :class:`~texar.core.regularizers.Regularizer`, its string name
+    or module path, or a class instance.
+
+    Args:
+        hparams (dict or HParams, optional): Hyperparameters. Missing
+            hyperparameters are set to default values.
+
+    Returns:
+        A :class:`~texar.core.regularizers.Regularizer` instance.
+        `None` if :attr:`hparams` is `None` or taking the default
+        hyperparameter value.
+
+    Raises:
+        ValueError: The resulting regularizer is not an instance of
+            :class:`~texar.core.regularizers.Regularizer`.
+    """
+    if hparams is None:
+        return None
+
+    if isinstance(hparams, dict):
+        hparams = HParams(hparams, default_regularizer_hparams())
+
+    rgl = utils.check_or_get_instance(
+        hparams.type, hparams.kwargs.todict(),
+        ["texar.core.regularizers", "texar.custom"])
+
+    if not isinstance(rgl, Regularizers.Regularizer):
+        raise ValueError("The regularizer must be an instance of "
+                         "texar.core.regularizer.Regularizer.")
+
+    if isinstance(rgl, Regularizers.L1L2) and \
+            rgl.l1 == 0. and rgl.l2 == 0.:
+        return None
+
+    return rgl
+
+
 def get_initializer(hparams: Optional[HParams] = None) \
         -> Optional[Callable[[torch.Tensor], None]]:
     r"""Returns an initializer instance.
@@ -308,6 +384,84 @@ def get_initializer(hparams: Optional[HParams] = None) \
     initializer = functools.partial(initializer_fn, **kwargs)
 
     return initializer
+
+
+def get_activation_fn(fn_name="ReLU", kwargs=None):
+    """Returns an activation function `fn` with the signature `output = fn(input)`.
+
+    If the function specified by :attr:`fn_name` has more than one arguments
+    without default values, then all these arguments except the input feature
+    argument must be specified in :attr:`kwargs`. Arguments with default values
+    can also be specified in :attr:`kwargs` to take values other than the
+    defaults. In this case a partial function is returned with the above
+    signature.
+
+    Args:
+        fn_name (str or callable): An activation function, or its name or
+            module path. The function can be:
+
+            - Built-in function defined in :torch_main:`torch.nn.modules.activation <nn/modules/activation.html>`
+            - User-defined activation functions in module :mod:`texar.custom`.
+            - External activation functions. Must provide the full module path,\
+              e.g., "my_module.my_activation_fn".
+
+        kwargs (optional): A `dict` or instance of :class:`~texar.HParams`
+            containing the keyword arguments of the activation function.
+
+    Returns:
+        An activation function. `None` if :attr:`fn_name` is `None`.
+    """
+    if fn_name is None:
+        return None
+
+    fn_modules = ['torch.nn.modules.activation', 'texar.custom', 'texar.core.layers']
+    activation_fn_ = utils.get_function(fn_name, fn_modules)
+    activation_fn = activation_fn_
+
+    # Make a partial function if necessary
+    if kwargs is not None:
+        if isinstance(kwargs, HParams):
+            kwargs = kwargs.todict()
+        def _partial_fn(features):
+            return activation_fn_(features, **kwargs)
+        activation_fn = _partial_fn
+
+    return activation_fn
+
+
+def get_constraint_fn(fn_name="positive"):
+    """Returns a constraint function.
+
+    .. role:: python(code)
+       :language: python
+
+    The function must follow the signature:
+    :python:`w_ = constraint_fn(w)`.
+
+    Args:
+        fn_name (str or callable): The name or full path to a
+            constraint function, or the function itself.
+
+            The function can be:
+
+            - Built-in constraint functions defined in modules \
+            :torch_main:`torch.distributions.constraints <distributions/constraints.html>`
+            - User-defined function in :mod:`texar.custom`.
+            - Externally defined function. Must provide the full path, \
+            e.g., `"my_module.my_constraint_fn"`.
+
+            If a callable is provided, then it is returned directly.
+
+    Returns:
+        The constraint function. `None` if :attr:`fn_name` is `None`.
+    """
+    if fn_name is None:
+        return None
+
+    fn_modules = ['torch.distributions.constraints', 'texar.custom']
+    constraint_fn = utils.get_function(fn_name, fn_modules)
+    return constraint_fn
+
 
 def get_layer(hparams):
     """Makes a layer instance.
@@ -381,7 +535,7 @@ def get_layer(hparams):
     if not is_str(layer_type) and not isinstance(layer_type, type):
         layer = layer_type
     else:
-        layer_modules = ["tensorflow.layers", "texar.core", "texar.costum"]
+        layer_modules = ["torch.nn", "texar.core", "texar.custom"]
         layer_class = utils.check_or_get_class(layer_type, layer_modules)
         if isinstance(hparams, dict):
             default_kwargs = _layer_class_to_default_kwargs_map.get(layer_class,
@@ -389,21 +543,75 @@ def get_layer(hparams):
             default_hparams = {"type": layer_type, "kwargs": default_kwargs}
             hparams = HParams(hparams, default_hparams)
 
-        kwargs = {}
-        for k, v in hparams.kwargs.items():
-            if k.endswith('_regularizer'):
-                kwargs[k] = get_regularizer(v)
-            elif k.endswith('_initializer'):
-                kwargs[k] = get_initializer(v)
-            elif k.endswith('activation'):
-                kwargs[k] = get_activation_fn(v)
-            elif k.endswith('_constraint'):
-                kwargs[k] = get_constraint_fn(v)
-            else:
-                kwargs[k] = v
-        layer = utils.get_instance(layer_type, kwargs, layer_modules)
+        layer_details = hparams.kwargs.layer.kwargs
+        layer = utils.get_instance(layer_type, layer_details, layer_modules)
 
-    if not isinstance(layer, tf.layers.Layer):
-        raise ValueError("layer must be an instance of `tf.layers.Layer`.")
+        for k, v in hparams.kwargs.items():
+            #if k.endswith('_regularizer'):
+            #    kwargs[k] = get_regularizer(v)
+            if k.endswith('_initializer'):
+                initializer = get_initializer(v)
+                initializer(layer.weight)
+            elif k.endswith('activation'):
+                activation = get_activation_fn(v.type)
+                activation(layer)
+            #elif k.endswith('_constraint'):
+            #    kwargs[k] = get_constraint_fn(v)
+
+    if not isinstance(layer, torch.nn.Module):
+        raise ValueError("layer must be an instance of `torch.nn.Module`.")
 
     return layer
+
+
+def _common_default_layer_kwargs():
+    """Returns the default keyword argument values that are common to nn layers.
+    """
+    return {
+        "layer_initializer": {
+            "type": "torch.nn.init.uniform_",
+            "kwargs": {}
+        },
+        "layer_activation": {
+            "type": "torch.nn.modules.activation.ReLU",
+            "kwargs": {}
+        }
+    }
+
+
+def default_linear_kwargs():
+    """TODO avinash: how to give suitable values to in_features and out_features"""
+    kwargs = _common_default_layer_kwargs()
+    kwargs.update({
+        "layer_info": {
+            "type": "torch.nn.Linear",
+            "kwargs": {
+                "in_features": 32,
+                "out_features": 64
+            }
+        }
+    })
+    return kwargs
+
+
+# TODO avinash - change the following to pytorch equivalent
+_layer_class_to_default_kwargs_map = {
+    torch.nn.modules.linear.Linear: default_linear_kwargs()
+}
+
+"""tf.layers.Conv1D: default_conv1d_kwargs(),
+tf.layers.Conv2D: default_conv2d_kwargs(),
+tf.layers.Conv3D: default_conv3d_kwargs(),
+tf.layers.Conv2DTranspose: default_conv2d_transpose_kwargs(),
+tf.layers.Conv3DTranspose: default_conv3d_transpose_kwargs(),
+tf.layers.Dense: default_dense_kwargs(),
+tf.layers.Dropout: default_dropout_kwargs(),
+tf.layers.Flatten: default_flatten_kwargs(),
+tf.layers.MaxPooling1D: default_max_pooling1d_kwargs(),
+tf.layers.MaxPooling2D: default_max_pooling2d_kwargs(),
+tf.layers.MaxPooling3D: default_max_pooling3d_kwargs(),
+tf.layers.SeparableConv2D: default_separable_conv2d_kwargs(),
+tf.layers.BatchNormalization: default_batch_normalization_kwargs(),
+tf.layers.AveragePooling1D: default_average_pooling1d_kwargs(),
+tf.layers.AveragePooling2D: default_average_pooling2d_kwargs(),
+tf.layers.AveragePooling3D: default_average_pooling3d_kwargs()"""
