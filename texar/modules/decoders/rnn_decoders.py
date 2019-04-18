@@ -23,15 +23,14 @@ from typing import NamedTuple, Tuple
 import torch
 
 from texar.core.cell_wrappers import HiddenState
-from texar.modules.decoders.rnn_decoder_base import DecoderInitTuple, \
-    RNNDecoderBase, StepOutputTuple
-from texar.modules.decoders.rnn_decoder_helpers import Helper
+from texar.modules.decoders.decoder_helpers import Helper
+from texar.modules.decoders.rnn_decoder_base import RNNDecoderBase
 from texar.utils.types import MaybeTuple
 
 __all__ = [
-    "BasicRNNDecoderOutput",
-    "AttentionRNNDecoderOutput",
-    "BasicRNNDecoder",
+    'BasicRNNDecoderOutput',
+    'AttentionRNNDecoderOutput',
+    'BasicRNNDecoder',
 ]
 
 
@@ -224,19 +223,13 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
             The default value is "basic_rnn_decoder".
         """
         hparams = RNNDecoderBase.default_hparams()
-        hparams["name"] = "basic_rnn_decoder"
+        hparams['name'] = 'basic_rnn_decoder'
         return hparams
 
-    def initialize(self, helper: Helper,
-                   inputs: torch.Tensor,
-                   sequence_length: torch.LongTensor,
-                   initial_state: HiddenState) -> DecoderInitTuple:
-        initial_finished, initial_inputs = helper.initialize(
-            inputs, sequence_length)
-        return (initial_finished, initial_inputs, initial_state)
-
-    def step(self, helper: Helper, time: int, inputs: torch.Tensor,
-             state: HiddenState) -> StepOutputTuple[BasicRNNDecoderOutput]:
+    def step(self, helper: Helper, time: int,
+             inputs: torch.Tensor, state: HiddenState) \
+            -> Tuple[BasicRNNDecoderOutput, HiddenState,
+                     torch.Tensor, torch.ByteTensor]:
         cell_outputs, cell_state = self._cell(inputs, state)
         logits = self._output_layer(cell_outputs)
         sample_ids = helper.sample(
@@ -248,11 +241,6 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
             sample_ids=sample_ids)
         outputs = BasicRNNDecoderOutput(logits, sample_ids, cell_outputs)
         return (outputs, next_state, next_inputs, finished)
-
-    def finalize(self, outputs: BasicRNNDecoderOutput, final_state: HiddenState,
-                 sequence_lengths: torch.LongTensor) \
-            -> Tuple[BasicRNNDecoderOutput, HiddenState]:
-        return outputs, final_state
 
     @property
     def output_size(self):
