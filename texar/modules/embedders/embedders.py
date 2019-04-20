@@ -15,7 +15,6 @@
 Various embedders.
 """
 
-#import tensorflow as tf
 import torch
 
 from texar.modules.embedders.embedder_base import EmbedderBase
@@ -57,8 +56,8 @@ class WordEmbedder(EmbedderBase):
 
         .. code-block:: python
 
-            ids = tf.random_uniform(shape=[32, 10], maxval=10, dtype=tf.int64)
-            soft_ids = tf.random_uniform(shape=[32, 10, 100])
+            ids = torch.empty([32, 10]).uniform_(to=10).type(torch.int64).
+            soft_ids = torch.empty([32, 10, 100]).uniform_()
 
             embedder = WordEmbedder(vocab_size=100, hparams={'dim': 256})
             ids_emb = embedder(ids=ids) # shape: [32, 10, 256]
@@ -185,7 +184,7 @@ class WordEmbedder(EmbedderBase):
         hparams["name"] = "word_embedder"
         return hparams
 
-    def forward(self, ids=None, soft_ids=None, mode=None, **kwargs):
+    def forward(self, ids=None, soft_ids=None, **kwargs):
         """Embeds (soft) ids.
 
         Either :attr:`ids` or :attr:`soft_ids` must be given, and they
@@ -195,12 +194,8 @@ class WordEmbedder(EmbedderBase):
             ids (optional): An integer tensor containing the ids to embed.
             soft_ids (optional): A tensor of weights (probabilities) used to
                 mix the embedding vectors.
-            mode (optional): A tensor taking value in
-                :tf_main:`tf.estimator.ModeKeys <estimator/ModeKeys>`, including
-                `TRAIN`, `EVAL`, and `PREDICT`. If `None`, dropout is
-                controlled by :func:`texar.global_mode`.
             kwargs: Additional keyword arguments for
-                :tf_main:`tf.nn.embedding_lookup <nn/embedding_lookup>` besides
+                `torch.nn.functional.embedding` besides
                 :attr:`params` and :attr:`ids`.
 
         Returns:

@@ -15,7 +15,6 @@
 """
 
 import torch
-import numpy as np
 
 from texar.hyperparams import HParams
 from texar.core import layers
@@ -46,7 +45,6 @@ def default_embedding_hparams():
                 },
                 "dropout_rate": 0.,
                 "dropout_strategy": 'element',
-                "trainable": True,
             }
 
         Here:
@@ -65,70 +63,31 @@ def default_embedding_hparams():
             .. code-block:: python
 
                 {
-                    "type": "random_uniform_initializer",
-                    "kwargs": {
-                        "minval": -0.1,
-                        "maxval": 0.1,
-                        "seed": None
-                    }
+                    "type": torch.nn.init.uniform_,
+                    "kwargs": {'a': -0.1, 'b': 0.1}
                 }
 
-            which corresponds to :tf_main:`tf.random_uniform_initializer
-            <random_uniform_initializer>`, and includes:
+            which corresponds to `torch.nn.init.uniform_`, and includes:
 
-            "type" : str or initializer instance
-                Name, full path, or instance of the initializer class; Or name
-                or full path to a function that returns the initializer class.
-                The class or function can be
+            "type" : str or function
+                Name, full path, or instance of the initializer class or
+                initializing function;
+                The function can be
 
-                - Built-in initializer defined in \
-                  :tf_main:`tf.initializers <initializers>`, e.g., \
-                  :tf_main:`random_uniform <random_uniform_initializer>` \
-                  (a.k.a :class:`tf.random_uniform_initializer`), or \
-                  in :mod:`tf`, e.g., :tf_main:`glorot_uniform_initializer \
-                  <glorot_uniform_initializer>`, or in \
-                  :tf_main:`tf.keras.initializers <keras/initializers>`.
-                - User-defined initializer in :mod:`texar.custom`.
-                - External initializer. Must provide the full path, \
-                  e.g., :attr:`"my_module.MyInitializer"`, or the instance.
+                - Built-in initializing function defined in \
+                  `torch.nn.init`, e.g., `xavier_uniform <function>` \
+                  or in :mod:`torch`, e.g., `rand <function>`.
+                - User-defined initializing function in :mod:`texar.custom`.
+                - External initializing function or initializer instance.\
+                  Must provide the full path, e.g.,\
+                  :attr:`"my_module.MyInitializer"`, or the instance.
 
             "kwargs" : dict
                 A dictionary of arguments for constructor of the
-                initializer class or for the function. An initializer is
+                initializer function. An initializer is
                 created by `initialzier = initializer_class_or_fn(**kwargs)`
                 where :attr:`initializer_class_or_fn` is specified in
                 :attr:`"type"`.
-                Ignored if :attr:`"type"` is an initializer instance.
-
-        "regularizer" : dict
-            Hyperparameters of the regularizer for the embedding values. The
-            regularizer must be an instance of
-            the base :tf_main:`Regularizer <keras/regularizers/Regularizer>`
-            class. The hyperparameters include:
-
-            "type" : str or Regularizer instance
-                Name, full path, or instance of the regularizer class. The
-                class can be
-
-                - Built-in regularizer defined in
-                  :tf_main:`tf.keras.regularizers <keras/regularizers>`, e.g.,
-                  :tf_main:`L1L2 <keras/regularizers/L1L2>`.
-                - User-defined regularizer in :mod:`texar.custom`. The
-                  regularizer class should inherit the base class
-                  :tf_main:`Regularizer <keras/regularizers/Regularizer>`.
-                - External regularizer. Must provide the full path, \
-                  e.g., :attr:`"my_module.MyRegularizer"`, or the instance.
-
-            "kwargs" : dict
-                A dictionary of arguments for constructor of the
-                regularizer class. A regularizer is created by
-                calling `regularizer_class(**kwargs)` where
-                :attr:`regularizer_class` is specified in :attr:`"type"`.
-                Ignored if :attr:`"type"` is a Regularizer instance.
-
-            The default value corresponds to
-            :tf_main:`L1L2 <keras/regularizers/L1L2>` with `(l1=0, l2=0)`,
-            which disables regularization.
 
         "dropout_rate" : float
             The dropout rate between 0 and 1. E.g., `dropout_rate=0.1` would
@@ -147,17 +106,13 @@ def default_embedding_hparams():
               where the word type 'the' is dropped. The dropout will never \
               yield '_ simpler the better' as in the 'item' strategy.
 
-        "trainable" : bool
-            Whether the embedding is trainable.
     """
     return {
         "name": "embedding",
         "dim": 100,
         "initializer": None,
-        "regularizer": layers.default_regularizer_hparams(),
         "dropout_rate": 0.,
         "dropout_strategy": 'element',
-        "trainable": True,
         "@no_typecheck": ["dim"]
     }
 
@@ -193,6 +148,7 @@ def get_embedding(hparams=None,
         hparams = HParams(hparams, default_embedding_hparams())
     if init_value is None:
         initializer = layers.get_initializer(hparams["initializer"])
+        # TODO Shibiao: add regularizer
         dim = hparams["dim"]
         if not isinstance(hparams["dim"], (list, tuple)):
             dim = [dim]
@@ -231,8 +187,9 @@ def soft_embedding_lookup(embedding, soft_ids):
 
     Example::
 
+        softmax = torch.nn.Softmax()
         decoder_outputs, ... = decoder(...)
         soft_seq_emb = soft_embedding_lookup(
-            embedding, tf.nn.softmax(decoder_outputs.logits))
+            embedding, softmax(decoder_outputs.logits))
     """
     return torch.tensordot(soft_ids.type(torch.float), embedding, dims=([-1], [0]))

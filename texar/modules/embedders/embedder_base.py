@@ -47,9 +47,7 @@ class EmbedderBase(ModuleBase):
     def _init_parameterized_embedding(self, init_value, num_embeds, hparams):
         self._embedding = embedder_utils.get_embedding(
             hparams, init_value, num_embeds)
-        '''if hparams.trainable:
-            self._add_trainable_variable(self._embedding)
-        '''
+
         self._num_embeds = list(self._embedding.shape)[0]
 
         self._dim = list(self._embedding.shape)[1:]
@@ -73,13 +71,19 @@ class EmbedderBase(ModuleBase):
             if st == 'element':
                 noise_shape = None
             elif st == 'item':
-                noise_shape = torch.cat((torch.tensor(dropout_input.shape[:ids_rank]).type(torch.int32), torch.ones([self._dim_rank], dtype=torch.int32)), dim=0).tolist()
+                shape_a = torch.tensor(
+                    dropout_input.shape[:ids_rank]).type(torch.int32)
+                shape_b = torch.ones([self._dim_rank], dtype=torch.int32)
+                noise_shape = torch.cat(
+                    (shape_a, shape_b), dim=0).tolist()
             elif st == 'item_type':
                 noise_shape = [self._num_embeds] + [1] * self._dim_rank
             else:
                 raise ValueError('Unknown dropout strategy: {}'.format(st))
 
-            dropout_layer = EmbeddingDropout(rate=hparams.dropout_rate, noise_shape=noise_shape)
+            dropout_layer = EmbeddingDropout(
+                rate=hparams.dropout_rate,
+                noise_shape=noise_shape)
 
         return dropout_layer
 
@@ -107,10 +111,23 @@ class EmbedderBase(ModuleBase):
         return self._num_embeds
 
 class EmbeddingDropout(ModuleBase):
+    """The dropout layer that used for the embedding.
+
+    Args:
+        rate (int, required): The dropout rate applied to the embedding.
+
+        noise_shape (list, optional): The shape of the noise mask which
+            can specified the dropout dimensions for the embedding.
+
+        hparams (dict or HParams, optional): Embedder hyperparameters. Missing
+            hyperparamerter will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter sturcture and
+            default values.
+    """
     def __init__(self, rate=None, noise_shape=None, hparams=None):
         ModuleBase.__init__(self, hparams)
         self._rate = rate
-        self._noise_shape=noise_shape
+        self._noise_shape = noise_shape
 
     def forward(self, input_tensor):
         if not self.training or self._rate == 0:

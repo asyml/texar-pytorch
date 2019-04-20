@@ -5,10 +5,9 @@ Unit tests for embedders.
 
 # pylint: disable=no-member
 
-import numpy as np
 
-#import tensorflow as tf
 import torch
+import numpy as np
 import unittest
 
 
@@ -25,11 +24,9 @@ class EmbedderTest(unittest.TestCase):
         embedder = WordEmbedder(
             vocab_size=100, hparams=hparams)
 
-        #inputs = tf.ones([64, 16], dtype=tf.int32)
         inputs = torch.ones([64, 16], dtype=torch.int32)
         outputs = embedder(inputs)
 
-        #inputs_soft = tf.ones([64, 16, embedder.vocab_size], dtype=tf.float32)
         inputs_soft = torch.ones([64, 16, embedder.vocab_size], dtype=torch.float32)
         outputs_soft = embedder(soft_ids=inputs_soft)
 

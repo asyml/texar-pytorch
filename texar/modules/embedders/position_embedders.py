@@ -113,7 +113,7 @@ class PositionEmbedder(EmbedderBase):
         hparams["name"] = "position_embedder"
         return hparams
 
-    def forward(self, positions=None, sequence_length=None, mode=None, **kwargs):
+    def forward(self, positions=None, sequence_length=None, **kwargs):
         """Embeds the positions.
 
         Either :attr:`positions` or :attr:`sequence_length` is required:
@@ -131,12 +131,8 @@ class PositionEmbedder(EmbedderBase):
                 `[batch_size]`. Time steps beyond
                 the respective sequence lengths will have zero-valued
                 embeddings.
-            mode (optional): A tensor taking value in
-                :tf_main:`tf.estimator.ModeKeys <estimator/ModeKeys>`, including
-                `TRAIN`, `EVAL`, and `PREDICT`. If `None`, dropout will be
-                controlled by :func:`texar.global_mode`.
             kwargs: Additional keyword arguments for
-                :tf_main:`tf.nn.embedding_lookup <nn/embedding_lookup>` besides
+                `torch.nn.functional.embedding` besides
                 :attr:`params` and :attr:`ids`.
 
         Returns:
@@ -155,8 +151,6 @@ class PositionEmbedder(EmbedderBase):
             inputs = expander * torch.unsqueeze(single_inputs, 0)
         ids_rank = len(list(inputs.shape))
         embedding = self._embedding
-
-        #is_training = is_train_mode(mode)
 
         # Gets dropout strategy
         st = self._hparams.dropout_strategy
@@ -309,7 +303,7 @@ class SinusoidsPositionEmbedder(EmbedderBase):
                 raise ValueError(
                     'Either `positions` or `sequence_length` is required.')
             max_length = torch.max(sequence_length)
-            single_inputs = torch.arange(start=0, limit=max_length, dtype=tf.int32)
+            single_inputs = torch.arange(start=0, limit=max_length, dtype=torch.int32)
             # Expands `single_inputs` to have shape [batch_size, max_length]
             expander = torch.unsqueeze(torch.ones_like(sequence_length), -1)
             inputs = expander * torch.unsqueeze(single_inputs, 0)

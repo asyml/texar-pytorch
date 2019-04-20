@@ -25,7 +25,7 @@ class GetEmbeddingTest(unittest.TestCase):
 
         hparams = {
             "initializer": {
-                "type": torch.nn.init.uniform_,
+                "type": "torch.nn.init.uniform_",
                 "kwargs": {'a': -0.1, 'b': 0.1}
             }
         }
