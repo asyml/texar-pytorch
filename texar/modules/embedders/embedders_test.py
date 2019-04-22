@@ -5,11 +5,9 @@ Unit tests for embedders.
 
 # pylint: disable=no-member
 
-
+import unittest
 import torch
 import numpy as np
-import unittest
-
 
 from texar.modules.embedders.embedders import WordEmbedder
 from texar.modules.embedders.position_embedders import PositionEmbedder
@@ -27,7 +25,8 @@ class EmbedderTest(unittest.TestCase):
         inputs = torch.ones([64, 16], dtype=torch.int32)
         outputs = embedder(inputs)
 
-        inputs_soft = torch.ones([64, 16, embedder.vocab_size], dtype=torch.float32)
+        inputs_soft = torch.ones(
+            [64, 16, embedder.vocab_size], dtype=torch.float32)
         outputs_soft = embedder(soft_ids=inputs_soft)
 
         emb_dim = embedder.dim

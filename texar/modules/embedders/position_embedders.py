@@ -145,7 +145,8 @@ class PositionEmbedder(EmbedderBase):
                 raise ValueError(
                     'Either `positions` or `sequence_length` is required.')
             max_length = torch.max(sequence_length)
-            single_inputs = torch.arange(start=0, end=max_length, dtype=torch.int32)
+            single_inputs = torch.arange(
+                start=0, end=max_length, dtype=torch.int32)
             # Expands `single_inputs` to have shape [batch_size, max_length]
             expander = torch.unsqueeze(torch.ones_like(sequence_length), -1)
             inputs = expander * torch.unsqueeze(single_inputs, 0)
@@ -169,7 +170,8 @@ class PositionEmbedder(EmbedderBase):
                 embedding = dropout_layer(embedding)
 
         # Embeds
-        outputs = embedder_utils.embedding_lookup(embedding, inputs, **kwargs)
+        outputs = torch.nn.functional.embedding(
+        inputs.type(torch.long), embedding, **kwargs)
 
         # Dropouts as 'item' or 'elements' after embedding
         if st != 'item_type':
@@ -183,7 +185,6 @@ class PositionEmbedder(EmbedderBase):
         if sequence_length is not None:
             outputs = mask_sequences(
                 outputs, sequence_length)
-            
 
         return outputs
 
@@ -242,16 +243,21 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         min_timescale = self._hparams.min_timescale
         max_timescale = self._hparams.max_timescale
 
-        positions = torch.arange(position_size, dtype=torch.int32).type(torch.float)
+        positions = torch.arange(
+            position_size, dtype=torch.int32).type(torch.float)
+        # pylint: disable=not-callable
         log_timescale_increment = (
             math.log(float(max_timescale) / float(min_timescale)) /
             (torch.tensor(num_timescales).type(torch.float) - 1))
         inv_timescales = min_timescale * torch.exp(
-            torch.arange.range(num_timescales).type(torch.float) * -log_timescale_increment)
+            (torch.arange(num_timescales).type(torch.float) *
+             -log_timescale_increment))
         scaled_time = torch.unsqueeze(positions, 1) \
             * torch.unsqueeze(inv_timescales, 0)
-        signal = torch.cat([torch.sin(scaled_time), torch.cos(scaled_time)], dim=1)
-        signal = torch.pad(signal, [[0, 0], [0, torch.remainder(dim, 2)]])
+        signal = torch.cat(
+            [torch.sin(scaled_time), torch.cos(scaled_time)], dim=1)
+        signal = torch.pad(
+            signal, [[0, 0], [0, torch.remainder(dim, 2)]])
         self.signal = signal
 
     def default_hparams(self):
@@ -277,7 +283,7 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         }
         return hparams
 
-    def _build(self, positions=None, sequence_length=None):
+    def forward(self, positions=None, sequence_length=None, **kwargs):
         """Embeds.
         Either :attr:`positions` or :attr:`sequence_length` is required:
 
@@ -303,12 +309,13 @@ class SinusoidsPositionEmbedder(EmbedderBase):
                 raise ValueError(
                     'Either `positions` or `sequence_length` is required.')
             max_length = torch.max(sequence_length)
-            single_inputs = torch.arange(start=0, limit=max_length, dtype=torch.int32)
+            single_inputs = torch.arange(
+                start=0, limit=max_length, dtype=torch.int32)
             # Expands `single_inputs` to have shape [batch_size, max_length]
             expander = torch.unsqueeze(torch.ones_like(sequence_length), -1)
             inputs = expander * torch.unsqueeze(single_inputs, 0)
 
         embedding = self.signal
-        outputs = torch.nn.functional.embedding(inputs.type(torch.long), embedding, **kwargs)
+        outputs = torch.nn.functional.embedding(
+            inputs.type(torch.long), embedding, **kwargs)
         return outputs
-

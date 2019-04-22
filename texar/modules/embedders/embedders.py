@@ -14,12 +14,10 @@
 """
 Various embedders.
 """
-
 import torch
 
 from texar.modules.embedders.embedder_base import EmbedderBase
 from texar.modules.embedders import embedder_utils
-#from texar.utils.mode import is_train_mode
 from texar.utils.shapes import get_rank
 
 __all__ = [
@@ -184,6 +182,7 @@ class WordEmbedder(EmbedderBase):
         hparams["name"] = "word_embedder"
         return hparams
 
+    # pylint: disable=W0221
     def forward(self, ids=None, soft_ids=None, **kwargs):
         """Embeds (soft) ids.
 
@@ -215,8 +214,10 @@ class WordEmbedder(EmbedderBase):
             if soft_ids is not None:
                 raise ValueError(
                     'Must not specify `ids` and `soft_ids` at the same time.')
+            #ids_rank = get_rank(ids.shape)
             ids_rank = len(ids.shape)
         elif soft_ids is not None:
+            #ids_rank = get_rank(soft_ids.shape) - 1
             ids_rank = len(soft_ids.shape) - 1
         else:
             raise ValueError('Either `ids` or `soft_ids` must be given.')
@@ -224,17 +225,22 @@ class WordEmbedder(EmbedderBase):
         embedding = self._embedding
 
         if self._hparams.dropout_strategy == 'item_type':
-            dropout_layer = self._get_dropout_layer(self._hparams, dropout_input=embedding)
+            dropout_layer = self._get_dropout_layer(
+                self._hparams, dropout_input=embedding)
             if dropout_layer:
                 embedding = dropout_layer(embedding)
 
         if ids is not None:
-            outputs = embedder_utils.embedding_lookup(embedding, ids, **kwargs)
+            outputs = torch.nn.functional.embedding(
+                ids.type(torch.long), embedding, **kwargs)
         else:
             outputs = embedder_utils.soft_embedding_lookup(embedding, soft_ids)
 
         if self._hparams.dropout_strategy != 'item_type':
-            dropout_layer = self._get_dropout_layer(self._hparams, ids_rank=ids_rank, dropout_input=outputs)
+            dropout_layer = self._get_dropout_layer(
+                self._hparams,
+                ids_rank=ids_rank,
+                dropout_input=outputs)
             if dropout_layer:
                 embedding = dropout_layer(outputs)
 

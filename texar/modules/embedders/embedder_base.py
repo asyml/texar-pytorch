@@ -71,6 +71,7 @@ class EmbedderBase(ModuleBase):
             if st == 'element':
                 noise_shape = None
             elif st == 'item':
+                # pylint: disable=not-callable
                 shape_a = torch.tensor(
                     dropout_input.shape[:ids_rank]).type(torch.int32)
                 shape_b = torch.ones([self._dim_rank], dtype=torch.int32)
@@ -101,6 +102,7 @@ class EmbedderBase(ModuleBase):
             "name": "embedder"
         }
 
+    # pylint: disable=W0221
     def forward(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -128,7 +130,7 @@ class EmbeddingDropout(ModuleBase):
         ModuleBase.__init__(self, hparams)
         self._rate = rate
         self._noise_shape = noise_shape
-
+    # pylint: disable=W0221
     def forward(self, input_tensor):
         if not self.training or self._rate == 0:
             return input_tensor

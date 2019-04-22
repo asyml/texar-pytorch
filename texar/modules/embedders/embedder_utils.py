@@ -159,13 +159,10 @@ def get_embedding(hparams=None,
         else:
             embedding = torch.nn.init.xavier_uniform_(embedding)
     else:
+        # pylint: disable=not-callable
         embedding = torch.tensor(init_value, dtype=torch.float)
 
     return embedding
-
-def embedding_lookup(embedding, ids, **kwargs):
-    outputs = torch.nn.functional.embedding(ids.type(torch.long), embedding, **kwargs)
-    return outputs
 
 def soft_embedding_lookup(embedding, soft_ids):
     """Transforms soft ids (e.g., probability distribution over ids) into
@@ -192,4 +189,7 @@ def soft_embedding_lookup(embedding, soft_ids):
         soft_seq_emb = soft_embedding_lookup(
             embedding, softmax(decoder_outputs.logits))
     """
-    return torch.tensordot(soft_ids.type(torch.float), embedding, dims=([-1], [0]))
+    return torch.tensordot(
+        soft_ids.type(torch.float),
+        embedding,
+        dims=([-1], [0]))

@@ -5,8 +5,6 @@ Unit tests for embedder utils.
 
 # pylint: disable=no-member
 
-import torch
-
 import unittest
 
 from texar.modules.embedders import embedder_utils
