@@ -94,15 +94,7 @@ class PositionEmbedder(EmbedderBase):
                         "seed": None
                     }
                 },
-                "regularizer": {
-                    "type": "L1L2",
-                    "kwargs": {
-                        "l1": 0.,
-                        "l2": 0.
-                    }
-                },
                 "dropout_rate": 0,
-                "trainable": True,
                 "name": "position_embedder"
             }
 

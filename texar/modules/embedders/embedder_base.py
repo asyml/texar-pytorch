@@ -116,7 +116,9 @@ class EmbeddingDropout(ModuleBase):
     """The dropout layer that used for the embedding.
 
     Args:
-        rate (int, required): The dropout rate applied to the embedding.
+        rate (float, required): The dropout rate applied to the embedding.
+            E.g., if rate is 0.1, 10% of the embedding will be dropped out.
+            Set to 0 to disable dropout.
 
         noise_shape (list, optional): The shape of the noise mask which
             can specified the dropout dimensions for the embedding.
@@ -132,7 +134,7 @@ class EmbeddingDropout(ModuleBase):
         self._noise_shape = noise_shape
     # pylint: disable=W0221
     def forward(self, input_tensor):
-        if not self.training or self._rate == 0:
+        if not self.training or self._rate == 0.0:
             return input_tensor
         if self._noise_shape is None:
             self._noise_shape = input_tensor.shape

@@ -36,13 +36,6 @@ def default_embedding_hparams():
                 "name": "embedding",
                 "dim": 100,
                 "initializer": None,
-                "regularizer": {
-                    "type": "L1L2",
-                    "kwargs": {
-                        "l1": 0.,
-                        "l2": 0.
-                    }
-                },
                 "dropout_rate": 0.,
                 "dropout_strategy": 'element',
             }
@@ -136,8 +129,6 @@ def get_embedding(hparams=None,
         num_embeds (int, optional): The number of embedding items
             (e.g., vocabulary size). Required if :attr:`init_value` is
             not provided.
-        variable_scope (str or VariableScope, optional): Variable scope of
-            the embedding variable.
 
     Returns:
         Variable or Tensor: A 2D `Variable` or `Tensor` of the same shape with

@@ -18,7 +18,6 @@ import torch
 
 from texar.modules.embedders.embedder_base import EmbedderBase
 from texar.modules.embedders import embedder_utils
-from texar.utils.shapes import get_rank
 
 __all__ = [
     "WordEmbedder"
@@ -109,6 +108,7 @@ class WordEmbedder(EmbedderBase):
 
     @staticmethod
     def default_hparams():
+        # TODO Shibiao: add regularizer
         """Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
@@ -117,20 +117,12 @@ class WordEmbedder(EmbedderBase):
                 "dim": 100,
                 "dropout_rate": 0,
                 "dropout_strategy": 'element',
-                "trainable": True,
                 "initializer": {
                     "type": "random_uniform_initializer",
                     "kwargs": {
                         "minval": -0.1,
                         "maxval": 0.1,
                         "seed": None
-                    }
-                },
-                "regularizer": {
-                    "type": "L1L2",
-                    "kwargs": {
-                        "l1": 0.,
-                        "l2": 0.
                     }
                 },
                 "name": "word_embedder",
@@ -163,17 +155,10 @@ class WordEmbedder(EmbedderBase):
             where the word type 'the' is dropped. The dropout will never \
             yield '_ simpler the better' as in the 'item' strategy.
 
-        "trainable" : bool
-            Whether the embedding is trainable.
-
         "initializer" : dict or None
             Hyperparameters of the initializer for embedding values. See
             :func:`~texar.core.get_initializer` for the details. Ignored if
             :attr:`init_value` is given to the embedder constructor.
-
-        "regularizer" : dict
-            Hyperparameters of the regularizer for embedding values. See
-            :func:`~texar.core.get_regularizer` for the details.
 
         "name" : str
             Name of the embedding variable.
@@ -199,25 +184,23 @@ class WordEmbedder(EmbedderBase):
 
         Returns:
             If :attr:`ids` is given, returns a Tensor of shape
-            `shape(ids) + embedding-dim`. For example,
-            if `shape(ids) = [batch_size, max_time]`
-            and `shape(embedding) = [vocab_size, emb_dim]`, then the return
+            `list(ids.shape) + embedding-dim`. For example,
+            if `list(ids.shape) = [batch_size, max_time]`
+            and `list(embedding.shape) = [vocab_size, emb_dim]`, then the return
             tensor has shape `[batch_size, max_time, emb_dim]`.
 
             If :attr:`soft_ids` is given, returns a Tensor of shape
-            `shape(soft_ids)[:-1] + embdding-dim`. For example,
-            if `shape(soft_ids) = [batch_size, max_time, vocab_size]`
-            and `shape(embedding) = [vocab_size, emb_dim]`, then the return
+            `list(soft_ids.shape)[:-1] + embdding-dim`. For example,
+            if `list(soft_ids.shape) == [batch_size, max_time, vocab_size]`
+            and `list(embedding.shape) == [vocab_size, emb_dim]`, then the return
             tensor has shape `[batch_size, max_time, emb_dim]`.
         """
         if ids is not None:
             if soft_ids is not None:
                 raise ValueError(
                     'Must not specify `ids` and `soft_ids` at the same time.')
-            #ids_rank = get_rank(ids.shape)
             ids_rank = len(ids.shape)
         elif soft_ids is not None:
-            #ids_rank = get_rank(soft_ids.shape) - 1
             ids_rank = len(soft_ids.shape) - 1
         else:
             raise ValueError('Either `ids` or `soft_ids` must be given.')
