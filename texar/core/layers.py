@@ -330,20 +330,13 @@ def get_initializer(hparams: Optional[HParams] = None) \
                     }
                 }
 
-            The "type" field can be a initializer class, its name or module
-            path, or class instance. If class name is provided, the class must
-            be from one the following modules:
-            :tf_main:`tf.initializers <initializers>`,
-            :tf_main:`tf.keras.initializers <keras/initializers>`,
-            :tf_main:`tf < >`, and :mod:`texar.custom`. The class is created
-            by :python:`initializer_class(**kwargs)`. If a class instance
-            is given, "kwargs" is ignored and can be omitted.
+            The "type" field can be a function name or module path. If name is provided,
+            it be must be from one the following modules:
+            :torch_docs:`torch.nn.init <nn.html#torch-nn-init>` and :mod:`texar.custom`.
 
             Besides, the "type" field can also be an initialization function
             called with :python:`initialization_fn(**kwargs)`. In this case
-            "type" can be the function, or its name or module path. If
-            function name is provided, the function must be from one of the
-            above modules or module `tf.contrib.layers`. If no
+            "type" can be the function, or its name or module path. If no
             keyword argument is required, "kwargs" can be omitted.
 
     Returns:
@@ -376,7 +369,8 @@ def get_activation_fn(fn_name="ReLU", kwargs=None):
         fn_name (str or callable): An activation function, or its name or
             module path. The function can be:
 
-            - Built-in function defined in :torch_main:`torch.nn.modules.activation <nn/modules/activation.html>`
+            - Built-in function defined in :torch_docs:`torch.nn.modules.activation
+            <nn.html#non-linear-activations-weighted-sum-nonlinearity>`
             - User-defined activation functions in module :mod:`texar.custom`.
             - External activation functions. Must provide the full module path,\
               e.g., "my_module.my_activation_fn".
@@ -442,7 +436,7 @@ def get_constraint_fn(fn_name="positive"):
 def get_layer(hparams):
     """Makes a layer instance.
 
-    The layer must be an instance of :tf_main:`tf.layers.Layer <layers/Layer>`.
+    The layer must be an instance of :torch_docs:`torch.nn.Module <nn.html>`.
 
     Args:
         hparams (dict or HParams): Hyperparameters of the layer, with
@@ -465,7 +459,7 @@ def get_layer(hparams):
 
                 - The string name or full module path of a layer class. If \
                 the class name is provided, the class must be in module \
-                :tf_main:`tf.layers <layers>`, :mod:`texar.core`, \
+                :torch_docs:`torch.nn.Module <nn.html>`, :mod:`texar.core`, \
                 or :mod:`texar.custom`.
                 - A layer class.
                 - An instance of a layer class.
@@ -477,7 +471,7 @@ def get_layer(hparams):
                     "type": "Conv1D" # class name
                     "type": "texar.core.MaxReducePooling1D" # module path
                     "type": "my_module.MyLayer" # module path
-                    "type": tf.layers.Conv2D # class
+                    "type": torch.nn.Module.Linear # class
                     "type": Conv1D(filters=10, kernel_size=2) # cell instance
                     "type": MyLayer(...) # cell instance
 
@@ -502,7 +496,7 @@ def get_layer(hparams):
     Raises:
         ValueError: If :attr:`hparams` is `None`.
         ValueError: If the resulting layer is not an instance of
-            :tf_main:`tf.layers.Layer <layers/Layer>`.
+            :torch_docs:`tf.nn.Module <nn.html>`.
     """
     if hparams is None:
         raise ValueError("`hparams` must not be `None`.")
