@@ -519,20 +519,7 @@ def get_layer(hparams):
             default_hparams = {"type": layer_type, "kwargs": default_kwargs}
             hparams = HParams(hparams, default_hparams)
 
-        layer_details = hparams.kwargs.layer.kwargs
-        layer = utils.get_instance(layer_type, layer_details, layer_modules)
-
-        for k, v in hparams.kwargs.items():
-            #if k.endswith('_regularizer'):
-            #    kwargs[k] = get_regularizer(v)
-            if k.endswith('_initializer'):
-                initializer = get_initializer(v)
-                initializer(layer.weight)
-            elif k.endswith('activation'):
-                activation = get_activation_fn(v.type)
-                activation(layer)
-            #elif k.endswith('_constraint'):
-            #    kwargs[k] = get_constraint_fn(v)
+        layer = utils.get_instance(layer_type, hparams.kwargs.todict(), layer_modules)
 
     if not isinstance(layer, torch.nn.Module):
         raise ValueError("layer must be an instance of `torch.nn.Module`.")
@@ -540,33 +527,13 @@ def get_layer(hparams):
     return layer
 
 
-def _common_default_layer_kwargs():
-    """Returns the default keyword argument values that are common to nn layers.
-    """
-    return {
-        "layer_initializer": {
-            "type": "torch.nn.init.uniform_",
-            "kwargs": {}
-        },
-        "layer_activation": {
-            "type": "torch.nn.modules.activation.ReLU",
-            "kwargs": {}
-        }
-    }
-
-
 def default_linear_kwargs():
     """TODO avinash: how to give suitable values to in_features and out_features"""
-    kwargs = _common_default_layer_kwargs()
-    kwargs.update({
-        "layer_info": {
-            "type": "torch.nn.Linear",
-            "kwargs": {
-                "in_features": 32,
-                "out_features": 64
-            }
-        }
-    })
+    kwargs = {
+        "in_features": 32,
+        "out_features": 64
+    }
+
     return kwargs
 
 
