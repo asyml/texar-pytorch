@@ -127,7 +127,7 @@ class FeedForwardNetworkBase(ModuleBase):
         if not isinstance(layer_, torch.nn.Module):
             layer_ = get_layer(hparams=layer_)
         self._layers.append(layer_)
-        layer_name = uniquify_str(layer_.name, self._layer_names)
+        layer_name = uniquify_str(layer_._get_name(), self._layer_names)
         self._layer_names.append(layer_name)
         self._layers_by_name[layer_name] = layer_
 
