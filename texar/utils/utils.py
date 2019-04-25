@@ -25,6 +25,8 @@ import inspect
 from pydoc import locate
 from typing import *
 
+import torch
+
 import funcsigs
 import numpy as np
 import torch
@@ -465,7 +467,7 @@ def get_instance_with_redundant_kwargs(
     return class_(**selected_kwargs)
 
 
-def get_function(fn_or_name: Union[str, Callable],
+def get_function(fn_or_name: Union[str, Callable[torch.Tensor, torch.Tensor]],
                  module_paths: Optional[List[str]] = None) -> Callable:
     r"""Returns the function of specified name and module.
 
