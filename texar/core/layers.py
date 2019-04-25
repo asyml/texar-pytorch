@@ -17,7 +17,7 @@ Various neural network layers
 
 # pylint: disable=too-many-branches
 import functools
-from typing import Optional, Callable
+from typing import Optional, Callable, Union, Dict
 
 import torch
 from torch import nn
@@ -355,7 +355,8 @@ def get_initializer(hparams: Optional[HParams] = None) \
     return initializer
 
 
-def get_activation_fn(fn_name="ReLU", kwargs=None):
+def get_activation_fn(fn_name: Union[str, Callable] ="ReLU", kwargs: Union[HParams, Dict] = None)\
+        -> Callable:
     """Returns an activation function `fn` with the signature `output = fn(input)`.
 
     If the function specified by :attr:`fn_name` has more than one arguments
@@ -521,7 +522,7 @@ def get_layer(hparams):
     return layer
 
 
-def default_linear_kwargs():
+def default_linear_kwargs() -> Dict:
     """TODO avinash: how to give suitable values to in_features and out_features"""
     kwargs = {
         "in_features": 32,
