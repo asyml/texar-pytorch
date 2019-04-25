@@ -380,7 +380,8 @@ def get_initializer(hparams: Optional[HParams] = None) \
 
 
 def get_activation_fn(fn_name: Union[str, Callable[[torch.Tensor], torch.Tensor]] = "ReLU",
-                      kwargs: Union[HParams, Dict] = None) -> Callable[torch.Tensor, torch.Tensor]:
+                      kwargs: Union[HParams, Dict] = None) -> Callable[[torch.Tensor],
+                                                                       torch.Tensor]:
     """Returns an activation function `fn` with the signature `output = fn(input)`.
 
     If the function specified by :attr:`fn_name` has more than one arguments
@@ -544,6 +545,8 @@ def get_layer(hparams):
         raise ValueError("layer must be an instance of `torch.nn.Module`.")
 
     return layer
+
+
 
 
 def default_linear_kwargs() -> Dict:
