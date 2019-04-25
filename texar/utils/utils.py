@@ -468,7 +468,7 @@ def get_instance_with_redundant_kwargs(
 
 
 def get_function(fn_or_name: Union[str, Callable[[torch.Tensor], torch.Tensor]],
-                 module_paths: Optional[List[str]] = None) -> Callable:
+                 module_paths: Optional[List[str]] = None) -> Callable[[torch.Tensor], torch.Tensor]:
     r"""Returns the function of specified name and module.
 
     Args:
