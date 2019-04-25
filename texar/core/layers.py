@@ -379,7 +379,7 @@ def get_initializer(hparams: Optional[HParams] = None) \
     return initializer
 
 
-def get_activation_fn(fn_name: Union[str, Callable[torch.Tensor, torch.Tensor]] = "ReLU",
+def get_activation_fn(fn_name: Union[str, Callable[[torch.Tensor], torch.Tensor]] = "ReLU",
                       kwargs: Union[HParams, Dict] = None) -> Callable[torch.Tensor, torch.Tensor]:
     """Returns an activation function `fn` with the signature `output = fn(input)`.
 
