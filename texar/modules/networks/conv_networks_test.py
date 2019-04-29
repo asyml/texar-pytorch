@@ -50,6 +50,7 @@ class Conv1DNetworkTest(unittest.TestCase):
             "dropout_conv": [0, 1, 2],
             "dropout_dense": 2
         }
+
         network_2 = Conv1DNetwork(in_channels=inputs_2.shape[1],
                                   in_features=inputs_2.shape[2],
                                   hparams=hparams)
