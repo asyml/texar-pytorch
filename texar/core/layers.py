@@ -17,13 +17,13 @@ Various neural network layers
 
 # pylint: disable=too-many-branches
 import functools
-from typing import Optional, Callable, Union, Dict
+from typing import Optional, Callable, Union, List, Dict, Tuple, Any
 
 import torch
 from torch import nn
 
-import texar.core.cell_wrappers as wrappers
-import texar.core.regularizers as Regularizers
+from texar.core import cell_wrappers as wrappers
+from texar.core import regularizers as Regularizers
 from texar.hyperparams import HParams
 from texar.utils import utils
 from texar.utils.dtypes import is_str
@@ -400,7 +400,7 @@ def get_activation_fn(fn_name: Union[str, Callable[[torch.Tensor], torch.Tensor]
 
     return activation_fn
 
-
+# todo avinash -  this needs to be completed. Check where the constraint functions lie in pytorch
 def get_constraint_fn(fn_name="positive"):
     """Returns a constraint function.
 
@@ -435,7 +435,7 @@ def get_constraint_fn(fn_name="positive"):
     return constraint_fn
 
 
-def get_layer(hparams):
+def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
     """Makes a layer instance.
 
     The layer must be an instance of :torch_docs:`torch.nn.Module <nn.html>`.
@@ -517,12 +517,164 @@ def get_layer(hparams):
 
         layer = utils.get_instance(layer_type, hparams.kwargs.todict(), layer_modules)
 
-    if not isinstance(layer, torch.nn.Module):
+    if not isinstance(layer, nn.Module):
         raise ValueError("layer must be an instance of `torch.nn.Module`.")
 
     return layer
 
 
+class _ReducePool1d(nn.Module):
+    """Pooling layer for arbitrary reduce functions for 1D inputs.
+
+    This class is for code reuse, rather than an exposed API.
+    """
+    def __init__(self, reduce_function):
+        super(_ReducePool1d, self).__init__()
+        self._reduce_function = reduce_function
+
+    def forward(self, *input: Tuple) -> torch.Tensor:
+        # if check is required because :torch_docs:`torch.mean <torch.html#torch.mean>` does not return a tuple
+        if self._reduce_function == torch.mean:
+            output = self._reduce_function(input[0], dim=2)
+        else:
+            output, _ = self._reduce_function(input[0], dim=2)
+        return output
+
+
+class MaxReducePool1d(_ReducePool1d):
+    """A subclass of :torch_docs:`torch.nn.Module <nn.html#module>`.
+    Max Pool layer for 1D inputs. The same as :torch.nn.Module:`MaxPool1d <nn.html#maxpool1d>`
+    except that the pooling dimension is entirely reduced (i.e., `pool_size=input_length`).
+    """
+    def __init__(self):
+        super(MaxReducePool1d, self).__init__(torch.max)
+
+
+class AvgReducePool1d(_ReducePool1d):
+    """A subclass of :torch_docs:`torch.nn.Module <nn.html#module>`.
+    Avg Pool layer for 1D inputs. The same as :torch.nn.Module:`AvgPool1d <nn.html#avgpool1d>`
+    except that the pooling dimension is entirely reduced (i.e., `pool_size=input_length`).
+    """
+    def __init__(self):
+        super(AvgReducePool1d, self).__init__(torch.mean)
+
+
+def get_pooling_layer_hparams(hparams):
+    pass
+
+
+class MergeLayer(nn.Module):
+    """A subclass of :torch_docs:`torch.nn.Module <nn.html#module>`.
+    A layer that consists of multiple layers in parallel. Input is fed to
+    each of the parallel layers, and the outputs are merged with a
+    specified mode.
+
+    Args:
+        layers (list, optional): A list of :torch_docs:`torch.nn.Module
+            <nn.html#module>` instances, or a list of hyperparameter dicts
+            each of which specifies type and kwargs of each layer (see
+            the `hparams` argument of :func:`get_layer`).
+
+            If `None`, this layer degenerates to a merging operator that merges
+            inputs directly.
+        mode (str): Mode of the merge op. This can be:
+
+            - :attr:`'concat'`: Concatenates layer outputs along one dim. \
+              Tensors must have the same shape except for the dimension \
+              specified in `dim`, which can have different sizes.
+            - :attr:`'elemwise_sum'`: Outputs element-wise sum.
+            - :attr:`'elemwise_mul'`: Outputs element-wise product.
+            - :attr:`'sum'`: Computes the sum of layer outputs along the \
+              dimension given by `dim`. E.g., given `dim=1`, \
+              two tensors of shape `[a, b]` and `[a, c]` respectively \
+              will result in a merged tensor of shape `[a]`.
+            - :attr:`'mean'`: Computes the mean of layer outputs along the \
+              dimension given in `dim`.
+            - :attr:`'prod'`: Computes the product of layer outputs along the \
+              dimension given in `dim`.
+            - :attr:`'max'`: Computes the maximum of layer outputs along the \
+              dimension given in `dim`.
+            - :attr:`'min'`: Computes the minimum of layer outputs along the \
+              dimension given in `dim`.
+            - :attr:`'and'`: Computes the `logical and` of layer outputs along \
+              the dimension given in `dim`.
+            - :attr:`'or'`: Computes the `logical or` of layer outputs along \
+              the dimension given in `dim`.
+            - :attr:`'logsumexp'`: Computes \
+              log(sum(exp(elements across the dimension of layer outputs)))
+        dim (int): The dim to use in merging. Ignored in modes
+            :attr:`'elemwise_sum'` and :attr:`'elemwise_mul'`.
+        trainable (bool): Whether the layer should be trained.
+        name (str, optional): Name of the layer.
+    """
+    def __init__(self, layers: Optional[List[nn.Module]] = None, mode: str ='concat',
+                 dim: int = 2):
+        super(MergeLayer, self).__init__()
+        self._mode = mode
+        self._dim = dim
+
+        self._layers = None
+        if layers is not None:
+            if len(layers) == 0:
+                raise ValueError(
+                    "'layers' must be either None or a non-empty list.")
+            self._layers = []
+            for layer in layers:
+                if isinstance(layer, nn.Module):
+                    self._layers.append(layer)
+                else:
+                    self._layers.append(get_layer(hparams=layer))
+
+    def forward(self, *input: Tuple) -> torch.Tensor:
+        inputs = input[0]
+        if self._layers is None:
+            layer_outputs = inputs
+            if not isinstance(layer_outputs, (list, tuple)):
+                layer_outputs = [layer_outputs]
+        else:
+            layer_outputs = []
+            for layer in self._layers:
+                layer_output = layer(inputs)
+                layer_outputs.append(layer_output)
+
+        if self._mode == 'concat':
+            outputs = torch.cat(tensors=layer_outputs, dim=self._dim)
+        elif self._mode == 'elemwise_sum':
+            outputs = layer_outputs[0]
+            for i in range(1, len(layer_outputs)):
+                outputs = torch.add(outputs, layer_outputs[i])
+        elif self._mode == 'elemwise_mul':
+            outputs = layer_outputs[0]
+            for i in range(1, len(layer_outputs)):
+                outputs = torch.mul(outputs, layer_outputs[i])
+        elif self._mode == 'sum':
+            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
+            outputs = torch.sum(_concat, dim=self._dim)
+        elif self._mode == 'mean':
+            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
+            outputs = torch.mean(_concat, dim=self._dim)
+        elif self._mode == 'prod':
+            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
+            outputs = torch.prod(_concat, dim=self._dim)
+        elif self._mode == 'max':
+            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
+            outputs,_ = torch.max(_concat, dim=self._dim)
+        elif self._mode == 'min':
+            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
+            outputs, _ = torch.min(_concat, dim=self._dim)
+        elif self._mode == 'and':
+            _concat = torch.cat(values=layer_outputs, axis=self._dim)
+            outputs = torch.all(_concat, dim=self._dim)
+        elif self._mode == 'or':
+            _concat = torch.cat(values=layer_outputs, axis=self._dim)
+            outputs = torch.any(_concat, dim=self._dim)
+        elif self._mode == 'logsumexp':
+            _concat = torch.cat(values=layer_outputs, axis=self._dim)
+            outputs = torch.logsumexp(_concat, axis=self._dim)
+        else:
+            raise ValueError("Unknown merge mode: '%s'" % self._mode)
+
+        return outputs
 
 
 def default_linear_kwargs() -> Dict:
