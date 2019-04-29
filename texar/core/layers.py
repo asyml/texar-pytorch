@@ -650,15 +650,12 @@ class MergeLayer(nn.Module):
                     self._layers.append(get_layer(hparams=layer))
 
     def forward(self, *input: Tuple) -> torch.Tensor:
-        inputs = input[0]
         if self._layers is None:
-            layer_outputs = inputs
-            if not isinstance(layer_outputs, (list, tuple)):
-                layer_outputs = [layer_outputs]
+            layer_outputs = input
         else:
             layer_outputs = []
             for layer in self._layers:
-                layer_output = layer(inputs)
+                layer_output = layer(input)
                 layer_outputs.append(layer_output)
 
         if self._mode == 'concat':
@@ -694,7 +691,7 @@ class MergeLayer(nn.Module):
             outputs = torch.any(_concat, dim=self._dim)
         elif self._mode == 'logsumexp':
             _concat = torch.cat(values=layer_outputs, axis=self._dim)
-            outputs = torch.logsumexp(_concat, axis=self._dim)
+            outputs = torch.logsumexp(_concat, dim=self._dim)
         else:
             raise ValueError("Unknown merge mode: '%s'" % self._mode)
 
