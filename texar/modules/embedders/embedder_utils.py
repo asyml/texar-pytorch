@@ -110,9 +110,9 @@ def default_embedding_hparams():
     }
 
 
-def get_embedding(hparams=None,
+def get_embedding(num_embeds=None,
                   init_value=None,
-                  num_embeds=None):
+                  hparams=None):
     """Creates embedding variable if not exists.
 
     Args:

@@ -20,6 +20,7 @@ import math
 import torch
 
 from texar.modules.embedders.embedder_base import EmbedderBase
+from texar.modules.embedders.embedder_base import EmbeddingDropout
 from texar.modules.embedders import embedder_utils
 from texar.utils.shapes import mask_sequences
 
@@ -59,14 +60,13 @@ class PositionEmbedder(EmbedderBase):
     """
 
     def __init__(self, init_value=None, position_size=None, hparams=None):
-        EmbedderBase.__init__(self, hparams=hparams)
 
         if init_value is None and position_size is None:
             raise ValueError(
                 "Either `init_value` or `position_size` is required.")
 
-        self._init_parameterized_embedding(init_value, position_size,
-                                           self._hparams)
+        EmbedderBase.__init__(self, init_value=init_value,
+                              num_embeds=position_size, hparams=hparams)
 
         self._position_size = position_size
         if position_size is None:
@@ -77,6 +77,7 @@ class PositionEmbedder(EmbedderBase):
                 'Got %d and %d' % (self._position_size, self._num_embeds))
 
         self._built = True
+        self._dropout_layer = EmbeddingDropout(self._hparams.dropout_rate)
 
     @staticmethod
     def default_hparams():
@@ -121,8 +122,8 @@ class PositionEmbedder(EmbedderBase):
                 ids to embed.
             sequence_length (optional): An integer tensor of shape
                 `[batch_size]`. Time steps beyond
-                the respective sequence lengths will have zero-valued
-                embeddings.
+                the respective sequence lengths will have
+                zero-valued embeddings.
             kwargs: Additional keyword arguments for
                 `torch.nn.functional.embedding` besides
                 :attr:`params` and :attr:`ids`.
@@ -138,40 +139,34 @@ class PositionEmbedder(EmbedderBase):
                     'Either `positions` or `sequence_length` is required.')
             max_length = torch.max(sequence_length)
             single_inputs = torch.arange(
-                start=0, end=max_length, dtype=torch.int32)
+                start=0, end=max_length)
             # Expands `single_inputs` to have shape [batch_size, max_length]
-            expander = torch.unsqueeze(torch.ones_like(sequence_length), -1)
-            inputs = expander * torch.unsqueeze(single_inputs, 0)
+            inputs = single_inputs.unsqueeze(0)
+            inputs = inputs.expand(len(sequence_length), -1).contiguous()
+
         ids_rank = len(list(inputs.shape))
         embedding = self._embedding
 
         # Gets dropout strategy
         st = self._hparams.dropout_strategy
-        if positions is None and st == 'item':
-            # If `inputs` is based on `sequence_length`, then dropout
-            # strategies 'item' and 'item_type' have the same effect, we
-            # use 'item_type' to avoid unknown noise_shape in the 'item'
-            # strategy
-            st = 'item_type'
 
         # Dropouts as 'item_type' before embedding
         if st == 'item_type':
-            dropout_layer = self._get_dropout_layer(
+            noise_shape = self._get_noise_shape(
                 self._hparams, dropout_strategy=st, dropout_input=embedding)
-            if dropout_layer:
-                embedding = dropout_layer(embedding)
+            embedding = self._dropout_layer(embedding, noise_shape)
+
 
         # Embeds
         outputs = torch.nn.functional.embedding(
-        inputs.type(torch.long), embedding, **kwargs)
+            inputs.type(torch.long), embedding, **kwargs)
 
         # Dropouts as 'item' or 'elements' after embedding
         if st != 'item_type':
-            dropout_layer = self._get_dropout_layer(
-                self._hparams, ids_rank=ids_rank, dropout_input=outputs,
-                dropout_strategy=st)
-            if dropout_layer:
-                outputs = dropout_layer(outputs)
+            noise_shape = self._get_noise_shape(
+                self._hparams, dropout_strategy=st,
+                dropout_input=outputs, ids_rank=ids_rank)
+            outputs = self._dropout_layer(outputs, noise_shape)
 
         # Optionally masks
         if sequence_length is not None:
@@ -236,7 +231,7 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         max_timescale = self._hparams.max_timescale
 
         positions = torch.arange(
-            position_size, dtype=torch.int32).type(torch.float)
+            position_size).type(torch.float)
         # pylint: disable=not-callable
         log_timescale_increment = (
             math.log(float(max_timescale) / float(min_timescale)) /
@@ -302,12 +297,18 @@ class SinusoidsPositionEmbedder(EmbedderBase):
                     'Either `positions` or `sequence_length` is required.')
             max_length = torch.max(sequence_length)
             single_inputs = torch.arange(
-                start=0, limit=max_length, dtype=torch.int32)
+                start=0, limit=max_length)
             # Expands `single_inputs` to have shape [batch_size, max_length]
-            expander = torch.unsqueeze(torch.ones_like(sequence_length), -1)
-            inputs = expander * torch.unsqueeze(single_inputs, 0)
+            inputs = single_inputs.unsqueeze(0)
+            inputs = inputs.expand(len(sequence_length), -1).contiguous()
 
         embedding = self.signal
         outputs = torch.nn.functional.embedding(
             inputs.type(torch.long), embedding, **kwargs)
+
+        # Optionally masks
+        if sequence_length is not None:
+            outputs = mask_sequences(
+                outputs, sequence_length)
+
         return outputs

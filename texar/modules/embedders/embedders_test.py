@@ -30,8 +30,10 @@ class EmbedderTest(unittest.TestCase):
         outputs_soft = embedder(soft_ids=inputs_soft)
 
         emb_dim = embedder.dim
-        if not isinstance(emb_dim, (list, tuple)):
+        if isinstance(emb_dim, int):
             emb_dim = [emb_dim]
+        if not isinstance(emb_dim, (list)):
+            emb_dim = list(emb_dim)
 
         hparams_dim = hparams["dim"]
         if not isinstance(hparams["dim"], (list, tuple)):
@@ -54,8 +56,10 @@ class EmbedderTest(unittest.TestCase):
         outputs = embedder(inputs)
 
         emb_dim = embedder.dim
-        if not isinstance(emb_dim, (list, tuple)):
+        if isinstance(emb_dim, int):
             emb_dim = [emb_dim]
+        if not isinstance(emb_dim, (list)):
+            emb_dim = list(emb_dim)
 
         hparams_dim = hparams["dim"]
         if not isinstance(hparams["dim"], (list, tuple)):

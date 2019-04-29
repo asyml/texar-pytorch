@@ -17,6 +17,7 @@ Various embedders.
 import torch
 
 from texar.modules.embedders.embedder_base import EmbedderBase
+from texar.modules.embedders.embedder_base import EmbeddingDropout
 from texar.modules.embedders import embedder_utils
 
 __all__ = [
@@ -87,14 +88,13 @@ class WordEmbedder(EmbedderBase):
     """
 
     def __init__(self, init_value=None, vocab_size=None, hparams=None):
-        EmbedderBase.__init__(self, hparams=hparams)
 
         if init_value is None and vocab_size is None:
             raise ValueError(
                 "Either `init_value` or `vocab_size` is required.")
 
-        self._init_parameterized_embedding(init_value, vocab_size,
-                                           self._hparams)
+        EmbedderBase.__init__(self, init_value=init_value,
+                              num_embeds=vocab_size, hparams=hparams)
 
         self._vocab_size = vocab_size
         if vocab_size is None:
@@ -105,6 +105,7 @@ class WordEmbedder(EmbedderBase):
                 'Got %d and %d' % (self._vocab_size, self._num_embeds))
 
         self._built = True
+        self._dropout_layer = EmbeddingDropout(self._hparams.dropout_rate)
 
     @staticmethod
     def default_hparams():
@@ -192,8 +193,8 @@ class WordEmbedder(EmbedderBase):
             If :attr:`soft_ids` is given, returns a Tensor of shape
             `list(soft_ids.shape)[:-1] + embdding-dim`. For example,
             if `list(soft_ids.shape) == [batch_size, max_time, vocab_size]`
-            and `list(embedding.shape) == [vocab_size, emb_dim]`, then the return
-            tensor has shape `[batch_size, max_time, emb_dim]`.
+            and `list(embedding.shape) == [vocab_size, emb_dim]`, then the
+            return tensor has shape `[batch_size, max_time, emb_dim]`.
         """
         if ids is not None:
             if soft_ids is not None:
@@ -208,10 +209,9 @@ class WordEmbedder(EmbedderBase):
         embedding = self._embedding
 
         if self._hparams.dropout_strategy == 'item_type':
-            dropout_layer = self._get_dropout_layer(
-                self._hparams, dropout_input=embedding)
-            if dropout_layer:
-                embedding = dropout_layer(embedding)
+            noise_shape = self._get_noise_shape(
+                self._hparams)
+            embedding = self._dropout_layer(embedding, noise_shape)
 
         if ids is not None:
             outputs = torch.nn.functional.embedding(
@@ -220,13 +220,11 @@ class WordEmbedder(EmbedderBase):
             outputs = embedder_utils.soft_embedding_lookup(embedding, soft_ids)
 
         if self._hparams.dropout_strategy != 'item_type':
-            dropout_layer = self._get_dropout_layer(
+            noise_shape = self._get_noise_shape(
                 self._hparams,
                 ids_rank=ids_rank,
                 dropout_input=outputs)
-            if dropout_layer:
-                embedding = dropout_layer(outputs)
-
+            outputs = self._dropout_layer(outputs, noise_shape)
 
         return outputs
 
