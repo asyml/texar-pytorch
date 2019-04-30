@@ -22,6 +22,7 @@ from __future__ import print_function
 
 import torch
 
+from texar.utils.shapes import mask_sequences
 
 # pylint: disable=invalid-name, not-context-manager, protected-access,
 # pylint: disable=too-many-arguments
