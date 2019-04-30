@@ -120,7 +120,8 @@ def reduce_batch_time(sequence,
         if sequence_length is None:
             sequence = torch.mean(sequence, dim=1)
         else:
-            sequence = torch.sum(sequence, dim=1)/sequence_length.float()
+            sequence = torch.sum(sequence, dim=1).float() / \
+                       sequence_length.float()
 
     if sum_over_batch:
         sequence = torch.sum(sequence, dim=0)
