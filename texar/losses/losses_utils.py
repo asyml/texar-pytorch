@@ -22,7 +22,7 @@ from __future__ import print_function
 
 import torch
 
-from texar.utils.shapes import mask_sequences
+from texar.utils.shapes import transpose_batch_time, mask_sequences
 
 # pylint: disable=invalid-name, not-context-manager, protected-access,
 # pylint: disable=too-many-arguments
@@ -91,8 +91,42 @@ def mask_and_reduce(sequence,
     Returns
         A Tensor containing the masked and reduced sequence.
     """
+    if rank < 2:
+        raise ValueError('`rank` must be >= 2.')
 
+    if time_major:
+        sequence = transpose_batch_time(sequence)
 
+    if sequence_length is not None:
+        sequence = mask_sequences(sequence,
+                                  sequence_length,
+                                  dtype=dtype,
+                                  time_major=False)
+
+    if rank > 2:
+        if average_across_remaining and sum_over_remaining:
+            raise ValueError("Only one of `average_across_remaining` and "
+                             "`sum_over_remaining` can be set.")
+        if average_across_remaining:
+            for axis in range(2, rank):
+                sequence = torch.mean(sequence, dim=axis)
+        elif sum_over_remaining:
+            for axis in range(2, rank):
+                sequence = torch.sum(sequence, dim=axis)
+
+    sequence = reduce_batch_time(sequence,
+                                 sequence_length,
+                                 average_across_batch,
+                                 average_across_timesteps,
+                                 sum_over_batch,
+                                 sum_over_timesteps)
+
+    reduce_time = average_across_timesteps or sum_over_timesteps
+    reduce_batch = average_across_batch or sum_over_batch
+    if not reduce_time and not reduce_batch and time_major:
+        sequence = transpose_batch_time(sequence)
+
+    return sequence
 
 
 def reduce_batch_time(sequence,
@@ -172,7 +206,3 @@ def reduce_dimensions(tensor, average_axes=None, sum_axes=None, keepdims=None):
         tensor = torch.squeeze(tensor, dim=list(reduced_axes))
 
     return tensor
-
-
-
-
