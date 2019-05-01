@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of texar library utils.
+Modules of texar library embedders.
 """
 
 # pylint: disable=wildcard-import
 
-from texar.utils.average_recorder import *
-from texar.utils.dtypes import *
-from texar.utils.utils import *
-#from texar.utils.mode import *
+from texar.modules.embedders.embedder_base import *
+from texar.modules.embedders.embedders import *
+from texar.modules.embedders.position_embedders import *
