@@ -17,6 +17,7 @@ Various neural network layers
 
 # pylint: disable=too-many-branches
 import functools
+import copy
 from typing import Optional, Callable, Union, List, Dict, Tuple, Any
 
 import torch
@@ -39,6 +40,13 @@ __all__ = [
     'get_activation_fn',
     'get_constraint_fn',
     'get_layer',
+    '_ReducePool1d',
+    'MaxReducePool1d',
+    'AvgReducePool1d',
+    'get_pooling_layer_hparams',
+    'MergeLayer',
+    'Flatten',
+    'Identity',
     'default_linear_kwargs'
 ]
 
@@ -539,7 +547,19 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
             default_hparams = {"type": layer_type, "kwargs": default_kwargs}
             hparams = HParams(hparams, default_hparams)
 
-        layer = utils.get_instance(layer_type, hparams.kwargs.todict(), layer_modules)
+        # this case needs to be handled separately because
+        # :torch_docs:`torch.nn.Sequential <nn.html#torch.nn.Sequential>` does not accept kwargs
+        if layer_type == "Sequential":
+            names = []
+            layer = nn.Sequential()
+            sub_hparams = hparams.kwargs.layers
+            for hparam in sub_hparams:
+                sub_layer = get_layer(hparam)
+                name = utils.uniquify_str(sub_layer._get_name(), names)
+                names.append(name)
+                layer.add_module(name=name, module=sub_layer)
+        else:
+            layer = utils.get_instance(layer_type, hparams.kwargs.todict(), layer_modules)
 
     if not isinstance(layer, nn.Module):
         raise ValueError("layer must be an instance of `torch.nn.Module`.")
@@ -559,9 +579,9 @@ class _ReducePool1d(nn.Module):
     def forward(self, *input: Tuple) -> torch.Tensor:
         # if check is required because :torch_docs:`torch.mean <torch.html#torch.mean>` does not return a tuple
         if self._reduce_function == torch.mean:
-            output = self._reduce_function(input[0], dim=2)
+            output = self._reduce_function(input[0], dim=2, keepdim=True)
         else:
-            output, _ = self._reduce_function(input[0], dim=2)
+            output, _ = self._reduce_function(input[0], dim=2, keepdim=True)
         return output
 
 
@@ -583,8 +603,36 @@ class AvgReducePool1d(_ReducePool1d):
         super(AvgReducePool1d, self).__init__(torch.mean)
 
 
-def get_pooling_layer_hparams(hparams):
-    pass
+_POOLING_TO_REDUCE = {
+    "MaxPool1d": "MaxReducePool1d",
+    "AvgPool1d": "AvgReducePool1d",
+    torch.nn.MaxPool1d: MaxReducePool1d,
+    torch.nn.AvgPool1d: AvgReducePool1d
+}
+
+
+def get_pooling_layer_hparams(hparams: Union[HParams, Dict[str, Any]]) -> Dict[str, Any]:
+    """Creates pooling layer hparams `dict` usable for :func:`get_layer`.
+
+    If the :attr:`hparams` sets `'pool_size'` to `None`, the layer will be
+    changed to the respective reduce-pooling layer. For example,
+    :torch_docs:`torch.conv.MaxPool1d <nn.html#torch.nn.Conv1d>` is replaced with
+    :class:`~texar.core.MaxReducePool1d`.
+    """
+    if isinstance(hparams, HParams):
+        hparams = hparams.todict()
+
+    new_hparams = copy.copy(hparams)
+    kwargs = new_hparams.get('kwargs', None)
+
+    if kwargs and kwargs.get('kernel_size', None) is None:
+        pool_type = hparams['type']
+        new_hparams['type'] = _POOLING_TO_REDUCE.get(pool_type, pool_type)
+        kwargs.pop('kernel_size', None)
+        kwargs.pop('stride', None)
+        kwargs.pop('padding', None)
+
+    return new_hparams
 
 
 class MergeLayer(nn.Module):
@@ -649,7 +697,7 @@ class MergeLayer(nn.Module):
                 else:
                     self._layers.append(get_layer(hparams=layer))
 
-    def forward(self, *input: Tuple) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         if self._layers is None:
             layer_outputs = input
         else:
@@ -696,6 +744,31 @@ class MergeLayer(nn.Module):
             raise ValueError("Unknown merge mode: '%s'" % self._mode)
 
         return outputs
+
+    @property
+    def layers(self):
+        """The list of parallel layers.
+        """
+        return self._layers
+
+
+# since pytorch does not have a Flatten layer, we provide a custom class
+class Flatten(nn.Module):
+    """Flatten layer to flatten a tensor after convolution."""
+    def __init__(self):
+        super(Flatten, self).__init__()
+
+    def forward(self, input):
+        return input.view(input.size()[0], -1)
+
+
+class Identity(nn.Module):
+    """Identity activation layer."""
+    def __init__(self):
+        super(Identity, self).__init__()
+
+    def forward(self, input):
+        return input
 
 
 def default_linear_kwargs() -> Dict:
