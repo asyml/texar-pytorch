@@ -576,12 +576,12 @@ class _ReducePool1d(nn.Module):
         super(_ReducePool1d, self).__init__()
         self._reduce_function = reduce_function
 
-    def forward(self, *input: Tuple) -> torch.Tensor:
+    def forward(self, input: Tuple) -> torch.Tensor:
         # if check is required because :torch_docs:`torch.mean <torch.html#torch.mean>` does not return a tuple
         if self._reduce_function == torch.mean:
-            output = self._reduce_function(input[0], dim=2, keepdim=True)
+            output = self._reduce_function(input, dim=2, keepdim=True)
         else:
-            output, _ = self._reduce_function(input[0], dim=2, keepdim=True)
+            output, _ = self._reduce_function(input, dim=2, keepdim=True)
         return output
 
 
