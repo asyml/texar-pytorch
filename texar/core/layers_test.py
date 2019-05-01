@@ -23,8 +23,8 @@ class ReducePoolingLayerTest(unittest.TestCase):
 
         inputs = torch.randn(self._batch_size, self._emb_dim, self._seq_length)
         output = pool_layer(inputs)
-        output_reduce, _ = torch.max(inputs, dim=2)
-        self.assertEqual(output.shape, torch.Size([self._batch_size, self._emb_dim]))
+        output_reduce, _ = torch.max(inputs, dim=2, keepdim=True)
+        self.assertEqual(output.shape, torch.Size([self._batch_size, self._emb_dim, 1]))
         self.assertEqual(torch.all(torch.eq(output, output_reduce)), 1)
 
     def test_average_reduce_pooling_layer(self):
@@ -34,8 +34,8 @@ class ReducePoolingLayerTest(unittest.TestCase):
 
         inputs = torch.randn(self._batch_size, self._emb_dim, self._seq_length)
         output = pool_layer(inputs)
-        output_reduce = torch.mean(inputs, dim=2)
-        self.assertEqual(output.shape, torch.Size([self._batch_size, self._emb_dim]))
+        output_reduce = torch.mean(inputs, dim=2, keepdim=True)
+        self.assertEqual(output.shape, torch.Size([self._batch_size, self._emb_dim, 1]))
         self.assertEqual(torch.all(torch.eq(output, output_reduce)), 1)
 
 
@@ -54,6 +54,7 @@ class MergeLayerTest(unittest.TestCase):
         layers_.append(nn.Linear(in_features=10, out_features=64))
         m_layer = layers.MergeLayer(layers_)
 
-        inputs = torch.randn(32, 32, 10)
-        outputs = m_layer(inputs)
+        input = torch.randn(32, 32, 10)
+        output = m_layer(input)
+        self.assertEqual(output.shape, torch.Size([32, 32, 149]))
 
