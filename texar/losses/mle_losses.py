@@ -274,23 +274,182 @@ def sequence_sigmoid_cross_entropy(labels,
     """
     if stop_gradient_to_label:
         labels = labels.detach()
+    losses = torch.nn.BCEWithLogitsLoss(reduction=None)
+    losses = losses(logits, labels)
+
+    rank = shapes.get_rank(logits) or shapes.get_rank(labels)
+    if rank is None:
+        raise ValueError(
+            'Cannot determine the rank of `logits` or `labels`.')
+
+    losses = mask_and_reduce(losses,
+                             sequence_length,
+                             rank=rank,
+                             average_across_batch=average_across_batch,
+                             average_across_timesteps=average_across_timesteps,
+                             average_across_remaining=average_across_classes,
+                             sum_over_batch=sum_over_batch,
+                             sum_over_timesteps=sum_over_timesteps,
+                             sum_over_remaining=sum_over_classes,
+                             time_major=time_major)
+
+    return losses
 
 
+def binary_sigmoid_cross_entropy(pos_logits=None,
+                                 neg_logits=None,
+                                 average_across_batch=True,
+                                 average_across_classes=True,
+                                 sum_over_batch=False,
+                                 sum_over_classes=False,
+                                 return_pos_neg_losses=False,
+                                 name=None):
+    """Computes sigmoid cross entropy of binary predictions.
+
+    Args:
+        pos_logits: The logits of predicting positive on positive data. A
+            tensor of shape `[batch_size(, num_classes)]`.
+        neg_logits: The logits of predicting positive on negative data. A
+            tensor of shape `[batch_size(, num_classes)]`.
+        average_across_batch (bool): If set, average the loss across the
+            batch dimension. Must not set `average_across_batch`'
+            and `sum_over_batch` at the same time.
+        average_across_classes (bool): If set, average the loss across the
+            class dimension (if exists). Must not set
+            `average_across_classes`' and `sum_over_classes` at
+            the same time. Ignored if :attr:`logits` is a 1D Tensor.
+        sum_over_batch (bool): If set, sum the loss across the
+            batch dimension. Must not set `average_across_batch`
+            and `sum_over_batch` at the same time.
+        sum_over_classes (bool): If set, sum the loss across the
+            class dimension. Must not set `average_across_classes`
+            and `sum_over_classes` at the same time. Ignored if
+            :attr:`logits` is a 2D Tensor.
+        return_pos_neg_losses (bool): If set, additionally returns the losses
+            on :attr:`pos_logits` and :attr:`neg_logits`, respectively.
+        name (str, optional): A name for the operation.
+
+    Returns:
+        By default, a Tensor containing the loss, of rank 0, 1, or 2 depending
+        on the arguments :attr:`{average_across}/{sum_over}_{batch}/{classes}`.
+        For example:
+
+            - If :attr:`sum_over_batch` and :attr:`average_across_classes`  \
+            are `True` (default), the return Tensor is of rank 0.
+
+            - If  arguments are `False`, the return Tensor is of shape \
+            `[batch_size(, num_classes)]`.
+
+        If :attr:`return_pos_neg_losses` is `True`, returns a tuple
+        `(loss, pos_loss, neg_loss)`, where `loss` is the loss above;
+        `pos_loss` is the loss on `pos_logits` only; and
+        `neg_loss` is the loss on `neg_logits` only. They have
+        `loss = pos_loss + neg_loss`.
+    """
+    average_axes, sum_axes = [], []
+    average_axes += [0] if average_across_batch else []
+    average_axes += [1] if average_across_classes else []
+    sum_axes += [0] if sum_over_batch else []
+    sum_axes += [1] if sum_over_classes else []
+
+    pos_loss = 0
+    if pos_logits is not None:
+        pos_loss = torch.nn.BCEWithLogitsLoss(reduction=None)
+        pos_loss = pos_loss(pos_logits, torch.ones_like(pos_logits))
+
+        pos_loss = reduce_dimensions(pos_loss, average_axes, sum_axes)
+
+    neg_loss = 0
+    if neg_logits is not None:
+        neg_loss = torch.nn.BCEWithLogitsLoss(reduction=None)
+        neg_loss = neg_loss(neg_logits, torch.zeros_like(neg_logits))
+
+        neg_loss = reduce_dimensions(neg_loss, average_axes, sum_axes)
+
+    loss = pos_loss + neg_loss
+
+    if return_pos_neg_losses:
+        return loss, pos_loss, neg_loss
+    else:
+        return loss
 
 
+def binary_sigmoid_cross_entropy_with_clas(clas_fn,
+                                           pos_inputs=None,
+                                           neg_inputs=None,
+                                           average_across_batch=True,
+                                           average_across_classes=True,
+                                           sum_over_batch=False,
+                                           sum_over_classes=False,
+                                           return_pos_neg_losses=False,
+                                           name=None):
+    """Computes sigmoid cross entropy of binary classifier.
 
+    .. role:: python(code)
+       :language: python
 
+    Args:
+        clas_fn: A callable takes data (e.g., :attr:`pos_inputs` and
+            :attr:`fake_inputs`) and returns the logits of being positive. The
+            signature of `clas_fn` must be:
+            :python:`logits (, ...) = clas_fn(inputs)`.
+            The return value of `clas_fn` can be the logits, or
+            a tuple where the logits are the first element.
+        pos_inputs: The positive data fed into `clas_fn`.
+        neg_inputs: The negative data fed into `clas_fn`.
+        average_across_batch (bool): If set, average the loss across the
+            batch dimension. Must not set `average_across_batch`'
+            and `sum_over_batch` at the same time.
+        average_across_classes (bool): If set, average the loss across the
+            class dimension (if exists). Must not set
+            `average_across_classes`' and `sum_over_classes` at
+            the same time. Ignored if :attr:`logits` is a 1D Tensor.
+        sum_over_batch (bool): If set, sum the loss across the
+            batch dimension. Must not set `average_across_batch`
+            and `sum_over_batch` at the same time.
+        sum_over_classes (bool): If set, sum the loss across the
+            class dimension. Must not set `average_across_classes`
+            and `sum_over_classes` at the same time. Ignored if
+            :attr:`logits` is a 2D Tensor.
+        return_pos_neg_losses (bool): If set, additionally returns the losses
+            on :attr:`pos_logits` and :attr:`neg_logits`, respectively.
+        name (str, optional): A name for the operation.
 
+    Returns:
+        By default, a Tensor containing the loss, of rank 0, 1, or 2 depending
+        on the arguments :attr:`{average_across}/{sum_over}_{batch}/{classes}`.
+        For example:
 
+            - If :attr:`sum_over_batch` and :attr:`average_across_classes`  \
+            are `True` (default), the return Tensor is of rank 0.
 
+            - If  arguments are `False`, the return Tensor is of shape \
+            `[batch_size(, num_classes)]`.
 
+        If :attr:`return_pos_neg_losses`=`True`, returns a tuple
+        `(loss, pos_loss, neg_loss)`, where `loss` is the loss above;
+        `pos_loss` is the loss on `pos_logits` only; and
+        `neg_loss` is the loss on `neg_logits` only. They have
+        `loss = pos_loss + neg_loss`.
+    """
+    pos_logits = None
+    if pos_inputs is not None:
+        pos_logits = clas_fn(pos_inputs)
+        if isinstance(pos_logits, (list, tuple)):
+            pos_logits = pos_logits[0]
 
+    neg_logits = None
+    if neg_inputs is not None:
+        neg_logits = clas_fn(neg_inputs)
+        if isinstance(neg_logits, (list, tuple)):
+            neg_logits = neg_logits[0]
 
-
-
-
-
-
-
-
-
+    return binary_sigmoid_cross_entropy(
+        pos_logits=pos_logits,
+        neg_logits=neg_logits,
+        average_across_batch=average_across_batch,
+        average_across_classes=average_across_classes,
+        sum_over_batch=sum_over_batch,
+        sum_over_classes=sum_over_classes,
+        return_pos_neg_losses=return_pos_neg_losses,
+        name=name)
