@@ -746,7 +746,7 @@ class MergeLayer(nn.Module):
         return outputs
 
     @property
-    def layers(self):
+    def layers(self) -> Optional[nn.Module]:
         """The list of parallel layers.
         """
         return self._layers
@@ -758,7 +758,7 @@ class Flatten(nn.Module):
     def __init__(self):
         super(Flatten, self).__init__()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         return input.view(input.size()[0], -1)
 
 
@@ -767,7 +767,7 @@ class Identity(nn.Module):
     def __init__(self):
         super(Identity, self).__init__()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         return input
 
 
@@ -783,7 +783,7 @@ def default_linear_kwargs() -> Dict:
 
 # TODO avinash - change the following to pytorch equivalent
 _layer_class_to_default_kwargs_map = {
-    torch.nn.modules.linear.Linear: default_linear_kwargs()
+    nn.modules.linear.Linear: default_linear_kwargs()
 }
 
 """tf.layers.Conv1D: default_conv1d_kwargs(),
