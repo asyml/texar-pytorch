@@ -388,8 +388,8 @@ def get_initializer(hparams: Optional[HParams] = None) \
 
 
 def get_activation_fn(fn_name: Optional[Union[str, Callable[[torch.Tensor], torch.Tensor]]] = None,
-                      kwargs: Union[HParams, Dict] = None) -> Optional[Callable[[torch.Tensor],
-                                                                                torch.Tensor]]:
+                      kwargs: Union[HParams, Dict, None] = None) -> Optional[Callable[[torch.Tensor],
+                                                                                      torch.Tensor]]:
     """Returns an activation function `fn` with the signature `output = fn(input)`.
 
     If the function specified by :attr:`fn_name` has more than one arguments
@@ -731,13 +731,13 @@ class MergeLayer(nn.Module):
             _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
             outputs, _ = torch.min(_concat, dim=self._dim)
         elif self._mode == 'and':
-            _concat = torch.cat(values=layer_outputs, axis=self._dim)
+            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
             outputs = torch.all(_concat, dim=self._dim)
         elif self._mode == 'or':
-            _concat = torch.cat(values=layer_outputs, axis=self._dim)
+            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
             outputs = torch.any(_concat, dim=self._dim)
         elif self._mode == 'logsumexp':
-            _concat = torch.cat(values=layer_outputs, axis=self._dim)
+            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
             outputs = torch.logsumexp(_concat, dim=self._dim)
         else:
             raise ValueError("Unknown merge mode: '%s'" % self._mode)
