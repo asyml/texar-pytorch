@@ -363,9 +363,9 @@ def get_initializer(hparams: Optional[HParams] = None) \
     return initializer
 
 
-def get_activation_fn(fn_name: Union[str, Callable[[torch.Tensor], torch.Tensor]] = "ReLU",
-                      kwargs: Union[HParams, Dict] = None) -> Callable[[torch.Tensor],
-                                                                       torch.Tensor]:
+def get_activation_fn(fn_name: Optional[Union[str, Callable[[torch.Tensor], torch.Tensor]]] = None,
+                      kwargs: Union[HParams, Dict] = None) -> Optional[Callable[[torch.Tensor],
+                                                                                torch.Tensor]]:
     """Returns an activation function `fn` with the signature `output = fn(input)`.
 
     If the function specified by :attr:`fn_name` has more than one arguments
@@ -379,8 +379,7 @@ def get_activation_fn(fn_name: Union[str, Callable[[torch.Tensor], torch.Tensor]
         fn_name (str or callable): An activation function, or its name or
             module path. The function can be:
 
-            - Built-in function defined in :torch_docs:`torch.nn.modules.activation
-            <nn.html#non-linear-activations-weighted-sum-nonlinearity>`
+            - Built-in function defined in :torch_docs:`torch.nn.functional<nn.html#torch-nn-functional>`
             - User-defined activation functions in module :mod:`texar.custom`.
             - External activation functions. Must provide the full module path,\
               e.g., "my_module.my_activation_fn".
@@ -394,7 +393,7 @@ def get_activation_fn(fn_name: Union[str, Callable[[torch.Tensor], torch.Tensor]
     if fn_name is None:
         return None
 
-    fn_modules = ['torch.nn.modules.activation', 'texar.custom', 'texar.core.layers']
+    fn_modules = ['torch.nn.functional', 'texar.custom', 'texar.core.layers']
     activation_fn_ = utils.get_function(fn_name, fn_modules)
     activation_fn = activation_fn_
 
