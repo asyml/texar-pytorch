@@ -57,7 +57,7 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
     """
 
     def __init__(self, layers=None, hparams=None):
-        FeedForwardNetworkBase.__init__(self, hparams)
+        super(FeedForwardNetwork, self).__init__(hparams)
 
         _build_layers(self, layers=layers, layer_hparams=self._hparams.layers)
 
