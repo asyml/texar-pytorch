@@ -296,6 +296,7 @@ def get_regularizer(hparams=None):
         ValueError: The resulting regularizer is not an instance of
             :class:`~texar.core.regularizers.Regularizer`.
     """
+
     if hparams is None:
         return None
 
@@ -403,6 +404,7 @@ def get_activation_fn(fn_name: Optional[Union[str,
     if kwargs is not None:
         if isinstance(kwargs, HParams):
             kwargs = kwargs.todict()
+
         def _partial_fn(features):
             return activation_fn_(features, **kwargs)
         activation_fn = _partial_fn
@@ -529,15 +531,10 @@ class _ReducePool1d(nn.Module):
         super(_ReducePool1d, self).__init__()
         self._reduce_function = reduce_function
 
-<<<<<<< HEAD
     def forward(self, input: Tuple) -> torch.Tensor:  # type: ignore
         # if check is required because
         # :torch_docs:`torch.mean <torch.html#torch.mean>`
         # does not return a tuple
-=======
-    def forward(self, input: Tuple) -> torch.Tensor:
-        # if check is required because :torch_docs:`torch.mean <torch.html#torch.mean>` does not return a tuple
->>>>>>> f510bf8... Passing in a torch.Tensor instead of a tuple in forward function
         if self._reduce_function == torch.mean:
             output = self._reduce_function(input, dim=2, keepdim=True)
         else:
@@ -850,3 +847,4 @@ _layer_class_to_default_kwargs_map = {
     nn.AvgPool2d: default_avg_pool2d_kwargs(),
     nn.AvgPool3d: default_avg_pool3d_kwargs(),
 }
+

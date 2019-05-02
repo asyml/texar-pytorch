@@ -519,7 +519,6 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             Returns:
                 The output of the final layer.
         """
-
         sequence_length = kwargs.get("sequence_length", None)
         dtype = kwargs.get("dtype", None)
         if sequence_length is not None:
