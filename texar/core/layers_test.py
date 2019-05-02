@@ -1,9 +1,87 @@
+"""
+Unit tests for various layers.
+"""
 import unittest
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 
+import texar as tx
 from texar.core import layers
+
+
+class GetActivationFnTest(unittest.TestCase):
+    """Tests :func:`texar.core.layers.get_activation_fn`.
+    """
+    def test_get_activation_fn(self):
+        """Tests.
+        """
+        fn = layers.get_activation_fn()
+        self.assertEqual(fn, None)
+
+        fn = layers.get_activation_fn('relu')
+        self.assertEqual(fn, F.relu)
+
+        inputs = torch.randn(64, 100)
+
+        fn = layers.get_activation_fn('leaky_relu')
+        fn_output = fn(inputs)
+        ref_output = F.leaky_relu(inputs)
+        self.assertEqual(torch.all(torch.eq(fn_output, ref_output)), 1)
+
+        fn = layers.get_activation_fn('leaky_relu', kwargs={'negative_slope': 0.1})
+        fn_output = fn(inputs)
+        ref_output = F.leaky_relu(inputs, negative_slope=0.1)
+        self.assertEqual(torch.all(torch.eq(fn_output, ref_output)), 1)
+
+
+class GetLayerTest(unittest.TestCase):
+    """Tests layer creator.
+    """
+    def test_get_layer(self):
+        """Tests :func:`texar.core.layers.get_layer`.
+        """
+        hparams = {"type": "Conv1d",
+                   "kwargs": {"in_channels": 16,
+                              "out_channels": 32,
+                              "kernel_size": 2}
+                   }
+
+        layer = layers.get_layer(hparams)
+        self.assertTrue(isinstance(layer, nn.Conv1d))
+
+        hparams = {
+            "type": "MergeLayer",
+            "kwargs": {
+                "layers": [
+                    {"type": "Conv1d",
+                     "kwargs": {"in_channels": 16,
+                                "out_channels": 32,
+                                "kernel_size": 2}},
+                    {"type": "Conv1d",
+                     "kwargs": {"in_channels": 16,
+                                "out_channels": 32,
+                                "kernel_size": 2}}
+                ]
+            }
+        }
+        layer = layers.get_layer(hparams)
+        self.assertTrue(isinstance(layer, tx.core.MergeLayer))
+
+        hparams = {"type": "Conv1d",
+                   "kwargs": {"in_channels": 16,
+                              "out_channels": 32,
+                              "kernel_size": 2}
+                   }
+        layer = layers.get_layer(hparams)
+        self.assertTrue(isinstance(layer, nn.Conv1d))
+
+        hparams = {
+            "type": nn.Conv1d(in_channels=16, out_channels=32, kernel_size=2)
+        }
+        layer = layers.get_layer(hparams)
+        self.assertTrue(isinstance(layer, nn.Conv1d))
 
 
 class ReducePoolingLayerTest(unittest.TestCase):
@@ -20,7 +98,6 @@ class ReducePoolingLayerTest(unittest.TestCase):
         """Tests :class:`texar.core.MaxReducePool1d`."""
 
         pool_layer = layers.MaxReducePool1d()
-
         inputs = torch.randn(self._batch_size, self._emb_dim, self._seq_length)
         output = pool_layer(inputs)
         output_reduce, _ = torch.max(inputs, dim=2, keepdim=True)
@@ -31,7 +108,6 @@ class ReducePoolingLayerTest(unittest.TestCase):
         """Tests :class:`texar.core.AvgReducePool1d`."""
 
         pool_layer = layers.AvgReducePool1d()
-
         inputs = torch.randn(self._batch_size, self._emb_dim, self._seq_length)
         output = pool_layer(inputs)
         output_reduce = torch.mean(inputs, dim=2, keepdim=True)
@@ -46,7 +122,7 @@ class MergeLayerTest(unittest.TestCase):
     def test_layer_logics(self):
         """Test the logic of MergeLayer.
         """
-        layers_ = []
+        layers_ = list()
         layers_.append(nn.Conv1d(in_channels=32, out_channels=32, kernel_size=3))
         layers_.append(nn.Conv1d(in_channels=32, out_channels=32, kernel_size=4))
         layers_.append(nn.Conv1d(in_channels=32, out_channels=32, kernel_size=5))
