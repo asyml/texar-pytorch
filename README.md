@@ -1,4 +1,7 @@
 
+
+[![Build Status](https://travis-ci.org/ZhitingHu/texar-pytorch.svg?branch=master)](https://travis-ci.org/ZhitingHu/texar-pytorch)
+
 # Texar in Pytorch
 
 The Pytorch version should keep the same with the [TF version](https://github.com/asyml/texar) in terms of:
