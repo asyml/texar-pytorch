@@ -18,7 +18,9 @@ jobs:
       python: 3.6
       install:
         - pip install mypy
-      script: mypy .
+      script:
+        - echo $(mypy --version)
+        - mypy .
     - stage: tests
       python: 3.7
       script: pytest
