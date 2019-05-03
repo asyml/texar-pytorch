@@ -35,7 +35,6 @@ __all__ = [
     'get_rnn_cell',
     'identity',
     'default_regularizer_hparams',
-    'get_regularizer',
     'get_initializer',
     'get_activation_fn',
     'get_constraint_fn',
@@ -299,8 +298,8 @@ def default_regularizer_hparams():
     }
 
 
-def get_regularizer(hparams=None):
-    """Returns a variable regularizer instance.
+"""def get_regularizer(hparams=None):
+    Returns a variable regularizer instance.
 
     See :func:`~texar.core.default_regularizer_hparams` for all
     hyperparameters and default values.
@@ -321,7 +320,7 @@ def get_regularizer(hparams=None):
     Raises:
         ValueError: The resulting regularizer is not an instance of
             :class:`~texar.core.regularizers.Regularizer`.
-    """
+
     if hparams is None:
         return None
 
@@ -340,7 +339,7 @@ def get_regularizer(hparams=None):
             rgl.l1 == 0. and rgl.l2 == 0.:
         return None
 
-    return rgl
+    return rgl"""
 
 
 def get_initializer(hparams: Optional[HParams] = None) \
