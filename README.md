@@ -1,6 +1,6 @@
 
 
-[![Build Status](https://travis-ci.org/ZhitingHu/texar-pytorch.svg?branch=master)](https://travis-ci.com/ZhitingHu/texar-pytorch)
+[![Build Status](https://travis-ci.com/ZhitingHu/texar-pytorch.svg?branch=master)](https://travis-ci.com/ZhitingHu/texar-pytorch)
 
 # Texar in Pytorch
 
