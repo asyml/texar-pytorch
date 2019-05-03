@@ -6,6 +6,7 @@ python:
 
 install:
   - pip install -e .[torch]
+  - pip install mypy
   - pip install flake8
 
 before_script:
