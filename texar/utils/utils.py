@@ -947,6 +947,9 @@ def strip_special_tokens(str_: MaybeSeq[str],
     """
     s = str_
 
+    if is_token_list:
+        s = str_join(s)
+
     if strip_eos is not None and strip_eos is not False:
         s = _strip_eos_(s, strip_eos, is_token_list=False)
 

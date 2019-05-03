@@ -659,8 +659,7 @@ def get_helper(helper_type: Union[Type[T], T, str],
         A helper instance.
     """
     module_paths = [
-        'texar.modules.decoders.rnn_decoder_helpers',
-        'tensorflow.contrib.seq2seq',
+        'texar.modules.decoders.decoder_helpers',
         'texar.custom']
     class_kwargs = {'embedding': embedding,
                     'start_tokens': start_tokens,
