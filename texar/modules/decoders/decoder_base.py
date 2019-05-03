@@ -81,13 +81,13 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
 
             - **"train_greedy"**: decoding in teacher-forcing fashion (i.e.,
               feeding `ground truth` to decode the next step), and each sample
-              is obtained by taking the `argmax` of the RNN output logits.
-              Arguments :attr:`(inputs, sequence_length, input_time_major)`
+              is obtained by taking the `argmax` of the output logits.
+              Arguments :attr:`(inputs, sequence_length)`
               are required for this strategy, and argument :attr:`embedding`
               is optional.
             - **"infer_greedy"**: decoding in inference fashion (i.e., feeding
               the `generated` sample to decode the next step), and each sample
-              is obtained by taking the `argmax` of the RNN output logits.
+              is obtained by taking the `argmax` of the output logits.
               Arguments :attr:`(embedding, start_tokens, end_token)` are
               required for this strategy, and argument
               :attr:`max_decoding_length` is optional.

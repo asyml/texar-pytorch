@@ -28,7 +28,7 @@ from texar import HParams
 from texar.core import RNNCellBase, layers
 from texar.core.cell_wrappers import HiddenState
 from texar.modules.decoders import decoder_helpers
-from texar.modules.decoders.decoder_base import DecoderBase, State
+from texar.modules.decoders.decoder_base import DecoderBase
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.utils import utils
 

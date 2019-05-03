@@ -26,13 +26,8 @@ from torch import nn
 from torch.distributions import Categorical, Gumbel
 
 from texar.core.cell_wrappers import HiddenState
+from texar.modules.embedders import EmbedderBase
 from texar.utils import utils
-
-
-class EmbedderBase:
-    # pylint: disable=too-few-public-methods
-    r"""Temporary workaround for embedders."""
-    embedding: torch.Tensor
 
 
 __all__ = [

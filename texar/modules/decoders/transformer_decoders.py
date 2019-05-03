@@ -1,0 +1,794 @@
+# Copyright 2019 The Texar Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+Transformer decoder.
+"""
+
+from typing import Dict, NamedTuple, Optional, Tuple
+
+import torch
+import torch.nn.functional as F
+from texar.modules.embedders.position_embedders import \
+    PositionEmbedder, SinusoidsPositionEmbedder
+# from texar.modules.encoders.transformer_encoders import \
+#     default_transformer_poswise_net_hparams
+# from texar.modules.networks.networks import FeedForwardNetwork
+from texar.utils.shapes import mask_sequences
+from torch import nn
+
+from texar import HParams
+from texar.core import layers
+from texar.modules.decoders import decoder_helpers, Helper
+from texar.modules.decoders.decoder_base import DecoderBase
+from texar.modules.encoders.multihead_attention import MultiheadAttentionEncoder
+from texar.utils import beam_search
+from texar.utils import transformer_attentions as attn
+from texar.utils.types import MaybeList
+from texar.utils.utils import sequence_mask
+
+__all__ = [
+    'TransformerDecoderOutput',
+    'TransformerDecoder',
+]
+
+
+class TransformerDecoderOutput(NamedTuple):
+    r"""The output of :class:`TransformerDecoder`.
+
+    Attributes:
+        logits: A float Tensor of shape
+            `[batch_size, max_time, vocab_size]` containing the logits.
+        sample_id: An int Tensor of shape `[batch_size, max_time]`
+            containing the sampled token indexes.
+    """
+    logits: torch.Tensor
+    sample_id: torch.LongTensor
+
+
+Cache = Dict[str, MaybeList[torch.Tensor]]
+
+
+class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
+    r"""Transformer decoder that applies multi-head self-attention for
+    sequence decoding.
+
+    It is a stack of :class:`~texar.modules.encoders.MultiheadAttentionEncoder`,
+    :class:`~texar.modules.FeedForwardNetwork`, and residual connections.
+
+    Args:
+        embedding: A Tensor of shape `[vocab_size, dim]` containing the
+            word embedding matrix. The Tensor is used as the decoder output
+            layer that computes logits over vocabulary. Ignored if
+            `hparams['embedding_tie']` is False.
+        hparams (dict or HParams, optional): Hyperparameters. Missing
+            hyperparameter will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter sturcture and
+            default values.
+
+    .. document private functions
+    .. automethod:: _build
+    """
+
+    def __init__(self, embedding: torch.Tensor,
+                 # input_time_major: bool = False,
+                 # output_time_major: bool = False,
+                 hparams: Optional[HParams] = None):
+        vocab_size = embedding.size(0)
+        input_size = embedding.size(-1)
+        super().__init__(vocab_size, input_size,
+                         input_time_major=False,
+                         output_time_major=False, hparams=hparams)
+
+        if self._hparams.position_embedder_type == 'sinusoids':
+            self.position_embedder = SinusoidsPositionEmbedder(
+                self._hparams.position_embedder_hparams)
+        else:
+            self.position_embedder = PositionEmbedder(
+                position_size=self._hparams.position_size,
+                hparams=self._hparams.position_embedder_hparams)
+
+        self._embedding = embedding
+
+        self._output_layer = nn.Linear(self._input_size, self._vocab_size,
+                                       bias=self._hparams.output_layer_bias)
+        if self._hparams.embedding_tie:
+            self._output_layer.weight = self._embedding
+
+        self.self_attns = nn.ModuleList()
+        self.self_attn_layer_norm = nn.ModuleList()
+        self.enc_dec_attns = nn.ModuleList()
+        self.end_dec_attn_layer_norm = nn.ModuleList()
+        self.poswise_networks = nn.ModuleList()
+        self.poswise_layer_norm = nn.ModuleList()
+        for i in range(self._hparams.num_blocks):
+            attn_module = MultiheadAttentionEncoder(
+                self._input_size, self._hparams.multihead_attention)
+            if self._hparams.dim != attn_module.output_size:
+                raise ValueError("The output dimension of "
+                                 "MultiheadEncoder should be equal "
+                                 "to the dim of TransformerDecoder")
+            self.self_attns.append(attn_module)
+            self.self_attn_layer_norm.append(nn.LayerNorm(self._input_size))
+
+            attn_module = MultiheadAttentionEncoder(
+                self._input_size, self._hparams.multihead_attention)
+            if self._hparams.dim != attn_module.output_size:
+                raise ValueError("The output dimension of "
+                                 "MultiheadEncoder should be equal "
+                                 "to the dim of TransformerDecoder")
+            self.enc_dec_attns.append(attn_module)
+            self.end_dec_attn_layer_norm.append(nn.LayerNorm(self._input_size))
+
+            poswise_network = FeedForwardNetwork(
+                hparams=self._hparams.poswise_feedforward)
+            if (self._hparams.dim !=
+                    poswise_network._hparams.layers[-1]['kwargs']['units']):
+                raise ValueError("The output dimension of "
+                                 "FeedForwardNetwork should be equal "
+                                 "to the dim of TransformerDecoder")
+            self.poswise_networks.append(poswise_network)
+            self.poswise_layer_norm.append(nn.LayerNorm(self._input_size))
+
+        self.final_layer_norm = nn.LayerNorm(self._input_size)
+        self.embed_dropout = nn.Dropout(self._hparams.embedding_dropout)
+        self.residual_dropout = nn.Dropout(self._hparams.residual_dropout)
+
+        if self._hparams.initializer:
+            # TODO: This might be different to what TensorFlow does
+            initialize = layers.get_initializer(self._hparams.initializer)
+            for param in self.parameters():
+                initialize(param)
+
+    @staticmethod
+    def default_hparams():
+        r"""Returns a dictionary of hyperparameters with default values.
+
+        .. code-block:: python
+
+            {
+                # Same as in TransformerEncoder
+                "scale_embeds": True,
+                "num_blocks": 6,
+                "dim": 512,
+                'position_embedder_type': 'sinusoids',
+                'position_size': None,
+                "position_embedder_hparams": None,
+                "embedding_dropout": 0.1,
+                "residual_dropout": 0.1,
+                "poswise_feedforward": default_transformer_poswise_net_hparams,
+                "multihead_attention": {
+                    'name': 'multihead_attention',
+                    'num_units': 512,
+                    'output_dim': 512,
+                    'num_heads': 8,
+                    'dropout_rate': 0.1,
+                    'output_dim': 512,
+                    'use_bias': False,
+                },
+                "initializer": None,
+                "name": "transformer_decoder"
+
+                # Additional for TransformerDecoder
+                "embedding_tie": True,
+                "output_layer_bias": False,
+                "max_decoding_length": int(1e10),
+            }
+
+        Here:
+        "scale_embeds": bool
+            Scale the word embedding with the square root of its dimension.
+            True by default.
+            This should be False when loading the pretrained GPT-2 Model.
+
+        "num_blocks" : int
+            Number of stacked blocks.
+
+        "dim" : int
+            Hidden dimension of the encoder.
+
+        "position_embedder_type":
+            Choose from "sinusoids" or "variables".
+
+            "sinusoids":
+                create the position embedding as sinusoids, which is fixed.
+            "variables":
+                create the position embedding as trainable variables.
+        "position_size": int
+            The size of position embeddings.
+            Only be used when "position_embedder_type"is "variables".
+
+        "position_embedder_hparams" : dict, optional
+            Hyperparameters of a
+            :class:`~texar.modules.SinusoidsPositionEmbedder` as position
+            embedder. If `None`, the
+            :meth:`~texar.modules.SinusoidsPositionEmbedder.default_hparams`
+            is used.
+
+        "embedding_dropout": float
+            Dropout rate of the input word and position embeddings.
+
+        "residual_dropout" :  float
+            Dropout rate of the residual connections.
+
+        "poswise_feedforward" : dict
+            Hyperparameters for a feed-forward network used in residual
+            connections.
+            Make sure the dimension of the output tensor is equal to `dim`.
+
+            See :func:`~texar.modules.default_transformer_poswise_net_hparams`
+            for details.
+
+        "multihead_attention" : dict
+            Hyperparameters for the multihead attention strategy.
+            Make sure the `output_dim` in this module is equal to `dim`.
+
+            See :func:`~texar.modules.MultiheadAttentionEncoder.default_hparams`
+            for details.
+
+        "initializer" : dict, optional
+            Hyperparameters of the default initializer that initializes
+            variables created in this module.
+            See :func:`~texar.core.get_initializer` for details.
+
+        "embedding_tie" : bool
+            Whether to use the word embedding matrix as the output layer
+            that computes logits. If `False`, a new dense layer
+            is created.
+
+        "output_layer_bias" : bool
+            Whether to use bias to the output layer.
+
+        "max_decoding_length" : int
+            The maximum allowed number of decoding steps.
+            Set to a very large number of avoid the length constraint.
+            Ignored if provided in :meth:`_build` or
+            "train_greedy" decoding is used.
+
+            Length penalty coefficient. Refer to
+            https://arxiv.org/abs/1609.08144 for more details.
+
+        "name" : str
+            Name of the module.
+        """
+        return {
+            'scale_embeds': True,
+            'num_blocks': 6,
+            'dim': 512,
+            'position_embedder_type': 'sinusoids',
+            'position_size': None,
+            'position_embedder_hparams': None,
+            'embedding_tie': True,
+            'output_layer_bias': False,
+            'max_decoding_length': int(1e10),
+            'embedding_dropout': 0.1,
+            'residual_dropout': 0.1,
+            'poswise_feedforward': default_transformer_poswise_net_hparams(),
+            'multihead_attention': {
+                'name': 'multihead_attention',
+                'num_units': 512,
+                'num_heads': 8,
+                'dropout_rate': 0.1,
+                'output_dim': 512,
+                'use_bias': False,
+            },
+            'initializer': None,
+            'name': "transformer_decoder",
+        }
+
+    def _prepare_tokens_to_embeds(self, tokens: torch.LongTensor):
+        r"""A callable function to transform tokens into embeddings.
+        """
+        token_emb = F.embedding(tokens, self._embedding)
+        return token_emb
+
+    def _inputs_to_outputs_fn(self, max_length):
+        r"""Returns a function that accepts the inputs and related
+        decoding status, and returns the outputs of this step (for example,
+        the predicted logits of the next token).
+        """
+        positions = torch.arange(max_length).view(1, -1)
+        timing_signal = self.position_embedder(positions)
+
+        def _impl(inputs: torch.Tensor, step: int,
+                  cache: Dict[str, torch.Tensor]):
+            r"""The function is called in dynamic decoding.
+
+            `inputs` should be of shape `[batch_size, dim]`.
+
+            Returns outputs (i.e. logits) of shape `[batch_size, vocab_size]`
+            and updated cache.
+            """
+            # Multiply embedding by sqrt of its dimension
+            if self._hparams.scale_embeds:
+                inputs *= self._embedding.size(-1) ** 0.5
+            inputs += timing_signal[:, step]
+            if cache.get('memory') is not None:
+                outputs = self._self_attention_stack(
+                    inputs.unsqueeze(1),
+                    memory=cache['memory'],
+                    cache=cache,
+                )
+            else:
+                outputs = self._self_attention_stack(
+                    inputs.unsqueeze(1),
+                    memory=None,
+                    cache=cache,
+                )
+            outputs = self._output_layer(outputs)
+            outputs = outputs.squeeze(1)
+            return outputs, cache
+
+        return _impl
+
+    def create_helper(self, **kwargs) -> Helper:
+        kwargs.update(embedding=self._embedding)
+        return super().create_helper(**kwargs)
+
+    # def _build(self,  # pylint: disable=arguments-differ
+    #            memory: Optional[torch.Tensor] = None,
+    #            memory_sequence_length: Optional[torch.LongTensor] = None,
+    #            memory_attention_bias: Optional[torch.Tensor] = None,
+    #            inputs: Optional[torch.Tensor] = None,
+    #            sequence_length: Optional[torch.LongTensor] = None,
+    #            beam_width: Optional[int] = None,
+    #            length_penalty: float = 0.,
+    #            context=None,
+    #            context_sequence_length=None,
+    #            max_decoding_length=None,
+    #            impute_finished=False,
+    #            helper=None,
+    #            mode=None):
+    def forward(self, inputs: Optional[torch.Tensor] = None,
+                sequence_length: Optional[torch.LongTensor] = None,
+                memory: Optional[torch.Tensor] = None,
+                memory_sequence_length: Optional[torch.LongTensor] = None,
+                memory_attention_bias: Optional[torch.Tensor] = None,
+                context: Optional[torch.Tensor] = None,
+                context_sequence_length: Optional[torch.LongTensor] = None,
+                helper: Optional[Helper] = None,
+                max_decoding_length: Optional[int] = None,
+                impute_finished: bool = False,
+                infer_mode: Optional[bool] = None,
+                **kwargs) -> Tuple[Output, HiddenState, torch.LongTensor]:
+        r"""Performs decoding.
+
+        The interface is very similar to that of RNN decoders
+        (:meth:`texar.modules.RNNDecoderBase._build`). In particular,
+        the function provides **3 ways** to specify the decoding method, with
+        varying flexibility:
+
+        1. The :attr:`decoding_strategy` argument.
+
+            - **"train_greedy"**: decoding in teacher-forcing fashion (i.e.,
+              feeding ground truth to decode the next step), and for each step
+              sample is obtained by taking the `argmax` of logits.
+              Argument :attr:`inputs` is required for this strategy.
+              :attr:`sequence_length` is optional.
+            - **"infer_greedy"**: decoding in inference fashion (i.e., feeding
+              `generated` sample to decode the next step), and for each step
+              sample is obtained by taking the `argmax` of logits.
+              Arguments :attr:`(start_tokens, end_token)` are
+              required for this strategy, and argument
+              :attr:`max_decoding_length` is optional.
+            - **"infer_sample"**: decoding in inference fashion, and for each
+              step sample is obtained by `random sampling` from the logits.
+              Arguments :attr:`(start_tokens, end_token)` are required for this
+              strategy, and argument :attr:`max_decoding_length` is optional.
+
+          This argument is used only when arguments :attr:`helper` and
+          :attr:`beam_width` are both `None`.
+
+        2. The :attr:`helper` argument: An instance of subclass of
+           :tf_main:`tf.contrib.seq2seq.Helper <contrib/seq2seq/Helper>`.
+           This provides a superset of decoding strategies than above.
+           The interface is the same as in RNN decoders.
+           Please refer to :meth:`texar.modules.RNNDecoderBase._build` for
+           detailed usage and examples.
+
+           Note that, here, though using a :tf_main:`TrainingHelper
+           <contrib/seq2seq/TrainingHelper>` corresponding to the
+           "train_greedy" strategy above, the implementation is *slower* than
+           directly setting `decoding_strategy="train_greedy"` (though the
+           output results are the same).
+
+           Argument :attr:`max_decoding_length` is optional.
+
+        3. **Beam search**: set :attr:`beam_width` to use beam search decoding.
+           Arguments :attr:`(start_tokens, end_token)` are required,
+           and argument :attr:`max_decoding_length` is optional.
+
+        Args:
+            memory (optional): The memory to attend, e.g., the output of an RNN
+                encoder. A Tensor of shape `[batch_size, memory_max_time, dim]`.
+            memory_sequence_length (optional): A Tensor of shape `[batch_size]`
+                containing the sequence lengths for the batch entries in
+                memory. Used to create attention bias of
+                :attr:`memory_attention_bias` is not given. Ignored if
+                `memory_attention_bias` is provided.
+            memory_attention_bias (optional): A Tensor of shape
+                `[batch_size, num_heads, memory_max_time, dim]`.
+                An attention bias typically sets the value of a padding
+                position to a large negative value for masking. If not given,
+                :attr:`memory_sequence_length` is used to automatically
+                create an attention bias.
+            inputs (optional): Input tensor for teacher forcing decoding, of
+                shape `[batch_size, target_max_time, emb_dim]` containing the
+                target sequence word embeddings.
+                Used when :attr:`decoding_strategy` is set to "train_greedy".
+            sequence_length (optional): A Tensor of shape `[batch_size]`,
+                containing the sequence length of :attr:`inputs`.
+                Tokens beyond the respective sequence length are masked out.
+                Used when :attr:`decoding_strategy` is set to
+                "train_greedy".
+            decoding_strategy (str): A string specifying the decoding
+                strategy, including "train_greedy", "infer_greedy",
+                "infer_sample".
+                Different arguments are required based on the
+                strategy. See above for details. Ignored if
+                :attr:`beam_width` or :attr:`helper` is set.
+            beam_width (int): Set to use beam search. If given,
+                :attr:`decoding_strategy` is ignored.
+            length_penalty (float): Length penalty coefficient used in beam
+                search decoding. Refer to https://arxiv.org/abs/1609.08144
+                for more details.
+                It Should be larger if longer sentences are wanted.
+            start_tokens (optional): An int Tensor of shape `[batch_size]`,
+                containing the start tokens.
+                Used when :attr:`decoding_strategy` = "infer_greedy" or
+                "infer_sample", or :attr:`beam_width` is set.
+                Ignored when context is set.
+            end_token (optional): An int 0D Tensor, the token that marks end
+                of decoding.
+                Used when :attr:`decoding_strategy` = "infer_greedy" or
+                "infer_sample", or :attr:`beam_width` is set.
+            context (optional): An int Tensor of shape `[batch_size, length]`,
+                containing the starting tokens for decoding.
+                If context is set, the start_tokens will be ignored.
+            context_sequence_length (optional): specify the length of context.
+            softmax_temperature (optional): A float 0D Tensor, value to divide
+                the logits by before computing the softmax. Larger values
+                (above 1.0) result in more random samples. Must > 0. If `None`,
+                1.0 is used.
+                Used when :attr:`decoding_strategy` = "infer_sample"`.
+            max_decoding_length (optional): An int scalar Tensor indicating
+                the maximum allowed number of decoding steps.
+                If `None` (default), use "max_decoding_length" defined in
+                :attr:`hparams`. Ignored in "train_greedy" decoding.
+            impute_finished (bool): If `True`, then states for batch
+                entries which are marked as finished get copied through and
+                the corresponding outputs get zeroed out.  This causes some
+                slowdown at each time step, but ensures that the final state
+                and outputs have the correct values and that backprop ignores
+                time steps that were marked as finished. Ignored in
+                "train_greedy" decoding.
+            helper (optional): An instance of
+                :tf_main:`Helper <contrib/seq2seq/Helper>` that defines the
+                decoding strategy. If given, :attr:`decoding_strategy` is
+                ignored.
+            mode (optional): A tensor taking value in
+                :tf_main:`tf.estimator.ModeKeys <estimator/ModeKeys>`, including
+                `TRAIN`, `EVAL`, and `PREDICT`. Controls dropout mode.
+                If `None` (default), :func:`texar.global_mode`
+                is used.
+
+        Returns:
+
+            - For **"train_greedy"** decoding, returns an instance of \
+            :class:`~texar.modules.TransformerDecoderOutput` which contains\
+            `sample_id` and `logits`.
+
+            - For **"infer_greedy"** and **"infer_sample"** decoding or\
+            decoding with :attr:`helper`, returns\
+            a tuple `(outputs, sequence_lengths)`, where `outputs` is an \
+            instance of :class:`~texar.modules.TransformerDecoderOutput` as\
+            in "train_greedy", and `sequence_lengths` is a Tensor of shape\
+            `[batch_size]` containing the length of each sample.
+
+            - For **beam search** decoding, returns a `dict` containing keys\
+            "sample_id" and "log_prob".
+
+                - **"sample_id"** is an int Tensor of shape \
+                `[batch_size, max_time, beam_width]` containing generated\
+                token indexes. `sample_id[:,:,0]` is the highest-probable \
+                sample.
+                - **"log_prob"** is a float Tensor of shape \
+                `[batch_size, beam_width]` containing the log probability \
+                of each sequence sample.
+        """
+
+        if memory is not None:
+            if memory_attention_bias is None:
+                if memory_sequence_length is None:
+                    raise ValueError(
+                        "`memory_sequence_length` is required if "
+                        "`memory_attention_bias` is not given.")
+
+                enc_padding = 1 - sequence_mask(
+                    memory_sequence_length, memory.size(1),
+                    dtype=torch.float32)
+                memory_attention_bias = attn.attention_bias_ignore_padding(
+                    enc_padding)
+
+        # record the context, which will be used in step function
+        # for dynamic_decode
+        if context is not None:
+            start_tokens = context[:, 0]
+            self.context = context[:, 1:]
+            self.context_sequence_length = context_sequence_length - 1
+        else:
+            self.context = None
+
+        if helper is None and beam_width is None and \
+                decoding_strategy == 'train_greedy':  # Teacher-forcing
+            # Faster code path for teacher-forcing training
+            if sequence_length is not None:
+                inputs = mask_sequences(inputs, sequence_length)
+
+            decoder_self_attention_bias = (
+                attn.attention_bias_lower_triangle(inputs.size(1)))
+            if self._hparams.scale_embeds:
+                target_inputs = inputs * self._hparams.dim ** 0.5
+            else:
+                target_inputs = inputs
+
+            lengths = target_inputs.size(1)
+            positions = torch.arange(lengths).view(1, -1)
+            pos_embeds = self.position_embedder(positions)
+
+            inputs = target_inputs + pos_embeds
+
+            decoder_output = self._self_attention_stack(
+                inputs,
+                memory,
+                decoder_self_attention_bias=decoder_self_attention_bias,
+                memory_attention_bias=memory_attention_bias,
+                cache=None,
+                mode=mode)
+            logits = self._output_layer(decoder_output)
+            preds = torch.argmax(logits, dim=-1)
+            rets = TransformerDecoderOutput(
+                logits=logits,
+                sample_id=preds
+            )
+
+        else:
+            if max_decoding_length is None:
+                max_decoding_length = self._hparams.max_decoding_length
+
+            self._inputs_to_outputs = self._inputs_to_outputs_fn(
+                max_decoding_length + 1)
+
+            if beam_width is None:  # Inference-like decoding
+                # Prepare helper
+                if helper is not None:
+                    # ignore `decoding_strategy`
+                    pass
+                else:
+                    if decoding_strategy == 'infer_greedy':
+                        helper = decoder_helpers.GreedyEmbeddingHelper(
+                            self._embedding, start_tokens, end_token)
+                    elif decoding_strategy == 'infer_sample':
+                        helper = decoder_helpers.SampleEmbeddingHelper(
+                            self._embedding, start_tokens, end_token,
+                            softmax_temperature)
+                    else:
+                        raise ValueError(
+                            f"Unknown decoding strategy: {decoding_strategy}")
+                self._helper = helper
+
+                self._cache = self._init_cache(memory, memory_attention_bias,
+                                               beam_search_decoding=False)
+                if context is not None:
+                    pad_length = max_decoding_length - self.context.size(1)
+                    if pad_length > 0:
+                        self.context = torch.cat((
+                            self.context,
+                            torch.zeros(self.context.size(0), pad_length)
+                        ), dim=1)
+
+                outputs, cache, sequence_lengths = self.dynamic_decode(
+                    helper=helper, impute_finished=impute_finished,
+                    max_decoding_length=max_decoding_length)
+
+                if context is not None:
+                    # Here the length of sample_id will be larger than that
+                    # of logit by 1, because there will be a additional
+                    # start_token in the returned sample_id.
+                    # the start_id should be the first token of the
+                    # given context
+                    outputs = TransformerDecoderOutput(
+                        logits=outputs.logits,
+                        sample_id=torch.cat([
+                            start_tokens.unsqueeze(1),
+                            outputs.sample_id
+                        ], dim=1))
+                    sequence_lengths = sequence_lengths + 1
+                rets = outputs, sequence_lengths
+
+            else:  # Beam-search decoding
+                # ignore `decoding_strategy`
+                # assume `helper` is not set
+                if helper is not None:
+                    raise ValueError("Must not set 'beam_width' and 'helper' "
+                                     "simultaneously.")
+                _batch_size = start_tokens.size(0)
+                self._cache = self._init_cache(memory, memory_attention_bias,
+                                               beam_search_decoding=True,
+                                               batch_size=_batch_size)
+
+                # The output format is different when running beam search
+                sample_id, log_prob = self._beam_decode(
+                    start_tokens,
+                    end_token,
+                    beam_width=beam_width,
+                    length_penalty=length_penalty,
+                    decode_length=max_decoding_length,
+                )
+                rets = {
+                    'sample_id': sample_id,
+                    'log_prob': log_prob
+                }
+
+        return rets
+
+    def _self_attention_stack(self,
+                              inputs: torch.Tensor,
+                              memory,
+                              decoder_self_attention_bias=None,
+                              memory_attention_bias=None,
+                              cache=None,
+                              mode=None):
+        r"""Stacked multihead attention module.
+        """
+
+        inputs = self.embed_dropout(inputs)
+        if cache is not None:
+            if memory is not None:
+                memory_attention_bias = cache['memory_attention_bias']
+        else:
+            assert decoder_self_attention_bias is not None
+
+        x = inputs
+        for i in range(self._hparams.num_blocks):
+            layer_name = f'layer_{i}'
+            layer_cache = cache[layer_name] if cache is not None else None
+
+            selfatt_output = self.self_attns[i](
+                queries=self.self_attn_layer_norm[i](x),
+                memory=None,
+                memory_attention_bias=decoder_self_attention_bias,
+                cache=layer_cache,
+            )
+            x = x + self.residual_dropout(selfatt_output)
+
+            if memory is not None:
+                encdec_output = self.enc_dec_attns[i](
+                    queries=self.end_dec_attn_layer_norm[i](x),
+                    memory=memory,
+                    memory_attention_bias=memory_attention_bias,
+                    mode=mode,
+                )
+                x = x + self.residual_dropout(encdec_output)
+
+            sub_output = self.poswise_networks[i](self.poswise_layer_norm[i](x))
+            x = x + self.residual_dropout(sub_output)
+
+        return self.final_layer_norm(x)
+
+    def _init_cache(self, memory, memory_attention_bias: torch.Tensor,
+                    beam_search_decoding: bool,
+                    batch_size: int) -> Cache:
+        r"""Returns an initialized cache.
+
+        In order to support both inference-like decoding and beam-search
+        decoding, the elements of each layer must be initialized and extended
+        as different structure respectively. Specifically, when inference-like
+        decoding, tf.TensorArray is used, which satisfies the shape consistency
+        check in the while-loop in tf.contrib.seq2seq.dynamic_decode. When
+        beam-search decoding, a tf.Tensor of shape
+        `[batch_size, current_steps, num_units]` is maintained, where
+        `current_steps` is the number of steps currently decoded.
+        """
+
+        def _create_ta():
+            return []
+
+        def _create_empty_tensor():
+            return torch.zeros(
+                batch_size, 0, self._hparams.multihead_attention.num_units,
+                dtype=torch.float)
+
+        _create_fn = (_create_empty_tensor if beam_search_decoding
+                      else _create_ta)
+
+        if memory is not None:
+            cache = {
+                'memory': memory,
+                'memory_attention_bias': memory_attention_bias,
+            }
+            for l in range(self._hparams.num_blocks):
+                cache[f'layer_{l}'] = {
+                    'self_keys': _create_fn(),
+                    'self_values': _create_fn(),
+                    'memory_keys': _create_fn(),
+                    'memory_values': _create_fn(),
+                }
+        else:
+            cache = {}
+            for l in range(self._hparams.num_blocks):
+                cache[f'layer_{l}'] = {
+                    'self_keys': _create_fn(),
+                    'self_values': _create_fn(),
+                }
+
+        return cache
+
+    def _beam_decode(self,
+                     start_tokens,
+                     end_token,
+                     decode_length=256,
+                     beam_width=5,
+                     length_penalty=0.6):
+        def _symbols_to_logits_fn(ids, step, cache):
+            return self._inputs_to_outputs(
+                self._prepare_tokens_to_embeds(ids[:, -1]), step, cache)
+
+        outputs, log_prob = beam_search.beam_search(
+            _symbols_to_logits_fn,
+            start_tokens,
+            beam_width,
+            decode_length,
+            self._vocab_size,
+            length_penalty,
+            states=self._cache,
+            eos_id=end_token)
+
+        # Ignores <BOS>
+        outputs = outputs[:, :, 1:]
+        # shape = [batch_size, seq_length, beam_width]
+        outputs = outputs.permute([0, 2, 1])
+        return (outputs, log_prob)
+
+    @property
+    def output_size(self) -> TransformerDecoderOutput:
+        r"""Output size of one step.
+        """
+        return TransformerDecoderOutput(
+            logits=torch.Size([self._vocab_size]),
+            sample_id=self._helper.sample_ids_shape)
+
+    def step(self, helper: Helper, time: int,
+             inputs: torch.Tensor, state: Cache) \
+            -> Tuple[TransformerDecoderOutput, Cache,
+                     torch.Tensor, torch.ByteTensor]:
+        outputs, state = self._inputs_to_outputs(inputs, time, state)
+        sample_ids = self._helper.sample(
+            time=time, outputs=outputs, state=state)
+        print(f"sample_ids.shape:{sample_ids}")
+        if self.context is not None:
+            _times = torch.ones(self.batch_size, dtype=torch.int) * time
+            sample_ids = torch.where(
+                self.context_sequence_length > _times,
+                self.context[:, time],
+                sample_ids)
+
+        finished, next_inputs, next_state = self._helper.next_inputs(
+            time=time,
+            outputs=outputs,
+            state=state,
+            sample_ids=sample_ids)
+        outputs = TransformerDecoderOutput(
+            logits=outputs,
+            sample_id=sample_ids)
+        return outputs, next_state, next_inputs, finished
