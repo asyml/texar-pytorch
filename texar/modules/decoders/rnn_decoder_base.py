@@ -28,7 +28,7 @@ from texar import HParams
 from texar.core import RNNCellBase, layers
 from texar.core.cell_wrappers import HiddenState
 from texar.modules.decoders import decoder_helpers
-from texar.modules.decoders.decoder_base import DecoderBase
+from texar.modules.decoders.decoder_base import DecoderBase, State
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.utils import utils
 
@@ -103,14 +103,15 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
             return cls._get_batch_size_from_state(state[0])
         return state.size(0)
 
-    def forward(self, inputs: Optional[torch.Tensor] = None,
+    def forward(self,  # type: ignore
+                inputs: Optional[torch.Tensor] = None,
                 sequence_length: Optional[torch.LongTensor] = None,
                 initial_state: Optional[HiddenState] = None,
                 helper: Optional[Helper] = None,
                 max_decoding_length: Optional[int] = None,
                 impute_finished: bool = False,
-                infer_mode: Optional[bool] = None,
-                **kwargs) -> Tuple[Output, HiddenState, torch.LongTensor]:
+                infer_mode: Optional[bool] = None, **kwargs) \
+            -> Tuple[Output, Optional[HiddenState], torch.LongTensor]:
         r"""Performs decoding. This is a shared interface for both
         :class:`~texar.modules.BasicRNNDecoder` and
         :class:`~texar.modules.AttentionRNNDecoder`.
@@ -199,9 +200,7 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
                              "when using 'TrainingHelper'.")
 
         # Initial state
-        if initial_state is not None:
-            batch_size = self._get_batch_size_from_state(initial_state)
-            self._cell.init_batch(batch_size)
+        self._cell.init_batch()
 
         # Maximum decoding length
         if max_decoding_length is None:
@@ -227,7 +226,7 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
         raise NotImplementedError
 
     def step(self, helper: Helper, time: int,
-             inputs: torch.Tensor, state: HiddenState) \
+             inputs: torch.Tensor, state: Optional[HiddenState]) \
             -> Tuple[Output, HiddenState, torch.Tensor, torch.ByteTensor]:
         r"""Called per step of decoding (but only once for dynamic decoding).
 

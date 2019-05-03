@@ -24,12 +24,11 @@ from abc import ABC
 from typing import Generic, Optional, Tuple, TypeVar
 
 import torch
-from torch import nn
 
 from texar import HParams
 from texar.module_base import ModuleBase
 from texar.modules.decoders import decoder_helpers
-from texar.modules.decoders.decoder_helpers import Helper
+from texar.modules.decoders.decoder_helpers import Embedding, Helper
 from texar.utils import utils
 
 __all__ = [
@@ -65,7 +64,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
 
     def create_helper(self, *,
                       decoding_strategy: Optional[str] = None,
-                      embedding: Optional[nn.Module] = None,
+                      embedding: Optional[Embedding] = None,
                       start_tokens: Optional[torch.LongTensor] = None,
                       end_token: Optional[int] = None,
                       softmax_temperature: Optional[float] = None,
@@ -294,14 +293,23 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         """
         self._infer_helper = helper
 
-    def dynamic_decode(self, helper: Helper, inputs: torch.Tensor,
-                       sequence_length: torch.LongTensor,
-                       initial_state: State,
+    def dynamic_decode(self, helper: Helper, inputs: Optional[torch.Tensor],
+                       sequence_length: Optional[torch.LongTensor],
+                       initial_state: Optional[State],
                        max_decoding_length: Optional[int] = None,
                        impute_finished: bool = False) \
-            -> Tuple[Output, State, torch.LongTensor]:
+            -> Tuple[Output, Optional[State], torch.LongTensor]:
+        r"""Generic routine for dynamic decoding. Please check the documentation
+        for the TensorFlow counterpart.
+
+        Returns:
+            A tuple of output, final state, and sequence lengths. Note that
+            final state could be `None`, when all sequences are of zero length
+            and `initial_state` is also `None`.
+        """
+
         # Decode
-        finished, step_inputs, state = self.initialize(  # type: ignore
+        finished, step_inputs, state = self.initialize(
             helper, inputs, sequence_length, initial_state)
 
         zero_outputs = step_inputs.new_zeros(
@@ -372,10 +380,10 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         raise NotImplementedError
 
     def initialize(self, helper: Helper,
-                   inputs: torch.Tensor,
-                   sequence_length: torch.LongTensor,
-                   initial_state: State) \
-            -> Tuple[torch.ByteTensor, torch.Tensor, State]:
+                   inputs: Optional[torch.Tensor],
+                   sequence_length: Optional[torch.LongTensor],
+                   initial_state: Optional[State]) \
+            -> Tuple[torch.ByteTensor, torch.Tensor, Optional[State]]:
         r"""Called before any decoding iterations.
 
         This methods must compute initial input values and initial state.
@@ -396,7 +404,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         return (initial_finished, initial_inputs, initial_state)
 
     def step(self, helper: Helper, time: int,
-             inputs: torch.Tensor, state: State) \
+             inputs: torch.Tensor, state: Optional[State]) \
             -> Tuple[Output, State, torch.Tensor, torch.ByteTensor]:
         r"""Called per step of decoding (but only once for dynamic decoding).
 
@@ -418,9 +426,9 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         """
         raise NotImplementedError
 
-    def finalize(self, outputs: Output, final_state: State,
+    def finalize(self, outputs: Output, final_state: Optional[State],
                  sequence_lengths: torch.LongTensor) \
-            -> Tuple[Output, State]:
+            -> Tuple[Output, Optional[State]]:
         r"""Called after all decoding iterations have finished.
 
         Args:

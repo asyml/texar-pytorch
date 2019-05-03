@@ -18,7 +18,7 @@ Various RNN decoders.
 # pylint: disable=no-name-in-module, too-many-arguments, too-many-locals
 # pylint: disable=not-context-manager, protected-access, invalid-name
 
-from typing import NamedTuple, Tuple
+from typing import NamedTuple, Optional, Tuple
 
 import torch
 
@@ -227,7 +227,7 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
         return hparams
 
     def step(self, helper: Helper, time: int,
-             inputs: torch.Tensor, state: HiddenState) \
+             inputs: torch.Tensor, state: Optional[HiddenState]) \
             -> Tuple[BasicRNNDecoderOutput, HiddenState,
                      torch.Tensor, torch.ByteTensor]:
         cell_outputs, cell_state = self._cell(inputs, state)

@@ -110,7 +110,7 @@ class RNNCellBase(nn.Module, Generic[State]):
         """
         return next(self.parameters())
 
-    def init_batch(self, batch_size: int):
+    def init_batch(self):
         r"""Perform batch-specific initialization routines. For most cells this
         is a no-op.
 
@@ -128,7 +128,7 @@ class RNNCellBase(nn.Module, Generic[State]):
             State tensor(s) initialized to zeros. Note that different subclasses
             might return tensors of different shapes and structures.
         """
-        self.init_batch(batch_size)
+        self.init_batch()
         if isinstance(self._cell, nn.RNNCellBase):
             state = self._param.new_zeros(
                 batch_size, self.hidden_size, requires_grad=False)
@@ -136,7 +136,8 @@ class RNNCellBase(nn.Module, Generic[State]):
             state = self._cell.zero_state(batch_size)
         return state
 
-    def forward(self, input: torch.Tensor, state: Optional[State] = None) \
+    def forward(self,  # type: ignore
+                input: torch.Tensor, state: Optional[State] = None) \
             -> Tuple[torch.Tensor, State]:
         r"""
         Returns:
@@ -154,7 +155,8 @@ class BuiltinCellWrapper(RNNCellBase[State]):
     RNN cells.
     """
 
-    def forward(self, input: torch.Tensor, state: Optional[State] = None) \
+    def forward(self,  # type: ignore
+                input: torch.Tensor, state: Optional[State] = None) \
             -> Tuple[torch.Tensor, State]:
         if state is None:
             batch_size = input.size(0)
@@ -203,7 +205,8 @@ class LSTMCell(BuiltinCellWrapper[LSTMState]):
             batch_size, self.hidden_size, requires_grad=False)
         return (state, state)
 
-    def forward(self, input: torch.Tensor, state: Optional[LSTMState] = None) \
+    def forward(self,  # type: ignore
+                input: torch.Tensor, state: Optional[LSTMState] = None) \
             -> Tuple[torch.Tensor, LSTMState]:
         if state is None:
             batch_size = input.size(0)
@@ -267,39 +270,53 @@ class DropoutWrapper(RNNCellBase[State]):
         self._recurrent_output_mask: Optional[torch.Tensor] = None
         self._recurrent_state_mask: Optional[torch.Tensor] = None
 
-    def init_batch(self, batch_size: int):
+    def _new_mask(self, batch_size: int, mask_size: int,
+                  prob: float) -> torch.Tensor:
+        return self._param.new_zeros(batch_size, mask_size).bernoulli_(prob)
+
+    def init_batch(self):
         r"""Initialize dropout masks for variational dropout.
 
-        Args:
-            batch_size: int, the batch size.
+        Note that we do not create dropout mask here, because the batch size
+        may not be known until actual input is passed in.
         """
         self._recurrent_input_mask = None
         self._recurrent_output_mask = None
         self._recurrent_state_mask = None
-        # pylint: disable=line-too-long
-        if self.training and self._variational_recurrent:
-            if self._input_keep_prob < 1.0:
-                self._recurrent_input_mask = self._param.new_zeros(
-                    batch_size, self.input_size).bernoulli_(self._input_keep_prob)
-            if self._output_keep_prob < 1.0:
-                self._recurrent_output_mask = self._param.new_zeros(
-                    batch_size, self.hidden_size).bernoulli_(self._output_keep_prob)
-            if self._state_keep_prob < 1.0:
-                self._recurrent_state_mask = self._param.new_zeros(
-                    batch_size, self.hidden_size).bernoulli_(self._state_keep_prob)
-        # pylint: enable=line-too-long
 
     def _dropout(self, tensor: torch.Tensor, keep_prob: float,
                  mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         r"""Decides whether to perform standard dropout or recurrent dropout."""
-        if keep_prob == 1.0:
+        if keep_prob == 1.0 or not self.training:
             return tensor
         if mask is not None:
             return tensor.mul(mask).mul(1.0 / keep_prob)
         return F.dropout(tensor, 1.0 - keep_prob, self.training)
 
-    def forward(self, input: torch.Tensor, state: Optional[State] = None) \
+    def forward(self,  # type: ignore
+                input: torch.Tensor, state: Optional[State] = None) \
             -> Tuple[torch.Tensor, State]:
+        if self.training and self._variational_recurrent:
+            # Create or check recurrent masks.
+            batch_size = input.size(0)
+            for name, size in [('input', self.input_size),
+                               ('output', self.hidden_size),
+                               ('state', self.hidden_size)]:
+                prob = getattr(self, f'_{name}_keep_prob')
+                if prob == 1.0:
+                    continue
+                mask = getattr(self, f'_recurrent_{name}_mask')
+                if mask is None:
+                    # Initialize the mask according to current batch size.
+                    mask = self._new_mask(batch_size, size, prob)
+                    setattr(self, f'_recurrent_{name}_mask', mask)
+                else:
+                    # Check that size matches.
+                    if mask.size(0) != batch_size:
+                        raise ValueError(
+                            "Variational recurrent dropout mask does not "
+                            "support variable batch sizes across time steps")
+
         input = self._dropout(input, self._input_keep_prob,
                               self._recurrent_input_mask)
         output, new_state = super().forward(input, state)
@@ -315,7 +332,8 @@ class DropoutWrapper(RNNCellBase[State]):
 class ResidualWrapper(RNNCellBase[State]):
     r"""RNNCell wrapper that ensures cell inputs are added to the outputs."""
 
-    def forward(self, input: torch.Tensor, state: Optional[State] = None) \
+    def forward(self,  # type: ignore
+                input: torch.Tensor, state: Optional[State] = None) \
             -> Tuple[torch.Tensor, State]:
         output, new_state = super().forward(input, state)
         output = input + output
@@ -353,7 +371,8 @@ class HighwayWrapper(RNNCellBase[State]):
             if not couple_carry_transform_gates:
                 nn.init.constant_(self.transform.bias, -carry_bias_init)  # pylint: disable=invalid-unary-operand-type
 
-    def forward(self, input: torch.Tensor, state: Optional[State] = None) \
+    def forward(self,  # type: ignore
+                input: torch.Tensor, state: Optional[State] = None) \
             -> Tuple[torch.Tensor, State]:
         output, new_state = super().forward(input, state)
         carry = torch.sigmoid(self.carry(input))
@@ -400,15 +419,16 @@ class MultiRNNCell(RNNCellBase[List[State]]):
     def hidden_size(self):
         return self._cell[-1].hidden_size
 
-    def init_batch(self, batch_size: int):
+    def init_batch(self):
         for cell in self._cell:
-            cell.init_batch(batch_size)
+            cell.init_batch()
 
     def zero_state(self, batch_size: int) -> List[State]:
         states = [cell.zero_state(batch_size) for cell in self._cell]
         return states
 
-    def forward(self, input: torch.Tensor,
+    def forward(self,  # type: ignore
+                input: torch.Tensor,
                 state: Optional[List[State]] = None) \
             -> Tuple[torch.Tensor, List[State]]:
         r"""Run this multi-layer cell on inputs, starting from state."""
