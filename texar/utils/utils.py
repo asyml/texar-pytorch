@@ -177,6 +177,7 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
     """
     if not torch.is_tensor(lengths):
         lengths = torch.tensor(lengths, device=device)
+    lengths: torch.Tensor
     if max_len is None:
         max_len = torch.max(lengths).item()
 
@@ -294,7 +295,7 @@ def get_class(class_name: str,
         raise ValueError(
             "Class not found in {}: {}".format(module_paths, class_name))
 
-    return class_
+    return class_  # type: ignore
 
 
 def check_or_get_instance(ins_or_class_or_name: Union[Type[T], T, str],
@@ -366,7 +367,7 @@ def get_instance(class_or_name: Union[Type[T], str], kwargs: Kwargs,
         class_ = get_class(class_, module_paths)
 
     # Check validity of arguments
-    class_args = set(get_args(class_.__init__))  # type: ignore
+    class_args = set(get_args(class_.__init__))
 
     if kwargs is None:
         kwargs = {}
@@ -376,7 +377,7 @@ def get_instance(class_or_name: Union[Type[T], str], kwargs: Kwargs,
                 "Invalid argument for class %s.%s: %s, valid args: %s" %
                 (class_.__module__, class_.__name__, key, list(class_args)))
 
-    return class_(**kwargs)
+    return class_(**kwargs)  # type: ignore
 
 
 def check_or_get_instance_with_redundant_kwargs(
@@ -493,7 +494,7 @@ def get_function(fn_or_name: Union[str, Callable],
         raise ValueError(
             "Method not found in {}: {}".format(module_paths, fn_or_name))
 
-    return fn
+    return fn  # type: ignore
 
 
 def call_function_with_redundant_kwargs(fn: Callable[..., R],
@@ -991,7 +992,9 @@ def str_join(tokens: Sequence[str], sep: str = ' ') -> Sequence[str]:
     return str_
 
 
-def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]], vocab: 'Vocab',
+def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]],
+                    vocab: 'Vocab',  # type: ignore
+                    # TODO: Remove the ignored type after Vocab is implemented.
                     join: bool = True, strip_pad: Optional[str] = '<PAD>',
                     strip_bos: Optional[str] = '<BOS>',
                     strip_eos: Optional[str] = '<EOS>') \

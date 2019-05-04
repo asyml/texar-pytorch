@@ -111,6 +111,7 @@ def mask_sequences(sequence: Union[torch.Tensor, List[int]],
     """
     if not torch.is_tensor(sequence):
         sequence = torch.tensor(sequence, dtype=dtype)
+    sequence: torch.Tensor
 
     rank = sequence.dim()
     if rank < 2:

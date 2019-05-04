@@ -42,7 +42,8 @@ class EncoderBase(ModuleBase):
             'name': 'encoder'
         }
 
-    def forward(self, inputs: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(self,  # type: ignore
+                inputs: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         r"""Encodes the inputs.
 
         Args:
