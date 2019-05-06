@@ -23,8 +23,8 @@ from typing import Optional, Callable, Union, List, Dict, Tuple, Any
 import torch
 from torch import nn
 
-#import texar.core.cell_wrappers as wrappers
 from texar.core import cell_wrappers as wrappers
+from texar.core.regularizers import Regularizer, L1L2
 from texar.hyperparams import HParams
 from texar.utils import utils
 from texar.utils.dtypes import is_str
@@ -37,7 +37,6 @@ __all__ = [
     'default_regularizer_hparams',
     'get_initializer',
     'get_activation_fn',
-    'get_constraint_fn',
     'get_layer',
     '_ReducePool1d',
     'MaxReducePool1d',
@@ -274,8 +273,8 @@ def identity(inputs: torch.Tensor):
     return inputs
 
 
-"""def get_regularizer(hparams=None):
-    Returns a variable regularizer instance.
+def get_regularizer(hparams=None):
+    """Returns a variable regularizer instance.
 
     See :func:`~texar.core.default_regularizer_hparams` for all
     hyperparameters and default values.
@@ -296,6 +295,7 @@ def identity(inputs: torch.Tensor):
     Raises:
         ValueError: The resulting regularizer is not an instance of
             :class:`~texar.core.regularizers.Regularizer`.
+    """
 
     if hparams is None:
         return None
@@ -307,15 +307,15 @@ def identity(inputs: torch.Tensor):
         hparams.type, hparams.kwargs.todict(),
         ["texar.core.regularizers", "texar.custom"])
 
-    if not isinstance(rgl, Regularizers.Regularizer):
+    if not isinstance(rgl, Regularizer):
         raise ValueError("The regularizer must be an instance of "
-                         "texar.core.regularizer.Regularizer.")
+                         "texar.core.regularizers.Regularizer.")
 
-    if isinstance(rgl, Regularizers.L1L2) and \
+    if isinstance(rgl, L1L2) and \
             rgl.l1 == 0. and rgl.l2 == 0.:
         return None
 
-    return rgl"""
+    return rgl
 
 
 def get_initializer(hparams: Optional[HParams] = None) \
@@ -406,40 +406,6 @@ def get_activation_fn(fn_name: Optional[Union[str, Callable[[torch.Tensor], torc
         activation_fn = _partial_fn
 
     return activation_fn
-
-# todo avinash -  this needs to be completed. Check where the constraint functions lie in pytorch
-def get_constraint_fn(fn_name="positive"):
-    """Returns a constraint function.
-
-    .. role:: python(code)
-       :language: python
-
-    The function must follow the signature:
-    :python:`w_ = constraint_fn(w)`.
-
-    Args:
-        fn_name (str or callable): The name or full path to a
-            constraint function, or the function itself.
-
-            The function can be:
-
-            - Built-in constraint functions defined in modules \
-            :torch_main:`torch.distributions.constraints <distributions/constraints.html>`
-            - User-defined function in :mod:`texar.custom`.
-            - Externally defined function. Must provide the full path, \
-            e.g., `"my_module.my_constraint_fn"`.
-
-            If a callable is provided, then it is returned directly.
-
-    Returns:
-        The constraint function. `None` if :attr:`fn_name` is `None`.
-    """
-    if fn_name is None:
-        return None
-
-    fn_modules = ['torch.distributions.constraints', 'texar.custom']
-    constraint_fn = utils.get_function(fn_name, fn_modules)
-    return constraint_fn
 
 
 def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
