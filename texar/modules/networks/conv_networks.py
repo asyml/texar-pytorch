@@ -467,7 +467,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
         return layers_hparams
 
-    def forward(self, input: torch.Tensor, **kwargs: Any) -> torch.Tensor:
+    def forward(self, input: torch.Tensor, **kwargs: Any) -> torch.Tensor:  # type: ignore
         """Feeds forward inputs through the network layers and returns outputs.
 
             Args:

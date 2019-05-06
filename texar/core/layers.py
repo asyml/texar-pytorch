@@ -151,6 +151,7 @@ def default_rnn_cell_hparams():
         '@no_typecheck': ['type']
     }
 
+
 def default_regularizer_hparams():
     """Returns the hyperparameters and their default values of a variable
     regularizer:
@@ -175,6 +176,7 @@ def default_regularizer_hparams():
             "l2": 0.
         }
     }
+
 
 def get_rnn_cell(input_size, hparams=None):
     r"""Creates an RNN cell.
@@ -272,32 +274,6 @@ def identity(inputs: torch.Tensor):
     return inputs
 
 
-def default_regularizer_hparams():
-    """Returns the hyperparameters and their default values of a variable
-    regularizer:
-
-    .. code-block:: python
-
-        {
-            "type": "L1L2",
-            "kwargs": {
-                "l1": 0.,
-                "l2": 0.
-            }
-        }
-
-    The default value corresponds to :tf_main:`L1L2 <keras/regularizers/L1L2>`
-    and, with `(l1=0, l2=0)`, disables regularization.
-    """
-    return {
-        "type": "L1L2",
-        "kwargs": {
-            "l1": 0.,
-            "l2": 0.
-        }
-    }
-
-
 """def get_regularizer(hparams=None):
     Returns a variable regularizer instance.
 
@@ -343,7 +319,7 @@ def default_regularizer_hparams():
 
 
 def get_initializer(hparams: Optional[HParams] = None) \
-        -> Optional[Callable[[torch.Tensor], None]]:
+        -> Optional[Callable[[torch.Tensor], torch.Tensor]]:
     r"""Returns an initializer instance.
 
     .. role:: python(code)
@@ -424,6 +400,7 @@ def get_activation_fn(fn_name: Optional[Union[str, Callable[[torch.Tensor], torc
     if kwargs is not None:
         if isinstance(kwargs, HParams):
             kwargs = kwargs.todict()
+
         def _partial_fn(features):
             return activation_fn_(features, **kwargs)
         activation_fn = _partial_fn
@@ -548,7 +525,7 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
         # this case needs to be handled separately because
         # :torch_docs:`torch.nn.Sequential <nn.html#torch.nn.Sequential>` does not accept kwargs
         if layer_type == "Sequential":
-            names = []
+            names: List[str] = []
             layer = nn.Sequential()
             sub_hparams = hparams.kwargs.layers
             for hparam in sub_hparams:
@@ -574,7 +551,7 @@ class _ReducePool1d(nn.Module):
         super(_ReducePool1d, self).__init__()
         self._reduce_function = reduce_function
 
-    def forward(self, input: Tuple) -> torch.Tensor:
+    def forward(self, input: Tuple) -> torch.Tensor:  # type: ignore
         # if check is required because :torch_docs:`torch.mean <torch.html#torch.mean>` does not return a tuple
         if self._reduce_function == torch.mean:
             output = self._reduce_function(input, dim=2, keepdim=True)
@@ -683,7 +660,7 @@ class MergeLayer(nn.Module):
         self._mode = mode
         self._dim = dim
 
-        self._layers = None
+        self._layers: Optional[List[nn.Module]] = None
         if layers is not None:
             if len(layers) == 0:
                 raise ValueError(
@@ -695,9 +672,9 @@ class MergeLayer(nn.Module):
                 else:
                     self._layers.append(get_layer(hparams=layer))
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:  # type: ignore
         if self._layers is None:
-            layer_outputs = input
+            layer_outputs: Union[torch.Tensor, List[torch.Tensor]] = input
         else:
             layer_outputs = []
             for layer in self._layers:
@@ -725,10 +702,10 @@ class MergeLayer(nn.Module):
             outputs = torch.prod(_concat, dim=self._dim)
         elif self._mode == 'max':
             _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs,_ = torch.max(_concat, dim=self._dim)
+            outputs,_ = torch.max(_concat, dim=self._dim)  # type: ignore
         elif self._mode == 'min':
             _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs, _ = torch.min(_concat, dim=self._dim)
+            outputs, _ = torch.min(_concat, dim=self._dim)  # type: ignore
         elif self._mode == 'and':
             _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
             outputs = torch.all(_concat, dim=self._dim)
@@ -744,7 +721,7 @@ class MergeLayer(nn.Module):
         return outputs
 
     @property
-    def layers(self) -> Optional[nn.Module]:
+    def layers(self) -> Optional[List[nn.Module]]:
         """The list of parallel layers.
         """
         return self._layers
@@ -756,7 +733,7 @@ class Flatten(nn.Module):
     def __init__(self):
         super(Flatten, self).__init__()
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:  # type: ignore
         return input.view(input.size()[0], -1)
 
 
@@ -765,7 +742,7 @@ class Identity(nn.Module):
     def __init__(self):
         super(Identity, self).__init__()
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:  # type: ignore
         return input
 
 
