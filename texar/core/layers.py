@@ -746,7 +746,7 @@ class Identity(nn.Module):
         return input
 
 
-def default_linear_kwargs() -> Dict:
+def default_linear_kwargs() -> Dict[str, int]:
     """TODO avinash: how to give suitable values to in_features and out_features"""
     kwargs = {
         "in_features": 32,
@@ -756,24 +756,111 @@ def default_linear_kwargs() -> Dict:
     return kwargs
 
 
-# TODO avinash - change the following to pytorch equivalent
-_layer_class_to_default_kwargs_map = {
-    nn.modules.linear.Linear: default_linear_kwargs()
-}
+def default_conv1d_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
 
-"""tf.layers.Conv1D: default_conv1d_kwargs(),
-tf.layers.Conv2D: default_conv2d_kwargs(),
-tf.layers.Conv3D: default_conv3d_kwargs(),
-tf.layers.Conv2DTranspose: default_conv2d_transpose_kwargs(),
-tf.layers.Conv3DTranspose: default_conv3d_transpose_kwargs(),
-tf.layers.Dense: default_dense_kwargs(),
-tf.layers.Dropout: default_dropout_kwargs(),
-tf.layers.Flatten: default_flatten_kwargs(),
-tf.layers.MaxPooling1D: default_max_pooling1d_kwargs(),
-tf.layers.MaxPooling2D: default_max_pooling2d_kwargs(),
-tf.layers.MaxPooling3D: default_max_pooling3d_kwargs(),
-tf.layers.SeparableConv2D: default_separable_conv2d_kwargs(),
-tf.layers.BatchNormalization: default_batch_normalization_kwargs(),
-tf.layers.AveragePooling1D: default_average_pooling1d_kwargs(),
-tf.layers.AveragePooling2D: default_average_pooling2d_kwargs(),
-tf.layers.AveragePooling3D: default_average_pooling3d_kwargs()"""
+
+def default_conv2d_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+def default_conv3d_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+def default_conv2d_transpose_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+def default_conv3d_transpose_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+def default_dropout_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+def default_max_pool1d_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+def default_max_pool2d_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+def default_max_pool3d_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+def default_batch_normalization1d_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+def default_batch_normalization2d_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+def default_batch_normalization3d_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+def default_avg_pool1d_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+def default_avg_pool2d_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+def default_avg_pool3d_kwargs() -> Dict[str, Any]:
+    """TODO
+    """
+    return {}
+
+
+_layer_class_to_default_kwargs_map = {
+    nn.Linear: default_linear_kwargs(),
+    nn.Conv1d: default_conv1d_kwargs(),
+    nn.Conv2d: default_conv2d_kwargs(),
+    nn.Conv3d: default_conv3d_kwargs(),
+    nn.ConvTranspose2d: default_conv2d_transpose_kwargs(),
+    nn.ConvTranspose3d: default_conv3d_transpose_kwargs(),
+    nn.Dropout: default_dropout_kwargs(),
+    nn.MaxPool1d: default_max_pool1d_kwargs(),
+    nn.MaxPool2d: default_max_pool2d_kwargs,
+    nn.MaxPool3d: default_max_pool3d_kwargs(),
+    nn.BatchNorm1d: default_batch_normalization1d_kwargs(),
+    nn.BatchNorm2d: default_batch_normalization2d_kwargs(),
+    nn.BatchNorm3d: default_batch_normalization3d_kwargs(),
+    nn.AvgPool1d: default_avg_pool1d_kwargs(),
+    nn.AvgPool2d: default_avg_pool2d_kwargs(),
+    nn.AvgPool3d: default_avg_pool3d_kwargs(),
+}
