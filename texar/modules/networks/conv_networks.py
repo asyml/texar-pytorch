@@ -22,6 +22,7 @@ from texar.modules.networks.network_base import FeedForwardNetworkBase
 from texar.modules.networks.network_base import _build_layers
 from texar.core.layers import get_pooling_layer_hparams
 from texar.utils.utils import uniquify_str
+from texar.utils.shapes import mask_sequences
 from texar.hyperparams import HParams
 
 __all__ = [
@@ -482,4 +483,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 The output of the final layer.
         """
         # todo avinash once the mask_sequence module is ready, add masking logic here
+        sequence_length = kwargs.get("sequence_length", None)
+        dtype = kwargs.get("dtype", None)
+        if sequence_length is not None:
+            input = mask_sequences(input, sequence_length, dtype=dtype, time_major=False)
         return super(Conv1DNetwork, self).forward(input)
