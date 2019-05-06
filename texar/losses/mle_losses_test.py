@@ -75,6 +75,33 @@ class MLELossesTest(unittest.TestCase):
             tx.losses.sequence_softmax_cross_entropy,
             self._one_hot_labels, self._logits, self._sequence_length)
 
+    def test_sequence_sparse_softmax_cross_entropy(self):
+        """Tests `sequence_sparse_softmax_cross_entropy`
+        """
+        self._test_sequence_loss(
+            tx.losses.sequence_sparse_softmax_cross_entropy,
+            self._labels, self._logits, self._sequence_length)
+
+    def test_sequence_sigmoid_cross_entropy(self):
+        """Tests `texar.losses.test_sequence_sigmoid_cross_entropy`.
+        """
+        self._test_sequence_loss(
+            tx.losses.sequence_sigmoid_cross_entropy,
+            self._one_hot_labels, self._logits, self._sequence_length)
+
+        self._test_sequence_loss(
+            tx.losses.sequence_sigmoid_cross_entropy,
+            self._one_hot_labels[:, :, 0],
+            self._logits[:, :, 0],
+            self._sequence_length)
+
+        loss = tx.losses.sequence_sigmoid_cross_entropy(
+            logits=self._logits[:, :, 0],
+            labels=np.ones([self._batch_size, self._max_time]),
+            sequence_length=self._sequence_length)
+        rank = len(loss.shape)
+        self.assertEqual(rank, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
