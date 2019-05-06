@@ -15,6 +15,7 @@ import unittest
 import torch
 import torch.nn.functional as F
 
+import numpy as np
 import texar as tx
 
 
