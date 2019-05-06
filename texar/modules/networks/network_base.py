@@ -46,14 +46,14 @@ class FeedForwardNetworkBase(ModuleBase):
         See :meth:`_build` for the inputs and outputs.
         """
 
-    def __init__(self, hparams: Union[HParams, Dict[str, Any]] = None):
+    def __init__(self, hparams: Optional[Union[HParams, Dict[str, Any]]] = None):
         ModuleBase.__init__(self, hparams)
 
         self._layers = nn.ModuleList()
-        self._layer_names = []
-        self._layers_by_name = {}
-        self._layer_outputs = []
-        self._layer_outputs_by_name = {}
+        self._layer_names: List[str] = []
+        self._layers_by_name: Dict[str, nn.Module] = {}
+        self._layer_outputs: List[torch.Tensor] = []
+        self._layer_outputs_by_name: Dict[str, torch.Tensor] = {}
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
@@ -69,7 +69,7 @@ class FeedForwardNetworkBase(ModuleBase):
             "name": "NN"
         }
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:  # type: ignore
         """Feeds forward inputs through the network layers and returns outputs.
 
         Args:
@@ -113,7 +113,7 @@ class FeedForwardNetworkBase(ModuleBase):
         """
         return layer_name in self._layers_by_name
 
-    def layer_by_name(self, layer_name: str) -> nn.Module:
+    def layer_by_name(self, layer_name: str) -> Optional[nn.Module]:
         """Returns the layer with the name. Returns 'None' if the layer name
         does not exist.
 
@@ -140,7 +140,7 @@ class FeedForwardNetworkBase(ModuleBase):
         """
         return self._layer_names
 
-    def layer_outputs_by_name(self, layer_name: str) -> torch.Tensor:
+    def layer_outputs_by_name(self, layer_name: str) -> Optional[torch.Tensor]:
         """Returns the output tensors of the layer with the specified name.
         Returns `None` if the layer name does not exist.
 
@@ -150,14 +150,14 @@ class FeedForwardNetworkBase(ModuleBase):
         return self._layer_outputs_by_name.get(layer_name, None)
 
     @property
-    def layer_outputs(self) -> List[torch.tensor]:
+    def layer_outputs(self) -> List[torch.Tensor]:
         """A list containing output tensors of each layer.
         """
         return self._layer_outputs
 
 
 def _build_layers(network: FeedForwardNetworkBase, layers: Optional[nn.ModuleList] = None,
-                  layer_hparams: List[Union[HParams, Dict[str, Any]]] = None):
+                  layer_hparams: Optional[List[Union[HParams, Dict[str, Any]]]] = None):
     """Builds layers.
 
     Either :attr:`layer_hparams` or :attr:`layers` must be

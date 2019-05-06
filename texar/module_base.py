@@ -15,7 +15,7 @@
 Base class for modules.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from torch import nn
 
@@ -42,7 +42,7 @@ class ModuleBase(nn.Module):
             :meth:`default_hparams` for the structure and default values.
     """
 
-    def __init__(self, hparams: Optional[HParams] = None):
+    def __init__(self, hparams: Optional[Union[HParams, Dict[str, Any]]] = None):
         super().__init__()
         self._hparams = HParams(hparams, self.default_hparams())
 
