@@ -18,3 +18,5 @@ Modules of Texar library module.
 # pylint: disable=wildcard-import
 
 #rom texar.modules.decoders import *
+from texar.modules.connectors import *
+from texar.modules.embedders import *
