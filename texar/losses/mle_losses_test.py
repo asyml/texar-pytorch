@@ -63,7 +63,7 @@ class MLELossesTest(unittest.TestCase):
         self.assertEqual(loss.shape, torch.Size([self._batch_size,
                                                  self._max_time]))
 
-        sequence_length_time = torch.randint(size=[self._max_time],
+        sequence_length_time = torch.randint(size=(self._max_time,),
                                              high=self._batch_size)
         loss = loss_fn(
             labels, logits, sequence_length_time, sum_over_timesteps=False,
