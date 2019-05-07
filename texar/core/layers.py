@@ -31,6 +31,7 @@ __all__ = [
     'default_rnn_cell_hparams',
     'get_rnn_cell',
     'identity',
+    'get_activation_fn'
 ]
 
 
@@ -305,3 +306,48 @@ def get_initializer(hparams: Optional[HParams] = None) \
     initializer = functools.partial(initializer_fn, **kwargs)
 
     return initializer
+
+def get_activation_fn(fn_name="identity", kwargs=None):
+    """Returns an activation function `fn` with the signature
+    `output = fn(input)`.
+
+    If the function specified by :attr:`fn_name` has more than one arguments
+    without default values, then all these arguments except the input feature
+    argument must be specified in :attr:`kwargs`. Arguments with default values
+    can also be specified in :attr:`kwargs` to take values other than the
+    defaults. In this case a partial function is returned with the above
+    signature.
+
+    Args:
+        fn_name (str or callable): An activation function, or its name or
+            module path. The function can be:
+
+            - Built-in function defined in :tf_main:`tf < >` or \
+            :tf_main:`tf.nn <nn>`, e.g., :tf_main:`tf.identity <identity>`.
+            - User-defined activation functions in module :mod:`texar.custom`.
+            - External activation functions. Must provide the full module path,\
+              e.g., "my_module.my_activation_fn".
+
+        kwargs (optional): A `dict` or instance of :class:`~texar.HParams`
+            containing the keyword arguments of the activation function.
+
+    Returns:
+        An activation function. `None` if :attr:`fn_name` is `None`.
+    """
+    if fn_name is None:
+        return None
+
+    fn_modules = ['torch.nn.functional', 'torch', 'texar.custom',
+                  'texar.core.layers']
+    activation_fn_ = utils.get_function(fn_name, fn_modules)
+    activation_fn = activation_fn_
+
+    # Make a partial function if necessary
+    if kwargs is not None:
+        if isinstance(kwargs, HParams):
+            kwargs = kwargs.todict()
+        def _partial_fn(features):
+            return activation_fn_(features, **kwargs)
+        activation_fn = _partial_fn
+
+    return activation_fn
