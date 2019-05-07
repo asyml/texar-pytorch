@@ -34,7 +34,8 @@ class MLELossesTest(unittest.TestCase):
             one_hot_labels, [self._batch_size, self._max_time, -1])
         self._logits = torch.rand(self._batch_size, self._max_time,
                                   self._num_classes)
-        self._sequence_length = torch.rand(self._batch_size) * self._max_time
+        self._sequence_length = torch.randint(size=(self._batch_size,),
+                                              high=self._max_time)
 
     def _test_sequence_loss(self, loss_fn, labels, logits, sequence_length):
         loss = loss_fn(labels, logits, sequence_length)
@@ -62,7 +63,8 @@ class MLELossesTest(unittest.TestCase):
         self.assertEqual(loss.shape, torch.Size([self._batch_size,
                                                  self._max_time]))
 
-        sequence_length_time = torch.rand(self._max_time) * self._max_time
+        sequence_length_time = torch.randint(size=[self._max_time],
+                                             high=self._batch_size)
         loss = loss_fn(
             labels, logits, sequence_length_time, sum_over_timesteps=False,
             average_across_batch=False, time_major=True)
