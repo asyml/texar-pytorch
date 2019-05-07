@@ -16,9 +16,10 @@ Various helper classes and utilities for RNN decoders.
 """
 
 # pylint: disable=too-many-arguments, too-many-instance-attributes
+# pylint: disable=missing-docstring  # does not support generic classes
 
 from abc import ABC
-from typing import Generic, Optional, Tuple, TypeVar, Union
+from typing import Generic, Optional, Tuple, TypeVar, Union, Type
 
 import torch
 from torch import nn
@@ -29,6 +30,7 @@ from texar.utils import utils
 
 
 class EmbedderBase:
+    # pylint: disable=too-few-public-methods
     r"""Temporary workaround for embedders."""
     embedding: torch.Tensor
 
@@ -97,8 +99,9 @@ class Helper(Generic[IDType], ABC):
         """
         raise NotImplementedError("sample_ids_shape has not been implemented")
 
-    def initialize(self, inputs: torch.Tensor,
-                   sequence_length: torch.LongTensor) -> HelperInitTuple:
+    def initialize(self, inputs: Optional[torch.Tensor],
+                   sequence_length: Optional[torch.LongTensor]) \
+            -> HelperInitTuple:
         r"""Initialize the current batch.
 
         Args:
@@ -160,8 +163,17 @@ class TrainingHelper(Helper[torch.LongTensor]):
     def sample_ids_shape(self) -> torch.Size:
         return torch.Size()  # scalar
 
-    def initialize(self, inputs: torch.Tensor,
-                   sequence_length: torch.LongTensor) -> HelperInitTuple:
+    def initialize(self, inputs: Optional[torch.Tensor],
+                   sequence_length: Optional[torch.LongTensor]) \
+            -> HelperInitTuple:
+        if inputs is None:
+            raise ValueError("`inputs` cannot be None for TrainingHelper")
+        if sequence_length is None:
+            raise ValueError(
+                "`sequence_length` cannot be None for TrainingHelper")
+        inputs: torch.Tensor
+        sequence_length: torch.LongTensor
+
         if sequence_length.dim() != 1:
             raise ValueError(
                 f"Expected 'sequence_length' to be a vector, "
@@ -183,6 +195,7 @@ class TrainingHelper(Helper[torch.LongTensor]):
 
     def sample(self, time: int, outputs: torch.Tensor,
                state: HiddenState) -> torch.LongTensor:
+        # pylint: disable=unused-variable, no-self-use
         sample_ids = torch.argmax(outputs, dim=-1)
         return sample_ids
 
@@ -235,8 +248,9 @@ class EmbeddingHelper(Helper[IDType], ABC):
         else:
             self._end_token = end_token
 
-    def initialize(self, inputs: torch.Tensor,
-                   sequence_length: torch.LongTensor) -> HelperInitTuple:
+    def initialize(self, inputs: Optional[torch.Tensor],
+                   sequence_length: Optional[torch.LongTensor]) \
+            -> HelperInitTuple:
         finished = self._start_tokens.new_zeros(
             self._batch_size, dtype=torch.uint8)
         return (finished, self._embedding(self._start_tokens))
@@ -374,7 +388,7 @@ class TopKSampleEmbeddingHelper(SingleEmbeddingHelper):
     and passes the result through an embedding layer to get the next input.
     """
 
-    def __init__(self, embedding: nn.Module, start_tokens: torch.LongTensor,
+    def __init__(self, embedding: Embedding, start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor], top_k: int = 10,
                  softmax_temperature: Optional[float] = None):
         r"""Initializer.
@@ -617,12 +631,13 @@ def default_helper_infer_hparams():
     }
 
 
-def get_helper(helper_type,
-               inputs=None,
-               sequence_length=None,
-               embedding=None,
-               start_tokens=None,
-               end_token=None,
+T = TypeVar('T')  # type argument
+
+
+def get_helper(helper_type: Union[Type[T], T, str],
+               embedding: Optional[Embedding] = None,
+               start_tokens: Optional[torch.LongTensor] = None,
+               end_token: Optional[Union[int, torch.LongTensor]] = None,
                **kwargs):
     r"""Creates a Helper instance.
 
@@ -630,10 +645,6 @@ def get_helper(helper_type,
         helper_type: A :tf_main:`Helper <contrib/seq2seq/Helper>` class, its
             name or module path, or a class instance. If a class instance
             is given, it is returned directly.
-        inputs (optional): Inputs to the RNN decoder, e.g., ground truth
-            tokens for teacher forcing decoding.
-        sequence_length (optional): A 1D int Tensor containing the
-            sequence length of :attr:`inputs`.
         embedding (optional): A callable that takes a vector tensor of
             indexes (e.g., an instance of subclass of
             :class:`~texar.modules.EmbedderBase`), or the `params` argument
@@ -648,12 +659,9 @@ def get_helper(helper_type,
         A helper instance.
     """
     module_paths = [
-        'texar.modules.decoders.rnn_decoder_helpers',
-        'tensorflow.contrib.seq2seq',
+        'texar.modules.decoders.decoder_helpers',
         'texar.custom']
-    class_kwargs = {'inputs': inputs,
-                    'sequence_length': sequence_length,
-                    'embedding': embedding,
+    class_kwargs = {'embedding': embedding,
                     'start_tokens': start_tokens,
                     'end_token': end_token}
     class_kwargs.update(kwargs)

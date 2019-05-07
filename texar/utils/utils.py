@@ -27,6 +27,7 @@ from typing import *
 
 import funcsigs
 import numpy as np
+import torch
 
 from texar.hyperparams import HParams
 from texar.utils.dtypes import _maybe_list_to_array
@@ -35,33 +36,35 @@ from texar.utils.types import MaybeSeq, MaybeTuple
 MAX_SEQ_LENGTH = np.iinfo(np.int32).max
 
 __all__ = [
-    "map_structure",
-    "get_args",
-    "get_default_arg_values",
-    "check_or_get_class",
-    "get_class",
-    "check_or_get_instance",
-    "get_instance",
-    "check_or_get_instance_with_redundant_kwargs",
-    "get_instance_with_redundant_kwargs",
-    "get_function",
-    "call_function_with_redundant_kwargs",
-    "get_instance_kwargs",
-    "dict_patch",
-    "dict_lookup",
-    "dict_fetch",
-    "dict_pop",
-    "flatten_dict",
-    "strip_token",
-    "strip_eos",
-    "strip_bos",
-    "strip_special_tokens",
-    "str_join",
-    "map_ids_to_strs",
-    "default_str",
-    "uniquify_str",
-    "ceildiv",
-    "straight_through"
+    'map_structure',
+    'map_structure_zip',
+    'sequence_mask',
+    'get_args',
+    'get_default_arg_values',
+    'check_or_get_class',
+    'get_class',
+    'check_or_get_instance',
+    'get_instance',
+    'check_or_get_instance_with_redundant_kwargs',
+    'get_instance_with_redundant_kwargs',
+    'get_function',
+    'call_function_with_redundant_kwargs',
+    'get_instance_kwargs',
+    'dict_patch',
+    'dict_lookup',
+    'dict_fetch',
+    'dict_pop',
+    'flatten_dict',
+    'strip_token',
+    'strip_eos',
+    'strip_bos',
+    'strip_special_tokens',
+    'str_join',
+    'map_ids_to_strs',
+    'default_str',
+    'uniquify_str',
+    'ceildiv',
+    'straight_through',
 ]
 
 T = TypeVar('T')  # type argument
@@ -127,6 +130,65 @@ def map_structure_zip(fn: Callable[..., R],
     if isinstance(obj, set):
         return {map_structure_zip(fn, xs) for xs in zip(*objs)}
     return fn(*objs)
+
+
+def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
+                  max_len: Optional[int] = None,
+                  dtype: Optional[torch.dtype] = None,
+                  device: Optional[torch.device] = None) -> torch.ByteTensor:
+    r"""Returns a mask tensor representing the first N positions of each cell.
+
+    If `lengths` has shape `[d_1, d_2, ..., d_n]` the resulting tensor `mask`
+    has dtype `dtype` and shape `[d_1, d_2, ..., d_n, maxlen]`, with
+
+    ```
+    mask[i_1, i_2, ..., i_n, j] = (j < lengths[i_1, i_2, ..., i_n])
+    ```
+
+    Examples:
+
+    ```python
+    tf.sequence_mask([1, 3, 2], 5)  # [[True, False, False, False, False],
+                                    #  [True, True, True, False, False],
+                                    #  [True, True, False, False, False]]
+
+    tf.sequence_mask([[1, 3],[2,0]])  # [[[True, False, False],
+                                      #   [True, True, True]],
+                                      #  [[True, True, False],
+                                      #   [False, False, False]]]
+    ```
+
+    Args:
+        lengths: integer tensor or list of int, all its values <= max_len.
+        max_len: scalar integer tensor, size of last dimension of returned
+            tensor. Default is the maximum value in `lengths`.
+        dtype: the desired data type of returned tensor. Default: if None,
+            returns :class:`torch.ByteTensor`.
+        device: the desired device of returned tensor. Default: if None, uses
+            the current device for the default tensor type (see
+            :meth:`torch.set_default_tensor_type()`). `device` will be the CPU
+            for CPU tensor types and the current CUDA device for CUDA tensor
+            types.
+    Returns:
+        A mask tensor of shape `lengths.shape + (maxlen,)`, cast to specified
+        dtype.
+    Raises:
+        ValueError: if `maxlen` is not a scalar.
+    """
+    if not torch.is_tensor(lengths):
+        lengths = torch.tensor(lengths, device=device)
+    lengths: torch.Tensor
+    if max_len is None:
+        max_len = torch.max(lengths).item()
+
+    size = lengths.size()
+    row_vector = torch.arange(max_len, device=device, dtype=lengths.dtype).view(
+        *([1] * len(size)), -1).expand(*size, max_len)
+    mask = (row_vector < lengths.unsqueeze(-1))
+    if dtype is not None:
+        mask = mask.to(dtype=dtype)
+
+    return mask
 
 
 def get_args(fn: Callable) -> List[str]:
@@ -233,7 +295,7 @@ def get_class(class_name: str,
         raise ValueError(
             "Class not found in {}: {}".format(module_paths, class_name))
 
-    return class_
+    return class_  # type: ignore
 
 
 def check_or_get_instance(ins_or_class_or_name: Union[Type[T], T, str],
@@ -305,7 +367,7 @@ def get_instance(class_or_name: Union[Type[T], str], kwargs: Kwargs,
         class_ = get_class(class_, module_paths)
 
     # Check validity of arguments
-    class_args = set(get_args(class_.__init__))  # type: ignore
+    class_args = set(get_args(class_.__init__))
 
     if kwargs is None:
         kwargs = {}
@@ -315,7 +377,7 @@ def get_instance(class_or_name: Union[Type[T], str], kwargs: Kwargs,
                 "Invalid argument for class %s.%s: %s, valid args: %s" %
                 (class_.__module__, class_.__name__, key, list(class_args)))
 
-    return class_(**kwargs)
+    return class_(**kwargs)  # type: ignore
 
 
 def check_or_get_instance_with_redundant_kwargs(
@@ -432,7 +494,7 @@ def get_function(fn_or_name: Union[str, Callable],
         raise ValueError(
             "Method not found in {}: {}".format(module_paths, fn_or_name))
 
-    return fn
+    return fn  # type: ignore
 
 
 def call_function_with_redundant_kwargs(fn: Callable[..., R],
@@ -886,6 +948,9 @@ def strip_special_tokens(str_: MaybeSeq[str],
     """
     s = str_
 
+    if is_token_list:
+        s = str_join(s)
+
     if strip_eos is not None and strip_eos is not False:
         s = _strip_eos_(s, strip_eos, is_token_list=False)
 
@@ -927,7 +992,9 @@ def str_join(tokens: Sequence[str], sep: str = ' ') -> Sequence[str]:
     return str_
 
 
-def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]], vocab: 'Vocab',
+def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]],
+                    vocab: 'Vocab',  # type: ignore
+                    # TODO: Remove the ignored type after Vocab is implemented.
                     join: bool = True, strip_pad: Optional[str] = '<PAD>',
                     strip_bos: Optional[str] = '<BOS>',
                     strip_eos: Optional[str] = '<EOS>') \

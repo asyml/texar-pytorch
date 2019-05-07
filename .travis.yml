@@ -1,0 +1,27 @@
+sudo: required
+language: python
+dist: xenial  # required for Python 3.7
+cache: pip  # add caching for pip packages to speed-up build
+
+python:
+  - "3.6"
+  - "3.7"
+
+install:
+  # using --progress-bar off requires a newer version of pip
+  - pip install --upgrade pip
+  - pip install --progress-bar off -e .[torch]
+  - pip install flake8
+  - pip install mypy
+  - pip install pytest
+
+script:
+  # linting
+  - flake8 . --count --select=E901,E999,F821,F822,F823 --max-complexity=10 --max-line-length=80 --show-source --statistics
+  # type-checking
+  - mypy .
+  # unit tests
+  - pytest
+
+notifications:
+  email: false
