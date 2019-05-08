@@ -7,18 +7,14 @@ further sequences, tuples, and dicts.
 
 import collections
 from collections import namedtuple, OrderedDict
-from typing import TypeVar, Dict, Union, Callable, Tuple, List, Any
+from typing import TypeVar, Mapping, Union, Callable, Tuple, List, Any
 import torch
 
 
 TypeArg = TypeVar('TypeArg')  # type argument
-NestedStructure = Union[
-    Dict[Any, "NestedStructure"],
-    List["NestedStructure"],
-    Tuple["NestedStructure"],
-    TypeArg]
+NestedStructure = Any
 
-def is_sequence(seq: Union[List, Tuple]) -> bool:
+def is_sequence(seq: Any) -> bool:
     r"""If a instance is sequance(list, tuple, excluding torch.Size),
     return True, else False.
     Args:
@@ -30,7 +26,7 @@ def is_sequence(seq: Union[List, Tuple]) -> bool:
         return False
     return isinstance(seq, (list, tuple))
 
-def flatten(structure: NestedStructure) -> List:
+def flatten(structure: NestedStructure) -> List[Any]:
     r"""Returns a flat list from a given nested structure.
     If nest is not a sequence, tuple, or dict, then returns a single-element
     list:[nest].
@@ -52,7 +48,7 @@ def flatten(structure: NestedStructure) -> List:
     Raises:
         TypeError: The nest is or contains a dict with non-sortable keys.
     """
-    res = []
+    res: List[Any] = []
     if isinstance(structure, dict):
         structure = list(structure.values())
     if not is_sequence(structure):
@@ -208,7 +204,7 @@ def assert_same_structure(st1: NestedStructure,
                          % (len_st1, st1, len_st2, st2))
     _assert_same_structure_helper(st1, st2)
 
-def _sorted(dict_: Dict[TypeArg, Any]) -> List[TypeArg]:
+def _sorted(dict_: Mapping[Any, Any]) -> List[TypeArg]:
     r"""Returns a sorted list of the dict keys, with error if keys not
     sortable.
     """
@@ -299,7 +295,7 @@ def _packed_nest_with_indices(structure: NestedStructure,
             index += 1
     return index, packed
 
-InstanceType = Union[Tuple, List, Dict, namedtuple, OrderedDict]
+InstanceType = Union[Tuple, List, Mapping, OrderedDict]
 def _sequence_like(instance: InstanceType,
                    args: NestedStructure) -> NestedStructure:
     r"""Converts the sequence `args` to the same type as `instance`.
@@ -311,7 +307,7 @@ def _sequence_like(instance: InstanceType,
         `args` with the type of `instance`.
     """
     if isinstance(instance, collections.Mapping):
-        result = dict(zip(_sorted(instance), args))
+        result: Mapping[Any, Any] = dict(zip(_sorted(instance), args))
         return type(instance)((key, result[key]) for key in instance)
     elif _is_namedtuple(instance):
         return type(instance)(*args)

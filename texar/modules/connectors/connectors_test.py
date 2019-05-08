@@ -22,13 +22,6 @@ class TestConnectors(unittest.TestCase):
     """Tests various connectors.
     """
 
-    '''def __init__(self, *args):
-        #tf.test.TestCase.setUp(self)
-        self._batch_size = 100
-
-        self._decoder_cell = layers.get_rnn_cell(
-            layers.default_rnn_cell_hparams())'''
-
     def test_constant_connector(self):
         """Tests the logic of
         :class:`~texar.modules.connectors.ConstantConnector`.

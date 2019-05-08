@@ -15,7 +15,7 @@
 Various connectors.
 """
 
-from typing import Optional, Union, Callable, Tuple, List
+from typing import Optional, Union, Callable, Tuple, List, Any
 import numpy as np
 
 import torch
@@ -38,10 +38,10 @@ __all__ = [
     #"ConcatConnector"
 ]
 
-OutputSize = Union[int, torch.Size, Tuple["OutputSize"]]
+OutputSize = Any
 HParamsType = Optional[Union[HParams, dict]]
 ActivationFn = Callable[[torch.Tensor], torch.Tensor]
-TensorOrNestedTuple = Union[torch.Tensor, Tuple["TensorOrNestedTuple"]]
+TensorOrNestedTuple = Any
 
 def _assert_same_size(outputs: TensorOrNestedTuple,
                       output_size: OutputSize):
@@ -195,7 +195,7 @@ class ConstantConnector(ConnectorBase):
 
     def forward(self,
                 batch_size: Union[int, torch.Tensor],
-                value: Optional = None) -> TensorOrNestedTuple:
+                value: Optional[Any] = None) -> TensorOrNestedTuple:
         """Creates output tensor(s) that has the given value.
 
         Args:
@@ -517,7 +517,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
                 distribution_kwargs: Optional[dict] = None,
                 transform: bool = True,
                 num_samples: Optional[Union[int, torch.Tensor]] = None
-                ) -> Tuple[Union[TensorOrNestedTuple, torch.Tensor]]:
+                ) -> Tuple[Any, Any]:
         """Samples from a distribution and optionally performs transformation
         with an MLP layer.
 
