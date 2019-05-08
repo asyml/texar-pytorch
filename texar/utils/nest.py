@@ -1,28 +1,25 @@
+# Apply from Tensorflow(https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/util/nest.py)
 
-# Copyright 2019 The Texar Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+"""This module can perform operations on nested structures. A nested structure is a
+Python sequence, tuple (including `namedtuple`), or dict that can contain
+further sequences, tuples, and dicts.
+"""
 
 import collections
+from collections import namedtuple, OrderedDict
+from typing import TypeVar, Dict, Union, Callable, Tuple, List, Any
 import torch
-from typing import *
 
-T = TypeVar('T')  # type argument
-R = TypeVar('R')  # return type
 
-def is_sequence(seq: Any) -> bool:
-    """If a instance is sequance(list, tuple, excluding torch.Size),
+TypeArg = TypeVar('TypeArg')  # type argument
+NestedStructure = Union[
+    Dict[Any, "NestedStructure"],
+    List["NestedStructure"],
+    Tuple["NestedStructure"],
+    TypeArg]
+
+def is_sequence(seq: Union[List, Tuple]) -> bool:
+    r"""If a instance is sequance(list, tuple, excluding torch.Size),
     return True, else False.
     Args:
         seq: instance to be checked.
@@ -33,23 +30,23 @@ def is_sequence(seq: Any) -> bool:
         return False
     return isinstance(seq, (list, tuple))
 
-def flatten(structure: Any) -> List:
-    """Returns a flat list from a given nested structure.
-    If nest is not a sequence, tuple, or dict, then returns a single-element list:
-    [nest].
-    In the case of dict instances, the sequence consists of the values, sorted by
-    key to ensure deterministic behavior. This is true also for OrderedDict
-    instances: their sequence order is ignored, the sorting order of keys is used
-    instead. The same convention is followed in pack_sequence_as. This correctly
-    repacks dicts and OrderedDicts after they have been flattened, and also allows
-    flattening an OrderedDict and then repacking it back using a corresponding
-    plain dict, or vice-versa. Dictionaries with non-sortable keys cannot be
-    flattened.
+def flatten(structure: NestedStructure) -> List:
+    r"""Returns a flat list from a given nested structure.
+    If nest is not a sequence, tuple, or dict, then returns a single-element
+    list:[nest].
+    In the case of dict instances, the sequence consists of the values,
+    sorted by key to ensure deterministic behavior. This is true also for
+    OrderedDict instances: their sequence order is ignored, the sorting order
+    of keys is used instead. The same convention is followed in
+    pack_sequence_as. This correctly repacks dicts and OrderedDicts after
+    they have been flattened, and also allows flattening an OrderedDict
+    and then repacking it back using a corresponding plain dict,
+    or vice-versa. Dictionaries with non-sortable keys cannot be flattened.
     Users must not modify any collections used in nest while this function is
     running.
     Args:
-        structure: an arbitrarily nested structure or a scalar object. Note, numpy
-        arrays are considered scalars.
+        structure: an arbitrarily nested structure or a scalar object. Note,
+        numpy arrays are considered scalars.
     Returns:
         A Python list, the flattened version of the input.
     Raises:
@@ -65,17 +62,19 @@ def flatten(structure: Any) -> List:
             res += flatten(item)
     return res
 
-def pack_sequence_as(structure: Any, flat_sequence: Sequence) -> Any:
-    """Returns a given flattened sequence packed into a given structure.
+def pack_sequence_as(structure: NestedStructure,
+                     flat_sequence: Union[List, Tuple]
+                     ) -> NestedStructure:
+    r"""Returns a given flattened sequence packed into a given structure.
     If `structure` is a scalar, `flat_sequence` must be a single-element list;
     in this case the return value is `flat_sequence[0]`.
     If `structure` is or contains a dict instance, the keys will be sorted to
     pack the flat sequence in deterministic order. This is true also for
-    `OrderedDict` instances: their sequence order is ignored, the sorting order of
-    keys is used instead. The same convention is followed in `flatten`.
-    This correctly repacks dicts and `OrderedDict`s after they have been
-    flattened, and also allows flattening an `OrderedDict` and then repacking it
-    back using a corresponding plain dict, or vice-versa.
+    `OrderedDict` instances: their sequence order is ignored, the sorting
+    order of keys is used instead. The same convention is followed in
+    `flatten`. This correctly repacks dicts and `OrderedDict`s after they
+    have been flattened, and also allows flattening an `OrderedDict` and
+    then repacking it back using a corresponding plain dict, or vice-versa.
     Dictionaries with non-sortable keys cannot be flattened.
     Args:
         structure: Nested structure, whose structure is given by nested lists,
@@ -83,8 +82,8 @@ def pack_sequence_as(structure: Any, flat_sequence: Sequence) -> Any:
             scalars.
         flat_sequence: flat sequence to pack.
     Returns:
-        packed: `flat_sequence` converted to have the same recursive structure as
-        `structure`.
+        packed: `flat_sequence` converted to have the same recursive
+        structure as `structure`.
     Raises:
         ValueError: If `flat_sequence` and `structure` have different
         element counts.
@@ -96,12 +95,13 @@ def pack_sequence_as(structure: Any, flat_sequence: Sequence) -> Any:
         structure = list(structure.values())
     if not is_sequence(structure):
         if len(flat_sequence) != 1:
-            raise ValueError("Structure is a scalar but len(flat_sequence) == %d > 1"
-                            % len(flat_sequence))
+            raise ValueError("Structure is a scalar"
+                             "but len(flat_sequence) == %d > 1"
+                             % len(flat_sequence))
         return flat_sequence[0]
     try:
-        final_index, packed = _packed_nest_with_indices(structure, flat_sequence,
-                                                        0)
+        final_index, packed = _packed_nest_with_indices(structure,
+                                                        flat_sequence, 0)
         if final_index < len(flat_sequence):
             raise IndexError
     except IndexError:
@@ -109,30 +109,34 @@ def pack_sequence_as(structure: Any, flat_sequence: Sequence) -> Any:
         if len(flat_structure) != len(flat_sequence):
             raise ValueError(
                 "Could not pack sequence. Structure had %d elements, but "
-                "flat_sequence had %d elements.  Structure: %s, flat_sequence: %s." %
-                (len(flat_structure), len(flat_sequence), structure, flat_sequence))
+                "flat_sequence had %d elements.  Structure: %s,"
+                "flat_sequence: %s." %
+                (len(flat_structure),
+                 len(flat_sequence),
+                 structure,
+                 flat_sequence))
     return _sequence_like(structure, packed)
 
-def map_structure(func: Callable, *structure: Any) -> Sequence:
-    """Applies `func` to each entry in `structure` and returns a new structure.
-    Applies `func(x[0], x[1], ...)` where x[i] is an entry in
+def map_structure(func: Callable,
+                  *structure: NestedStructure) -> NestedStructure:
+    r"""Applies `func` to each entry in `structure` and returns a new
+    structure. Applies `func(x[0], x[1], ...)` where x[i] is an entry in
     `structure[i]`.  All structures in `structure` must have the same arity,
     and the return value will contain results with the same structure layout.
     Args:
-        func: A callable that accepts as many arguments as there are structures.
-        *structure: scalar, or tuple or list of constructed scalars and/or other
-        tuples/lists, or scalars.  Note: numpy arrays are considered as scalars.
+        func: A callable that accepts as many arguments as there are
+        structures. *structure: scalar, or tuple or list of constructed
+        scalars and/or other tuples/lists, or scalars.
+        Note: numpy arrays are considered as scalars.
     Returns:
-        A new structure with the same arity as `structure`, whose values correspond
-        to `func(x[0], x[1], ...)` where `x[i]` is a value in the corresponding
-        location in `structure[i]`. If there are different sequence types and
-        `check_types` is `False` the sequence types of the first structure will be
-        used.
+        A new structure with the same arity as `structure`, whose values
+        correspond to `func(x[0], x[1], ...)` where `x[i]` is a value in the
+        corresponding location in `structure[i]`.
     Raises:
         TypeError: If `func` is not callable or if the structures do not match
         each other by depth tree.
-        ValueError: If no structure is provided or if the structures do not match
-        each other by type.
+        ValueError: If no structure is provided or if the structures do not
+        match each other by type.
         ValueError: If wrong keyword arguments are provided.
     """
     if not callable(func):
@@ -140,8 +144,6 @@ def map_structure(func: Callable, *structure: Any) -> Sequence:
 
     if not structure:
         raise ValueError("Must provide at least one structure")
-
-    check_types = True
 
     for other in structure[1:]:
         assert_same_structure(structure[0], other)
@@ -151,8 +153,17 @@ def map_structure(func: Callable, *structure: Any) -> Sequence:
     return pack_sequence_as(
         structure[0], [func(*x) for x in entries])
 
-def _recursive_assert_same_structure(st1: Any, st2: Any) -> None:
-    """"""
+def _assert_same_structure_helper(st1: NestedStructure,
+                                  st2: NestedStructure):
+    r"""Recursively check if two structures are nested in the same way.
+    Helper for the `assert_same_structure`
+    Args:
+        st1: an arbitrarily nested structure.
+        st2: an arbitrarily nested structure.
+    Raises:
+        ValueError: If the two structures do not have the same number of
+        elements or if the two structures are not nested in the same way.
+    """
     if is_sequence(st1) != is_sequence(st2):
         raise ValueError(
             "The two structures don't have the same nested structure.\n\n"
@@ -163,14 +174,12 @@ def _recursive_assert_same_structure(st1: Any, st2: Any) -> None:
 
     st1_as_sequence = [n for n in _yield_value(st1)]
     st2_as_sequence = [n for n in _yield_value(st2)]
-    for n1, n2 in zip(st1_as_sequence, st2_as_sequence):
-        _recursive_assert_same_structure(n1, n2)
+    for item1, item2 in zip(st1_as_sequence, st2_as_sequence):
+        _assert_same_structure_helper(item1, item2)
 
-
-def assert_same_structure(st1: Any, st2: Any) -> None:
-    """Asserts that two structures are nested in the same way.
-    Note that namedtuples with identical name and fields are always considered
-    to have the same shallow structure (even with `check_types=True`).
+def assert_same_structure(st1: NestedStructure,
+                          st2: NestedStructure):
+    r"""Asserts that two structures are nested in the same way.
     For instance, this code will print `True`:
     ```python
     def nt(a, b):
@@ -181,10 +190,8 @@ def assert_same_structure(st1: Any, st2: Any) -> None:
         st1: an arbitrarily nested structure.
         st2: an arbitrarily nested structure.
     Raises:
-        ValueError: If the two structures do not have the same number of elements or
-        if the two structures are not nested in the same way.
-        TypeError: If the two structures differ in the type of sequence in any of
-        their substructures. Only possible if `check_types` is `True`.
+        ValueError: If the two structures do not have the same number of
+        elements or if the two structures are not nested in the same way.
     """
     len_st1 = 1
     if is_sequence(st1):
@@ -199,10 +206,10 @@ def assert_same_structure(st1: Any, st2: Any) -> None:
                          "elements.\n\nFirst structure (%i elements): %s\n\n"
                          "Second structure (%i elements): %s"
                          % (len_st1, st1, len_st2, st2))
-    _recursive_assert_same_structure(st1, st2)
+    _assert_same_structure_helper(st1, st2)
 
-def _sorted(dict_: Dict[T, Any]) -> List[T]:
-    """Returns a sorted list of the dict keys, with error if keys not
+def _sorted(dict_: Dict[TypeArg, Any]) -> List[TypeArg]:
+    r"""Returns a sorted list of the dict keys, with error if keys not
     sortable.
     """
     try:
@@ -210,29 +217,34 @@ def _sorted(dict_: Dict[T, Any]) -> List[T]:
     except TypeError:
         raise TypeError("nest only supports dicts with sortable keys.")
 
-def _is_namedtuple(input: Any) -> bool:
-    """Returns True if `input` is a `namedtuple`.
+def _is_namedtuple(instance: object) -> bool:
+    r"""Returns True if `instance` is a `namedtuple`.
     Args:
-        input: An instance of a Python object.
+        instance: An instance of a Python object.
     Returns:
         True if `instance` is a `namedtuple`.
     """
-    type_ = type(input)
+    type_ = type(instance)
     base_ = type_.__bases__
     if len(base_) != 1 or base_[0] != tuple:
         return False
     field_ = getattr(type_, '_fields', None)
-    if not isinstance(field_, tuple): 
+    if not isinstance(field_, tuple):
         return False
-    return all(type(n)==str for n in field_)
+    return all(isinstance(n, str) for n in field_)
 
 def _yield_value(iterable):
-    """"""
-    for _, v in _yield_sorted_items(iterable):
-        yield v
+    r"""Yield only sorted values from `iterable`.
+    Args:
+        iterable: an iterable.
+    Yields:
+        The iterable's values, in order of sorted keys or items.
+    """
+    for _, value in _yield_sorted_items(iterable):
+        yield value
 
 def _yield_sorted_items(iterable):
-    """Yield (key, value) pairs for `iterable` in a deterministic order.
+    r"""Yield (key, value) pairs for `iterable` in a deterministic order.
     For Sequences, the key will be an int, the array index of a value.
     For Mappings, the key will be the dictionary key.
     For objects (e.g. namedtuples), the key will be the attribute name.
@@ -250,24 +262,24 @@ def _yield_sorted_items(iterable):
         for field in iterable._fields:
             yield field, getattr(iterable, field)
 
-
     else:
         for item in enumerate(iterable):
-            yield item
+            yield None, item
 
-def _packed_nest_with_indices(
-    structure: Any, 
-    flat: Sequence, 
-    index: int) -> (int, List):
-    """Helper function for pack_sequence_as.
+def _packed_nest_with_indices(structure: NestedStructure,
+                              flat: NestedStructure,
+                              index: int) -> Tuple[int, NestedStructure]:
+    r"""Helper function for pack_sequence_as.
     Args:
         structure: Substructure (list / tuple / dict) to mimic.
         flat: Flattened values to output substructure for.
         index: Index at which to start reading from flat.
-        is_seq: Function used to test if a value should be treated as a sequence.
+        is_seq: Function used to test if a value should be treated as a
+            sequence.
     Returns:
         The tuple (new_index, child), where:
-        * new_index - the updated index into `flat` having processed `structure`.
+        * new_index - the updated index into `flat` having processed
+                    `structure`.
         * packed - the subset of `flat` corresponding to `structure`,
                     having started at `index`, and packed into the same nested
                     format.
@@ -276,18 +288,20 @@ def _packed_nest_with_indices(
         (assuming indexing starts from `index`).
     """
     packed = []
-    for s in _yield_value(structure):
-        if is_sequence(s):
-            new_index, child = _packed_nest_with_indices(s, flat, index)
-            packed.append(_sequence_like(s, child))
+    for value in _yield_value(structure):
+        if is_sequence(value):
+            new_index, child = _packed_nest_with_indices(value, flat, index)
+            packed.append(_sequence_like(value, child))
             index = new_index
         else:
             packed.append(flat[index])
             index += 1
     return index, packed
 
-def _sequence_like(instance: Any, args: Sequence) -> Sequence:
-    """Converts the sequence `args` to the same type as `instance`.
+InstanceType = Union[Tuple, List, Dict, namedtuple, OrderedDict]
+def _sequence_like(instance: InstanceType,
+                   args: NestedStructure) -> NestedStructure:
+    r"""Converts the sequence `args` to the same type as `instance`.
     Args:
         instance: an instance of `tuple`, `list`, `namedtuple`, `dict`,
             `collections.OrderedDict`.
@@ -304,4 +318,3 @@ def _sequence_like(instance: Any, args: Sequence) -> Sequence:
     else:
         # Not a namedtuple
         return type(instance)(args)
-

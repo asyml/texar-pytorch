@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,17 +15,19 @@
 Base class for connectors that transform inputs into specified output shape.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+from abc import ABC
+from typing import Union, Generic, Optional, Tuple, TypeVar
+from texar import HParams
 from texar.module_base import ModuleBase
 
 __all__ = [
     "ConnectorBase"
 ]
 
-class ConnectorBase(ModuleBase):
+OutputSize = TypeVar('OutputSize')  # output type can be of any nested structure
+HParamsType = Optional[Union[HParams, dict]]
+
+class ConnectorBase(ModuleBase, Generic[OutputSize], ABC):
     """Base class inherited by all connector classes. A connector is to
     transform inputs into outputs with any specified structure and shape.
     For example, tranforming the final state of an encoder to the initial
@@ -46,7 +48,7 @@ class ConnectorBase(ModuleBase):
             default values.
     """
 
-    def __init__(self, output_size, hparams=None):
+    def __init__(self, output_size: OutputSize, hparams: HParamsType = None):
         ModuleBase.__init__(self, hparams)
         self._output_size = output_size
 
@@ -58,7 +60,7 @@ class ConnectorBase(ModuleBase):
             "name": "connector"
         }
 
-    def _build(self, *args, **kwargs):
+    def forward(self, *args, **kwargs):
         """Transforms inputs to outputs with specified shape.
         """
         raise NotImplementedError

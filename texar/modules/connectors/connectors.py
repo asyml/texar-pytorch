@@ -15,11 +15,12 @@
 Various connectors.
 """
 
+from typing import Optional, Union, Callable, Tuple, List
 import numpy as np
 
 import torch
-from typing import *
 
+from texar import HParams
 from texar.modules.connectors.connector_base import ConnectorBase
 from texar.core import layers
 from texar.utils.utils import get_function, check_or_get_instance
@@ -37,10 +38,13 @@ __all__ = [
     #"ConcatConnector"
 ]
 
-def _assert_same_size(
-    outputs: Union[torch.Tensor, tuple],
-    output_size: Union[int, torch.Size, tuple]
-    ) -> None:
+OutputSize = Union[int, torch.Size, Tuple["OutputSize"]]
+HParamsType = Optional[Union[HParams, dict]]
+ActivationFn = Callable[[torch.Tensor], torch.Tensor]
+TensorOrNestedTuple = Union[torch.Tensor, Tuple["TensorOrNestedTuple"]]
+
+def _assert_same_size(outputs: TensorOrNestedTuple,
+                      output_size: OutputSize):
     """Check if outputs match output_size
     Args:
         outputs: A Tensor or a (nested) tuple of tensors
@@ -55,8 +59,8 @@ def _assert_same_size(
 
         if isinstance(size, torch.Size):
             if output[0].size() != size:
-                raise ValueError(
-                    "The output size does not match the the required output_size")
+                raise ValueError("The output size does not match"
+                                 "the the required output_size")
         elif output[0].size() != torch.Size([size]):
             raise ValueError(
                 "The output size does not match the the required output_size")
@@ -70,10 +74,10 @@ def _get_tensor_depth(x: torch.Tensor) -> int:
     """
     return np.prod(x.size()[1:])
 
-def _mlp_transform(inputs: torch.Tensor,
-    output_size: Union[int, torch.Size, tuple],
-    activation_fn: Callable[[torch.Tensor], torch.Tensor] = layers.identity
-    ) -> Union[torch.Tensor, tuple]:
+def _mlp_transform(inputs: TensorOrNestedTuple,
+                   output_size: OutputSize,
+                   activation_fn: ActivationFn = layers.identity
+                   ) -> TensorOrNestedTuple:
     """Transforms inputs through a fully-connected layer that creates the output
     with specified size.
 
@@ -111,13 +115,15 @@ def _mlp_transform(inputs: torch.Tensor,
     else:
         size_list = flat_output_size
     sum_output_size = sum(size_list)
-    fc_output = torch.nn.Linear(concat_input.size()[-1], sum_output_size)(concat_input)
+    fc_output = torch.nn.Linear(
+        concat_input.size()[-1], sum_output_size)(concat_input)
     fc_output = activation_fn(fc_output)
     flat_output = torch.split(fc_output, size_list, dim=1)
     flat_output = list(flat_output)
     if isinstance(flat_output_size[0], torch.Size):
         for (i, shape) in enumerate(flat_output_size):
-            flat_output[i] = torch.reshape(flat_output[i], tuple([-1] + list(shape)))
+            flat_output[i] = torch.reshape(
+                flat_output[i], tuple([-1] + list(shape)))
 
     output = nest.pack_sequence_as(structure=output_size,
                                    flat_sequence=flat_output)
@@ -155,11 +161,12 @@ class ConstantConnector(ConnectorBase):
     .. document private functions
     .. automethod:: _build
     """
-    def __init__(
-        self,
-        output_size: Union[int, torch.Size, tuple],
-        hparams=None) -> None:
+    def __init__(self,
+                 output_size: OutputSize,
+                 hparams: HParamsType = None):
+
         ConnectorBase.__init__(self, output_size, hparams)
+        self._built = False
 
     @staticmethod
     def default_hparams() -> dict:
@@ -186,11 +193,9 @@ class ConstantConnector(ConnectorBase):
             "name": "constant_connector"
         }
 
-    def forward(
-        self,
-        batch_size: Union[int, torch.Tensor],
-        value: Optional=None
-        ) -> Union[torch.Tensor, tuple]:
+    def forward(self,
+                batch_size: Union[int, torch.Tensor],
+                value: Optional = None) -> TensorOrNestedTuple:
         """Creates output tensor(s) that has the given value.
 
         Args:
@@ -258,11 +263,11 @@ class ForwardConnector(ConnectorBase):
     .. automethod:: _build
     """
 
-    def __init__(
-        self,
-        output_size: Union[int, torch.Size, tuple],
-        hparams=None) -> None:
+    def __init__(self,
+                 output_size: OutputSize,
+                 hparams: HParamsType = None):
         ConnectorBase.__init__(self, output_size, hparams)
+        self._built = False
 
     @staticmethod
     def default_hparams() -> dict:
@@ -283,10 +288,9 @@ class ForwardConnector(ConnectorBase):
             "name": "forward_connector"
         }
 
-    def forward(
-        self,
-        inputs: Union[list, dict, tuple, torch.Tensor]
-        ) -> Union[list, dict, tuple, torch.Tensor]:
+    def forward(self,
+                inputs: Union[list, dict, tuple, torch.Tensor]
+                ) -> TensorOrNestedTuple:
         """Transforms inputs to have the same structure as with
         :attr:`output_size`. Values of the inputs are not changed.
 
@@ -364,11 +368,11 @@ class MLPTransformConnector(ConnectorBase):
     .. automethod:: _build
     """
 
-    def __init__(
-        self,
-        output_size: Union[int, torch.Size, tuple],
-        hparams=None) -> None:
+    def __init__(self,
+                 output_size: OutputSize,
+                 hparams: HParamsType = None):
         ConnectorBase.__init__(self, output_size, hparams)
+        self._built = False
 
     @staticmethod
     def default_hparams() -> dict:
@@ -396,10 +400,9 @@ class MLPTransformConnector(ConnectorBase):
             "name": "mlp_connector"
         }
 
-    def forward(
-        self,
-        inputs: Union[torch.Tensor, tuple]
-        ) -> Union[torch.Tensor, tuple]:
+    def forward(self,
+                inputs: TensorOrNestedTuple
+                ) -> TensorOrNestedTuple:
         """Transforms inputs with an MLP layer and packs the results to have
         the same structure as specified by :attr:`output_size`.
 
@@ -465,7 +468,8 @@ class ReparameterizedStochasticConnector(ConnectorBase):
 
             kwargs = {
                 'loc': torch.zeros([10]),
-                'scale_diag': torch.stack([torch.diag(x) for x in torch.ones([10])], dim=0)
+                'scale_diag': torch.stack(
+                    [torch.diag(x) for x in torch.ones([10])], dim=0)
             }
             output_, sample_ = connector(distribution_kwargs=kwargs,
                                          num_samples=batch_size_)
@@ -477,10 +481,9 @@ class ReparameterizedStochasticConnector(ConnectorBase):
     .. automethod:: _build
     """
 
-    def __init__(
-        self,
-        output_size: Union[int, torch.Size, tuple],
-        hparams=None) -> None:
+    def __init__(self,
+                 output_size: OutputSize,
+                 hparams: HParamsType = None):
         ConnectorBase.__init__(self, output_size, hparams)
 
     @staticmethod
@@ -510,11 +513,11 @@ class ReparameterizedStochasticConnector(ConnectorBase):
         }
 
     def forward(self,
-               distribution: Union[object, str]='MultivariateNormal',
-               distribution_kwargs: Optional[dict]=None,
-               transform: bool=True,
-               num_samples: Optional[Union[int, torch.Tensor]]=None
-               ) -> tuple:
+                distribution: Union[object, str] = 'MultivariateNormal',
+                distribution_kwargs: Optional[dict] = None,
+                transform: bool = True,
+                num_samples: Optional[Union[int, torch.Tensor]] = None
+                ) -> Tuple[Union[TensorOrNestedTuple, torch.Tensor]]:
         """Samples from a distribution and optionally performs transformation
         with an MLP layer.
 
@@ -601,7 +604,9 @@ class StochasticConnector(ConnectorBase):
     .. automethod:: _build
     """
 
-    def __init__(self, output_size, hparams=None):
+    def __init__(self,
+                 output_size: OutputSize,
+                 hparams: HParamsType = None):
         ConnectorBase.__init__(self, output_size, hparams)
 
     @staticmethod
@@ -631,11 +636,11 @@ class StochasticConnector(ConnectorBase):
         }
 
     def forward(self,
-               distribution: Union[object, str]='MultivariateNormal',
-               distribution_kwargs: Optional[dict]=None,
-               transform: bool=False,
-               num_samples: Optional[Union[int, torch.Tensor]]=None
-               ) -> Union[torch.Tensor, tuple]:
+                distribution: Union[object, str] = 'MultivariateNormal',
+                distribution_kwargs: Optional[dict] = None,
+                transform: bool = False,
+                num_samples: Optional[Union[int, torch.Tensor]] = None
+                ) -> TensorOrNestedTuple:
         """Samples from a distribution and optionally performs transformation
         with an MLP layer.
 
@@ -683,7 +688,7 @@ class StochasticConnector(ConnectorBase):
 
         if dstr.event_shape == []:
             output = torch.reshape(output,
-                                output.size() + torch.Size(1))
+                                   output.size() + torch.Size(1))
 
         # Disable gradients through samples
         output = output.detach()
