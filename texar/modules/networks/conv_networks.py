@@ -482,7 +482,6 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             Returns:
                 The output of the final layer.
         """
-        # todo avinash once the mask_sequence module is ready, add masking logic here
         sequence_length = kwargs.get("sequence_length", None)
         dtype = kwargs.get("dtype", None)
         if sequence_length is not None:
