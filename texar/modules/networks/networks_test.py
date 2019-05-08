@@ -10,6 +10,7 @@ from texar.modules.networks.networks import FeedForwardNetwork
 
 # pylint: disable=no-member, invalid-name
 
+
 class FeedForwardNetworkTest(unittest.TestCase):
     """Tests the class
     :class:`~texar.modules.networks.networks.FeedForwardNetwork`.
@@ -43,7 +44,7 @@ class FeedForwardNetworkTest(unittest.TestCase):
         _ = nn(torch.ones(64, 16, 32))
         self.assertEqual(len(nn.trainable_variables),
                          len(hparams["layers"]) * 2)
-        self.assertEqual(len(nn.layer_outputs), len(hparams["layers"]))
+
 
 if __name__ == "__main__":
     unittest.main()
