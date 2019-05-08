@@ -34,7 +34,7 @@ __all__ = [
 
 
 def _get_entropy(logits):
-    probs = F.softmax(logits) + 1e-8
+    probs = F.softmax(logits, -1) + 1e-8
     entropy = - probs * torch.log(probs)
     entropy = torch.sum(entropy, -1)
     return entropy

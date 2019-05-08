@@ -102,7 +102,7 @@ def sequence_softmax_cross_entropy(labels,
     if stop_gradient_to_label:
         labels = labels.detach()
 
-    losses = torch.sum(- labels * F.log_softmax(logits, -1), -1)
+    losses = torch.sum(-labels.type(logits.dtype)*F.log_softmax(logits, -1), -1)
 
     losses = mask_and_reduce(losses,
                              sequence_length,
@@ -188,7 +188,9 @@ def sequence_sparse_softmax_cross_entropy(labels,
                 sequence_length=data_batch['length']-1)
 
     """
-    losses = F.nll_loss(F.log_softmax(logits, dim=1), labels)
+    logits = F.log_softmax(logits, dim=2)
+    logits = logits.permute(0, 2, 1)
+    losses = F.nll_loss(logits, labels, reduction='none')
 
     losses = mask_and_reduce(losses,
                              sequence_length,
@@ -274,8 +276,9 @@ def sequence_sigmoid_cross_entropy(labels,
     """
     if stop_gradient_to_label:
         labels = labels.detach()
-    losses = torch.nn.BCEWithLogitsLoss(reduction=None)
-    losses = losses(logits, labels)
+    losses = torch.nn.BCEWithLogitsLoss(reduction='none')
+
+    losses = losses(logits, labels.type(logits.dtype))
 
     rank = shapes.get_rank(logits) or shapes.get_rank(labels)
     if rank is None:

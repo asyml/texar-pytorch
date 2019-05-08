@@ -203,6 +203,6 @@ def reduce_dimensions(tensor, average_axes=None, sum_axes=None, keepdims=None):
                     raise ValueError('`average_axes` and `sum_axes` must not '
                                      'have overlapped elements.')
     if not keepdims:
-        tensor = torch.squeeze(tensor, dim=list(reduced_axes))
-
+        for axis in sorted(list(reduced_axes), reverse=True):
+            tensor = torch.squeeze(tensor, dim=axis)
     return tensor

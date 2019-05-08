@@ -39,21 +39,21 @@ class EntropyTest(unittest.TestCase):
     def _test_entropy(self, entropy_fn, logits, sequence_length=None):
         if sequence_length is None:
             entropy = entropy_fn(logits)
-            rank = entropy.dim()
+            rank = get_rank(entropy)
             self.assertEqual(rank, 0)
 
             entropy = entropy_fn(logits, average_across_batch=False)
-            rank = entropy.dim()
+            rank = get_rank(entropy)
             self.assertEqual(rank, 1)
             self.assertEqual(entropy.shape, torch.Size([self._batch_size]))
         else:
             entropy = entropy_fn(logits, sequence_length=sequence_length)
-            rank = entropy.dim()
+            rank = get_rank(entropy)
             self.assertEqual(rank, 0)
 
             entropy = entropy_fn(logits, sequence_length=sequence_length,
                                  sum_over_timesteps=False)
-            rank = entropy.dim()
+            rank = get_rank(entropy)
             self.assertEqual(rank, 1)
             self.assertEqual(entropy.shape, torch.Size([self._max_time]))
 
@@ -61,16 +61,16 @@ class EntropyTest(unittest.TestCase):
                                  sum_over_timesteps=False,
                                  average_across_timesteps=True,
                                  average_across_batch=False)
-            rank = entropy.dim()
+            rank = get_rank(entropy)
             self.assertEqual(rank, 1)
-            self.assertEqual(entropy.shape, torch.Szie([self._batch_size]))
+            self.assertEqual(entropy.shape, torch.Size([self._batch_size]))
 
             entropy = entropy_fn(logits, sequence_length=sequence_length,
                                  sum_over_timesteps=False,
                                  average_across_batch=False)
-            rank = entropy.dim()
+            rank = get_rank(entropy)
             self.assertEqual(rank, 2)
-            self.assertEqual(entropy.shape, torch.Szie([self._batch_size,
+            self.assertEqual(entropy.shape, torch.Size([self._batch_size,
                                                         self._max_time]))
 
             sequence_length_time = torch.randint(size=(self._max_time,),
