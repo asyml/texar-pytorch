@@ -68,7 +68,7 @@ def get_rank(tensor: torch.Tensor) -> int:
         `None` if the rank cannot be determined.
     """
     if torch.is_tensor(tensor):
-        rank = len(tensor.dim())
+        rank = tensor.dim()
     else:
         array = np.asarray(tensor)
         rank = array.ndim
