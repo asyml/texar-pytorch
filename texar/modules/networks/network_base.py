@@ -82,8 +82,6 @@ class FeedForwardNetworkBase(ModuleBase):
         prev_outputs = input
         for layer_id, layer in enumerate(self._layers):
             outputs = layer(prev_outputs)
-            self._layer_outputs.append(outputs)
-            self._layer_outputs_by_name[self._layer_names[layer_id]] = outputs
             prev_outputs = outputs
 
         return outputs
@@ -139,21 +137,6 @@ class FeedForwardNetworkBase(ModuleBase):
         """A list of uniquified layer names.
         """
         return self._layer_names
-
-    def layer_outputs_by_name(self, layer_name: str) -> Optional[torch.Tensor]:
-        """Returns the output tensors of the layer with the specified name.
-        Returns `None` if the layer name does not exist.
-
-        Args:
-            layer_name (str): Name of the layer.
-        """
-        return self._layer_outputs_by_name.get(layer_name, None)
-
-    @property
-    def layer_outputs(self) -> List[torch.Tensor]:
-        """A list containing output tensors of each layer.
-        """
-        return self._layer_outputs
 
 
 def _build_layers(network: FeedForwardNetworkBase, layers: Optional[nn.ModuleList] = None,
