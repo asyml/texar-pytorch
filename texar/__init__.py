@@ -19,5 +19,6 @@ Modules of texar library.
 
 from texar import core
 from texar import utils
+from texar import losses
 from texar.hyperparams import *
 from texar.module_base import *

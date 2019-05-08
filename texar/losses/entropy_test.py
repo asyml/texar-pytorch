@@ -13,10 +13,9 @@ from __future__ import unicode_literals
 
 import unittest
 import torch
-import torch.nn.functional as F
-
-import numpy as np
 import texar as tx
+
+from texar.utils.shapes import get_rank
 
 
 class EntropyTest(unittest.TestCase):
@@ -40,21 +39,21 @@ class EntropyTest(unittest.TestCase):
     def _test_entropy(self, entropy_fn, logits, sequence_length=None):
         if sequence_length is None:
             entropy = entropy_fn(logits)
-            rank = len(entropy.shape)
+            rank = entropy.dim()
             self.assertEqual(rank, 0)
 
             entropy = entropy_fn(logits, average_across_batch=False)
-            rank = len(entropy.shape)
+            rank = entropy.dim()
             self.assertEqual(rank, 1)
             self.assertEqual(entropy.shape, torch.Size([self._batch_size]))
         else:
             entropy = entropy_fn(logits, sequence_length=sequence_length)
-            rank = len(entropy.shape)
+            rank = entropy.dim()
             self.assertEqual(rank, 0)
 
             entropy = entropy_fn(logits, sequence_length=sequence_length,
                                  sum_over_timesteps=False)
-            rank = len(entropy.shape)
+            rank = entropy.dim()
             self.assertEqual(rank, 1)
             self.assertEqual(entropy.shape, torch.Size([self._max_time]))
 
@@ -62,14 +61,14 @@ class EntropyTest(unittest.TestCase):
                                  sum_over_timesteps=False,
                                  average_across_timesteps=True,
                                  average_across_batch=False)
-            rank = len(entropy.shape)
+            rank = entropy.dim()
             self.assertEqual(rank, 1)
             self.assertEqual(entropy.shape, torch.Szie([self._batch_size]))
 
             entropy = entropy_fn(logits, sequence_length=sequence_length,
                                  sum_over_timesteps=False,
                                  average_across_batch=False)
-            rank = len(entropy.shape)
+            rank = entropy.dim()
             self.assertEqual(rank, 2)
             self.assertEqual(entropy.shape, torch.Szie([self._batch_size,
                                                         self._max_time]))
