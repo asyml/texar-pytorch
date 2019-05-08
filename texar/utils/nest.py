@@ -254,6 +254,7 @@ def _yield_sorted_items(iterable):
     Yields:
         The iterable's (key, value) pairs, in order of sorted keys.
     """
+    #print("iterable", iterable, type(iterable))
     if isinstance(iterable, collections.Mapping):
         for key in _sorted(iterable):
             yield key, iterable[key]
@@ -263,8 +264,8 @@ def _yield_sorted_items(iterable):
             yield field, getattr(iterable, field)
 
     else:
-        for item in enumerate(iterable):
-            yield None, item
+        for index, item in enumerate(iterable):
+            yield index, item
 
 def _packed_nest_with_indices(structure: NestedStructure,
                               flat: NestedStructure,
