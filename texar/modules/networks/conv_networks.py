@@ -16,7 +16,7 @@ Various convolutional networks.
 """
 import torch
 
-from typing import Any
+from typing import Optional, Dict, List, Any, Union, Collection
 
 from texar.modules.networks.network_base import FeedForwardNetworkBase
 from texar.modules.networks.network_base import _build_layers
@@ -80,14 +80,14 @@ class Conv1DNetwork(FeedForwardNetworkBase):
     .. automethod:: _build
     """
 
-    def __init__(self, hparams=None):
+    def __init__(self, hparams: Optional[Union[HParams, Dict[str, Any]]] = None):
         super(Conv1DNetwork, self).__init__(hparams)
 
         layer_hparams = self._build_layer_hparams()
         _build_layers(self, layers=None, layer_hparams=layer_hparams)
 
     @staticmethod
-    def default_hparams():
+    def default_hparams() -> Dict[str, Any]:
         """Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
@@ -292,7 +292,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                               "dense_activation", "dropout_conv", "dropout_dense"]
         }
 
-    def _build_pool_hparams(self):
+    def _build_pool_hparams(self) -> List[Dict[str, Any]]:
         pool_type = self._hparams.pooling
         if pool_type == "MaxPool":
             pool_type = "MaxPool1d"
@@ -318,7 +318,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
         return pool_hparams
 
-    def _build_conv1d_hparams(self, pool_hparams):
+    def _build_conv1d_hparams(self,
+                              pool_hparams: List[Dict[str, Any]]) -> List[Union[List[Dict[str, Any]], Dict[str, Collection[str]]]]:
         """Creates the hparams for each of the conv layers usable for
         :func:`texar.core.layers.get_layer`.
         """
@@ -350,10 +351,10 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             else:
                 return {"type": name, "kwargs": {}}
 
-        conv_pool_hparams = []
+        conv_pool_hparams: List[Union[List[Dict[str, Any]], Dict[str, Collection[str]]]] = []
         for i in range(nconv):
             hparams_i = []
-            names = []
+            names: List[str] = []
             for ks_ij in kernel_size[i]:
                 name = uniquify_str("conv_%d" % (i+1), names)
                 names.append(name)
@@ -392,7 +393,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
         return conv_pool_hparams
 
-    def _build_dense_hparams(self):
+    def _build_dense_hparams(self) -> List[Dict[str, Any]]:
         ndense = self._hparams.num_dense_layers
         in_features = _to_list(self._hparams.in_features, 'in_features', ndense)
         out_features = _to_list(self._hparams.out_features, 'out_features', ndense)
@@ -432,7 +433,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
         return dense_hparams
 
-    def _build_layer_hparams(self):
+    def _build_layer_hparams(self) -> Optional[List[Union[HParams, Dict[str, Any]]]]:
         pool_hparams = self._build_pool_hparams()
         conv_pool_hparams = self._build_conv1d_hparams(pool_hparams)
         dense_hparams = self._build_dense_hparams()
