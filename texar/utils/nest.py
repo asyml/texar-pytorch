@@ -1,8 +1,9 @@
-# Apply from Tensorflow(https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/util/nest.py)
+# Apply from 
+# Tensorflow(https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/util/nest.py)
 
-"""This module can perform operations on nested structures. A nested structure is a
-Python sequence, tuple (including `namedtuple`), or dict that can contain
-further sequences, tuples, and dicts.
+"""This module can perform operations on nested structures. A nested
+structure is a Python sequence, tuple (including `namedtuple`), or
+dict that can contain further sequences, tuples, and dicts.
 """
 
 import collections
@@ -51,11 +52,13 @@ def flatten(structure: NestedStructure) -> List[Any]:
     res: List[Any] = []
     if isinstance(structure, dict):
         structure = list(structure.values())
+
     if not is_sequence(structure):
         return [structure]
     else:
         for item in _yield_value(structure):
             res += flatten(item)
+
     return res
 
 def pack_sequence_as(structure: NestedStructure,
@@ -295,9 +298,9 @@ def _packed_nest_with_indices(structure: NestedStructure,
             index += 1
     return index, packed
 
-InstanceType = Union[Tuple, List, Mapping, OrderedDict]
+InstanceType = Any
 def _sequence_like(instance: InstanceType,
-                   args: NestedStructure) -> NestedStructure:
+                   args: Any) -> InstanceType:
     r"""Converts the sequence `args` to the same type as `instance`.
     Args:
         instance: an instance of `tuple`, `list`, `namedtuple`, `dict`,
@@ -308,7 +311,8 @@ def _sequence_like(instance: InstanceType,
     """
     if isinstance(instance, collections.Mapping):
         result: Mapping[Any, Any] = dict(zip(_sorted(instance), args))
-        return type(instance)((key, result[key]) for key in instance)
+        generator = ((key, result[key]) for key in instance)
+        return type(instance)(generator) # type: ignore
     elif _is_namedtuple(instance):
         return type(instance)(*args)
 

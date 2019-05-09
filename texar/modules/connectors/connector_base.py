@@ -16,7 +16,7 @@ Base class for connectors that transform inputs into specified output shape.
 """
 
 from abc import ABC
-from typing import Union, Generic, Optional, Tuple, TypeVar
+from typing import Union, Generic, Optional, Tuple, TypeVar, Dict, Any
 from texar import HParams
 from texar.module_base import ModuleBase
 
@@ -24,8 +24,8 @@ __all__ = [
     "ConnectorBase"
 ]
 
-OutputSize = TypeVar('OutputSize')  # output type can be of any nested structure
-HParamsType = Optional[Union[HParams, dict]]
+OutputSize = TypeVar('OutputSize')
+HParamsType = Optional[HParams]
 
 class ConnectorBase(ModuleBase, Generic[OutputSize], ABC):
     """Base class inherited by all connector classes. A connector is to

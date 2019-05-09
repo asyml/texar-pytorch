@@ -5,14 +5,18 @@ Unit tests for connectors.
 
 from __future__ import unicode_literals
 
-import torch
-import unittest
-from texar.core import layers
-from texar.modules import ConstantConnector
-from texar.modules import MLPTransformConnector
-from texar.modules import ReparameterizedStochasticConnector
-from texar.modules.connectors.connectors import _assert_same_size
 from collections import namedtuple
+import unittest
+import torch
+import torch.distributions as tds
+
+from texar.core import layers
+from texar.modules.connectors.connectors import ConstantConnector
+from texar.modules.connectors.connectors import MLPTransformConnector
+from texar.modules.connectors.connectors import (
+    ReparameterizedStochasticConnector)
+from texar.modules.connectors.connectors import _assert_same_size
+
 from texar.utils import nest
 
 
@@ -21,15 +25,19 @@ from texar.utils import nest
 class TestConnectors(unittest.TestCase):
     """Tests various connectors.
     """
+    def __init__(self, *args, **kwargs):
+        super(TestConnectors, self).__init__(*args, **kwargs)
+
+        self._batch_size = 100
+
+        self._decoder_cell = layers.get_rnn_cell(
+            256, layers.default_rnn_cell_hparams())
 
     def test_constant_connector(self):
         """Tests the logic of
         :class:`~texar.modules.connectors.ConstantConnector`.
         """
-        self._batch_size = 100
 
-        self._decoder_cell = layers.get_rnn_cell(
-            256, layers.default_rnn_cell_hparams())
         state_size = namedtuple('LSTMStateTuple', ['c', 'h'])(256, 256)
         connector = ConstantConnector(state_size)
         decoder_initial_state_0 = connector(self._batch_size)
@@ -43,6 +51,7 @@ class TestConnectors(unittest.TestCase):
         self.assertEqual(nest.flatten(s_0)[0][0, 0], 0.)
         self.assertEqual(nest.flatten(s_1)[0][0, 0], 1.)
 
+    # pylint: disable=fixme, unnecessary-pass
     def test_forward_connector(self):
         """Tests the logic of
         :class:`~texar.modules.connectors.ForwardConnector`.
@@ -50,6 +59,7 @@ class TestConnectors(unittest.TestCase):
         # TODO(zhiting)
         pass
 
+    # pylint: disable=no-self-use
     def test_mlp_transform_connector(self):
         """Tests the logic of
         :class:`~texar.modules.connectors.MLPTransformConnector`.
@@ -63,31 +73,33 @@ class TestConnectors(unittest.TestCase):
         """Tests the logic of
         :class:`~texar.modules.ReparameterizedStochasticConnector`.
         """
-        self._batch_size = 100
+        self._batch_size = 16
         state_size = (10, 10)
-        variable_size = 1000
+        variable_size = 100
         state_size_ts = (torch.Size([10, 10]), torch.Size([2, 3, 4]))
         sample_num = 10
 
         mu = torch.zeros([self._batch_size, variable_size])
         var = torch.ones([self._batch_size, variable_size])
-        var = torch.stack([torch.diag(x) for x in var], 0)
+        #var = torch.stack([torch.diag(x) for x in var], 0)
+        f_mu = torch.flatten(mu)
+        f_var = torch.flatten(var)
         mu_vec = torch.zeros([variable_size])
         var_vec = torch.ones([variable_size])
-
-        gauss_ds = torch.distributions.multivariate_normal.MultivariateNormal(
-            loc=mu,
-            scale_tril=var)
-        gauss_ds_vec = torch.distributions.multivariate_normal.MultivariateNormal(
+        gauss_ds = tds.multivariate_normal.MultivariateNormal(
+            loc=f_mu,
+            scale_tril=torch.diag(f_var))
+        gauss_ds_vec = tds.multivariate_normal.MultivariateNormal(
             loc=mu_vec,
             scale_tril=torch.diag(var_vec))
         gauss_connector = ReparameterizedStochasticConnector(state_size)
         gauss_connector_ts = ReparameterizedStochasticConnector(state_size_ts)
 
-        output_1, _ = gauss_connector(gauss_ds)
+        output_1, _ = gauss_connector(gauss_ds, num_samples=self._batch_size)
         output_2, _ = gauss_connector(
             distribution="MultivariateNormal",
-            distribution_kwargs={"loc": mu, "scale_tril": var})
+            distribution_kwargs={"loc": f_mu, "scale_tril": torch.diag(f_var)},
+            num_samples=self._batch_size)
         sample_ts, _ = gauss_connector_ts(gauss_ds)
 
         # specify sample num
@@ -95,14 +107,15 @@ class TestConnectors(unittest.TestCase):
             gauss_ds_vec, num_samples=sample_num)
 
         # test when :attr:`transform` is False
-        test_list = [output_1, output_2, sample_ts, sample_test_num]
-
         self.assertEqual(sample_test_num[0].shape,
-                        torch.Size([sample_num, state_size[0]]))
+                         torch.Size([sample_num, state_size[0]]))
+
         self.assertEqual(output_1[0].shape,
-                        torch.Size([self._batch_size, state_size[0]]))
+                         torch.Size([self._batch_size, state_size[0]]))
+
         self.assertEqual(output_2[0].shape,
-                        torch.Size([self._batch_size, state_size[0]]))
+                         torch.Size([self._batch_size, state_size[0]]))
+
         _assert_same_size(sample_ts, state_size_ts)
 
         # sample_mu = np.mean(sample_outputs, axis=0)

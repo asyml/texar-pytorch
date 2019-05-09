@@ -301,7 +301,8 @@ def get_class(class_name: str,
 def check_or_get_instance(ins_or_class_or_name: Union[Type[T], T, str],
                           kwargs: Kwargs,
                           module_paths: Optional[List[str]] = None,
-                          classtype: Optional[MaybeTuple[type]] = None) -> T:
+                          classtype: Optional[MaybeTuple[type]] = None
+                          ) -> Any:
     r"""Returns a class instance and checks types.
 
     Args:
