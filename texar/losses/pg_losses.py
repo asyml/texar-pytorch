@@ -20,6 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import torch
+import torch.nn.functional as F
 
 from texar.losses.losses_utils import mask_and_reduce
 from texar.utils.shapes import get_rank
@@ -117,7 +118,24 @@ def pg_loss_with_logits(actions,
         either :attr:`average_across_batch` or :attr:`sum_over_batch` is
         `True`, which decreases the rank of output tensor by 1.
     """
-    return
+    actions = actions.detach()
+    logits = F.log_softmax(logits, dim=-1)
+    logits = logits.permute([0, -1] + list(range(1, logits.dim()-1)))
+    neg_log_probs = F.nll_loss(logits, actions, reduction='none')
+
+    return pg_loss_with_log_probs(
+        log_probs=-neg_log_probs,
+        advantages=advantages,
+        rank=rank,
+        batched=batched,
+        sequence_length=sequence_length,
+        average_across_batch=average_across_batch,
+        average_across_timesteps=average_across_timesteps,
+        average_across_remaining=average_across_remaining,
+        sum_over_batch=sum_over_batch,
+        sum_over_timesteps=sum_over_timesteps,
+        sum_over_remaining=sum_over_remaining,
+        time_major=time_major)
 
 
 def pg_loss_with_log_probs(log_probs,
