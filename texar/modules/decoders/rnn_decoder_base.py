@@ -231,7 +231,7 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
             -> Tuple[torch.ByteTensor, torch.Tensor, HiddenState]:
         initial_finished, initial_inputs = helper.initialize(
             inputs, sequence_length)
-        state = initial_state or self._cell.init_batch(initial_inputs.size(0))
+        state = initial_state or self._cell.init_batch()
         return (initial_finished, initial_inputs, state)
 
     def step(self, helper: Helper, time: int,
