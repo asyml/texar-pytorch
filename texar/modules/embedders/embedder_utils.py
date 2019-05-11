@@ -25,6 +25,7 @@ __all__ = [
     "soft_embedding_lookup"
 ]
 
+
 def default_embedding_hparams():
     """Returns a `dict` of hyperparameters and default values of a embedder.
 
@@ -150,10 +151,13 @@ def get_embedding(num_embeds=None,
         else:
             embedding = torch.nn.init.xavier_uniform_(embedding)
     else:
-        # pylint: disable=not-callable
-        embedding = torch.tensor(init_value, dtype=torch.float)
+        if torch.is_tensor(init_value):
+            embedding = init_value  # Do not copy the tensor.
+        else:
+            embedding = torch.tensor(init_value, dtype=torch.float)
 
     return embedding
+
 
 def soft_embedding_lookup(embedding, soft_ids):
     """Transforms soft ids (e.g., probability distribution over ids) into
