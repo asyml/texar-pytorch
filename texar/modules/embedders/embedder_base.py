@@ -26,6 +26,7 @@ __all__ = [
     "EmbedderBase"
 ]
 
+
 class EmbedderBase(ModuleBase):
     """The base embedder class that all embedder classes inherit.
 
@@ -36,7 +37,7 @@ class EmbedderBase(ModuleBase):
             embedding variable. If not given, embedding is initialized as
             specified in :attr:`hparams["initializer"]`.
         hparams (dict or HParams, optional): Embedder hyperparameters. Missing
-            hyperparamerter will be set to default values. See
+            hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter sturcture and
             default values.
     """
@@ -44,23 +45,22 @@ class EmbedderBase(ModuleBase):
     def __init__(self, num_embeds=None, init_value=None, hparams=None):
         ModuleBase.__init__(self, hparams)
 
-        self._embedding = embedder_utils.get_embedding(
-            num_embeds, init_value, hparams)
+        if num_embeds is not None or init_value is not None:
+            self._embedding = embedder_utils.get_embedding(
+                num_embeds, init_value, hparams)
 
-        self._num_embeds = self._embedding.shape[0]
+            self._num_embeds = self._embedding.shape[0]
 
-        self._dim = self._embedding.shape[1:]
-        self._dim_rank = len(self._dim)
-        if self._dim_rank == 1:
-            self._dim = self._dim[0]
+            self._dim = self._embedding.shape[1:]
+            self._dim_rank = len(self._dim)
+            if self._dim_rank == 1:
+                self._dim = self._dim[0]
 
     def _get_noise_shape(self, hparams, ids_rank=None, dropout_input=None,
                          dropout_strategy=None):
 
-        noise_shape = None
         st = dropout_strategy
         st = hparams.dropout_strategy if st is None else st
-        noise_shape = None
         if st == 'element':
             noise_shape = None
         elif st == 'item':
@@ -97,6 +97,7 @@ class EmbedderBase(ModuleBase):
         """
         return self._num_embeds
 
+
 class EmbeddingDropout(ModuleBase):
     """The dropout layer that used for the embedding.
 
@@ -113,6 +114,7 @@ class EmbeddingDropout(ModuleBase):
             :meth:`default_hparams` for the hyperparameter sturcture and
             default values.
     """
+
     def __init__(self, rate=None, hparams=None):
         ModuleBase.__init__(self, hparams)
         self._rate = rate
@@ -128,4 +130,3 @@ class EmbeddingDropout(ModuleBase):
         mask += input_tensor.new_empty(noise_shape).uniform_(0, 1)
         mask = torch.floor(mask).div_(keep_rate)
         return input_tensor * mask
-    
