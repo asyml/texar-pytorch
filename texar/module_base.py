@@ -72,7 +72,10 @@ class ModuleBase(nn.Module):
 
         Both parameters of this module and those of all submodules are included.
         """
-        return [x for x in self.parameters(recurse=True)]  # noqa: E501 pylint: disable=unexpected-keyword-arg
+        # TODO: The list returned may contain duplicate parameters (e.g. output
+        #   layer shares parameters with embeddings). For most usages, it's not
+        #   necessary to ensure uniqueness.
+        return [x for x in self.parameters() if x.requires_grad]
 
     @property
     def hparams(self) -> HParams:
