@@ -21,6 +21,7 @@ from typing import List, Optional
 
 import torch
 import torch.nn.functional as F
+from mypy_extensions import TypedDict
 from torch import nn
 
 from texar import HParams
@@ -34,7 +35,15 @@ __all__ = [
 ]
 
 
-Cache = Dict[str, MaybeList[torch.Tensor]]
+class LayerCache(TypedDict):
+    keys: MaybeList[torch.Tensor]
+    values: MaybeList[torch.Tensor]
+
+
+class Cache(TypedDict):
+    memory: Optional[torch.Tensor]
+    memory_attention_bias: Optional[torch.Tensor]
+    layers: List[LayerCache]
 
 
 class MultiheadAttentionEncoder(EncoderBase):
@@ -126,7 +135,7 @@ class MultiheadAttentionEncoder(EncoderBase):
                 queries: torch.Tensor,
                 memory: torch.Tensor,
                 memory_attention_bias: torch.Tensor,
-                cache: Optional[Dict[str, MaybeList[torch.Tensor]]] = None) \
+                cache: Optional[LayerCache] = None) \
             -> torch.Tensor:
         r"""Encodes the inputs.
 
