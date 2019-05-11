@@ -17,7 +17,7 @@ Transformer encoders with multi-head self attention.
 
 # pylint: disable=invalid-name
 
-from typing import Dict, Optional
+from typing import List, Optional
 
 import torch
 import torch.nn.functional as F
@@ -29,8 +29,12 @@ from texar.modules.encoders.encoder_base import EncoderBase
 from texar.utils.types import MaybeList
 
 __all__ = [
-    'MultiheadAttentionEncoder'
+    'MultiheadAttentionEncoder',
+    'Cache',
 ]
+
+
+Cache = Dict[str, MaybeList[torch.Tensor]]
 
 
 class MultiheadAttentionEncoder(EncoderBase):
@@ -118,7 +122,9 @@ class MultiheadAttentionEncoder(EncoderBase):
             'name': 'multihead_attention',
         }
 
-    def forward(self, queries: torch.Tensor, memory: torch.Tensor,
+    def forward(self,  # type: ignore
+                queries: torch.Tensor,
+                memory: torch.Tensor,
                 memory_attention_bias: torch.Tensor,
                 cache: Optional[Dict[str, MaybeList[torch.Tensor]]] = None) \
             -> torch.Tensor:
@@ -139,7 +145,7 @@ class MultiheadAttentionEncoder(EncoderBase):
 
         num_heads = self._hparams.num_heads
         num_units = self._hparams.num_units
-        if num_units % num_heads:
+        if num_units % num_heads != 0:
             raise ValueError(
                 f"Value depth ({num_units}) must be divisible by "
                 f"the number of attention heads ({num_heads}).")
@@ -150,9 +156,8 @@ class MultiheadAttentionEncoder(EncoderBase):
                 out = layer(queries)
 
                 if cache is not None:
-                    # 'decoder self attention when dynamic decoding'
-                    key = f'self_{key}'
-                    res = cache[key]
+                    # decoder self attention when dynamic decoding
+                    res: MaybeList[torch.Tensor] = cache[key]
                     if isinstance(res, list):
                         # inference-like decoding
                         res.append(out.squeeze(1))
@@ -166,8 +171,7 @@ class MultiheadAttentionEncoder(EncoderBase):
             else:
                 # encoder decoder attention
                 if cache is not None:
-                    key = f'memory_{key}'
-                    res = cache[key]
+                    res: MaybeList[torch.Tensor] = cache[key]  # type: ignore
                     if isinstance(res, list):
                         # inference-like decoding
                         if len(res) == 0:
@@ -196,7 +200,7 @@ class MultiheadAttentionEncoder(EncoderBase):
         key_depth_per_head = num_units // num_heads
         Q_ *= key_depth_per_head ** -0.5
 
-        logits = torch.matmul(Q_, K_.t())
+        logits = torch.matmul(Q_, K_.transpose(-2, -1))
         if memory_attention_bias is not None:
             logits += memory_attention_bias
         weights = torch.softmax(logits, dim=-1)

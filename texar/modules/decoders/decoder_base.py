@@ -21,7 +21,7 @@ Base class for decoders.
 
 import copy
 from abc import ABC
-from typing import Generic, Optional, Tuple, TypeVar
+from typing import Generic, Optional, Tuple, TypeVar, overload
 
 import torch
 
@@ -47,8 +47,8 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
     """
 
     def __init__(self,
+                 input_size: int,
                  vocab_size: Optional[int] = None,
-                 input_size: Optional[int] = None,
                  input_time_major: bool = False,
                  output_time_major: bool = False,
                  hparams: Optional[HParams] = None):
@@ -277,6 +277,22 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             helper = decoder_helpers.get_helper(helper_type, **kwargs_)
         return helper
 
+    def _create_or_get_helper(self, infer_mode: Optional[bool] = None,
+                              **kwargs) -> Helper:
+        # Prefer creating a new helper when at least one kwarg is specified.
+        prefer_new = (len(kwargs) > 0)
+        kwargs.update(infer_mode=infer_mode)
+        is_training = (not infer_mode if infer_mode is not None
+                       else self.training)
+        helper = self._train_helper if is_training else self._infer_helper
+        if prefer_new or helper is None:
+            helper = self.create_helper(**kwargs)
+            if is_training and self._train_helper is None:
+                self._train_helper = helper
+            elif not is_training and self._infer_helper is None:
+                self._infer_helper = helper
+        return helper
+
     def set_default_train_helper(self, helper: Helper):
         r"""Set the default helper used in training mode.
 
@@ -313,7 +329,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             helper, inputs, sequence_length, initial_state)
 
         zero_outputs = step_inputs.new_zeros(
-            step_inputs.size(0), self._cell.hidden_size)
+            step_inputs.size(0), self.output_size)
 
         if max_decoding_length is not None:
             finished |= (max_decoding_length <= 0)
@@ -422,6 +438,17 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             in the batch.
         """
         raise NotImplementedError
+
+    @overload
+    def finalize(self, outputs: Output, final_state: State,
+                 sequence_lengths: torch.LongTensor) -> Tuple[Output, State]:
+        ...
+
+    @overload
+    def finalize(self, outputs: Output, final_state: Optional[State],
+                 sequence_lengths: torch.LongTensor) \
+            -> Tuple[Output, Optional[State]]:
+        ...
 
     def finalize(self, outputs: Output, final_state: Optional[State],
                  sequence_lengths: torch.LongTensor) \

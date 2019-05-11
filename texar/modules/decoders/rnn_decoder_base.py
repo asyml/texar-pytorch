@@ -47,14 +47,14 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
     """
 
     def __init__(self,
+                 input_size: int,
+                 vocab_size: int,
                  cell: Optional[RNNCellBase] = None,
-                 vocab_size: Optional[int] = None,
                  output_layer: Optional[nn.Module] = None,
-                 input_size: Optional[int] = None,
                  input_time_major: bool = False,
                  output_time_major: bool = False,
                  hparams: Optional[HParams] = None):
-        super().__init__(vocab_size, input_size, input_time_major,
+        super().__init__(input_size, vocab_size, input_time_major,
                          output_time_major, hparams)
 
         # Make RNN cell
@@ -181,18 +181,7 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
 
         # Helper
         if helper is None:
-            # Prefer creating a new helper when at least one kwarg is specified.
-            prefer_new = (len(kwargs) > 0)
-            kwargs.update(infer_mode=infer_mode)
-            is_training = (not infer_mode if infer_mode is not None
-                           else self.training)
-            helper = self._train_helper if is_training else self._infer_helper
-            if prefer_new or helper is None:
-                helper = self.create_helper(**kwargs)
-                if is_training and self._train_helper is None:
-                    self._train_helper = helper
-                elif not is_training and self._infer_helper is None:
-                    self._infer_helper = helper
+            helper = self._create_or_get_helper(infer_mode, **kwargs)
 
         if (isinstance(helper, decoder_helpers.TrainingHelper) and
                 (inputs is None or sequence_length is None)):
