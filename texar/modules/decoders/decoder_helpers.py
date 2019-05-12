@@ -500,7 +500,10 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
                 self._batch_size, dtype=torch.uint8)
         if self._stop_gradient:
             sample_ids = sample_ids.detach()
-        next_inputs = torch.matmul(sample_ids, self._embedding.weight)
+        if isinstance(self._embedding, nn.Embedding):
+            next_inputs = torch.matmul(sample_ids, self._embedding.weight)
+        else:
+            next_inputs = torch.matmul(sample_ids, self._embedding._embedding)
         return (finished, next_inputs)
 
 

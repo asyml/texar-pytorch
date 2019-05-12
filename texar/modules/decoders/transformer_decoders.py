@@ -810,25 +810,26 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                      decode_length=256,
                      beam_width=5,
                      length_penalty=0.6):
-        def _symbols_to_logits_fn(ids, step, cache):
-            return self._inputs_to_outputs(
-                self._embedding(ids[:, -1]), step, cache)
-
-        outputs, log_prob = beam_search.beam_search(
-            _symbols_to_logits_fn,
-            start_tokens,
-            beam_width,
-            decode_length,
-            self._vocab_size,
-            length_penalty,
-            states=self._state_cache,
-            eos_id=end_token)
-
-        # Ignores <BOS>
-        outputs = outputs[:, :, 1:]
-        # shape = [batch_size, seq_length, beam_width]
-        outputs = outputs.permute([0, 2, 1])
-        return (outputs, log_prob)
+        # def _symbols_to_logits_fn(ids, step, cache):
+        #     return self._inputs_to_outputs(
+        #         self._embedding(ids[:, -1]), step, cache)
+        #
+        # outputs, log_prob = beam_search.beam_search(
+        #     _symbols_to_logits_fn,
+        #     start_tokens,
+        #     beam_width,
+        #     decode_length,
+        #     self._vocab_size,
+        #     length_penalty,
+        #     states=self._state_cache,
+        #     eos_id=end_token)
+        #
+        # # Ignores <BOS>
+        # outputs = outputs[:, :, 1:]
+        # # shape = [batch_size, seq_length, beam_width]
+        # outputs = outputs.permute([0, 2, 1])
+        # return (outputs, log_prob)
+        raise NotImplementedError
 
     @property
     def output_size(self) -> int:
