@@ -67,7 +67,7 @@ def wrap_builtin_cell(cell: nn.RNNCellBase):
         self = RNNCellBase.__new__(LSTMCell)
     else:
         raise TypeError(f"Unrecognized class {type(cell)}.")
-    self._cell = cell  # pylint: disable=protected-access, attribute-defined-outside-init
+    self._cell = cell  # noqa: E501 pylint: disable=protected-access, attribute-defined-outside-init
     return self
 
 
@@ -369,7 +369,7 @@ class HighwayWrapper(RNNCellBase[State]):
         if carry_bias_init is not None:
             nn.init.constant_(self.carry.bias, carry_bias_init)
             if not couple_carry_transform_gates:
-                nn.init.constant_(self.transform.bias, -carry_bias_init)  # pylint: disable=invalid-unary-operand-type
+                nn.init.constant_(self.transform.bias, -carry_bias_init)  # noqa: E501 pylint: disable=invalid-unary-operand-type
 
     def forward(self,  # type: ignore
                 input: torch.Tensor, state: Optional[State] = None) \

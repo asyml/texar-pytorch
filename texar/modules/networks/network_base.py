@@ -46,7 +46,8 @@ class FeedForwardNetworkBase(ModuleBase):
         See :meth:`_build` for the inputs and outputs.
         """
 
-    def __init__(self, hparams: Optional[Union[HParams, Dict[str, Any]]] = None):
+    def __init__(self,
+                 hparams: Optional[Union[HParams, Dict[str, Any]]] = None):
         ModuleBase.__init__(self, hparams)
 
         self._layers = nn.ModuleList()
@@ -139,8 +140,10 @@ class FeedForwardNetworkBase(ModuleBase):
         return self._layer_names
 
 
-def _build_layers(network: FeedForwardNetworkBase, layers: Optional[nn.ModuleList] = None,
-                  layer_hparams: Optional[List[Union[HParams, Dict[str, Any]]]] = None):
+def _build_layers(network: FeedForwardNetworkBase,
+                  layers: Optional[nn.ModuleList] = None,
+                  layer_hparams:
+                  Optional[List[Union[HParams, Dict[str, Any]]]] = None):
     """Builds layers.
 
     Either :attr:`layer_hparams` or :attr:`layers` must be

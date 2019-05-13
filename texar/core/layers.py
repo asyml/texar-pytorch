@@ -337,9 +337,10 @@ def get_initializer(hparams: Optional[HParams] = None) \
                     }
                 }
 
-            The "type" field can be a function name or module path. If name is provided,
-            it be must be from one the following modules:
-            :torch_docs:`torch.nn.init <nn.html#torch-nn-init>` and :mod:`texar.custom`.
+            The "type" field can be a function name or module path. If name is
+            provided, it be must be from one the following modules:
+            :torch_docs:`torch.nn.init <nn.html#torch-nn-init>` and
+            :mod:`texar.custom`.
 
             Besides, the "type" field can also be an initialization function
             called with :python:`initialization_fn(**kwargs)`. In this case
@@ -362,9 +363,11 @@ def get_initializer(hparams: Optional[HParams] = None) \
     return initializer
 
 
-def get_activation_fn(fn_name: Optional[Union[str, Callable[[torch.Tensor], torch.Tensor]]] = None,
-                      kwargs: Union[HParams, Dict, None] = None) -> Optional[Callable[[torch.Tensor],
-                                                                                      torch.Tensor]]:
+def get_activation_fn(fn_name: Optional[Union[str,
+                                              Callable[[torch.Tensor],
+                                                       torch.Tensor]]] = None,
+                      kwargs: Union[HParams, Dict, None] = None) -> \
+        Optional[Callable[[torch.Tensor], torch.Tensor]]:
     """Returns an activation function `fn` with the signature `output = fn(input)`.
 
     If the function specified by :attr:`fn_name` has more than one arguments
@@ -378,7 +381,8 @@ def get_activation_fn(fn_name: Optional[Union[str, Callable[[torch.Tensor], torc
         fn_name (str or callable): An activation function, or its name or
             module path. The function can be:
 
-            - Built-in function defined in :torch_docs:`torch.nn.functional<nn.html#torch-nn-functional>`
+            - Built-in function defined in
+            :torch_docs:`torch.nn.functional<nn.html#torch-nn-functional>`
             - User-defined activation functions in module :mod:`texar.custom`.
             - External activation functions. Must provide the full module path,\
               e.g., "my_module.my_activation_fn".
@@ -489,7 +493,8 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
             hparams = HParams(hparams, default_hparams)
 
         # this case needs to be handled separately because
-        # :torch_docs:`torch.nn.Sequential <nn.html#torch.nn.Sequential>` does not accept kwargs
+        # :torch_docs:`torch.nn.Sequential <nn.html#torch.nn.Sequential>`
+        # does not accept kwargs
         if layer_type == "Sequential":
             names: List[str] = []
             layer = nn.Sequential()
@@ -500,7 +505,8 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
                 names.append(name)
                 layer.add_module(name=name, module=sub_layer)
         else:
-            layer = utils.get_instance(layer_type, hparams.kwargs.todict(), layer_modules)
+            layer = utils.get_instance(layer_type, hparams.kwargs.todict(),
+                                       layer_modules)
 
     if not isinstance(layer, nn.Module):
         raise ValueError("layer must be an instance of `torch.nn.Module`.")
@@ -518,7 +524,9 @@ class _ReducePool1d(nn.Module):
         self._reduce_function = reduce_function
 
     def forward(self, input: Tuple) -> torch.Tensor:  # type: ignore
-        # if check is required because :torch_docs:`torch.mean <torch.html#torch.mean>` does not return a tuple
+        # if check is required because
+        # :torch_docs:`torch.mean <torch.html#torch.mean>`
+        # does not return a tuple
         if self._reduce_function == torch.mean:
             output = self._reduce_function(input, dim=2, keepdim=True)
         else:
@@ -528,8 +536,9 @@ class _ReducePool1d(nn.Module):
 
 class MaxReducePool1d(_ReducePool1d):
     """A subclass of :torch_docs:`torch.nn.Module <nn.html#module>`.
-    Max Pool layer for 1D inputs. The same as :torch.nn.Module:`MaxPool1d <nn.html#maxpool1d>`
-    except that the pooling dimension is entirely reduced (i.e., `pool_size=input_length`).
+    Max Pool layer for 1D inputs. The same as
+    :torch.nn.Module:`MaxPool1d <nn.html#maxpool1d>` except that the pooling
+    dimension is entirely reduced (i.e., `pool_size=input_length`).
     """
     def __init__(self):
         super(MaxReducePool1d, self).__init__(torch.max)
@@ -537,8 +546,9 @@ class MaxReducePool1d(_ReducePool1d):
 
 class AvgReducePool1d(_ReducePool1d):
     """A subclass of :torch_docs:`torch.nn.Module <nn.html#module>`.
-    Avg Pool layer for 1D inputs. The same as :torch.nn.Module:`AvgPool1d <nn.html#avgpool1d>`
-    except that the pooling dimension is entirely reduced (i.e., `pool_size=input_length`).
+    Avg Pool layer for 1D inputs. The same as
+    :torch.nn.Module:`AvgPool1d <nn.html#avgpool1d>` except that the pooling
+    dimension is entirely reduced (i.e., `pool_size=input_length`).
     """
     def __init__(self):
         super(AvgReducePool1d, self).__init__(torch.mean)
@@ -552,13 +562,14 @@ _POOLING_TO_REDUCE = {
 }
 
 
-def get_pooling_layer_hparams(hparams: Union[HParams, Dict[str, Any]]) -> Dict[str, Any]:
+def get_pooling_layer_hparams(hparams: Union[HParams, Dict[str, Any]]) -> \
+        Dict[str, Any]:
     """Creates pooling layer hparams `dict` usable for :func:`get_layer`.
 
     If the :attr:`hparams` sets `'pool_size'` to `None`, the layer will be
     changed to the respective reduce-pooling layer. For example,
-    :torch_docs:`torch.conv.MaxPool1d <nn.html#torch.nn.Conv1d>` is replaced with
-    :class:`~texar.core.MaxReducePool1d`.
+    :torch_docs:`torch.conv.MaxPool1d <nn.html#torch.nn.Conv1d>` is replaced
+    with :class:`~texar.core.MaxReducePool1d`.
     """
     if isinstance(hparams, HParams):
         hparams = hparams.todict()
@@ -620,8 +631,8 @@ class MergeLayer(nn.Module):
         trainable (bool): Whether the layer should be trained.
         name (str, optional): Name of the layer.
     """
-    def __init__(self, layers: Optional[List[nn.Module]] = None, mode: str ='concat',
-                 dim: int = 2):
+    def __init__(self, layers: Optional[List[nn.Module]] = None,
+                 mode: str ='concat', dim: int = 2):
         super(MergeLayer, self).__init__()
         self._mode = mode
         self._dim = dim
@@ -713,7 +724,8 @@ class Identity(nn.Module):
 
 
 def default_linear_kwargs() -> Dict[str, int]:
-    """TODO avinash: how to give suitable values to in_features and out_features"""
+    """TODO avinash: how to give suitable values to in_features
+    and out_features"""
     kwargs = {
         "in_features": 32,
         "out_features": 64

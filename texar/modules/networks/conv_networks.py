@@ -61,8 +61,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             default values.
 
     See :meth:`_build` for the inputs and outputs. The inputs must be a
-    3D Tensor of shape `[batch_size, channels, length]`. For example, for sequence
-    classification, `length` corresponds to time steps, and `channels`
+    3D Tensor of shape `[batch_size, channels, length]`. For example, for
+    sequence classification, `length` corresponds to time steps, and `channels`
     corresponds to embedding dim.
 
     Example:
@@ -131,13 +131,14 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 Number of convolutional layers.
 
             "in_channels": int or list
-                The number of input channels in the data. If "num_conv_layers" > 1, "in_channels" must be
-                a list of "num_conv_layers" integers.
+                The number of input channels in the data. If
+                "num_conv_layers" > 1, "in_channels" must be a list of
+                "num_conv_layers" integers.
 
             "out_channels" : int or list
-                The number of out_channels in the convolution, i.e., the dimensionality of the
-                output space. If "num_conv_layers" > 1, "out_channels" must be
-                a list of "num_conv_layers" integers.
+                The number of out_channels in the convolution, i.e., the
+                dimensionality of the output space. If "num_conv_layers" > 1,
+                "out_channels" must be a list of "num_conv_layers" integers.
 
             "kernel_size" : int or list
                 Lengths of 1D convolution windows.
@@ -165,21 +166,24 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
             "other_conv_kwargs" : dict, optional
                 Other keyword arguments for
-                :torch_docs:`torch.nn.Conv1d <nn.html#conv1d>` constructor, e.g., "padding"
+                :torch_docs:`torch.nn.Conv1d <nn.html#conv1d>` constructor,
+                e.g., "padding"
 
         2. For **pooling** layers:
 
             "pooling" : str or class or instance
-                Pooling layer after each of the convolutional layer(s). Can be a pooling layer
-                class, its name or module path, or a class instance.
+                Pooling layer after each of the convolutional layer(s). Can be a
+                pooling layer class, its name or module path, or a class
+                instance.
 
             "pool_size" : int or list, optional
                 Size of the pooling window. If an `int`, all pooling layer
                 will have the same pool size. If a list, the list length must
                 equal "num_conv_layers". If `None` and the pooling type
                 is either :torch_docs:`MaxPool1d <nn.html#maxpool1d>` or
-                :torch_docs:`AvgPool1d <nn.html#avgpool1d>`, the pool size will be set to input
-                size. That is, the output of the pooling layer is a single unit.
+                :torch_docs:`AvgPool1d <nn.html#avgpool1d>`, the pool size will
+                be set to input size. That is, the output of the pooling layer
+                is a single unit.
 
             "pool_stride" : int or list, optional
                 Strides of the pooling operation. If an `int`, all pooling layer
@@ -196,14 +200,14 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 Number of dense layers.
 
             "in_features": int or list
-                Number of in_features after the convolutional layers. If an `int`, all dense
-                layers will have the same in_features size. If a list of `int`, the list
-                length must equal "num_dense_layers".
+                Number of in_features after the convolutional layers. If an
+                `int`, all dense layers will have the same in_features size. If
+                a list of `int`, the list length must equal "num_dense_layers".
 
             "out_features" int or list
-                Number of out_features after the dense layers. If an `int`, all dense
-                layers will have the same out_features size. If a list of `int`, the list
-                length must equal "num_dense_layers".
+                Number of out_features after the dense layers. If an `int`, all
+                dense layers will have the same out_features size. If a list of
+                `int`, the list length must equal "num_dense_layers".
 
             "dense_activation" : str or callable
                 Activation function applied to the output of the dense
@@ -287,9 +291,10 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             "dropout_rate": 0.75,
             # (5) Others
             "name": "conv1d_network",
-            "@no_typecheck": ["in_channels", "out_channels", "kernel_size", "conv_activation",
-                              "pool_size", "pool_stride", "in_features", "out_features",
-                              "dense_activation", "dropout_conv", "dropout_dense"]
+            "@no_typecheck": ["in_channels", "out_channels", "kernel_size",
+                              "conv_activation", "pool_size", "pool_stride",
+                              "in_features", "out_features", "dense_activation",
+                              "dropout_conv", "dropout_dense"]
         }
 
     def _build_pool_hparams(self):
@@ -313,7 +318,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         for i in range(npool):
             kwargs_i = {"kernel_size": kernel_size[i], "stride": stride[i]}
             kwargs_i.update(other_kwargs)
-            pool_hparams_ = get_pooling_layer_hparams({"type": pool_type, "kwargs": kwargs_i})
+            pool_hparams_ = get_pooling_layer_hparams({"type": pool_type,
+                                                       "kwargs": kwargs_i})
             pool_hparams.append(pool_hparams_)
 
         return pool_hparams
@@ -327,7 +333,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             raise ValueError("`pool_hparams` must be of length %d" % nconv)
 
         in_channels = _to_list(self._hparams.in_channels, 'in_channels', nconv)
-        out_channels = _to_list(self._hparams.out_channels, 'out_channels', nconv)
+        out_channels = _to_list(self._hparams.out_channels, 'out_channels',
+                                nconv)
 
         if nconv == 1:
             kernel_size = _to_list(self._hparams.kernel_size)
@@ -367,8 +374,11 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                     {"type": "Conv1d", "kwargs": conv_kwargs_ij})
             if len(hparams_i) == 1:
                 if self._hparams.conv_activation:
-                    layers = {"layers": [hparams_i[0], _activation_hparams(self._hparams.conv_activation,
-                                                                           self._hparams.conv_activation_kwargs)]}
+                    layers = {
+                        "layers": [hparams_i[0],
+                                   _activation_hparams(
+                                       self._hparams.conv_activation,
+                                       self._hparams.conv_activation_kwargs)]}
                     sequential_layer = {"type": "Sequential", "kwargs": layers}
                     conv_pool_hparams.append([sequential_layer,
                                               pool_hparams[i]])
@@ -378,10 +388,14 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 mrg_kwargs_layers = []
                 for hparams_ij in hparams_i:
                     if self._hparams.conv_activation:
-                        seq_kwargs_j = {"layers": [hparams_ij,
-                                                   _activation_hparams(self._hparams.conv_activation,
-                                                                       self._hparams.conv_activation_kwargs),
-                                                   pool_hparams[i]]}
+                        seq_kwargs_j = \
+                            {"layers": [
+                                hparams_ij,
+                                _activation_hparams(
+                                    self._hparams.conv_activation,
+                                    self._hparams.conv_activation_kwargs),
+                                pool_hparams[i]
+                            ]}
                     else:
                         seq_kwargs_j = {"layers": [hparams_ij, pool_hparams[i]]}
                     mrg_kwargs_layers.append(
@@ -395,7 +409,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
     def _build_dense_hparams(self):
         ndense = self._hparams.num_dense_layers
         in_features = _to_list(self._hparams.in_features, 'in_features', ndense)
-        out_features = _to_list(self._hparams.out_features, 'out_features', ndense)
+        out_features = _to_list(self._hparams.out_features, 'out_features',
+                                ndense)
 
         other_kwargs = self._hparams.other_dense_kwargs or {}
         if isinstance(other_kwargs, HParams):
@@ -417,14 +432,23 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
             dense_hparams_i = {"type": "Linear", "kwargs": kwargs_i}
             if i < ndense - 1 and self._hparams.dense_activation is not None:
-                layers = {"layers": [dense_hparams_i, _activation_hparams(self._hparams.dense_activation,
-                                                                          self._hparams.dense_activation_kwargs)]}
+                layers = {
+                    "layers": [dense_hparams_i,
+                               _activation_hparams(
+                                   self._hparams.dense_activation,
+                                   self._hparams.dense_activation_kwargs)
+                               ]}
                 sequential_layer = {"type": "Sequential", "kwargs": layers}
                 dense_hparams.append(sequential_layer)
 
-            elif i == ndense - 1 and self._hparams.final_dense_activation is not None:
-                layers = {"layers": [dense_hparams_i, _activation_hparams(self._hparams.final_dense_activation,
-                                                                          self._hparams.final_dense_activation_kwargs)]}
+            elif i == ndense - 1 and \
+                    self._hparams.final_dense_activation is not None:
+                layers = {
+                    "layers": [dense_hparams_i,
+                               _activation_hparams(
+                                   self._hparams.final_dense_activation,
+                                   self._hparams.final_dense_activation_kwargs)
+                               ]}
                 sequential_layer = {"type": "Sequential", "kwargs": layers}
                 dense_hparams.append(sequential_layer)
             else:
@@ -467,23 +491,26 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
         return layers_hparams
 
-    def forward(self, input: torch.Tensor, **kwargs: Any) -> torch.Tensor:  # type: ignore
+    def forward(self,  # type: ignore
+                input: torch.Tensor,
+                **kwargs: Any) -> torch.Tensor:
         """Feeds forward inputs through the network layers and returns outputs.
 
             Args:
                 input: The inputs to the network, which is a 3D tensor.
                 kwargs:
-                    sequence_length (optional): An int tensor of shape `[batch_size]`
-                        containing the length of each element in :attr:`inputs`.
-                        If given, time steps beyond the length will first be masked out
-                        before feeding to the layers.
-                    dtype (optional): Type of the inputs. If not provided, infers
-                        from inputs automatically.
+                    sequence_length (optional): An int tensor of shape
+                        `[batch_size]` containing the length of each element in
+                        :attr:`inputs`. If given, time steps beyond the length
+                        will first be masked out before feeding to the layers.
+                    dtype (optional): Type of the inputs. If not provided,
+                        infers from inputs automatically.
             Returns:
                 The output of the final layer.
         """
         sequence_length = kwargs.get("sequence_length", None)
         dtype = kwargs.get("dtype", None)
         if sequence_length is not None:
-            input = mask_sequences(input, sequence_length, dtype=dtype, time_major=False)
+            input = mask_sequences(input, sequence_length,
+                                   dtype=dtype, time_major=False)
         return super(Conv1DNetwork, self).forward(input)

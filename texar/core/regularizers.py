@@ -17,6 +17,14 @@ Regularizers
 
 import torch
 
+__all__ = [
+    'Regularizer',
+    'L1L2',
+    'l1',
+    'l2',
+    'l1_l2'
+]
+
 
 class Regularizer(object):
     """Regularizer base class.
@@ -33,7 +41,7 @@ class Regularizer(object):
 class L1L2(Regularizer):
     """Regularizer for L1 and L2 regularization.
 
-    Arguments:
+    Args:
         l1: Float; L1 regularization factor.
         l2: Float; L2 regularization factor.
     """
@@ -55,8 +63,6 @@ class L1L2(Regularizer):
 
 
 # Aliases.
-
-
 def l1(l=0.01):
     return L1L2(l1=l)
 

@@ -30,7 +30,8 @@ class GetActivationFnTest(unittest.TestCase):
         ref_output = F.leaky_relu(inputs)
         self.assertEqual(torch.all(torch.eq(fn_output, ref_output)), 1)
 
-        fn = layers.get_activation_fn('leaky_relu', kwargs={'negative_slope': 0.1})
+        fn = layers.get_activation_fn('leaky_relu',
+                                      kwargs={'negative_slope': 0.1})
         fn_output = fn(inputs)
         ref_output = F.leaky_relu(inputs, negative_slope=0.1)
         self.assertEqual(torch.all(torch.eq(fn_output, ref_output)), 1)
@@ -101,7 +102,8 @@ class ReducePoolingLayerTest(unittest.TestCase):
         inputs = torch.randn(self._batch_size, self._emb_dim, self._seq_length)
         output = pool_layer(inputs)
         output_reduce, _ = torch.max(inputs, dim=2, keepdim=True)
-        self.assertEqual(output.shape, torch.Size([self._batch_size, self._emb_dim, 1]))
+        self.assertEqual(output.shape, torch.Size([self._batch_size,
+                                                   self._emb_dim, 1]))
         self.assertEqual(torch.all(torch.eq(output, output_reduce)), 1)
 
     def test_average_reduce_pooling_layer(self):
@@ -111,7 +113,8 @@ class ReducePoolingLayerTest(unittest.TestCase):
         inputs = torch.randn(self._batch_size, self._emb_dim, self._seq_length)
         output = pool_layer(inputs)
         output_reduce = torch.mean(inputs, dim=2, keepdim=True)
-        self.assertEqual(output.shape, torch.Size([self._batch_size, self._emb_dim, 1]))
+        self.assertEqual(output.shape, torch.Size([self._batch_size,
+                                                   self._emb_dim, 1]))
         self.assertEqual(torch.all(torch.eq(output, output_reduce)), 1)
 
 
@@ -123,9 +126,12 @@ class MergeLayerTest(unittest.TestCase):
         """Test the logic of MergeLayer.
         """
         layers_ = list()
-        layers_.append(nn.Conv1d(in_channels=32, out_channels=32, kernel_size=3))
-        layers_.append(nn.Conv1d(in_channels=32, out_channels=32, kernel_size=4))
-        layers_.append(nn.Conv1d(in_channels=32, out_channels=32, kernel_size=5))
+        layers_.append(nn.Conv1d(in_channels=32, out_channels=32,
+                                 kernel_size=3))
+        layers_.append(nn.Conv1d(in_channels=32, out_channels=32,
+                                 kernel_size=4))
+        layers_.append(nn.Conv1d(in_channels=32, out_channels=32,
+                                 kernel_size=5))
         layers_.append(nn.Linear(in_features=10, out_features=64))
         layers_.append(nn.Linear(in_features=10, out_features=64))
         m_layer = layers.MergeLayer(layers_)
