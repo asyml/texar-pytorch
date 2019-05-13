@@ -16,10 +16,12 @@ Various position embedders.
 """
 
 import math
+from typing import Optional
 
 import torch
 import torch.nn.functional as F
 
+from texar import HParams
 from texar.modules.embedders import embedder_utils
 from texar.modules.embedders.embedder_base import EmbedderBase
 from texar.modules.embedders.embedder_base import EmbeddingDropout
@@ -215,13 +217,37 @@ class SinusoidsPositionEmbedder(EmbedderBase):
     cos(timestep/timescale).  All of these sinusoids are concatenated in
     the dim dimension.
 
+    Args:
+        position_size (int): The number of possible positions, e.g., the maximum
+            sequence length.
+
     .. document private functions
     .. automethod:: _build
     """
 
-    def __init__(self, hparams=None):
-        EmbedderBase.__init__(self, hparams=hparams)
+    def __init__(self, position_size: int, hparams: Optional[HParams] = None):
+        super().__init__(hparams=hparams)
+        self._num_embeds = position_size
         self._dim = self._hparams.dim
+
+        dim = self._hparams.dim
+        num_timescales = dim // 2
+        min_timescale = self._hparams.min_timescale
+        max_timescale = self._hparams.max_timescale
+
+        positions = torch.arange(position_size, dtype=torch.float)
+        log_timescale_increment = (
+                math.log(max_timescale / min_timescale) / (num_timescales - 1))
+        inv_timescales = min_timescale * torch.exp(
+            (torch.arange(num_timescales, dtype=torch.float) *
+             -log_timescale_increment))
+        scaled_time = positions.unsqueeze(1) * inv_timescales.unsqueeze(0)
+        signal = torch.cat(
+            [torch.sin(scaled_time), torch.cos(scaled_time)], dim=1)
+        if dim % 2 == 1:
+            signal = torch.cat(
+                [signal, signal.new_zeros(signal.size(0), 1)], dim=1)
+        self.signal = signal.reshape(position_size, dim)
 
     @staticmethod
     def default_hparams():
@@ -246,7 +272,10 @@ class SinusoidsPositionEmbedder(EmbedderBase):
             'name': 'sinusoid_posisiton_embedder',
         }
 
-    def forward(self, positions=None, sequence_length=None, **kwargs):
+    def forward(self,  # type: ignore
+                positions: Optional[torch.LongTensor] = None,
+                sequence_length: Optional[torch.LongTensor] = None, **kwargs) \
+            -> torch.Tensor:
         """Embeds.
         Either :attr:`positions` or :attr:`sequence_length` is required:
 
@@ -266,27 +295,20 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         Returns:
             A `Tensor` of shape `[batch_size, position_size, dim]`.
         """
+        if positions is None:
+            if sequence_length is None:
+                raise ValueError(
+                    'Either `positions` or `sequence_length` is required.')
+            max_length = sequence_length.max()
+            batch_size = sequence_length.size(0)
+            inputs = torch.arange(max_length).to(device=sequence_length.device)
+            inputs = inputs.expand(batch_size, max_length)
+        else:
+            inputs = positions
+
+        outputs = F.embedding(inputs, self.signal, **kwargs)
+
         if sequence_length is not None:
-            raise NotImplementedError
+            outputs = mask_sequences(outputs, sequence_length)
 
-        dim = self._hparams.dim
-        positions = positions.view(-1)
-        position_size = positions.size(0)
-        num_timescales = dim // 2
-        min_timescale = self._hparams.min_timescale
-        max_timescale = self._hparams.max_timescale
-
-        log_timescale_increment = (
-                math.log(max_timescale / min_timescale) / (num_timescales - 1))
-        inv_timescales = min_timescale * torch.exp(
-            (torch.arange(num_timescales, dtype=torch.float) *
-             -log_timescale_increment))
-        scaled_time = positions.unsqueeze(1).float() \
-                      * inv_timescales.unsqueeze(0)
-        signal = torch.cat(
-            [torch.sin(scaled_time), torch.cos(scaled_time)], dim=1)
-        if dim % 2 == 1:
-            signal = torch.cat(
-                [signal, signal.new_zeros(signal.size(0), 1)], dim=1)
-        signal = signal.reshape(1, position_size, dim)
-        return signal
+        return outputs

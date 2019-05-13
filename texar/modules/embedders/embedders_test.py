@@ -76,12 +76,14 @@ class EmbedderTest(unittest.TestCase):
     def test_sinusoids_position_embedder(self):
         """Tests :class:`texar.modules.SinusoidsPositionEmbedder`.
         """
-        hparams = SinusoidsPositionEmbedder.default_hparams()
-        embedder = SinusoidsPositionEmbedder(hparams=hparams)
-        inputs = torch.ones([64], dtype=torch.int32)
+        position_size = 64
+        input_size = [100]
+        hparams = {'dim': 513}  # use odd dimension to ensure padding correct
+        embedder = SinusoidsPositionEmbedder(position_size, hparams=hparams)
+        inputs = torch.randint(position_size - 1, input_size)
         outputs = embedder(inputs)
 
-        self.assertEqual(list(outputs.shape), [1, 64, hparams['dim']])
+        self.assertEqual(list(outputs.shape), input_size + [hparams['dim']])
 
     def test_embedder(self):
         """Tests various embedders.
