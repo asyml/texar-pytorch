@@ -108,10 +108,10 @@ def mask_and_reduce(sequence,
             raise ValueError("Only one of `average_across_remaining` and "
                              "`sum_over_remaining` can be set.")
         if average_across_remaining:
-            for axis in range(2, rank):
+            for axis in sorted(list(range(2, rank)), reverse=True):
                 sequence = torch.mean(sequence, dim=axis)
         elif sum_over_remaining:
-            for axis in range(2, rank):
+            for axis in sorted(list(range(2, rank)), reverse=True):
                 sequence = torch.sum(sequence, dim=axis)
 
     sequence = reduce_batch_time(sequence,

@@ -243,10 +243,10 @@ def pg_loss_with_log_probs(log_probs,
             raise ValueError("Only one of `average_across_remaining` and "
                              "`sum_over_remaining` can be set.")
         if average_across_remaining:
-            for average_axis in range(1, rank):
+            for average_axis in sorted(list(range(1, rank)), reverse=True):
                 losses = torch.mean(losses, dim=average_axis)
         elif sum_over_remaining:
-            for sum_axis in range(1, rank):
+            for sum_axis in sorted(list(range(1, rank)), reverse=True):
                 losses = torch.sum(losses, dim=sum_axis)
 
     if not batched:

@@ -86,7 +86,7 @@ class MLELossesTest(unittest.TestCase):
             self._labels, self._logits, self._sequence_length)
 
     def test_sequence_sigmoid_cross_entropy(self):
-        """Tests `texar.losses.test_sequence_sigmoid_cross_entropy`.
+        """Tests `texar.losses.sequence_sigmoid_cross_entropy`.
         """
         self._test_sequence_loss(
             tx.losses.sequence_sigmoid_cross_entropy,
