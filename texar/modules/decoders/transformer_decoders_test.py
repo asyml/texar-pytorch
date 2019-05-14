@@ -4,8 +4,10 @@ Unit tests for Transformer decoder.
 import unittest
 
 import torch
+import torch.nn.functional as F
 
-from texar.modules import GreedyEmbeddingHelper
+import texar
+from texar.modules import GreedyEmbeddingHelper, decoder_helpers
 from texar.modules.decoders.transformer_decoders import TransformerDecoder
 from texar.modules.decoders.transformer_decoders import TransformerDecoderOutput
 
@@ -23,14 +25,30 @@ class TransformerDecoderTest(unittest.TestCase):
         self._max_time = 10
         self._emb_dim = 512
         self._max_decode_len = 32
+
         self._inputs = torch.rand(
             self._batch_size, self._max_time, self._emb_dim, dtype=torch.float)
+
         self._memory = torch.rand(
             self._batch_size, self._max_time, self._emb_dim, dtype=torch.float)
         self._memory_sequence_length = torch.randint(
             self._max_time, (self._batch_size,), dtype=torch.long)
+
         self._embedding = torch.rand(
             self._vocab_size, self._emb_dim, dtype=torch.float)
+        self._pos_embedding = torch.rand(
+            self._max_decode_len, self._emb_dim, dtype=torch.float)
+
+        def _embedding_fn(x, y):
+            x_emb = F.embedding(x, self._embedding)
+            y_emb = F.embedding(y, self._pos_embedding)
+            return x_emb * self._emb_dim ** 0.5 + y_emb
+
+        self._embedding_fn = _embedding_fn
+
+        self._output_layer = torch.rand(
+            self._emb_dim, self._vocab_size, dtype=torch.float)
+
         self._start_tokens = torch.full(
             (self._batch_size,), 1, dtype=torch.long)
         self._end_token = 2
@@ -41,10 +59,26 @@ class TransformerDecoderTest(unittest.TestCase):
         self._context = torch.tensor(_context)
         self._context_length = torch.tensor(_context_length)
 
-    def test_train(self):
+    def test_output_layer(self):
+        decoder = TransformerDecoder(vocab_size=self._vocab_size,
+                                     output_layer=None)
+        self.assertIsInstance(decoder, TransformerDecoder)
+
+        decoder = TransformerDecoder(output_layer=texar.core.identity)
+        self.assertIsInstance(decoder, TransformerDecoder)
+
+        tensor = torch.rand(
+            self._emb_dim, self._vocab_size, dtype=torch.float)
+        decoder = TransformerDecoder(output_layer=tensor)
+        self.assertIsInstance(decoder, TransformerDecoder)
+        self.assertEqual(decoder.vocab_size, self._vocab_size)
+
+    def test_decode_train(self):
         """Tests train_greedy
         """
-        decoder = TransformerDecoder(embedding=self._embedding)
+        decoder = TransformerDecoder(
+            vocab_size=self._vocab_size,
+            output_layer=self._output_layer)
         decoder.train()
         # 6 blocks
         # -self multihead_attention: 4 dense without bias + 2 layer norm vars
@@ -62,19 +96,22 @@ class TransformerDecoderTest(unittest.TestCase):
         self.assertEqual(len(decoder.trainable_variables), 110)
         self.assertIsInstance(outputs, TransformerDecoderOutput)
 
-    def test_infer_greedy(self):
+    def test_decode_infer_greedy(self):
         """Tests train_greedy
         """
-        decoder = TransformerDecoder(embedding=self._embedding)
+        decoder = TransformerDecoder(
+            vocab_size=self._vocab_size,
+            output_layer=self._output_layer)
         decoder.eval()
+        helper = decoder_helpers.GreedyEmbeddingHelper(
+            self._embedding_fn, self._start_tokens, self._end_token)
+
         outputs, length = decoder(
             memory=self._memory,
             memory_sequence_length=self._memory_sequence_length,
             memory_attention_bias=None,
             inputs=None,
-            decoding_strategy='infer_greedy',
-            start_tokens=self._start_tokens,
-            end_token=self._end_token,
+            helper=helper,
             max_decoding_length=self._max_decode_len)
 
         self.assertIsInstance(outputs, TransformerDecoderOutput)
@@ -82,7 +119,9 @@ class TransformerDecoderTest(unittest.TestCase):
     def test_infer_greedy_with_context_without_memory(self):
         """Tests train_greedy with context
         """
-        decoder = TransformerDecoder(embedding=self._embedding)
+        decoder = TransformerDecoder(
+            vocab_size=self._vocab_size,
+            output_layer=self._output_layer)
         decoder.eval()
         outputs, length = decoder(
             memory=None,
@@ -93,23 +132,27 @@ class TransformerDecoderTest(unittest.TestCase):
             context=self._context,
             context_sequence_length=self._context_length,
             end_token=self._end_token,
+            embedding=self._embedding_fn,
             max_decoding_length=self._max_decode_len)
 
         self.assertIsInstance(outputs, TransformerDecoderOutput)
 
-    def test_infer_sample(self):
+    def test_decode_infer_sample(self):
         """Tests infer_sample
         """
-        decoder = TransformerDecoder(embedding=self._embedding)
+        decoder = TransformerDecoder(
+            vocab_size=self._vocab_size,
+            output_layer=self._output_layer)
         decoder.eval()
+        helper = decoder_helpers.SampleEmbeddingHelper(
+            self._embedding_fn, self._start_tokens, self._end_token)
+
         outputs, length = decoder(
             memory=self._memory,
             memory_sequence_length=self._memory_sequence_length,
             memory_attention_bias=None,
             inputs=None,
-            decoding_strategy='infer_sample',
-            start_tokens=self._start_tokens,
-            end_token=self._end_token,
+            helper=helper,
             max_decoding_length=self._max_decode_len)
 
         self.assertIsInstance(outputs, TransformerDecoderOutput)
@@ -118,7 +161,10 @@ class TransformerDecoderTest(unittest.TestCase):
         """Tests beam_search
         """
         return
-        decoder = TransformerDecoder(embedding=self._embedding)
+
+        decoder = TransformerDecoder(
+            vocab_size=self._vocab_size,
+            output_layer=self._output_layer)
         decoder.eval()
         outputs = decoder(
             memory=self._memory,
@@ -138,7 +184,9 @@ class TransformerDecoderTest(unittest.TestCase):
     def test_greedy_embedding_helper(self):
         """Tests with tf.contrib.seq2seq.GreedyEmbeddingHelper
         """
-        decoder = TransformerDecoder(embedding=self._embedding)
+        decoder = TransformerDecoder(
+            vocab_size=self._vocab_size,
+            output_layer=self._output_layer)
         decoder.eval()
         helper = GreedyEmbeddingHelper(
             self._embedding, self._start_tokens, self._end_token)

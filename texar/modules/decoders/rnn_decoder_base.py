@@ -28,7 +28,7 @@ from texar import HParams
 from texar.core import RNNCellBase, layers
 from texar.core.cell_wrappers import HiddenState
 from texar.modules.decoders import decoder_helpers
-from texar.modules.decoders.decoder_base import DecoderBase
+from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.utils import utils
 
@@ -63,21 +63,9 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
         self._beam_search_cell = None
 
         # Make the output layer
-        if output_layer is not None:
-            if (output_layer is not layers.identity and
-                    not isinstance(output_layer, nn.Module)):
-                raise ValueError(
-                    "`output_layer` must be either `texar.core.identity` or "
-                    "an instance of `nn.Module`.")
-            self._output_layer = output_layer
-        elif self._vocab_size is not None:
-            self._output_layer = nn.Linear(
-                self._cell.hidden_size, self._vocab_size)
-        else:
-            raise ValueError(
-                "Either `output_layer` or `vocab_size` must be provided. "
-                "Set `output_layer=texar.core.identity` if no output layer "
-                "is desired.")
+        self._output_layer, _ = _make_output_layer(
+            output_layer, self._vocab_size, self._cell.hidden_size,
+            self._hparams.output_layer_bias)
 
     @staticmethod
     def default_hparams():
@@ -95,6 +83,7 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
             'max_decoding_length_train': None,
             'max_decoding_length_infer': None,
             'name': 'rnn_decoder',
+            "output_layer_bias": True,
         }
 
     @classmethod

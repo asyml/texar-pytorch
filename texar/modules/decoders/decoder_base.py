@@ -21,22 +21,57 @@ Base class for decoders.
 
 import copy
 from abc import ABC
-from typing import Generic, Optional, Tuple, TypeVar, overload
+from typing import Generic, Optional, Tuple, TypeVar, Union, overload
 
 import torch
+from torch import nn
 
 from texar import HParams
+from texar.core import identity
 from texar.module_base import ModuleBase
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_helpers import Embedding, Helper
 from texar.utils import utils
 
 __all__ = [
+    '_make_output_layer',
     'DecoderBase',
 ]
 
 State = TypeVar('State')
 Output = TypeVar('Output')  # output type can be of any nested structure
+
+
+def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
+                       vocab_size: Optional[int],
+                       output_size: int,
+                       bias: bool) -> Tuple[nn.Module, Optional[int]]:
+    r"""Makes a decoder output layer.
+    """
+    if isinstance(layer, nn.Module):
+        output_layer = layer
+    elif layer is None:
+        if vocab_size is None:
+            raise ValueError(
+                "Either `output_layer` or `vocab_size` must be provided. "
+                "Set `output_layer=texar.core.identity` if no output layer is "
+                "wanted.")
+        output_layer = nn.Linear(output_size, vocab_size, bias)
+    elif torch.is_tensor(layer):
+        vocab_size = layer.size(1)
+        output_layer = nn.Linear(layer.size(0), vocab_size, bias)
+        layer = layer.t().contiguous()
+        if not isinstance(layer, nn.Parameter):
+            layer = nn.Parameter(layer, requires_grad=False)
+        output_layer.weight = layer
+    elif layer is identity:
+        output_layer = identity  # type: ignore
+    else:
+        raise ValueError(
+            f"output_layer should be an instance of `nn.Module`, a tensor,"
+            f"or None. Unsupported type: {type(layer)}")
+
+    return output_layer, vocab_size
 
 
 class DecoderBase(ModuleBase, Generic[State, Output], ABC):

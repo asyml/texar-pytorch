@@ -22,12 +22,10 @@ from torch import nn
 
 from texar import HParams, ModuleBase
 from texar.core import layers
-from texar.modules.decoders import Helper, _convert_embedding
-from texar.modules.decoders.decoder_base import DecoderBase
+from texar.modules.decoders import Helper
+from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
 from texar.modules.decoders.decoder_helpers import EmbeddingHelper
 from texar.modules.embedders import EmbedderBase
-from texar.modules.embedders.position_embedders import \
-    PositionEmbedder, SinusoidsPositionEmbedder
 from texar.modules.encoders.multihead_attention import \
     Cache, MultiheadAttentionEncoder
 # from texar.utils import beam_search
@@ -160,10 +158,22 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
     :class:`~texar.modules.FeedForwardNetwork`, and residual connections.
 
     Args:
-        embedding: A Tensor of shape `[vocab_size, dim]` containing the
-            word embedding matrix. The Tensor is used as the decoder output
-            layer that computes logits over vocabulary. Ignored if
-            `hparams['embedding_tie']` is False.
+        input_size (int): Dimension of input tensor.
+        vocab_size (int, optional): Vocabulary size. Required if
+            :attr:`output_layer` is `None`.
+        output_layer (optional): An output layer that transforms cell output
+            to logits. This can be:
+
+            - A callable layer, e.g., an instance of :class:`torch.nn.Module`.
+            - A tensor. A :class:`~torch.nn.Linear` layer will be created using
+            the tensor as weights. The bias of the dense layer is determined by
+            `hparams.output_layer_bias`. This can be used to tie the output
+            layer with the input embedding matrix, as proposed in
+            https://arxiv.org/pdf/1608.05859.pdf
+            - `None`. A dense layer will be created based on attr:`vocab_size`
+            and `hparams.output_layer_bias`.
+            - If no output layer is needed at the end, set
+            `(vocab_size=None, output_layer=texar.core.identity)`.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter sturcture and
@@ -173,42 +183,24 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
     .. automethod:: _build
     """
 
-    position_embedder: EmbedderBase
-
     # State variables used during `dynamic_decode`. Assigned in `forward`.
     _state_max_decoding_length: int
-    _state_timing_signal: torch.Tensor
     _state_context: Optional[torch.LongTensor]
     _state_context_sequence_length: Optional[torch.LongTensor]
     _state_cache: Cache
 
-    def __init__(self, embedding: torch.Tensor,
-                 # input_time_major: bool = False,
-                 # output_time_major: bool = False,
+    def __init__(self,
+                 vocab_size: Optional[int] = None,
+                 output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
                  hparams: Optional[HParams] = None):
-        vocab_size = embedding.size(0)
-        input_size = embedding.size(-1)
-        super().__init__(input_size, vocab_size,
+        super().__init__(0, vocab_size,  # dummy value for input_size
                          input_time_major=False,
                          output_time_major=False, hparams=hparams)
+        self._input_size = self._hparams.dim
 
-        if self._hparams.position_embedder_type == 'sinusoids':
-            self.position_embedder = SinusoidsPositionEmbedder(
-                self._hparams.position_embedder_hparams)
-        else:
-            self.position_embedder = PositionEmbedder(
-                position_size=self._hparams.position_size,
-                hparams=self._hparams.position_embedder_hparams)
-
-        self._embedding = _convert_embedding(embedding)
-
-        self._output_layer = nn.Linear(self._input_size, self._vocab_size,
-                                       bias=self._hparams.output_layer_bias)
-        if self._hparams.embedding_tie:
-            if not isinstance(embedding, nn.Parameter):
-                embedding = nn.Parameter(embedding,
-                                         requires_grad=embedding.requires_grad)
-            self._output_layer.weight = embedding
+        self._output_layer, self._vocab_size = _make_output_layer(
+            output_layer, vocab_size, self._input_size,
+            self._hparams.output_layer_bias)
 
         self.self_attns = nn.ModuleList()
         self.self_attn_layer_norm = nn.ModuleList()
@@ -264,12 +256,8 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
             {
                 # Same as in TransformerEncoder
-                "scale_embeds": True,
                 "num_blocks": 6,
                 "dim": 512,
-                'position_embedder_type': 'sinusoids',
-                'position_size': None,
-                "position_embedder_hparams": None,
                 "embedding_dropout": 0.1,
                 "residual_dropout": 0.1,
                 "poswise_feedforward": default_transformer_poswise_net_hparams,
@@ -292,34 +280,11 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             }
 
         Here:
-        "scale_embeds": bool
-            Scale the word embedding with the square root of its dimension.
-            True by default.
-            This should be False when loading the pretrained GPT-2 Model.
-
         "num_blocks" : int
             Number of stacked blocks.
 
         "dim" : int
             Hidden dimension of the encoder.
-
-        "position_embedder_type":
-            Choose from "sinusoids" or "variables".
-
-            "sinusoids":
-                create the position embedding as sinusoids, which is fixed.
-            "variables":
-                create the position embedding as trainable variables.
-        "position_size": int
-            The size of position embeddings.
-            Only be used when "position_embedder_type"is "variables".
-
-        "position_embedder_hparams" : dict, optional
-            Hyperparameters of a
-            :class:`~texar.modules.SinusoidsPositionEmbedder` as position
-            embedder. If `None`, the
-            :meth:`~texar.modules.SinusoidsPositionEmbedder.default_hparams`
-            is used.
 
         "embedding_dropout": float
             Dropout rate of the input word and position embeddings.
@@ -367,19 +332,16 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         "name" : str
             Name of the module.
         """
+        dim = 512
         return {
-            'scale_embeds': True,
             'num_blocks': 6,
-            'dim': 512,
-            'position_embedder_type': 'sinusoids',
-            'position_size': None,
-            'position_embedder_hparams': None,
+            'dim': dim,
             'embedding_tie': True,
             'output_layer_bias': False,
             'max_decoding_length': int(1e10),
             'embedding_dropout': 0.1,
             'residual_dropout': 0.1,
-            'poswise_feedforward': default_transformer_poswise_net_hparams(512),
+            'poswise_feedforward': default_transformer_poswise_net_hparams(dim),
             'multihead_attention': {
                 'name': 'multihead_attention',
                 'num_units': 512,
@@ -392,7 +354,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             'name': "transformer_decoder",
         }
 
-    def _inputs_to_outputs(self, inputs: torch.Tensor, step: int,
+    def _inputs_to_outputs(self, inputs: torch.Tensor,
                            cache: Cache) -> Tuple[torch.Tensor, Cache]:
         r"""Returns the outputs of one decoding step (for example,
         the predicted logits of the next token).
@@ -402,25 +364,25 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         Returns outputs (i.e. logits) of shape `[batch_size, vocab_size]`
         and updated cache.
         """
-
-        # Multiply embedding by sqrt of its dimension
-        if self._hparams.scale_embeds:
-            inputs *= self._embedding.dim ** 0.5
-        inputs += self._state_timing_signal[:, step]
-        if cache.get('memory') is not None:
-            memory: torch.Tensor = cache['memory']  # type: ignore
-            outputs = self._self_attention_stack(
-                inputs.unsqueeze(1), memory, cache=cache)
-        else:
-            outputs = self._self_attention_stack(
-                inputs.unsqueeze(1), memory=None, cache=cache)
+        outputs = self._self_attention_stack(
+            inputs.unsqueeze(1), memory=cache['memory'], cache=cache)
         outputs = self._output_layer(outputs)
         outputs = outputs.squeeze(1)
         return outputs, cache
 
-    def create_helper(self, **kwargs) -> Helper:
-        kwargs.update(embedding=self._embedding)
-        return super().create_helper(**kwargs)
+    def _input_ids_to_outputs(self, input_ids: torch.LongTensor, step: int,
+                              cache: Cache) -> Tuple[torch.Tensor, Cache]:
+        """The function is called in beam-search decoding.
+
+        `inputs` should be of shape `[batch_size]`.
+
+        Returns outputs (i.e. logits) of shape `[batch_size, vocab_size]`
+        and updated cache.
+        """
+        _batch_size = input_ids.size(0)
+        times = input_ids.new_full((_batch_size,), step)
+        inputs = self.embedding(input_ids, times)
+        return self._inputs_to_outputs(inputs, cache)
 
     def forward(self,  # type: ignore
                 inputs: Optional[torch.Tensor] = None,
@@ -621,16 +583,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
             decoder_self_attention_bias = (
                 attn.attention_bias_lower_triangle(inputs.size(1)))
-            if self._hparams.scale_embeds:
-                target_inputs: torch.Tensor = inputs * self._hparams.dim ** 0.5
-            else:
-                target_inputs = inputs
-
-            lengths = target_inputs.size(1)
-            positions = torch.arange(lengths).view(1, -1)
-            pos_embeds: torch.Tensor = self.position_embedder(positions)
-
-            inputs = target_inputs + pos_embeds
 
             decoder_output = self._self_attention_stack(
                 inputs, memory, decoder_self_attention_bias,
@@ -644,16 +596,12 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         if max_decoding_length is None:
             max_decoding_length = self._hparams.max_decoding_length
 
-        self._state_max_decoding_length = max_decoding_length + 1
-        positions = torch.arange(max_decoding_length + 1).view(1, -1)
-        self._state_timing_signal = self.position_embedder(positions)
+        self._state_max_decoding_length = max_decoding_length
 
         if beam_width is None:  # Inference-like decoding
             # Prepare helper
             if helper is None:
-                kwargs.update(
-                    decoding_strategy=decoding_strategy,
-                    embedding=self._embedding)
+                kwargs.update(decoding_strategy=decoding_strategy)
                 if context is not None:
                     kwargs.update(start_tokens=context[:, 0])
                 helper = self._create_or_get_helper(infer_mode, **kwargs)
@@ -851,9 +799,8 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             -> Tuple[TransformerDecoderOutput, Cache,
                      torch.Tensor, torch.ByteTensor]:
         assert state is not None
-        outputs, state = self._inputs_to_outputs(inputs, time, state)
+        outputs, state = self._inputs_to_outputs(inputs, state)
         sample_ids = helper.sample(time=time, outputs=outputs)
-        print(f"sample_ids.shape:{sample_ids}")
         if self._state_context is not None:
             assert self._state_context_sequence_length is not None
             sample_ids = torch.where(
@@ -861,8 +808,16 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 self._state_context[:, time],
                 sample_ids)
 
-        finished, next_inputs = helper.next_inputs(
-            time=time, outputs=outputs, sample_ids=sample_ids)
+        if time + 1 == self._state_max_decoding_length:
+            # Maximum decoding length reached, mark all batches as finished.
+            # This requires special handling because performing lookup on
+            # position embeddings with `time + 1` may result in IndexError.
+            finished = torch.ones_like(sample_ids, dtype=torch.uint8)
+            # Since `next_inputs` will not be used, simply create a null tensor.
+            next_inputs = torch.empty(0)
+        else:
+            finished, next_inputs = helper.next_inputs(
+                time=time, outputs=outputs, sample_ids=sample_ids)
         next_state = state
         outputs = TransformerDecoderOutput(
             logits=outputs,
@@ -876,7 +831,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             -> Tuple[TransformerDecoderOutput, Optional[Cache]]:
         # Clear state variables at end of decoding.
         del self._state_max_decoding_length
-        del self._state_timing_signal
         del self._state_context
         del self._state_context_sequence_length
         del self._state_cache
