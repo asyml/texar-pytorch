@@ -34,10 +34,8 @@ import torch.backends.mkl
 def no_grad() -> ContextManager[None]:
     ...
 
-
 def enable_grad() -> ContextManager[None]:
     ...
-
 
 def set_grad_enabled(mode: bool) -> ContextManager[None]:
     ...
@@ -52,8 +50,9 @@ class layout: ...
 class dtype: ...
 
 
-# class Size(tuple): ...
-Size = Tuple[int, ...]
+class Size(Tuple[int, ...]):
+    def __init__(self, xs: Optional[Sequence[int]] = None): ...
+
 
 T = TypeVar('T')
 MaybeTuple = Union[T, Tuple[T, ...]]
@@ -90,8 +89,6 @@ long = int64 = _int64()
 uint8 = _uint8()
 float32 = _float32()
 int32 = _int32()
-
-
 # float = float
 # int = int
 from torch import float, int
