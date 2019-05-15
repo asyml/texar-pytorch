@@ -16,7 +16,7 @@ Various convolutional networks.
 """
 import torch
 
-from typing import Any
+from typing import Union, List, Tuple, Any
 
 from texar.modules.networks.network_base import FeedForwardNetworkBase
 from texar.modules.networks.network_base import _build_layers
@@ -31,7 +31,7 @@ __all__ = [
 ]
 
 
-def _to_list(value, name=None, list_length=None):
+def _to_list(value: Union[List, Tuple, int], name=None, list_length=None):
     """Converts hparam value into a list.
 
     If :attr:`list_length` is given,
@@ -82,9 +82,10 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
     def __init__(self, hparams=None):
         super(Conv1DNetwork, self).__init__(hparams)
-
-        layer_hparams = self._build_layer_hparams()
-        _build_layers(self, layers=None, layer_hparams=layer_hparams)
+        # construct only non-dense layers at this point
+        self.layer_hparams = self._build_non_dense_layer_hparams()
+        _build_layers(self, layers=None, layer_hparams=self.layer_hparams)
+        self._dense_layers_built = False
 
     @staticmethod
     def default_hparams():
@@ -130,10 +131,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             "num_conv_layers" : int
                 Number of convolutional layers.
 
-            "in_channels": int or list
-                The number of input channels in the data. If
-                "num_conv_layers" > 1, "in_channels" must be a list of
-                "num_conv_layers" integers.
+            "in_channels": int
+                The number of input channels in the data.
 
             "out_channels" : int or list
                 The number of out_channels in the convolution, i.e., the
@@ -198,11 +197,6 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
             "num_dense_layers" : int
                 Number of dense layers.
-
-            "in_features": int or list
-                Number of in_features after the convolutional layers. If an
-                `int`, all dense layers will have the same in_features size. If
-                a list of `int`, the list length must equal "num_dense_layers".
 
             "out_features" int or list
                 Number of out_features after the dense layers. If an `int`, all
@@ -278,7 +272,6 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             "other_pool_kwargs": None,
             # (3) Dense layers
             "num_dense_layers": 1,
-            "in_features": 192,
             "out_features": 256,
             "dense_activation": None,
             "dense_activation_kwargs": None,
@@ -291,10 +284,10 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             "dropout_rate": 0.75,
             # (5) Others
             "name": "conv1d_network",
-            "@no_typecheck": ["in_channels", "out_channels", "kernel_size",
-                              "conv_activation", "pool_size", "pool_stride",
-                              "in_features", "out_features", "dense_activation",
-                              "dropout_conv", "dropout_dense"]
+            "@no_typecheck": ["out_channels", "kernel_size", "conv_activation",
+                              "pool_size", "pool_stride", "out_features",
+                              "dense_activation", "dropout_conv",
+                              "dropout_dense"]
         }
 
     def _build_pool_hparams(self):
@@ -332,9 +325,11 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         if len(pool_hparams) != nconv:
             raise ValueError("`pool_hparams` must be of length %d" % nconv)
 
-        in_channels = _to_list(self._hparams.in_channels, 'in_channels', nconv)
+        in_channels = [self._hparams.in_channels]
         out_channels = _to_list(self._hparams.out_channels, 'out_channels',
                                 nconv)
+        # because in_channels(i) = out_channels(i-1)
+        in_channels.extend(out_channels[:-1])
 
         if nconv == 1:
             kernel_size = _to_list(self._hparams.kernel_size)
@@ -406,12 +401,13 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
         return conv_pool_hparams
 
-    def _build_dense_hparams(self):
+    def _build_dense_hparams(self, in_features: int):
         ndense = self._hparams.num_dense_layers
-        in_features = _to_list(self._hparams.in_features, 'in_features', ndense)
+        in_features = [in_features]
         out_features = _to_list(self._hparams.out_features, 'out_features',
                                 ndense)
-
+        # because in_features(i) = out_features(i-1)
+        in_features.extend(out_features[:-1])
         other_kwargs = self._hparams.other_dense_kwargs or {}
         if isinstance(other_kwargs, HParams):
             other_kwargs = other_kwargs.todict()
@@ -454,18 +450,31 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             else:
                 dense_hparams.append(dense_hparams_i)
 
+        def _dropout_hparams():
+            return {"type": "Dropout",
+                    "kwargs": {"p": self._hparams.dropout_rate}}
+
+        dropout_dense = _to_list(self._hparams.dropout_dense)
+        ndense = self._hparams.num_dense_layers
+        if ndense > 0:  # Add flatten layers before dense layers
+            self.layer_hparams.append({"type": "Flatten"})
+        for dense_i in range(ndense):
+            if dense_i in dropout_dense:
+                self.layer_hparams.append(_dropout_hparams())
+            self.layer_hparams.append(dense_hparams[dense_i])
+        if ndense in dropout_dense:
+            self.layer_hparams.append(_dropout_hparams())
+
         return dense_hparams
 
-    def _build_layer_hparams(self):
+    def _build_non_dense_layer_hparams(self):
         pool_hparams = self._build_pool_hparams()
         conv_pool_hparams = self._build_conv1d_hparams(pool_hparams)
-        dense_hparams = self._build_dense_hparams()
 
         def _dropout_hparams():
             return {"type": "Dropout",
                     "kwargs": {"p": self._hparams.dropout_rate}}
         dropout_conv = _to_list(self._hparams.dropout_conv)
-        dropout_dense = _to_list(self._hparams.dropout_dense)
 
         layers_hparams = []
         nconv = self._hparams.num_conv_layers
@@ -477,16 +486,6 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             else:
                 layers_hparams.append(conv_pool_hparams[conv_i])
         if nconv in dropout_conv:
-            layers_hparams.append(_dropout_hparams())
-
-        ndense = self._hparams.num_dense_layers
-        if ndense > 0:  # Add flatten layers before dense layers
-            layers_hparams.append({"type": "Flatten"})
-        for dense_i in range(ndense):
-            if dense_i in dropout_dense:
-                layers_hparams.append(_dropout_hparams())
-            layers_hparams.append(dense_hparams[dense_i])
-        if ndense in dropout_dense:
             layers_hparams.append(_dropout_hparams())
 
         return layers_hparams
@@ -508,9 +507,23 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             Returns:
                 The output of the final layer.
         """
+
+        if not self._dense_layers_built:
+            # build dense layers
+            input_size = self._infer_dense_layer_input_size(input)
+            self._build_dense_hparams(in_features=input_size[1])
+            _build_layers(self, layers=None, layer_hparams=self.layer_hparams)
+            self._dense_layers_built = True
+
         sequence_length = kwargs.get("sequence_length", None)
         dtype = kwargs.get("dtype", None)
         if sequence_length is not None:
             input = mask_sequences(input, sequence_length,
                                    dtype=dtype, time_major=False)
         return super(Conv1DNetwork, self).forward(input)
+
+    def _infer_dense_layer_input_size(self, input: torch.Tensor) -> torch.Size:
+        # feed forward the input on the part of the network which is constructed
+        # to infer the shape
+        output = super(Conv1DNetwork, self).forward(input)
+        return output.view(output.size()[0], -1).size()

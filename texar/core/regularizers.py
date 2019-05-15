@@ -59,17 +59,46 @@ class L1L2(Regularizer):
         return regularization
 
     def get_config(self):
+        """
+        Returns:
+            Dict with config for the current regularizer instance
+        """
         return {'l1': float(self.l1), 'l2': float(self.l2)}
 
 
 # Aliases.
 def l1(l=0.01):
+    """
+
+    Args:
+        l: Float
+            L1 regularization factor.
+    Returns:
+        An L1L2 regularization instance with l1=l
+    """
     return L1L2(l1=l)
 
 
 def l2(l=0.01):
+    """
+
+    Args:
+        l: Float
+            L2 regularization factor.
+    Returns:
+        An L1L2 regularization instance with l2=l
+    """
     return L1L2(l2=l)
 
 
 def l1_l2(l1=0.01, l2=0.01):  # pylint: disable=redefined-outer-name
+    """
+    Args:
+        l1: Float
+            L1 regularization factor.
+        l2: Float
+            L2 regularization factor.
+    Returns:
+        An L1L2 regularization instance with above regularization factors
+    """
     return L1L2(l1=l1, l2=l2)

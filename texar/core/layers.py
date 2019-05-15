@@ -487,6 +487,14 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
         layer_modules = ["torch.nn", "texar.core", "texar.custom"]
         layer_class = utils.check_or_get_class(layer_type, layer_modules)
         if isinstance(hparams, dict):
+            if layer_class.__name__ == "Linear" and \
+                    "in_features" not in hparams["kwargs"]:
+                raise ValueError("\"in_features\" should be specified for "
+                                 "\"torch.nn.{}\"".format(layer_class.__name__))
+            elif layer_class.__name__ in ["Conv1d", "Conv2d", "Conv3d"] and \
+                    "in_channels" not in hparams["kwargs"]:
+                raise ValueError("\"in_channels\" should be specified for "
+                                 "\"torch.nn.{}\"".format(layer_class.__name__))
             default_kwargs = _layer_class_to_default_kwargs_map.get(layer_class,
                                                                     {})
             default_hparams = {"type": layer_type, "kwargs": default_kwargs}
@@ -724,10 +732,7 @@ class Identity(nn.Module):
 
 
 def default_linear_kwargs() -> Dict[str, int]:
-    """TODO avinash: how to give suitable values to in_features
-    and out_features"""
     kwargs = {
-        "in_features": 32,
         "out_features": 64
     }
 

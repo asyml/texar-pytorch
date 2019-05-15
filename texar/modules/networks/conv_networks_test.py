@@ -18,7 +18,8 @@ class Conv1DNetworkTest(unittest.TestCase):
         """Tests feed forward.
         """
         network_1 = Conv1DNetwork()
-        self.assertEqual(len(network_1.layers), 4)
+        # dense layers are not constructed yet
+        self.assertEqual(len(network_1.layers), 2)
         self.assertTrue(isinstance(network_1.layer_by_name("MergeLayer"),
                                    tx.core.MergeLayer))
         for layer in network_1.layers[0].layers:
@@ -31,7 +32,7 @@ class Conv1DNetworkTest(unittest.TestCase):
         hparams = {
             # Conv layers
             "num_conv_layers": 2,
-            "in_channels": [64, 128],
+            "in_channels": 64,
             "out_channels": 128,
             "kernel_size": [[3, 4, 5], 4],
             "other_conv_kwargs": {"padding": 0},
@@ -41,7 +42,6 @@ class Conv1DNetworkTest(unittest.TestCase):
             "pool_stride": 1,
             # Dense layers
             "num_dense_layers": 3,
-            "in_features": [113152, 128, 128],
             "out_features": [128, 128, 10],
             "dense_activation": "ReLU",
             "other_dense_kwargs": None,
@@ -50,9 +50,9 @@ class Conv1DNetworkTest(unittest.TestCase):
             "dropout_dense": 2
         }
         network_2 = Conv1DNetwork(hparams)
-        # dropout-merge-dropout-conv-avgpool-dropout-flatten-(Sequential(Linear,ReLU))-(Sequential(
-        # Linear,ReLU))-dropout-linear
-        self.assertEqual(len(network_2.layers), 1+1+1+3+4+1)
+        # no dense layers constructed yet
+        # dropout-merge-dropout-(Sequential(Conv, ReLU))-avgpool-dropout
+        self.assertEqual(len(network_2.layers), 1+1+1+3)
         self.assertTrue(isinstance(network_2.layer_by_name("MergeLayer"),
                                    tx.core.MergeLayer))
         for layer in network_2.layers[1].layers:
