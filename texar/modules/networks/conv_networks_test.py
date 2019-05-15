@@ -17,22 +17,22 @@ class Conv1DNetworkTest(unittest.TestCase):
     def test_feedforward(self):
         """Tests feed forward.
         """
-        network_1 = Conv1DNetwork()
+        inputs_1 = torch.ones([128, 32, 300])
+        network_1 = Conv1DNetwork(input_size=inputs_1.size())
         # dense layers are not constructed yet
-        self.assertEqual(len(network_1.layers), 2)
+        self.assertEqual(len(network_1.layers), 4)
         self.assertTrue(isinstance(network_1.layer_by_name("MergeLayer"),
                                    tx.core.MergeLayer))
         for layer in network_1.layers[0].layers:
             self.assertTrue(isinstance(layer, nn.Sequential))
 
-        inputs_1 = torch.ones([128, 32, 300])
         outputs_1 = network_1(inputs_1)
         self.assertEqual(outputs_1.shape, torch.Size([128, 256]))
 
+        inputs_2 = torch.ones([128, 64, 300])
         hparams = {
             # Conv layers
             "num_conv_layers": 2,
-            "in_channels": 64,
             "out_channels": 128,
             "kernel_size": [[3, 4, 5], 4],
             "other_conv_kwargs": {"padding": 0},
@@ -49,16 +49,16 @@ class Conv1DNetworkTest(unittest.TestCase):
             "dropout_conv": [0, 1, 2],
             "dropout_dense": 2
         }
-        network_2 = Conv1DNetwork(hparams)
-        # no dense layers constructed yet
-        # dropout-merge-dropout-(Sequential(Conv, ReLU))-avgpool-dropout
-        self.assertEqual(len(network_2.layers), 1+1+1+3)
+        network_2 = Conv1DNetwork(input_size=inputs_2.size(), hparams=hparams)
+        # dropout-merge-dropout-(Sequential(Conv, ReLU))-avgpool-dropout-
+        # flatten-(Sequential(Linear,ReLU))-(Sequential(Linear,ReLU))-dropout
+        # -linear
+        self.assertEqual(len(network_2.layers), 1+1+1+3+4+1)
         self.assertTrue(isinstance(network_2.layer_by_name("MergeLayer"),
                                    tx.core.MergeLayer))
         for layer in network_2.layers[1].layers:
             self.assertTrue(isinstance(layer, nn.Sequential))
 
-        inputs_2 = torch.ones([128, 64, 300])
         outputs_2 = network_2(inputs_2)
         self.assertEqual(outputs_2.shape, torch.Size([128, 10]))
 
