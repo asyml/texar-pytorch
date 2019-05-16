@@ -16,7 +16,7 @@ Various convolutional networks.
 """
 import torch
 
-from typing import Union, List, Tuple, Any
+from typing import Union, List, Tuple, Optional, Any
 
 from texar.modules.networks.network_base import FeedForwardNetworkBase
 from texar.modules.networks.network_base import _build_layers
@@ -80,19 +80,24 @@ class Conv1DNetwork(FeedForwardNetworkBase):
     .. automethod:: _build
     """
 
-    def __init__(self, input_size: torch.Size, hparams=None):
+    def __init__(self, in_channels: int, in_features: Optional[int] = None,
+                 hparams=None):
         super(Conv1DNetwork, self).__init__(hparams)
+        if self.hparams.num_dense_layers > 0 and in_features is None:
+            raise ValueError("\"in_features\" cannot be None "
+                             "if \"num_dense_layers\" != 0")
+
         # construct only non-dense layers first
-        # data format (N,C,*)
-        in_channels = input_size[1]
         layer_hparams = self._build_non_dense_layer_hparams(in_channels=
                                                             in_channels)
         _build_layers(self, layers=None, layer_hparams=layer_hparams)
-        ones = torch.ones(size=input_size)
-        input_size = self._infer_dense_layer_input_size(ones)
-        layer_hparams = self._build_dense_hparams(in_features=input_size[1],
-                                                  layer_hparams=layer_hparams)
-        _build_layers(self, layers=None, layer_hparams=layer_hparams)
+        if self.hparams.num_dense_layers > 0:
+            ones = torch.ones(1, in_channels, in_features)  # type: ignore
+            input_size = self._infer_dense_layer_input_size(ones)
+            layer_hparams = self._build_dense_hparams(in_features=input_size[1],
+                                                      layer_hparams=
+                                                      layer_hparams)
+            _build_layers(self, layers=None, layer_hparams=layer_hparams)
 
     @staticmethod
     def default_hparams():

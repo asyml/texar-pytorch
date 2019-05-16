@@ -18,7 +18,8 @@ class Conv1DNetworkTest(unittest.TestCase):
         """Tests feed forward.
         """
         inputs_1 = torch.ones([128, 32, 300])
-        network_1 = Conv1DNetwork(input_size=inputs_1.size())
+        network_1 = Conv1DNetwork(in_channels=inputs_1.shape[1],
+                                  in_features=inputs_1.shape[2])
         # dense layers are not constructed yet
         self.assertEqual(len(network_1.layers), 4)
         self.assertTrue(isinstance(network_1.layer_by_name("MergeLayer"),
@@ -49,7 +50,9 @@ class Conv1DNetworkTest(unittest.TestCase):
             "dropout_conv": [0, 1, 2],
             "dropout_dense": 2
         }
-        network_2 = Conv1DNetwork(input_size=inputs_2.size(), hparams=hparams)
+        network_2 = Conv1DNetwork(in_channels=inputs_2.shape[1],
+                                  in_features=inputs_2.shape[2],
+                                  hparams=hparams)
         # dropout-merge-dropout-(Sequential(Conv, ReLU))-avgpool-dropout-
         # flatten-(Sequential(Linear,ReLU))-(Sequential(Linear,ReLU))-dropout
         # -linear
