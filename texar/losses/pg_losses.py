@@ -21,6 +21,8 @@ import torch.nn.functional as F
 from texar.losses.losses_utils import mask_and_reduce
 from texar.utils.shapes import get_rank
 
+from typing import Optional
+
 # pylint: disable=too-many-arguments, protected-access
 
 __all__ = [
@@ -29,19 +31,19 @@ __all__ = [
 ]
 
 
-def pg_loss_with_logits(actions,
-                        logits,
-                        advantages,
-                        rank=None,
-                        batched=False,
-                        sequence_length=None,
-                        average_across_batch=True,
-                        average_across_timesteps=False,
-                        average_across_remaining=False,
-                        sum_over_batch=False,
-                        sum_over_timesteps=True,
-                        sum_over_remaining=True,
-                        time_major=False):
+def pg_loss_with_logits(actions: torch.Tensor,
+                        logits: torch.Tensor,
+                        advantages: torch.Tensor,
+                        rank: Optional[int] = None,
+                        batched: bool = False,
+                        sequence_length: Optional[torch.Tensor] = None,
+                        average_across_batch: bool = True,
+                        average_across_timesteps: bool = False,
+                        average_across_remaining: bool = False,
+                        sum_over_batch: bool = False,
+                        sum_over_timesteps: bool = True,
+                        sum_over_remaining: bool = True,
+                        time_major: bool = False) -> torch.Tensor:
     """Policy gradient loss with logits. Used for discrete actions.
 
     `pg_loss = reduce( advantages * -log_prob( actions )  )`,
@@ -134,18 +136,18 @@ def pg_loss_with_logits(actions,
         time_major=time_major)
 
 
-def pg_loss_with_log_probs(log_probs,
-                           advantages,
-                           rank=None,
-                           batched=False,
-                           sequence_length=None,
-                           average_across_batch=True,
-                           average_across_timesteps=False,
-                           average_across_remaining=False,
-                           sum_over_batch=False,
-                           sum_over_timesteps=True,
-                           sum_over_remaining=True,
-                           time_major=False):
+def pg_loss_with_log_probs(log_probs: torch.Tensor,
+                           advantages: torch.Tensor,
+                           rank: Optional[int] = None,
+                           batched: bool = False,
+                           sequence_length: Optional[torch.Tensor] = None,
+                           average_across_batch: bool = True,
+                           average_across_timesteps: bool = False,
+                           average_across_remaining: bool = False,
+                           sum_over_batch: bool = False,
+                           sum_over_timesteps: bool = True,
+                           sum_over_remaining: bool = True,
+                           time_major: bool = False) -> torch.Tensor:
     """Policy gradient loss with log probs of actions.
 
     `pg_loss = reduce( advantages * -log_probs )`,

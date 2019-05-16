@@ -18,11 +18,17 @@ Adversarial losses.
 import torch
 import torch.nn.functional as F
 
+from typing import List, Union, Callable, Tuple
 
-def binary_adversarial_losses(real_data,
-                              fake_data,
-                              discriminator_fn,
-                              mode="max_real"):
+
+def binary_adversarial_losses(
+        real_data: Union[torch.Tensor, List[Union[int, float]]],
+        fake_data: Union[torch.Tensor, List[Union[int, float]]],
+        discriminator_fn: Callable[[Union[torch.Tensor,
+                                          List[Union[int, float]]]],
+                                   Union[torch.Tensor, List[torch.Tensor],
+                                         Tuple[torch.Tensor]]],
+        mode: str = "max_real") -> Tuple[torch.Tensor, torch.Tensor]:
     """Computes adversarial losses of real/fake binary discrimination game.
 
     .. role:: python(code)

@@ -19,6 +19,8 @@ import torch
 
 from texar.utils.shapes import transpose_batch_time, mask_sequences
 
+from typing import Optional, Union, List
+
 # pylint: disable=invalid-name, not-context-manager, protected-access,
 # pylint: disable=too-many-arguments
 
@@ -29,17 +31,17 @@ __all__ = [
 ]
 
 
-def mask_and_reduce(sequence,
-                    sequence_length,
-                    rank=2,
-                    average_across_batch=True,
-                    average_across_timesteps=False,
-                    average_across_remaining=False,
-                    sum_over_batch=False,
-                    sum_over_timesteps=True,
-                    sum_over_remaining=True,
-                    dtype=None,
-                    time_major=False):
+def mask_and_reduce(sequence: torch.Tensor,
+                    sequence_length: torch.Tensor,
+                    rank: int = 2,
+                    average_across_batch: bool = True,
+                    average_across_timesteps: bool = False,
+                    average_across_remaining: bool = False,
+                    sum_over_batch: bool = False,
+                    sum_over_timesteps: bool = True,
+                    sum_over_remaining: bool = True,
+                    dtype: Optional[torch.Tensor] = None,
+                    time_major: bool = False) -> torch.Tensor:
     """Masks out sequence entries that are beyond the respective sequence
     lengths, and reduces (average or sum) away dimensions.
 
@@ -124,12 +126,12 @@ def mask_and_reduce(sequence,
     return sequence
 
 
-def reduce_batch_time(sequence,
-                      sequence_length,
-                      average_across_batch=True,
-                      average_across_timesteps=False,
-                      sum_over_batch=False,
-                      sum_over_timesteps=True):
+def reduce_batch_time(sequence: torch.Tensor,
+                      sequence_length: torch.Tensor,
+                      average_across_batch: bool = True,
+                      average_across_timesteps: bool = False,
+                      sum_over_batch: bool = False,
+                      sum_over_timesteps: bool = True) -> torch.Tensor:
     """Average or sum over the respective dimensions of :attr:`sequence`, which
     is of shape `[batch_size, max_time, ...]`.
 
@@ -160,7 +162,10 @@ def reduce_batch_time(sequence,
     return sequence
 
 
-def reduce_dimensions(tensor, average_axes=None, sum_axes=None, keepdims=None):
+def reduce_dimensions(tensor: torch.Tensor,
+                      average_axes: Optional[Union[int, List[int]]] = None,
+                      sum_axes: Optional[Union[int, List[int]]] = None,
+                      keepdims: Optional[bool] = None) -> torch.Tensor:
     """Average or sum over dimensions of :attr:`tensor`.
 
     :attr:`average_axes` and :attr:`sum_axes` must be mutually exclusive. That

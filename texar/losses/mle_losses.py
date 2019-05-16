@@ -21,6 +21,8 @@ import torch.nn.functional as F
 from texar.losses.losses_utils import mask_and_reduce, reduce_dimensions
 from texar.utils import shapes
 
+from typing import Optional, Callable, Union, Tuple, Any
+
 # pylint: disable=invalid-name, not-context-manager, protected-access,
 # pylint: disable=too-many-arguments
 
@@ -33,15 +35,16 @@ __all__ = [
 ]
 
 
-def sequence_softmax_cross_entropy(labels,
-                                   logits,
-                                   sequence_length,
-                                   average_across_batch=True,
-                                   average_across_timesteps=False,
-                                   sum_over_batch=False,
-                                   sum_over_timesteps=True,
-                                   time_major=False,
-                                   stop_gradient_to_label=False):
+def sequence_softmax_cross_entropy(
+        labels: torch.Tensor,
+        logits: torch.Tensor,
+        sequence_length: torch.Tensor,
+        average_across_batch: bool = True,
+        average_across_timesteps: bool = False,
+        sum_over_batch: bool = False,
+        sum_over_timesteps: bool = True,
+        time_major: bool = False,
+        stop_gradient_to_label: bool = False) -> torch.Tensor:
     """Computes softmax cross entropy for each time step of sequence
     predictions.
 
@@ -110,14 +113,15 @@ def sequence_softmax_cross_entropy(labels,
     return losses
 
 
-def sequence_sparse_softmax_cross_entropy(labels,
-                                          logits,
-                                          sequence_length,
-                                          average_across_batch=True,
-                                          average_across_timesteps=False,
-                                          sum_over_batch=False,
-                                          sum_over_timesteps=True,
-                                          time_major=False):
+def sequence_sparse_softmax_cross_entropy(
+        labels: torch.Tensor,
+        logits: torch.Tensor,
+        sequence_length: torch.Tensor,
+        average_across_batch: bool = True,
+        average_across_timesteps: bool = False,
+        sum_over_batch: bool = False,
+        sum_over_timesteps: bool = True,
+        time_major: bool = False) -> torch.Tensor:
     """Computes sparse softmax cross entropy for each time step of sequence
     predictions.
 
@@ -197,17 +201,18 @@ def sequence_sparse_softmax_cross_entropy(labels,
     return losses
 
 
-def sequence_sigmoid_cross_entropy(labels,
-                                   logits,
-                                   sequence_length,
-                                   average_across_batch=True,
-                                   average_across_timesteps=False,
-                                   average_across_classes=True,
-                                   sum_over_batch=False,
-                                   sum_over_timesteps=True,
-                                   sum_over_classes=False,
-                                   time_major=False,
-                                   stop_gradient_to_label=False):
+def sequence_sigmoid_cross_entropy(
+        labels: torch.Tensor,
+        logits: torch.Tensor,
+        sequence_length: torch.Tensor,
+        average_across_batch: bool = True,
+        average_across_timesteps: bool = False,
+        average_across_classes: bool = True,
+        sum_over_batch: bool = False,
+        sum_over_timesteps: bool = True,
+        sum_over_classes: bool = False,
+        time_major: bool = False,
+        stop_gradient_to_label: bool = False) -> torch.Tensor:
     """Computes sigmoid cross entropy for each time step of sequence
     predictions.
 
@@ -288,13 +293,14 @@ def sequence_sigmoid_cross_entropy(labels,
     return losses
 
 
-def binary_sigmoid_cross_entropy(pos_logits=None,
-                                 neg_logits=None,
-                                 average_across_batch=True,
-                                 average_across_classes=True,
-                                 sum_over_batch=False,
-                                 sum_over_classes=False,
-                                 return_pos_neg_losses=False):
+def binary_sigmoid_cross_entropy(
+        pos_logits: Optional[torch.Tensor] = None,
+        neg_logits: Optional[torch.Tensor] = None,
+        average_across_batch: bool = True,
+        average_across_classes: bool = True,
+        sum_over_batch: bool = False,
+        sum_over_classes: bool = False,
+        return_pos_neg_losses: bool = False) -> torch.Tensor:
     """Computes sigmoid cross entropy of binary predictions.
 
     Args:
@@ -365,14 +371,15 @@ def binary_sigmoid_cross_entropy(pos_logits=None,
         return loss
 
 
-def binary_sigmoid_cross_entropy_with_clas(clas_fn,
-                                           pos_inputs=None,
-                                           neg_inputs=None,
-                                           average_across_batch=True,
-                                           average_across_classes=True,
-                                           sum_over_batch=False,
-                                           sum_over_classes=False,
-                                           return_pos_neg_losses=False):
+def binary_sigmoid_cross_entropy_with_clas(
+        clas_fn: Callable[[Any], Union[torch.Tensor, Tuple[torch.Tensor]]],
+        pos_inputs: Any = None,
+        neg_inputs: Any = None,
+        average_across_batch: bool = True,
+        average_across_classes: bool = True,
+        sum_over_batch: bool = False,
+        sum_over_classes: bool = False,
+        return_pos_neg_losses: bool = False) -> torch.Tensor:
     """Computes sigmoid cross entropy of binary classifier.
 
     .. role:: python(code)

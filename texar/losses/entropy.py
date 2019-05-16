@@ -29,19 +29,19 @@ __all__ = [
 ]
 
 
-def _get_entropy(logits):
+def _get_entropy(logits: torch.Tensor) -> torch.Tensor:
     probs = F.softmax(logits, -1) + 1e-8
     entropy = - probs * torch.log(probs)
     entropy = torch.sum(entropy, -1)
     return entropy
 
 
-def entropy_with_logits(logits,
-                        rank=None,
-                        average_across_batch=True,
-                        average_across_remaining=False,
-                        sum_over_batch=False,
-                        sum_over_remaining=True):
+def entropy_with_logits(logits: torch.Tensor,
+                        rank: int = None,
+                        average_across_batch: bool = True,
+                        average_across_remaining: bool = False,
+                        sum_over_batch: bool = False,
+                        sum_over_remaining: bool = True) -> torch.Tensor:
     """Shannon entropy given logits.
 
     Args:
@@ -113,16 +113,16 @@ def entropy_with_logits(logits,
     return entropy
 
 
-def sequence_entropy_with_logits(logits,
-                                 rank=None,
-                                 sequence_length=None,
-                                 average_across_batch=True,
-                                 average_across_timesteps=False,
-                                 average_across_remaining=False,
-                                 sum_over_batch=False,
-                                 sum_over_timesteps=True,
-                                 sum_over_remaining=True,
-                                 time_major=False):
+def sequence_entropy_with_logits(logits: torch.Tensor,
+                                 rank: int = None,
+                                 sequence_length: torch.Tensor = None,
+                                 average_across_batch: bool = True,
+                                 average_across_timesteps: bool = False,
+                                 average_across_remaining: bool = False,
+                                 sum_over_batch: bool = False,
+                                 sum_over_timesteps: bool = True,
+                                 sum_over_remaining: bool = True,
+                                 time_major: bool = False) -> torch.Tensor:
     """Shannon entropy given logits.
 
     Args:
