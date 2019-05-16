@@ -21,6 +21,8 @@ import torch.nn.functional as F
 from texar.losses.losses_utils import mask_and_reduce, reduce_dimensions
 from texar.utils.shapes import get_rank
 
+from typing import Optional
+
 # pylint: disable=too-many-arguments
 
 __all__ = [
@@ -37,7 +39,7 @@ def _get_entropy(logits: torch.Tensor) -> torch.Tensor:
 
 
 def entropy_with_logits(logits: torch.Tensor,
-                        rank: int = None,
+                        rank: Optional[int] = None,
                         average_across_batch: bool = True,
                         average_across_remaining: bool = False,
                         sum_over_batch: bool = False,
@@ -114,7 +116,7 @@ def entropy_with_logits(logits: torch.Tensor,
 
 
 def sequence_entropy_with_logits(logits: torch.Tensor,
-                                 rank: int = None,
+                                 rank: Optional[int] = None,
                                  sequence_length: torch.Tensor = None,
                                  average_across_batch: bool = True,
                                  average_across_timesteps: bool = False,
