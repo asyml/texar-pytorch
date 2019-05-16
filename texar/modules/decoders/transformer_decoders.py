@@ -42,7 +42,6 @@ __all__ = [
 ]
 
 
-
 class TransformerDecoderOutput(NamedTuple):
     r"""The output of :class:`TransformerDecoder`.
 
@@ -54,7 +53,6 @@ class TransformerDecoderOutput(NamedTuple):
     """
     logits: torch.Tensor
     sample_id: torch.LongTensor
-
 
 
 class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
@@ -589,7 +587,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             cache: Optional[Cache] = None) -> torch.Tensor:
         r"""Stacked multihead attention module.
         """
-
         inputs = self.embed_dropout(inputs)
         if cache is not None:
             if memory is not None:

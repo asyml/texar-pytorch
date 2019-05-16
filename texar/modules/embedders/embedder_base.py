@@ -16,6 +16,7 @@ The base embedder class.
 """
 
 import torch
+from torch.nn.parameter import Parameter
 
 from texar.module_base import ModuleBase
 from texar.modules.embedders import embedder_utils
@@ -46,8 +47,8 @@ class EmbedderBase(ModuleBase):
         ModuleBase.__init__(self, hparams)
 
         if num_embeds is not None or init_value is not None:
-            self._embedding = embedder_utils.get_embedding(
-                num_embeds, init_value, hparams)
+            self._embedding = Parameter(embedder_utils.get_embedding(
+                num_embeds, init_value, hparams))
 
             self._num_embeds = self._embedding.shape[0]
 
