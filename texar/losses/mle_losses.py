@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,10 +14,6 @@
 """
 Various losses
 """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import torch
 import torch.nn.functional as F
@@ -45,8 +41,7 @@ def sequence_softmax_cross_entropy(labels,
                                    sum_over_batch=False,
                                    sum_over_timesteps=True,
                                    time_major=False,
-                                   stop_gradient_to_label=False,
-                                   name=None):
+                                   stop_gradient_to_label=False):
     """Computes softmax cross entropy for each time step of sequence
     predictions.
 
@@ -122,8 +117,7 @@ def sequence_sparse_softmax_cross_entropy(labels,
                                           average_across_timesteps=False,
                                           sum_over_batch=False,
                                           sum_over_timesteps=True,
-                                          time_major=False,
-                                          name=None):
+                                          time_major=False):
     """Computes sparse softmax cross entropy for each time step of sequence
     predictions.
 
@@ -213,8 +207,7 @@ def sequence_sigmoid_cross_entropy(labels,
                                    sum_over_timesteps=True,
                                    sum_over_classes=False,
                                    time_major=False,
-                                   stop_gradient_to_label=False,
-                                   name=None):
+                                   stop_gradient_to_label=False):
     """Computes sigmoid cross entropy for each time step of sequence
     predictions.
 
@@ -281,9 +274,6 @@ def sequence_sigmoid_cross_entropy(labels,
     losses = losses(logits, labels.type(logits.dtype))
 
     rank = shapes.get_rank(logits) or shapes.get_rank(labels)
-    if rank is None:
-        raise ValueError(
-            'Cannot determine the rank of `logits` or `labels`.')
 
     losses = mask_and_reduce(losses,
                              sequence_length,
@@ -305,8 +295,7 @@ def binary_sigmoid_cross_entropy(pos_logits=None,
                                  average_across_classes=True,
                                  sum_over_batch=False,
                                  sum_over_classes=False,
-                                 return_pos_neg_losses=False,
-                                 name=None):
+                                 return_pos_neg_losses=False):
     """Computes sigmoid cross entropy of binary predictions.
 
     Args:
@@ -384,8 +373,7 @@ def binary_sigmoid_cross_entropy_with_clas(clas_fn,
                                            average_across_classes=True,
                                            sum_over_batch=False,
                                            sum_over_classes=False,
-                                           return_pos_neg_losses=False,
-                                           name=None):
+                                           return_pos_neg_losses=False):
     """Computes sigmoid cross entropy of binary classifier.
 
     .. role:: python(code)
@@ -454,5 +442,4 @@ def binary_sigmoid_cross_entropy_with_clas(clas_fn,
         average_across_classes=average_across_classes,
         sum_over_batch=sum_over_batch,
         sum_over_classes=sum_over_classes,
-        return_pos_neg_losses=return_pos_neg_losses,
-        name=name)
+        return_pos_neg_losses=return_pos_neg_losses)

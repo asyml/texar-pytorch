@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,11 +14,9 @@
 """
 Adversarial losses.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import torch
+import torch.nn.functional as F
 
 
 def binary_adversarial_losses(real_data,
@@ -58,14 +56,14 @@ def binary_adversarial_losses(real_data,
     real_logits = discriminator_fn(real_data)
     if isinstance(real_logits, (list, tuple)):
         real_logits = real_logits[0]
-    real_loss = torch.nn.BCEWithLogitsLoss(reduction='mean')
-    real_loss = real_loss(real_logits, torch.ones_like(real_logits))
+    real_loss = F.binary_cross_entropy_with_logits(
+        real_logits, torch.ones_like(real_logits))
 
     fake_logits = discriminator_fn(fake_data)
     if isinstance(fake_logits, (list, tuple)):
         fake_logits = fake_logits[0]
-    fake_loss = torch.nn.BCEWithLogitsLoss(reduction='mean')
-    fake_loss = fake_loss(fake_logits, torch.zeros_like(fake_logits))
+    fake_loss = F.binary_cross_entropy_with_logits(
+        fake_logits, torch.zeros_like(fake_logits))
 
     d_loss = real_loss + fake_loss
 
