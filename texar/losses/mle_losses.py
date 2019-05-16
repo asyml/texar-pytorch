@@ -269,9 +269,8 @@ def sequence_sigmoid_cross_entropy(labels,
     """
     if stop_gradient_to_label:
         labels = labels.detach()
-    losses = torch.nn.BCEWithLogitsLoss(reduction='none')
-
-    losses = losses(logits, labels.type(logits.dtype))
+    losses = F.binary_cross_entropy_with_logits(
+        logits, labels.type(logits.dtype), reduction='none')
 
     rank = shapes.get_rank(logits) or shapes.get_rank(labels)
 
@@ -346,15 +345,15 @@ def binary_sigmoid_cross_entropy(pos_logits=None,
 
     pos_loss = 0
     if pos_logits is not None:
-        pos_loss = torch.nn.BCEWithLogitsLoss(reduction=None)
-        pos_loss = pos_loss(pos_logits, torch.ones_like(pos_logits))
+        pos_loss = F.binary_cross_entropy_with_logits(
+            pos_logits, torch.ones_like(pos_logits), reduction='none')
 
         pos_loss = reduce_dimensions(pos_loss, average_axes, sum_axes)
 
     neg_loss = 0
     if neg_logits is not None:
-        neg_loss = torch.nn.BCEWithLogitsLoss(reduction=None)
-        neg_loss = neg_loss(neg_logits, torch.zeros_like(neg_logits))
+        neg_loss = F.binary_cross_entropy_with_logits(
+            neg_logits, torch.zeros_like(neg_logits), reduction='none')
 
         neg_loss = reduce_dimensions(neg_loss, average_axes, sum_axes)
 
