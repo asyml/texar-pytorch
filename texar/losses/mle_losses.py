@@ -100,7 +100,8 @@ def sequence_softmax_cross_entropy(
     if stop_gradient_to_label:
         labels = labels.detach()
 
-    losses = torch.sum(-labels.type(logits.dtype) * F.log_softmax(logits, -1), -1)
+    losses = torch.sum(-labels.type(logits.dtype) * F.log_softmax(logits, -1),
+                       -1)
 
     losses = mask_and_reduce(losses,
                              sequence_length,
