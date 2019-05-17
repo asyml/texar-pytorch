@@ -15,7 +15,7 @@
 Base class for modules.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from torch import nn
 
@@ -42,7 +42,8 @@ class ModuleBase(nn.Module):
             :meth:`default_hparams` for the structure and default values.
     """
 
-    def __init__(self, hparams: Optional[HParams] = None):
+    def __init__(self, hparams: Optional[Union[HParams,
+                                               Dict[str, Any]]] = None):
         super().__init__()
         self._hparams = HParams(hparams, self.default_hparams())
 
@@ -71,7 +72,7 @@ class ModuleBase(nn.Module):
 
         Both parameters of this module and those of all submodules are included.
         """
-        return [x for x in self.parameters(recurse=True)]  # pylint: disable=unexpected-keyword-arg
+        return [x for x in self.parameters(recurse=True)]  # noqa: E501 pylint: disable=unexpected-keyword-arg
 
     @property
     def hparams(self) -> HParams:

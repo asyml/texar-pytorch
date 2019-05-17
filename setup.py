@@ -3,10 +3,12 @@ import setuptools
 
 long_description = '''
 Texar is an open-source toolkit based on Pytorch,
-aiming to support a broad set of machine learning especially text generation tasks,
-such as machine translation, dialog, summarization, content manipulation, language modeling, and so on.
+aiming to support a broad set of machine learning especially text generation 
+tasks, such as machine translation, dialog, summarization, content manipulation,
+language modeling, and so on.
 
-Texar is designed for both researchers and practitioners for fast prototyping and experimentation.
+Texar is designed for both researchers and practitioners for fast prototyping 
+and experimentation.
 '''
 
 setuptools.setup(

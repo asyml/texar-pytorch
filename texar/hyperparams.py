@@ -160,7 +160,7 @@ class HParams:
         super(HParams, self).__setattr__('_hparams', parsed_hparams)
 
     @staticmethod
-    def _parse(hparams: Optional[Dict[str, Any]],  # pylint: disable=too-many-branches,too-many-statements
+    def _parse(hparams: Optional[Dict[str, Any]],  # noqa: E501 pylint: disable=too-many-branches, too-many-statements
                default_hparams: Optional[Dict[str, Any]],
                allow_new_hparam: bool = False):
         r"""Parses hyperparameters.

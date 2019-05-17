@@ -315,7 +315,7 @@ class AverageRecorder:
                 for name, rec in self._recorders.items()}
         str_list = []
         if self._record_type in {list, tuple}:
-            for i in range(len(strs)):  # pylint: disable=consider-using-enumerate
+            for i in range(len(strs)):  # noqa: E501 pylint: disable=consider-using-enumerate
                 # Enumerates the keys in order, which are the indexes
                 str_list.append(strs[i])
         elif self._record_type == dict:
