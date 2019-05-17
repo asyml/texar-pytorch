@@ -15,19 +15,18 @@
 Adversarial losses.
 """
 
+from typing import Callable, Tuple
+
 import torch
 import torch.nn.functional as F
 
-from typing import List, Union, Callable, Tuple
+from texar.utils.types import MaybeTuple
 
 
 def binary_adversarial_losses(
-        real_data: Union[torch.Tensor, List[Union[int, float]]],
-        fake_data: Union[torch.Tensor, List[Union[int, float]]],
-        discriminator_fn: Callable[[Union[torch.Tensor,
-                                          List[Union[int, float]]]],
-                                   Union[torch.Tensor, List[torch.Tensor],
-                                         Tuple[torch.Tensor]]],
+        real_data: torch.Tensor,
+        fake_data: torch.Tensor,
+        discriminator_fn: Callable[[torch.Tensor], MaybeTuple[torch.Tensor]],
         mode: str = "max_real") -> Tuple[torch.Tensor, torch.Tensor]:
     """Computes adversarial losses of real/fake binary discrimination game.
 

@@ -15,14 +15,15 @@
 Various utilities for losses.
 """
 
-import torch
-
-from texar.utils.shapes import transpose_batch_time, mask_sequences
-
-from typing import Optional, Union, List
-
 # pylint: disable=invalid-name, not-context-manager, protected-access,
 # pylint: disable=too-many-arguments
+
+from typing import Optional
+
+import torch
+
+from texar.utils.shapes import mask_sequences, transpose_batch_time
+from texar.utils.types import MaybeList
 
 __all__ = [
     "mask_and_reduce",
@@ -32,7 +33,7 @@ __all__ = [
 
 
 def mask_and_reduce(sequence: torch.Tensor,
-                    sequence_length: torch.Tensor,
+                    sequence_length: Optional[torch.LongTensor],
                     rank: int = 2,
                     average_across_batch: bool = True,
                     average_across_timesteps: bool = False,
@@ -40,7 +41,7 @@ def mask_and_reduce(sequence: torch.Tensor,
                     sum_over_batch: bool = False,
                     sum_over_timesteps: bool = True,
                     sum_over_remaining: bool = True,
-                    dtype: Optional[torch.Tensor] = None,
+                    dtype: Optional[torch.dtype] = None,
                     time_major: bool = False) -> torch.Tensor:
     """Masks out sequence entries that are beyond the respective sequence
     lengths, and reduces (average or sum) away dimensions.
@@ -127,7 +128,7 @@ def mask_and_reduce(sequence: torch.Tensor,
 
 
 def reduce_batch_time(sequence: torch.Tensor,
-                      sequence_length: torch.Tensor,
+                      sequence_length: Optional[torch.LongTensor],
                       average_across_batch: bool = True,
                       average_across_timesteps: bool = False,
                       sum_over_batch: bool = False,
@@ -163,8 +164,8 @@ def reduce_batch_time(sequence: torch.Tensor,
 
 
 def reduce_dimensions(tensor: torch.Tensor,
-                      average_axes: Optional[Union[int, List[int]]] = None,
-                      sum_axes: Optional[Union[int, List[int]]] = None,
+                      average_axes: Optional[MaybeList[int]] = None,
+                      sum_axes: Optional[MaybeList[int]] = None,
                       keepdims: Optional[bool] = None) -> torch.Tensor:
     """Average or sum over dimensions of :attr:`tensor`.
 

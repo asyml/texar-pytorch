@@ -15,13 +15,13 @@
 Various entropies.
 """
 
+from typing import Optional
+
 import torch
 import torch.nn.functional as F
 
 from texar.losses.losses_utils import mask_and_reduce, reduce_dimensions
 from texar.utils.shapes import get_rank
-
-from typing import Optional
 
 # pylint: disable=too-many-arguments
 
@@ -115,16 +115,17 @@ def entropy_with_logits(logits: torch.Tensor,
     return entropy
 
 
-def sequence_entropy_with_logits(logits: torch.Tensor,
-                                 rank: Optional[int] = None,
-                                 sequence_length: torch.Tensor = None,
-                                 average_across_batch: bool = True,
-                                 average_across_timesteps: bool = False,
-                                 average_across_remaining: bool = False,
-                                 sum_over_batch: bool = False,
-                                 sum_over_timesteps: bool = True,
-                                 sum_over_remaining: bool = True,
-                                 time_major: bool = False) -> torch.Tensor:
+def sequence_entropy_with_logits(
+        logits: torch.Tensor,
+        rank: Optional[int] = None,
+        sequence_length: Optional[torch.LongTensor] = None,
+        average_across_batch: bool = True,
+        average_across_timesteps: bool = False,
+        average_across_remaining: bool = False,
+        sum_over_batch: bool = False,
+        sum_over_timesteps: bool = True,
+        sum_over_remaining: bool = True,
+        time_major: bool = False) -> torch.Tensor:
     """Shannon entropy given logits.
 
     Args:

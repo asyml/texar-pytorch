@@ -15,13 +15,13 @@
 Various loss functions for policy gradients.
 """
 
+from typing import Optional
+
 import torch
 import torch.nn.functional as F
 
 from texar.losses.losses_utils import mask_and_reduce
 from texar.utils.shapes import get_rank
-
-from typing import Optional
 
 # pylint: disable=too-many-arguments, protected-access
 
@@ -36,7 +36,7 @@ def pg_loss_with_logits(actions: torch.Tensor,
                         advantages: torch.Tensor,
                         rank: Optional[int] = None,
                         batched: bool = False,
-                        sequence_length: Optional[torch.Tensor] = None,
+                        sequence_length: Optional[torch.LongTensor] = None,
                         average_across_batch: bool = True,
                         average_across_timesteps: bool = False,
                         average_across_remaining: bool = False,
@@ -140,7 +140,7 @@ def pg_loss_with_log_probs(log_probs: torch.Tensor,
                            advantages: torch.Tensor,
                            rank: Optional[int] = None,
                            batched: bool = False,
-                           sequence_length: Optional[torch.Tensor] = None,
+                           sequence_length: Optional[torch.LongTensor] = None,
                            average_across_batch: bool = True,
                            average_across_timesteps: bool = False,
                            average_across_remaining: bool = False,

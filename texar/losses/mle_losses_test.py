@@ -7,10 +7,11 @@ Unit tests for mle losses.
 # pylint: disable=invalid-name
 
 import unittest
+
 import torch
 import torch.nn.functional as F
-import texar as tx
 
+import texar as tx
 from texar.utils.shapes import get_rank
 
 

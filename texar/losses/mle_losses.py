@@ -15,16 +15,17 @@
 Various losses
 """
 
+# pylint: disable=invalid-name, not-context-manager, protected-access,
+# pylint: disable=too-many-arguments
+
+from typing import Callable, Optional, Tuple, Union
+
 import torch
 import torch.nn.functional as F
 
 from texar.losses.losses_utils import mask_and_reduce, reduce_dimensions
 from texar.utils import shapes
-
-from typing import Optional, Callable, Union, Tuple, Any
-
-# pylint: disable=invalid-name, not-context-manager, protected-access,
-# pylint: disable=too-many-arguments
+from texar.utils.types import MaybeTuple
 
 __all__ = [
     "sequence_softmax_cross_entropy",
@@ -38,7 +39,7 @@ __all__ = [
 def sequence_softmax_cross_entropy(
         labels: torch.Tensor,
         logits: torch.Tensor,
-        sequence_length: torch.Tensor,
+        sequence_length: torch.LongTensor,
         average_across_batch: bool = True,
         average_across_timesteps: bool = False,
         sum_over_batch: bool = False,
@@ -84,7 +85,6 @@ def sequence_softmax_cross_entropy(
             (default), they must have shape `[batch_size, max_time, ...]`.
         stop_gradient_to_label (bool): If set, gradient propagation to
             :attr:`labels` will be disabled.
-        name (str, optional): A name for the operation.
 
     Returns:
         A Tensor containing the loss, of rank 0, 1, or 2 depending on the
@@ -100,7 +100,7 @@ def sequence_softmax_cross_entropy(
     if stop_gradient_to_label:
         labels = labels.detach()
 
-    losses = torch.sum(-labels.type(logits.dtype)*F.log_softmax(logits, -1), -1)
+    losses = torch.sum(-labels.type(logits.dtype) * F.log_softmax(logits, -1), -1)
 
     losses = mask_and_reduce(losses,
                              sequence_length,
@@ -116,7 +116,7 @@ def sequence_softmax_cross_entropy(
 def sequence_sparse_softmax_cross_entropy(
         labels: torch.Tensor,
         logits: torch.Tensor,
-        sequence_length: torch.Tensor,
+        sequence_length: torch.LongTensor,
         average_across_batch: bool = True,
         average_across_timesteps: bool = False,
         sum_over_batch: bool = False,
@@ -156,7 +156,6 @@ def sequence_sparse_softmax_cross_entropy(
             :attr:`labels` and :attr:`logits` must have shape
             `[max_time, batch_size, ...]`. If `False`
             (default), they must have shape `[batch_size, max_time, ...]`.
-        name (str, optional): A name for the operation.
 
     Returns:
         A Tensor containing the loss, of rank 0, 1, or 2 depending on the
@@ -204,7 +203,7 @@ def sequence_sparse_softmax_cross_entropy(
 def sequence_sigmoid_cross_entropy(
         labels: torch.Tensor,
         logits: torch.Tensor,
-        sequence_length: torch.Tensor,
+        sequence_length: torch.LongTensor,
         average_across_batch: bool = True,
         average_across_timesteps: bool = False,
         average_across_classes: bool = True,
@@ -258,7 +257,6 @@ def sequence_sigmoid_cross_entropy(
             (default), they must have shape `[batch_size, max_time, ...]`.
         stop_gradient_to_label (bool): If set, gradient propagation to
             :attr:`labels` will be disabled.
-        name (str, optional): A name for the operation.
 
     Returns:
         A Tensor containing the loss, of rank 0, 1, or 2 depending on the
@@ -300,7 +298,8 @@ def binary_sigmoid_cross_entropy(
         average_across_classes: bool = True,
         sum_over_batch: bool = False,
         sum_over_classes: bool = False,
-        return_pos_neg_losses: bool = False) -> torch.Tensor:
+        return_pos_neg_losses: bool = False) \
+        -> Union[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
     """Computes sigmoid cross entropy of binary predictions.
 
     Args:
@@ -324,7 +323,6 @@ def binary_sigmoid_cross_entropy(
             :attr:`logits` is a 2D Tensor.
         return_pos_neg_losses (bool): If set, additionally returns the losses
             on :attr:`pos_logits` and :attr:`neg_logits`, respectively.
-        name (str, optional): A name for the operation.
 
     Returns:
         By default, a Tensor containing the loss, of rank 0, 1, or 2 depending
@@ -343,25 +341,26 @@ def binary_sigmoid_cross_entropy(
         `neg_loss` is the loss on `neg_logits` only. They have
         `loss = pos_loss + neg_loss`.
     """
-    average_axes, sum_axes = [], []
-    average_axes += [0] if average_across_batch else []
+    average_axes = [0] if average_across_batch else []
     average_axes += [1] if average_across_classes else []
-    sum_axes += [0] if sum_over_batch else []
+    sum_axes = [0] if sum_over_batch else []
     sum_axes += [1] if sum_over_classes else []
 
-    pos_loss = 0
     if pos_logits is not None:
         pos_loss = F.binary_cross_entropy_with_logits(
             pos_logits, torch.ones_like(pos_logits), reduction='none')
 
         pos_loss = reduce_dimensions(pos_loss, average_axes, sum_axes)
+    else:
+        pos_loss = 0  # type: ignore
 
-    neg_loss = 0
     if neg_logits is not None:
         neg_loss = F.binary_cross_entropy_with_logits(
             neg_logits, torch.zeros_like(neg_logits), reduction='none')
 
         neg_loss = reduce_dimensions(neg_loss, average_axes, sum_axes)
+    else:
+        neg_loss = 0  # type: ignore
 
     loss = pos_loss + neg_loss
 
@@ -372,14 +371,15 @@ def binary_sigmoid_cross_entropy(
 
 
 def binary_sigmoid_cross_entropy_with_clas(
-        clas_fn: Callable[[Any], Union[torch.Tensor, Tuple[torch.Tensor]]],
-        pos_inputs: Any = None,
-        neg_inputs: Any = None,
+        clas_fn: Callable[[torch.Tensor], MaybeTuple[torch.Tensor]],
+        pos_inputs: Optional[torch.Tensor] = None,
+        neg_inputs: Optional[torch.Tensor] = None,
         average_across_batch: bool = True,
         average_across_classes: bool = True,
         sum_over_batch: bool = False,
         sum_over_classes: bool = False,
-        return_pos_neg_losses: bool = False) -> torch.Tensor:
+        return_pos_neg_losses: bool = False) \
+        -> Union[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
     """Computes sigmoid cross entropy of binary classifier.
 
     .. role:: python(code)
@@ -410,7 +410,6 @@ def binary_sigmoid_cross_entropy_with_clas(
             :attr:`logits` is a 2D Tensor.
         return_pos_neg_losses (bool): If set, additionally returns the losses
             on :attr:`pos_logits` and :attr:`neg_logits`, respectively.
-        name (str, optional): A name for the operation.
 
     Returns:
         By default, a Tensor containing the loss, of rank 0, 1, or 2 depending
@@ -431,15 +430,13 @@ def binary_sigmoid_cross_entropy_with_clas(
     """
     pos_logits = None
     if pos_inputs is not None:
-        pos_logits = clas_fn(pos_inputs)
-        if isinstance(pos_logits, (list, tuple)):
-            pos_logits = pos_logits[0]
+        out = clas_fn(pos_inputs)
+        pos_logits = out[0] if isinstance(out, (list, tuple)) else out
 
     neg_logits = None
     if neg_inputs is not None:
-        neg_logits = clas_fn(neg_inputs)
-        if isinstance(neg_logits, (list, tuple)):
-            neg_logits = neg_logits[0]
+        out = clas_fn(neg_inputs)
+        neg_logits = out[0] if isinstance(out, (list, tuple)) else out
 
     return binary_sigmoid_cross_entropy(
         pos_logits=pos_logits,

@@ -7,9 +7,10 @@ Unit tests for pg losses.
 # pylint: disable=invalid-name
 
 import unittest
-import torch
-import texar as tx
 
+import torch
+
+import texar as tx
 from texar.utils.shapes import get_rank
 
 
@@ -20,9 +21,9 @@ class PGLossesTest(unittest.TestCase):
     def setUp(self):
         self._batch_size = 64
         self._max_time = 16
-        self._d1 = 32
-        self._d2 = 32
-        self._d3 = 32
+        self._d1 = 3  # use smaller values to speedup testing
+        self._d2 = 4
+        self._d3 = 5
         self._num_classes = 10
         self._actions_batch = torch.ones(self._batch_size, self._max_time,
                                          self._d1, self._d2, self._d3,
