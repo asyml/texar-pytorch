@@ -85,14 +85,17 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         super(Conv1DNetwork, self).__init__(hparams)
         if self.hparams.num_dense_layers > 0 and in_features is None:
             raise ValueError("\"in_features\" cannot be None "
-                             "if \"num_dense_layers\" != 0")
+                             "if \"num_dense_layers\" > 0")
 
         # construct only non-dense layers first
         layer_hparams = self._build_non_dense_layer_hparams(in_channels=
                                                             in_channels)
         _build_layers(self, layers=None, layer_hparams=layer_hparams)
         if self.hparams.num_dense_layers > 0:
-            ones = torch.ones(1, in_channels, in_features)  # type: ignore
+            if in_features is None:
+                raise ValueError("\"in_features\" cannot be None "
+                                 "if \"num_dense_layers\" > 0")
+            ones = torch.ones(1, in_channels, in_features)
             input_size = self._infer_dense_layer_input_size(ones)
             layer_hparams = self._build_dense_hparams(in_features=input_size[1],
                                                       layer_hparams=
