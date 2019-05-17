@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of texar library.
+Modules of texar losses.
 """
 
 # pylint: disable=wildcard-import
 
-from texar import core
-from texar import utils
-from texar import losses
-from texar.hyperparams import *
-from texar.module_base import *
+from texar.losses.losses_utils import *
+from texar.losses.entropy import *
+from texar.losses.mle_losses import *
+from texar.losses.adv_losses import *
+from texar.losses.pg_losses import *
