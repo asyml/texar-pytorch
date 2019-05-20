@@ -23,9 +23,11 @@ class MLELossesTest(unittest.TestCase):
         self._batch_size = 64
         self._max_time = 16
         self._num_classes = 100
-        self._labels = torch.ones(self._batch_size, self._max_time,
-                                  dtype=torch.int64)
-        one_hot_labels = F.one_hot(self._labels, self._num_classes)
+        self._labels = torch.randint(
+            self._num_classes, (self._batch_size, self._max_time),
+            dtype=torch.int64)
+        one_hot = torch.eye(self._num_classes)
+        one_hot_labels = F.embedding(self._labels, one_hot)
         self._one_hot_labels = torch.reshape(
             one_hot_labels, [self._batch_size, self._max_time, -1])
         self._logits = torch.rand(self._batch_size, self._max_time,
