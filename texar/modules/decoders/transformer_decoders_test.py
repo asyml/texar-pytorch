@@ -90,9 +90,9 @@ class TransformerDecoderTest(unittest.TestCase):
                           memory_attention_bias=None,
                           inputs=self._inputs,
                           decoding_strategy='train_greedy')
-        print(decoder)
-        for name, _ in decoder.named_parameters():
-            print(name)
+        # print(decoder)
+        # for name, _ in decoder.named_parameters():
+        #     print(name)
         self.assertEqual(len(decoder.trainable_variables), 110)
         self.assertIsInstance(outputs, TransformerDecoderOutput)
 
