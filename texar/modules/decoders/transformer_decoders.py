@@ -22,6 +22,7 @@ from torch import nn
 
 from texar import HParams, ModuleBase
 from texar.core import layers
+from texar.modules import FeedForwardNetwork
 from texar.modules.decoders import Helper
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
 from texar.modules.decoders.decoder_helpers import EmbeddingHelper
@@ -129,27 +130,6 @@ def default_transformer_poswise_net_hparams(input_dim, output_dim=512):
     }
 
 
-class FeedForwardNetwork(ModuleBase):
-    def __init__(self, hparams: Optional[HParams] = None):
-        super().__init__(hparams)
-        modules: List[nn.Module] = []
-        for layer_hparams in self._hparams.layers:
-            layer: nn.Module = get_instance(
-                layer_hparams['type'],
-                layer_hparams['kwargs'],
-                ['torch.nn', 'texar.modules'])
-            modules.append(layer)
-        self.network = nn.Sequential(*modules)
-
-    @staticmethod
-    def default_hparams():
-        return default_transformer_poswise_net_hparams(512)
-
-    def forward(self,  # type: ignore
-                input: torch.Tensor) -> torch.Tensor:
-        return self.network(input)
-
-
 class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
     r"""Transformer decoder that applies multi-head self-attention for
     sequence decoding.
@@ -158,7 +138,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
     :class:`~texar.modules.FeedForwardNetwork`, and residual connections.
 
     Args:
-        input_size (int): Dimension of input tensor.
         vocab_size (int, optional): Vocabulary size. Required if
             :attr:`output_layer` is `None`.
         output_layer (optional): An output layer that transforms cell output
