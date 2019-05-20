@@ -38,6 +38,7 @@ __all__ = [
     'ResidualWrapper',
     'HighwayWrapper',
     'MultiRNNCell',
+    'AttentionWrapper'
 ]
 
 State = TypeVar('State')
@@ -441,3 +442,59 @@ class MultiRNNCell(RNNCellBase[List[State]]):
             output, new_state = cell(output, hx)
             new_states.append(new_state)
         return output, new_states
+
+
+class AttentionWrapper(RNNCellBase[State]):
+    """Wraps another `RNNCell` with attention."""
+
+    def __init__(self,
+                 cell,
+                 attention_mechnism,
+                 attention_layer_size=None,
+                 alignment_history=False,
+                 cell_input_fn=None,
+                 output_attention=True,
+                 attention_layer=None):
+        """Construct the `AttentionWrapper`.
+
+     Args:
+      cell: An instance of `RNNCell`.
+      attention_mechanism: A list of `AttentionMechanism` instances or a single
+        instance.
+      attention_layer_size: A list of Python integers or a single Python
+        integer, the depth of the attention (output) layer(s). If None
+        (default), use the context as attention at each time step. Otherwise,
+        feed the context and cell output into the attention layer to generate
+        attention at each time step. If attention_mechanism is a list,
+        attention_layer_size must be a list of the same length. If
+        attention_layer is set, this must be None. If attention_fn is set, it
+        must guaranteed that the outputs of attention_fn also meet the above
+        requirements.
+      alignment_history: Python boolean, whether to store alignment history from
+        all time steps in the final output state (currently stored as a time
+        major `TensorArray` on which you must call `stack()`).
+      cell_input_fn: (optional) A `callable`.  The default is:
+        `lambda inputs, attention: array_ops.concat([inputs, attention], -1)`.
+      output_attention: Python bool.  If `True` (default), the output at each
+        time step is the attention value.  This is the behavior of Luong-style
+        attention mechanisms.  If `False`, the output at each time step is the
+        output of `cell`.  This is the behavior of Bhadanau-style attention
+        mechanisms.  In both cases, the `attention` tensor is propagated to the
+        next time step via the state and is used there. This flag only controls
+        whether the attention mechanism is propagated up to the next cell in an
+        RNN stack or to the top RNN output.
+      attention_layer: A list of `tf.compat.v1.layers.Layer` instances or a
+        single `tf.compat.v1.layers.Layer` instance taking the context and cell
+        output as inputs to generate attention at each time step. If None
+        (default), use the context as attention at each time step. If
+        attention_mechanism is a list, attention_layer must be a list of the
+        same length. If attention_layers_size is set, this must be None.
+
+    Raises:
+      TypeError: `attention_layer_size` is not None and (`attention_mechanism`
+        is a list but `attention_layer_size` is not; or vice versa).
+      ValueError: if `attention_layer_size` is not None, `attention_mechanism`
+        is a list, and its length does not match that of `attention_layer_size`;
+        if `attention_layer_size` and `attention_layer` are set simultaneously.
+        """
+
