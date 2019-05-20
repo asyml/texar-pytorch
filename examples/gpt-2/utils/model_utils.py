@@ -3,10 +3,9 @@ Model utility functions
 """
 import sys
 import json
-import tensorflow as tf
+import torch
 import numpy as np
 from texar import HParams
-import torch
 
 def transform_gpt2_to_texar_config(input_json_path):
     """
@@ -86,7 +85,7 @@ def init_gpt2_checkpoint(word_embedder, pos_embedder, decoder, init_checkpoint):
         import os
     except ImportError:
         print("Loading a TensorFlow models in PyTorch, requires TensorFlow to be installed. Please see "
-            "https://www.tensorflow.org/install/ for installation instructions.")
+              "https://www.tensorflow.org/install/ for installation instructions.")
         raise
 
     global_tensor_map = {
@@ -128,7 +127,14 @@ def init_gpt2_checkpoint(word_embedder, pos_embedder, decoder, init_checkpoint):
     for name, _ in decoder.named_parameters():
         tensor_names.append(name)
 
+    idx = 0
     for name, array in zip(names, arrays):
+
+        processing = (idx + 1.0) / len(names)
+        idx += 1
+        sys.stdout.write("\rLoading checkpoint: {:.1%}".format(processing))
+        sys.stdout.flush()
+
         if name in global_tensor_map:
             v_name = global_tensor_map[name]
 

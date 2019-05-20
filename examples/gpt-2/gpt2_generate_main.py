@@ -14,10 +14,6 @@
 """Example of building OpenAI GPT-2 language model for sample generation.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import argparse
 import importlib
 import numpy as np
@@ -39,13 +35,18 @@ parser.add_argument('--checkpoint',
                     type=str,
                     default=None,
                     help="Model checkpoint to load model weights from. Use "
-                    "`--pretrain_checkpoint` instead if loading OpenAI "
-                    "pretrained checkpoint.")
+                         "`--pretrain_checkpoint` instead if loading OpenAI "
+                         "pretrained checkpoint.")
 parser.add_argument('--pretrain_checkpoint',
                     type=str,
                     default="gpt2_pretrained_models/model_117M/model.ckpt",
                     help="OpenAI pretrained model checkpoint. Ignored if "
-                    "'--checkpoint' is specified.")
+                         "'--checkpoint' is specified.")
+parser.add_argument('--pretrain_model_dir',
+                    type=str,
+                    default="gpt2_pretrained_models/model_117M",
+                    help="The directory of pretrained model, for loading "
+                         "vocabuary, etc.")
 parser.add_argument('--seed',
                     type=int,
                     default=None,
@@ -65,34 +66,35 @@ parser.add_argument('--max_decoding_length',
 parser.add_argument('--temperature',
                     type=float,
                     default=0.7,
-                    help="Softmax temperature for top-k sample decoding. Must be "
-                    "strictly greater than 0. Defaults to 0.7.")
+                    help="Softmax temperature for top-k sample decoding. "
+                         "Must be strictly greater than 0. Defaults to 0.7.")
 parser.add_argument('--top_k',
                     type=int,
                     default=40,
-                    help="The number of top most likely candidates from a vocab "
-                    "distribution.")
+                    help="The number of top most likely candidates from a "
+                         "vocab distribution.")
 parser.add_argument('--is_interactive',
                     action='store_true',
                     help="Interactive mode or not.")
 parser.add_argument('--config_type',
                     type=str,
                     default="texar",
-                    help="The configuration file type. Set to 'json' if the GPT-2 "
-                    "config file is in the same type of the official GPT-2 "
-                    "config file. Set to 'texar' if GPT-2 config file is in "
-                    "Texar type.")
+                    help="The configuration file type. Set to 'json' if the "
+                         "GPT-2 config file is in the same type of the "
+                         "official GPT-2 config file. Set to 'texar' "
+                         "if GPT-2 config file is in Texar type.")
 parser.add_argument('--config_model',
                     type=str,
                     default="configs.config_model_117M",
-                    help="The model configuration file to configure the model. "
-                    "The config file type is define by the 'config_type',"
-                    "it be of texar type or json type."
-                    "For '--config_type=json', set the json config file path"
-                    "like: '--config_model gpt2_pretrained_models/model_117M/"
-                    "hparams.json';"
-                    "For '--config_type=texar', set the texar config file "
-                    "like: '--config_model configs.config_model_117M'.")
+                    help="The model configuration file to configure the "
+                         "model. The config file type is define by the "
+                         "'config_type',it be of texar type or json type."
+                         "For '--config_type=json', set the json "
+                         "config file path like: '--config_model "
+                         "gpt2_pretrained_models/model_117M/hparams.json';"
+                         "For '--config_type=texar', set the texar "
+                         "config file like: "
+                         "'--config_model configs.config_model_117M'.")
 
 args = parser.parse_args()
 
@@ -127,7 +129,7 @@ def run_model():
     # Create a data pre-processor for, e.g., BPE encoding
     proc = processor.get_encoder(
         "gpt2_pretrained_models/model_117M")
-
+    proc = processor.get_encoder(args.pretrain_model_dir)
     end_token = proc.encoder['<|endoftext|>']
 
     start_tokens = torch.empty([batch_size]).fill_(end_token)
@@ -141,7 +143,7 @@ def run_model():
         position_size=gpt2_config.position_size,
         hparams=gpt2_config.pos_embed)
 
-    def _embedding_fn(x, y):
+    def _embedding_fn(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         # `x` is token ids, `y` is time steps
         res = word_embedder(x) + pos_embedder(y)
         return res
@@ -154,7 +156,6 @@ def run_model():
 
     # Load model checkpoint
     if args.checkpoint:
-        tf.logging.info('Restore from {}'.format(args.checkpoint))
         model_utils.init_gpt2_checkpoint(
             word_embedder,
             pos_embedder,
@@ -166,10 +167,11 @@ def run_model():
             pos_embedder,
             decoder,
             args.pretrain_checkpoint)
+
     print("\nFinished loading\n")
+
     if args.is_interactive:
         # Generate continuations of context
-        # Enter interactive mode
         while True:
 
             raw_text = input("Model input >>> ")
@@ -180,7 +182,8 @@ def run_model():
 
             context_tokens = proc.encode(raw_text)
             context = torch.tensor([context_tokens for _ in range(batch_size)])
-            context_length = torch.tensor([len(context_tokens) for _ in range(batch_size)])
+            context_length = torch.tensor(
+                [len(context_tokens) for _ in range(batch_size)])
 
             start_tokens = context[:, 0]
             helper = tx.modules.TopKSampleEmbeddingHelper(
@@ -207,6 +210,7 @@ def run_model():
                             " SAMPLE " + str(generated) + " " + "=" * 40)
                     si = sample_id[i][len(context_tokens):]
                     print(proc.decode(si.tolist()))
+
             print("=" * 80)
     else:
         # Generate samples from scratch

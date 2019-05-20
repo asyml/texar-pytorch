@@ -1,0 +1,2 @@
+tensorflow>=1.12 # Needed for reading TF checkpoints.
+regex==2017.4.5
