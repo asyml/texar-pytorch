@@ -25,7 +25,7 @@ from texar.modules.embedders.position_embedders import \
     PositionEmbedder
 from texar.modules.decoders.transformer_decoders import TransformerDecoder
 
-from utils import model_utils, processor
+from .utils import model_utils, processor
 
 # pylint: disable=invalid-name, too-many-locals, too-many-statements, no-member
 # pylint: disable=too-many-branches
@@ -98,9 +98,9 @@ parser.add_argument('--config_model',
 
 args = parser.parse_args()
 
+
 def run_model():
-    """
-    Builds the model and runs
+    r"""Build the model and run.
     """
     if args.seed:
         np.random.seed(args.seed)
@@ -204,10 +204,9 @@ def run_model():
 
                 sample_id = output.sample_id
                 for i in range(batch_size):
-
                     generated += 1
                     print("=" * 40 +
-                            " SAMPLE " + str(generated) + " " + "=" * 40)
+                          " SAMPLE " + str(generated) + " " + "=" * 40)
                     si = sample_id[i][len(context_tokens):]
                     print(proc.decode(si.tolist()))
 
@@ -230,12 +229,12 @@ def run_model():
                 helper=helper)
             sample_id = output.sample_id
             for i in range(batch_size):
-
                 generated += batch_size
                 text = proc.decode(sample_id[i].tolist())
                 print("=" * 40 +
-                        " SAMPLE " + str(generated) + " " + "=" * 40)
+                      " SAMPLE " + str(generated) + " " + "=" * 40)
                 print(text)
+
 
 if __name__ == '__main__':
     run_model()
