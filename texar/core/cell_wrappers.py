@@ -449,7 +449,7 @@ class AttentionWrapper(RNNCellBase[State]):
 
     def __init__(self,
                  cell,
-                 attention_mechnism,
+                 attention_mechanism,
                  attention_layer_size=None,
                  alignment_history=False,
                  cell_input_fn=None,
@@ -457,9 +457,9 @@ class AttentionWrapper(RNNCellBase[State]):
                  attention_layer=None):
         """Construct the `AttentionWrapper`.
 
-     Args:
-      cell: An instance of `RNNCell`.
-      attention_mechanism: A list of `AttentionMechanism` instances or a single
+        Args:
+            cell: An instance of `RNNCell`.
+            attention_mechanism: A list of `AttentionMechanism` instances or a single
         instance.
       attention_layer_size: A list of Python integers or a single Python
         integer, the depth of the attention (output) layer(s). If None
@@ -497,4 +497,181 @@ class AttentionWrapper(RNNCellBase[State]):
         is a list, and its length does not match that of `attention_layer_size`;
         if `attention_layer_size` and `attention_layer` are set simultaneously.
         """
+        super().__init__(cell)
+        if isinstance(attention_mechanism, (list, tuple)):
+            self._is_multi = True
+            attention_mechanisms = attention_mechanism
+            for attention_mechanism in attention_mechanisms:
+                if not isinstance(attention_mechanism, AttentionMechanism):
+                    raise TypeError(
+                        "attention_mechanism must contain only instances of "
+                        "AttentionMechanism, saw type: %s" %
+                        type(attention_mechanism).__name__)
+        else:
+            self._is_multi = False
+            if not isinstance(attention_mechanism, AttentionMechanism):
+                raise TypeError(
+                    "attention_mechanism must be an AttentionMechanism or list of "
+                    "multiple AttentionMechanism instances, saw type: %s" %
+                    type(attention_mechanism).__name__)
+            attention_mechanisms = (attention_mechanism,)
+
+        if cell_input_fn is None:
+            cell_input_fn = (
+                lambda inputs, attention: torch.cat((inputs, attention), dim=-1)
+            )
+        else:
+            if not callable(cell_input_fn):
+                raise TypeError("cell_input_fn must be callable, saw type: %s" %
+                        type(cell_input_fn).__name__)
+
+        if attention_layer_size is not None and attention_layer is None:
+            raise ValueError(
+                "Only one of attention_layer_size and attention_layer "
+                "should be set")
+
+        if attention_layer_size is not None:
+            attention_layer_sizes = tuple(
+                attention_layer_size if isinstance(
+                    attention_layer_size, (list, tuple))
+                else (attention_layer_size,))
+            if len(attention_layer_sizes) != len(attention_mechanisms):
+                raise ValueError(
+                    "If provided, attention_layer_size must contain exactly "
+                    "one integer per attention_mechanism, saw: %d vs %d" %
+                    (len(attention_layer_sizes), len(attention_mechanisms)))
+            self._attention_layer = tuple(
+                nn.Linear(##TODO: in_features,
+                          attention_layer_size,bias=False) for )
+
+
+
+        self._cell = cell
+        self._attention_mechanisms = attention_mechanisms
+        self._cell_input_fn = cell_input_fn
+        self._output_attention = output_attention
+        self._alignment_history = alignment_history
+        self._initial_cell_state = None
+
+
+
+    def forward(self, inputs, state):
+        """Perform a step of attention-wrapped RNN.
+
+        - Step 1: Mix the `inputs` and previous step's `attention` output via
+          `cell_input_fn`.
+        - Step 2: Call the wrapped `cell` with this input and its previous
+         state.
+        - Step 3: Score the cell's output with `attention_mechanism`.
+        - Step 4: Calculate the alignments by passing the score through the
+         `normalizer`.
+        - Step 5: Calculate the context vector as the inner product between the
+          alignments and the attention_mechanism's values (memory).
+        - Step 6: Calculate the attention output by concatenating the cell
+        output and context through the attention layer (a linear layer with
+          `attention_layer_size` outputs).
+
+        Args:
+          inputs: (Possibly nested tuple of) Tensor, the input at this time
+           step.
+          state: An instance of `AttentionWrapperState` containing tensors from
+           the previous time step.
+
+        Returns:
+          A tuple `(attention_or_cell_output, next_state)`, where:
+
+          - `attention_or_cell_output` depending on `output_attention`.
+          - `next_state` is an instance of `AttentionWrapperState`
+             containing the state calculated at this time step.
+
+        Raises:
+          TypeError: If `state` is not an instance of `AttentionWrapperState`.
+        """
+        if not isinstance(state, AttentionWrapperState):
+            raise TypeError("Expected state to be instance of "
+                            "AttentionWrapperState. Received type %s instead."
+                            % type(state))
+
+        # Step 1: Calculate the true inputs to the cell based on the
+        # previous attention value.
+        cell_inputs = self._cell_input_fn(inputs, state.attention)
+        cell_state = state.cell_state
+        cell_output, next_cell_state = self._cell(cell_inputs, cell_state)
+
+
+        if self._is_multi:
+            previous_attention_state = state.attention_state
+            previous_alignment_history = state.alignment_history
+        else:
+            previous_attention_state = [state.attention_state]
+            previous_alignment_history = [state.alignment_history]
+
+        all_alignments = []
+        all_attentions = []
+        all_attention_states = []
+        maybe_all_histories = []
+        for i, attention_mechanism in enumerate(self._attention_mechanisms):
+            attention, alignments, next_attention_state = self._attention_fn(
+                attention_mechanism, cell_output, previous_attention_state[i],
+                self._attention_layers[i] if self._attention_layers else None)
+            alignment_history = previous_alignment_history[i].write(
+                state.time, alignments) if self._alignment_history else ()
+
+            all_attention_states.append(next_attention_state)
+            all_alignments.append(alignments)
+            all_attentions.append(attention)
+            maybe_all_histories.append(alignment_history)
+
+
+
+
+
+
+
+
+
+
+
+        if self._output_attention:
+            return attention, next_state
+        else:
+            return cell_output, next_state
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
