@@ -15,7 +15,7 @@
 Base class for encoders.
 """
 
-from typing import Optional
+from typing import Dict, Any, Optional
 
 import torch
 
@@ -35,7 +35,7 @@ class EncoderBase(ModuleBase):
         super().__init__(hparams)
 
     @staticmethod
-    def default_hparams():
+    def default_hparams() -> Dict[str, Any]:
         r"""Returns a dictionary of hyperparameters with default values.
         """
         return {

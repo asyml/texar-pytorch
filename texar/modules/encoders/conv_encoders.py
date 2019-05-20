@@ -17,7 +17,7 @@ Various convolutional network encoders.
 
 import torch
 
-from typing import Optional
+from typing import Dict, Optional, Any
 
 from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.networks.conv_networks import Conv1DNetwork
@@ -43,7 +43,7 @@ class Conv1DEncoder(Conv1DNetwork, EncoderBase):  # type: ignore
                                             hparams=hparams)
 
     @staticmethod
-    def default_hparams():
+    def default_hparams() -> Dict[str, Any]:
         """Returns a dictionary of hyperparameters with default values.
 
         The same as :meth:`~texar.modules.Conv1DNetwork.default_hparams`
