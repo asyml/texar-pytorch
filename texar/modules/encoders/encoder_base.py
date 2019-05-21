@@ -45,13 +45,11 @@ class EncoderBase(ModuleBase):
     def forward(self,  # type: ignore
                 inputs: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         r"""Encodes the inputs.
-
         Args:
           inputs: Inputs to the encoder.
           *args: Other arguments.
           **kwargs: Keyword arguments.
-
         Returns:
           Encoding results.
         """
-        raise NotImplementedError
+raise NotImplementedError
