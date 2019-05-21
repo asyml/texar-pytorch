@@ -19,14 +19,14 @@ Various helper classes and utilities for RNN decoders.
 # pylint: disable=missing-docstring  # does not support generic classes
 
 from abc import ABC
-from typing import Callable, Generic, Optional, Tuple, Type, TypeVar, Union, overload
+from typing import Callable, Generic, Optional, Tuple, Type, TypeVar, \
+    Union, overload
 
 import torch
 import torch.nn.functional as F
-from torch import nn
 from torch.distributions import Categorical, Gumbel
 
-from texar.utils import utils, get_args
+from texar.utils import get_args, utils
 
 __all__ = [
     '_convert_embedding',
@@ -292,11 +292,13 @@ class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
 
         self._embedding_args_cnt = len(get_args(self._embedding_fn))
         if self._embedding_args_cnt == 1:
-            self._start_inputs = self._embedding_fn(self._start_tokens)  # type: ignore
+            self._start_inputs = self._embedding_fn(  # type: ignore
+                self._start_tokens)
         elif self._embedding_args_cnt == 2:
             # Position index is 0 in the beginning
             times = self._start_tokens.new_zeros(self._batch_size)
-            self._start_inputs = self._embedding_fn(self._start_tokens, times)  # type: ignore
+            self._start_inputs = self._embedding_fn(  # type: ignore
+                self._start_tokens, times)
         else:
             raise ValueError('`embedding` should expect 1 or 2 arguments.')
 
@@ -464,8 +466,8 @@ class TopKSampleEmbeddingHelper(SingleEmbeddingHelper):
         """
         super().__init__(embedding, start_tokens, end_token)
         # if top_k > self._embedding.num_embeddings:
-        #     raise ValueError(
-        #         "'top_k' should not be greater than the number of embeddings.")
+        #     raise ValueError("'top_k' should not be greater than "
+        #                      "the number of embeddings.")
         self._top_k = top_k
         self._softmax_temperature = softmax_temperature
 

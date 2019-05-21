@@ -208,8 +208,8 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
             poswise_network = FeedForwardNetwork(
                 hparams=self._hparams.poswise_feedforward)
-            if (self._hparams.dim !=
-                    poswise_network._hparams.layers[-1]['kwargs']['out_features']):
+            if (poswise_network._hparams.layers[-1]['kwargs']['out_features']
+                    != self._hparams.dim):
                 raise ValueError("The output dimension of "
                                  "FeedForwardNetwork should be equal "
                                  "to the dim of TransformerDecoder")
