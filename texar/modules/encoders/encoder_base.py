@@ -42,6 +42,7 @@ class EncoderBase(ModuleBase):
             'name': 'encoder'
         }
 
+    # pylint: disable=arguments-differ
     def forward(self,  # type: ignore
                 inputs: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         r"""Encodes the inputs.

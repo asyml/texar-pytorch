@@ -22,6 +22,7 @@ from typing import List, Optional
 import torch
 import torch.nn.functional as F
 from mypy_extensions import TypedDict
+# pylint: disable=ungrouped-imports
 from torch import nn
 
 from texar import HParams
@@ -34,13 +35,17 @@ __all__ = [
     'Cache',
 ]
 
-
+# pylint: disable=empty-docstring
 class LayerCache(TypedDict):
+    """
+    """
     keys: MaybeList[torch.Tensor]
     values: MaybeList[torch.Tensor]
 
 
 class Cache(TypedDict):
+    """
+    """
     memory: Optional[torch.Tensor]
     memory_attention_bias: Optional[torch.Tensor]
     layers: List[LayerCache]
@@ -73,6 +78,7 @@ class MultiheadAttentionEncoder(EncoderBase):
                                  self._hparams.output_dim, bias=use_bias)
 
         if self._hparams.initializer:
+            # pylint: disable=fixme
             # TODO: This might be different to what TensorFlow does
             initialize = layers.get_initializer(self._hparams.initializer)
             assert initialize is not None
@@ -130,6 +136,7 @@ class MultiheadAttentionEncoder(EncoderBase):
             'name': 'multihead_attention',
         }
 
+    # pylint: disable=arguments-differ, too-many-locals
     def forward(self,  # type: ignore
                 queries: torch.Tensor,
                 memory: torch.Tensor,
@@ -223,7 +230,7 @@ class MultiheadAttentionEncoder(EncoderBase):
 
     def _split_heads(self, x: torch.Tensor) -> torch.Tensor:
         r"""Split channels (dimension 2) into multiple heads,
-        becomes dimension 1). Must ensure `x.shape[-1]` can be 
+        becomes dimension 1). Must ensure `x.shape[-1]` can be
         divided by num_heads.
         """
         depth = x.size(-1)

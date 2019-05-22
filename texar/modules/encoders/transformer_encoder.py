@@ -15,15 +15,18 @@
 Transformer encoders with multihead self attention.
 """
 
-from typing import Optional, Union, Dict
+from typing import Optional, Union, Dict, List
+
 import torch
 from torch import nn
+from torch import LongTensor
 
 from texar import HParams
 from texar.core import layers
 from texar.utils import transformer_attentions as attn
 from texar.modules.encoders.encoder_base import EncoderBase
-from texar.modules.encoders.multihead_attention import MultiheadAttentionEncoder
+from texar.modules.encoders.multihead_attention import \
+    MultiheadAttentionEncoder
 from texar.modules.networks.networks import FeedForwardNetwork
 from texar import utils
 from texar.utils.utils import sequence_mask
@@ -289,9 +292,10 @@ class TransformerEncoder(EncoderBase):
             'name': 'transformer_encoder',
         }
 
+    # pylint: disable=arguments-differ
     def forward(self, # type: ignore
                 inputs: torch.Tensor,
-                sequence_length: Optional[torch.Tensor] = None,
+                sequence_length: Union[LongTensor, List[int]],
                 **kwargs) -> torch.Tensor:
         r"""Encodes the inputs.
 
