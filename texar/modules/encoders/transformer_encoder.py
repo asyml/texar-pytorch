@@ -48,7 +48,7 @@ def default_transformer_poswise_net_hparams(input_dim: int,
         {
             "layers": [
                 {
-                    "type": "nn.Linear",
+                    "type": "Linear",
                     "kwargs": {
                         "in_features": input_dim,
                         "out_features": output_dim * 4,
@@ -68,7 +68,7 @@ def default_transformer_poswise_net_hparams(input_dim: int,
                     }
                 },
                 {
-                    "type": "nn.Linear",
+                    "type": "Linear",
                     "kwargs": {
                         "in_features": output_dim * 4,
                         "out_features": output_dim,
@@ -84,7 +84,7 @@ def default_transformer_poswise_net_hparams(input_dim: int,
     return {
         "layers": [
             {
-                "type": "nn.Linear",
+                "type": "Linear",
                 "kwargs": {
                     "in_features": input_dim,
                     "out_features": output_dim * 4,
@@ -92,7 +92,7 @@ def default_transformer_poswise_net_hparams(input_dim: int,
                 }
             },
             {
-                "type": "nn.ReLU",
+                "type": "ReLU",
                 "kwargs": {
                     "inplace": True
                 }
@@ -104,7 +104,7 @@ def default_transformer_poswise_net_hparams(input_dim: int,
                 }
             },
             {
-                "type": "nn.Linear",
+                "type": "Linear",
                 "kwargs": {
                     "in_features": output_dim * 4,
                     "out_features": output_dim,

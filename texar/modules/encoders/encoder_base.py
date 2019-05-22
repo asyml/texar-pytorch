@@ -52,4 +52,4 @@ class EncoderBase(ModuleBase):
         Returns:
           Encoding results.
         """
-raise NotImplementedError
+        raise NotImplementedError

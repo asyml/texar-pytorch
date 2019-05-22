@@ -233,4 +233,4 @@ class MultiheadAttentionEncoder(EncoderBase):
 
     @property
     def output_size(self):
-return self._hparams.output_dim
+        return self._hparams.output_dim
