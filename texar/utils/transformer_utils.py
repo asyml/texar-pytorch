@@ -55,8 +55,8 @@ class PadRemover(object):
         self.nonpad_ids = None
         self.dim_origin = None
 
-        #with tf.name_scope("pad_reduce/get_ids"):
-        pad_mask = torch.reshape(pad_mask, [-1])    # Flatten the batch
+        pad_mask = torch.reshape(pad_mask, [-1])    
+        # Flatten the batch
         # nonpad_ids contains coordinates of zeros rows (as pad_mask is
         # float32, checking zero equality is done with |x| < epsilon, with
         # epsilon=1e-9 as standard, here pad_mask only contains positive
@@ -67,7 +67,7 @@ class PadRemover(object):
         self.nonpad_ids = torch.nonzero(non_pad).squeeze()
         self.dim_origin = pad_mask.size()[:1]
 
-    def remove(self, x: torch.Tensor):
+    def remove(self, x):
         """Remove padding from the given tensor.
         Args:
             x: A Tensor of shape [dim_origin,...]
@@ -75,17 +75,9 @@ class PadRemover(object):
             A tensor of shape [dim_compressed,...] with dim_compressed
             <= dim_origin
         """
-        #with tf.name_scope("pad_reduce/remove"):
-        #x_shape = list(x.size())
-        '''x = tf.gather_nd(
-            x,
-            indices=self.nonpad_ids,
-        )'''
         x = x.index_select(0, self.nonpad_ids)
-        #if not context.in_eager_mode():
         # This is a hack but for some reason, gather_nd return a tensor of
         # undefined shape, so the shape is set up manually
-        #x.set_shape([None] + x_shape[1:])
         return x
 
     def restore(self, x):

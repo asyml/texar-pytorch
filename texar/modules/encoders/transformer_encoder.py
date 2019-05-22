@@ -115,10 +115,12 @@ def default_transformer_poswise_net_hparams(input_dim: int,
         "name": "ffn"
     }
 
-def sequence_mask(lens: torch.Tensor,
+def sequence_mask(lens: Optional[torch.Tensor] = None,
                   max_len: Optional[Union[int, float]] = None) -> torch.Tensor:
     """Returns a mask tensor representing the first N positions of each cell.
     """
+    if lens is None:
+        return torch.empty(0)
     batch_size = lens.size(0)
     if max_len is None:
         max_len = lens.max().data[0]
@@ -285,9 +287,10 @@ class TransformerEncoder(EncoderBase):
             'name': 'transformer_encoder',
         }
 
-    def forward(self,
+    def forward(self, # type: ignore
                 inputs: torch.Tensor,
-                sequence_length: torch.Tensor) -> torch.Tensor:
+                sequence_length: Optional[torch.Tensor] = None,
+                **kwargs) -> torch.Tensor:
         """Encodes the inputs.
         Args:
             inputs: A 3D Tensor of shape `[batch_size, max_time, dim]`,
