@@ -68,7 +68,7 @@ class PadRemover(object):
         self.dim_origin = pad_mask.size()[:1]
 
     def remove(self, x):
-        """Remove padding from the given tensor.
+        r"""Remove padding from the given tensor.
 
         Args:
             x: A Tensor of shape [dim_origin,...]
@@ -82,7 +82,7 @@ class PadRemover(object):
         return x
 
     def restore(self, x):
-        """Add padding back to the given tensor.
+        r"""Add padding back to the given tensor.
 
         Args:
             x: A Tensor of shape [dim_compressed,...]
