@@ -15,43 +15,34 @@
 Base class for encoders.
 """
 
-from typing import Dict, Any, Optional
-
 import torch
+
+from typing import Optional, Union, Dict, Any
 
 from texar import HParams
 from texar.module_base import ModuleBase
 
 __all__ = [
-    'EncoderBase'
+    "ClassifierBase"
 ]
 
 
-class EncoderBase(ModuleBase):
-    r"""Base class inherited by all encoder classes.
+class ClassifierBase(ModuleBase):
+    """Base class inherited by all classifier classes.
     """
 
-    def __init__(self, hparams: Optional[HParams] = None):
-        super().__init__(hparams)
+    def __init__(self,
+                 hparams: Optional[Union[HParams, Dict[str, Any]]] = None):
+        super(ClassifierBase, self).__init__(hparams)
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
-        r"""Returns a dictionary of hyperparameters with default values.
+        """Returns a dictionary of hyperparameters with default values.
         """
         return {
-            'name': 'encoder'
+            "name": "classifier"
         }
 
-    def forward(self,  # type: ignore
-                inputs: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        r"""Encodes the inputs.
-
-        Args:
-          inputs: Inputs to the encoder.
-          *args: Other arguments.
-          **kwargs: Keyword arguments.
-
-        Returns:
-          Encoding results.
-        """
+    def forward(self, *input: torch.Tensor):  # noqa pylint: disable=redefined-builtin
         raise NotImplementedError
+

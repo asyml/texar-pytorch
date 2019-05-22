@@ -848,3 +848,4 @@ _layer_class_to_default_kwargs_map = {
     nn.AvgPool2d: default_avg_pool2d_kwargs(),
     nn.AvgPool3d: default_avg_pool3d_kwargs(),
 }
+
