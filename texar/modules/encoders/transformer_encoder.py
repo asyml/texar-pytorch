@@ -187,12 +187,12 @@ class TransformerEncoder(EncoderBase):
             if self._hparams.use_bert_config:
                 self.output_layer_norm.append(nn.LayerNorm(self._input_size))
 
-        self.final_layer_normalizer = nn.LayerNorm(self._input_size)
         self.embed_dropout = nn.Dropout(p=self._hparams.embedding_dropout)
         self.residual_dropout = nn.Dropout(p=self._hparams.residual_dropout)
         if self._hparams.use_bert_config:
             self.input_normalizer = nn.LayerNorm(self._input_size)
-            self.final_layer_normalizer = None
+        else:
+            self.final_layer_normalizer = nn.LayerNorm(self._input_size)
         if self._hparams.initializer:
             # pylint: disable=fixme
             # TODO: This might be different to what TensorFlow does
