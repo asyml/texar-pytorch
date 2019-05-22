@@ -371,7 +371,13 @@ def _compute_attention(attention_mechanism, cell_output, attention_state,
     context_ = torch.squeeze(context_, dim=1)
 
     if attention_layer is not None:
-        attention = attention_layer(torch.cat((cell_output, context_), dim=1))
+        attention_input = torch.cat((cell_output, context_), dim=1)
+        _attention_layer = attention_layer.get("layer_name")
+        in_features = attention_input.shape[-1]
+        attention = _attention_layer(in_features,
+                                     attention_layer.get("out_features"),
+                                     attention_layer.get("bias"))
+        attention = attention(attention_input)
     else:
         attention = context_
 
