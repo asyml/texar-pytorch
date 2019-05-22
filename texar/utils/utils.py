@@ -25,6 +25,8 @@ import inspect
 from pydoc import locate
 from typing import *
 
+import torch
+
 import funcsigs
 import numpy as np
 import torch
