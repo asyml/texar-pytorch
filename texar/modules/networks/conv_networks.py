@@ -504,23 +504,22 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
     def forward(self,  # type: ignore
                 input: torch.Tensor,
-                **kwargs: Any) -> torch.Tensor:
+                sequence_length: Union[torch.LongTensor, List[int]] = None,
+                dtype: Optional[torch.dtype] = None) -> torch.Tensor:
         """Feeds forward inputs through the network layers and returns outputs.
 
             Args:
                 input: The inputs to the network, which is a 3D tensor.
-                kwargs:
-                    sequence_length (optional): An int tensor of shape
-                        `[batch_size]` containing the length of each element in
-                        :attr:`inputs`. If given, time steps beyond the length
-                        will first be masked out before feeding to the layers.
-                    dtype (optional): Type of the inputs. If not provided,
-                        infers from inputs automatically.
+                sequence_length (optional): An int tensor of shape
+                    `[batch_size]` or a python array containing the length of
+                    each element in :attr:`inputs`. If given, time steps beyond
+                    the length will first be masked out before feeding to the
+                    layers.
+                dtype (optional): Type of the inputs. If not provided,
+                    infers from inputs automatically.
             Returns:
                 The output of the final layer.
         """
-        sequence_length = kwargs.get("sequence_length", None)
-        dtype = kwargs.get("dtype", None)
         if sequence_length is not None:
             input = mask_sequences(input, sequence_length,
                                    dtype=dtype, time_major=False)

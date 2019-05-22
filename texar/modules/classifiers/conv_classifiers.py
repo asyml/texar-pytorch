@@ -143,7 +143,9 @@ class Conv1DClassifier(ClassifierBase):
 
     def forward(self,  # type:ignore
                 input: torch.Tensor,
-                **kwargs: Any) -> Tuple[torch.Tensor, torch.Tensor]:
+                sequence_length: Union[torch.LongTensor, List[int]] = None,
+                dtype: Optional[torch.dtype] = None) \
+            -> Tuple[torch.Tensor, torch.Tensor]:
         """Feeds the inputs through the network and makes classification.
 
         The arguments are the same as in :class:`~texar.modules.Conv1DEncoder`.
@@ -155,15 +157,12 @@ class Conv1DClassifier(ClassifierBase):
         Args:
             input: The inputs to the network, which is a 3D tensor. See
                 :class:`~texar.modules.Conv1DEncoder` for more details.
-
-            kwargs:
-                sequence_length (optional): An int tensor of shape
-                    `[batch_size]` containing the length of each element in
-                    :attr:`inputs`.
-                    If given, time steps beyond the length will first be masked
-                    out before feeding to the layers.
-                dtype (optional): Type of the inputs. If not provided, infers
-                    from inputs automatically.
+            sequence_length (optional): An int tensor of shape `[batch_size]` or
+                a python array containing the length of each element in
+                :attr:`inputs`. If given, time steps beyond the length will
+                first be masked out before feeding to the layers.
+            dtype (optional): Type of the inputs. If not provided, infers
+                from inputs automatically.
 
         Returns:
             A tuple `(logits, pred)`, where
@@ -176,8 +175,6 @@ class Conv1DClassifier(ClassifierBase):
             sigmoid function is used for prediction, and the class labels are \
             `{0, 1}`.
         """
-        sequence_length = kwargs.get("sequence_length", None)
-        dtype = kwargs.get("dtype", None)
         logits = self._encoder(input, sequence_length=sequence_length,
                                dtype=dtype)
 
