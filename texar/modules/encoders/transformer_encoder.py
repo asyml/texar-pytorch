@@ -26,6 +26,7 @@ from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.encoders.multihead_attention import MultiheadAttentionEncoder
 from texar.modules.networks.networks import FeedForwardNetwork
 from texar import utils
+from texar.utils.utils import sequence_mask
 from texar.utils.shapes import shape_list
 
 # pylint: disable=too-many-locals, invalid-name
@@ -37,13 +38,14 @@ __all__ = [
 ]
 
 def default_transformer_poswise_net_hparams(input_dim: int,
-                                            output_dim: int = 512)\
+                                            output_dim: int = 512) \
         -> Dict:
-    """Returns default hyperparameters of a
+    r"""Returns default hyperparameters of a
     :class:`~texar.modules.FeedForwardNetwork` as a pos-wise network used
     in :class:`~texar.modules.TransformerEncoder` and
     :class:`~texar.modules.TransformerDecoder`.
     This is a 2-layer dense network with dropout in-between.
+
     .. code-block:: python
         {
             "layers": [
@@ -78,6 +80,7 @@ def default_transformer_poswise_net_hparams(input_dim: int,
             ],
             "name": "ffn"
         }
+
     Args:
         output_dim (int): The size of output dense layer.
     """
@@ -115,25 +118,11 @@ def default_transformer_poswise_net_hparams(input_dim: int,
         "name": "ffn"
     }
 
-def sequence_mask(lens: Optional[torch.Tensor] = None,
-                  max_len: Optional[Union[int, float]] = None) -> torch.Tensor:
-    """Returns a mask tensor representing the first N positions of each cell.
-    """
-    if lens is None:
-        return torch.empty(0)
-    batch_size = lens.size(0)
-    if max_len is None:
-        max_len = lens.max().data[0]
-    ranges = torch.arange(0, max_len).long()
-    ranges = ranges.unsqueeze(0).expand(batch_size, max_len)
-    lens_exp = lens.unsqueeze(1).expand_as(ranges)
-    mask = ranges < lens_exp
-    return mask
-
 # pylint: disable=too-many-instance-attributes
 class TransformerEncoder(EncoderBase):
-    """Transformer encoder that applies multi-head self attention for encoding
+    r"""Transformer encoder that applies multi-head self attention for encoding
     sequences.
+
     This module basically stacks
     :class:`~texar.modules.encoders.MultiheadAttentionEncoder`,
     :class:`~texar.modules.FeedForwardNetwork` and residual connections.
@@ -143,11 +132,13 @@ class TransformerEncoder(EncoderBase):
     the variant first used in `(Devlin et al.)` BERT. See
     :meth:`default_hparams` for the nuance between the two types of
     architectures.
+
     Args:
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter sturcture and
             default values.
+
     .. document private functions
     .. automethod:: _build
     """
@@ -204,7 +195,8 @@ class TransformerEncoder(EncoderBase):
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of hyperparameters with default values.
+        r"""Returns a dictionary of hyperparameters with default values.
+
         .. code-block:: python
             {
                 "num_blocks": 6,
@@ -225,11 +217,15 @@ class TransformerEncoder(EncoderBase):
                 "initializer": None,
                 "name": "transformer_encoder"
             }
+
         Here:
+
         "num_blocks" : int
             Number of stacked blocks.
+
         "dim" : int
             Hidden dimension of the encoders.
+
         "use_bert_config" : bool
             If `False`, apply the standard Transformer Encoder architecture from
             the original paper `(Vaswani et al.) "Attention is All You Need"`.
@@ -245,25 +241,31 @@ class TransformerEncoder(EncoderBase):
                    In BERT, a residual layer connects the tensors *after* \
                    layer normalization. In the standard arch, the tensors are \
                    connected *before* layer normalization.
+
         "embedding_dropout" : float
             Dropout rate of the input embedding.
+
         "residual_dropout" :  float
             Dropout rate of the residual connections.
+
         "poswise_feedforward" : dict
             Hyperparameters for a feed-forward network used in residual
             connections.
             Make sure the dimension of the output tensor is equal to `dim`.
             See :func:`~texar.modules.default_transformer_poswise_net_hparams`
             for details.
+
         "multihead_attention" : dict
             Hyperparameters for the multihead attention strategy.
             Make sure the "output_dim" in this module is equal to "dim".
             See :func:`~texar.modules.MultiheadAttentionEncoder.default_harams`
             for details.
+
         "initializer" : dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
             See :func:`~texar.core.get_initializer` for details.
+
         "name" : str
             Name of the module.
         """
@@ -291,7 +293,8 @@ class TransformerEncoder(EncoderBase):
                 inputs: torch.Tensor,
                 sequence_length: Optional[torch.Tensor] = None,
                 **kwargs) -> torch.Tensor:
-        """Encodes the inputs.
+        r"""Encodes the inputs.
+
         Args:
             inputs: A 3D Tensor of shape `[batch_size, max_time, dim]`,
                 containing the embedding of input sequences. Note that
@@ -301,6 +304,7 @@ class TransformerEncoder(EncoderBase):
             sequence_length: A 1D Tensor of shape `[batch_size]`. Input tokens
                 beyond respective sequence lengths are masked out
                 automatically.
+
         Returns:
             A Tensor of shape `[batch_size, max_time, dim]` containing the
             encoded vectors.
@@ -361,7 +365,7 @@ class TransformerEncoder(EncoderBase):
 
             original_shape = shape_list(y)
 
-            y = torch.reshape(y, (-1, self._hparams.dim))
+            y = y.view(-1, self._hparams.dim)
             if pad_remover:
                 y = torch.unsqueeze(pad_remover.remove(y), dim=0)
                 # [1, batch_size*seq_length, hidden_dim]
@@ -369,11 +373,11 @@ class TransformerEncoder(EncoderBase):
             layer_output = poswise_network(y)
             sub_output = self.residual_dropout(layer_output)
             if pad_remover:
-                sub_output = torch.reshape(
-                    pad_remover.restore(
-                        torch.squeeze(sub_output, dim=0)), original_shape)
+                sub_output = pad_remover.restore(
+                    torch.squeeze(sub_output, dim=0))
+                sub_output = sub_output.view(original_shape)
             else:
-                sub_output = torch.reshape(sub_output, original_shape)
+                sub_output = sub_output.view(original_shape)
 
             x = x + sub_output
             if self._hparams.use_bert_config:

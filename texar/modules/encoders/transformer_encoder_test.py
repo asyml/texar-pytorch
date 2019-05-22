@@ -19,7 +19,7 @@ class TransformerEncoderTest(unittest.TestCase):
         self._max_time = 100
 
     def test_trainable_variables(self):
-        """Tests train_greedy
+        r"""Tests train_greedy
         """
         inputs = torch.rand(
             self._batch_size, self._max_time, self._emb_dim, dtype=torch.float)
@@ -49,7 +49,7 @@ class TransformerEncoderTest(unittest.TestCase):
         self.assertEqual(len(encoder.trainable_variables), 86)
 
     def test_encode(self):
-        """Tests encoding.
+        r"""Tests encoding.
         """
         inputs = torch.rand(
             self._batch_size, self._max_time, self._emb_dim, dtype=torch.float)

@@ -48,11 +48,13 @@ class Cache(TypedDict):
 
 class MultiheadAttentionEncoder(EncoderBase):
     r"""Multihead Attention Encoder
+
     Args:
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparamerter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter sturcture and
             default values.
+
     .. document private functions
     .. automethod:: _build
     """
@@ -80,6 +82,7 @@ class MultiheadAttentionEncoder(EncoderBase):
     @staticmethod
     def default_hparams():
         r"""Returns a dictionary of hyperparameters with default values.
+
         .. code-block:: python
             {
                 "initializer": None,
@@ -90,22 +93,30 @@ class MultiheadAttentionEncoder(EncoderBase):
                 'use_bias': False,
                 "name": "multihead_attention"
             }
+
         Here:
+
         "initializer" : dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
             See :func:`~texar.core.get_initializer` for details.
+
         "num_heads" : int
             Number of heads for attention calculation.
+
         "output_dim" : int
             Output dimension of the returned tensor.
+
         "num_units" : int
             Hidden dimension of the unsplitted attention space.
             Should be devisible by `num_heads`.
+
         "dropout_rate: : float
             Dropout rate in the attention.
+
         "use_bias": bool
             Use bias when projecting the key, value and query.
+
         "name" : str
             Name of the module.
         """
@@ -126,6 +137,7 @@ class MultiheadAttentionEncoder(EncoderBase):
                 cache: Optional[LayerCache] = None) \
             -> torch.Tensor:
         r"""Encodes the inputs.
+
         Args:
             queries: A 3d tensor with shape of [batch, length_query,
                 depth_query].
@@ -133,6 +145,7 @@ class MultiheadAttentionEncoder(EncoderBase):
             memory_attention_bias: A 3d tensor with shape of
                 [batch, length_key, num_units].
             cache: Memory cache only when inferring the sentence from scratch.
+
         Returns:
             A Tensor of shape `[batch_size, max_time, dim]` containing the
             encoded vectors.
@@ -210,8 +223,8 @@ class MultiheadAttentionEncoder(EncoderBase):
 
     def _split_heads(self, x: torch.Tensor) -> torch.Tensor:
         r"""Split channels (dimension 2) into multiple heads,
-        becomes dimension 1).
-        Must ensure `x.shape[-1]` can be divided by num_heads
+        becomes dimension 1). Must ensure `x.shape[-1]` can be 
+        divided by num_heads.
         """
         depth = x.size(-1)
         split_x = torch.reshape(x, (
@@ -221,6 +234,7 @@ class MultiheadAttentionEncoder(EncoderBase):
 
     def _combine_heads(self, x: torch.Tensor) -> torch.Tensor:
         r"""
+
         Args:
             x: A Tensor of shape `[batch, num_heads, seq_len, dim]`
         Returns:
@@ -233,4 +247,7 @@ class MultiheadAttentionEncoder(EncoderBase):
 
     @property
     def output_size(self):
+        r"""Provides output dimension as property.
+        """
+
         return self._hparams.output_dim

@@ -18,13 +18,12 @@
 This script is adapted from the tensor2tensor repository.
 """
 
-#import tensorflow as tf
 import torch
 
 # pylint: disable=invalid-name, too-many-arguments, too-many-locals
 
 class PadRemover(object):
-    """Helper to remove padding from a tensor before sending to the experts.
+    r"""Helper to remove padding from a tensor before sending to the experts.
     The padding is computed for one reference tensor containing the padding mask
     and then can be applied to any other tensor of shape [dim_origin,...].
     Example::
@@ -44,7 +43,8 @@ class PadRemover(object):
     """
 
     def __init__(self, pad_mask: torch.Tensor):
-        """Compute and store the location of the padding.
+        r"""Compute and store the location of the padding.
+
         Args:
             pad_mask (tf.Tensor): Reference padding tensor of shape
                 [batch_size,length] or [dim_origin]
@@ -69,6 +69,7 @@ class PadRemover(object):
 
     def remove(self, x):
         """Remove padding from the given tensor.
+
         Args:
             x: A Tensor of shape [dim_origin,...]
         Returns:
@@ -82,6 +83,7 @@ class PadRemover(object):
 
     def restore(self, x):
         """Add padding back to the given tensor.
+
         Args:
             x: A Tensor of shape [dim_compressed,...]
         Returns:
