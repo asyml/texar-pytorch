@@ -30,7 +30,15 @@ from torch.autograd import Variable
 from texar.utils.utils import map_structure, sequence_mask
 
 __all__ = [
-    "AttentionMechanism"
+    "AttentionMechanism",
+    "AttentionWrapperState",
+    "LuongAttention",
+    "BahdanauAttention",
+    "hardmax",
+    "safe_cumprod",
+    "monotonic_attention",
+    "BahdanauMonotonicAttention",
+    "LuongMonotonicAttention",
 ]
 
 
@@ -43,6 +51,70 @@ class AttentionMechanism(object):
     @property
     def state_size(self):
         raise NotImplementedError
+
+
+def _prepare_memory(memory,
+                    memory_sequence_length):
+    """Convert to tensor and possibly mask `memory`.
+    Args:
+      memory: `Tensor`, shaped `[batch_size, max_time, ...]`.
+      memory_sequence_length: `int32` `Tensor`, shaped `[batch_size]`.
+
+    Returns:
+      A (possibly masked), checked, new `memory`.
+
+    Raises:
+      ValueError: If `check_inner_dims_defined` is `True` and not
+        `memory.shape[2:].is_fully_defined()`.
+    """
+    if memory_sequence_length is not None:
+        memory_sequence_length = torch.tensor(memory_sequence_length)
+
+    if memory_sequence_length is None:
+        seq_len_mask = None
+    else:
+        seq_len_mask = sequence_mask(memory_sequence_length,
+                                     max_len=memory.shape[1],
+                                     dtype=memory.dtype)
+        seq_len_batch_size = memory_sequence_length.shape[0]
+
+    def _maybe_mask(m, seq_len_mask):
+        """Mask the memory based on the memory mask."""
+        rank = m.dim()
+        extra_ones = torch.ones(rank-2, dtype=torch.int32)
+        m_batch_size = m.shape[0]
+
+        if memory_sequence_length is not None:
+            if seq_len_batch_size != m_batch_size:
+                raise ValueError("memory_sequence_length and memory tensor "
+                                 "batch sizes do not match.")
+            seq_len_mask = torch.reshape(
+                seq_len_mask,
+                torch.cat((seq_len_mask.shape, extra_ones), 0))
+            return m * seq_len_mask
+        else:
+            return m
+
+    return _maybe_mask(memory, seq_len_mask)
+
+
+def _maybe_mask_score(score,
+                      memory_sequence_length,
+                      score_mask_value):
+    """Mask the attention score based on the masks."""
+    if memory_sequence_length is None:
+        return score
+
+    for memory_sequence_length_value in memory_sequence_length:
+        if memory_sequence_length_value <= 0:
+            raise ValueError(
+                "All values in memory_sequence_length must be greater "
+                "than zero.")
+
+    score_mask = sequence_mask(memory_sequence_length,
+                                max_len=score.shape[1])
+    score_mask_values = score_mask_value * torch.ones_like(score)
+    return torch.where(score_mask, score, score_mask_values)
 
 
 class _BaseAttentionMechanism(AttentionMechanism):
@@ -555,83 +627,10 @@ class AttentionWrapperState(NamedTuple):
             super(AttentionWrapperState, self)._replace(**kwargs))
 
 
-def _prepare_memory(memory,
-                    memory_sequence_length=None,
-                    memory_mask=None,
-                    check_inner_dims_defined=True):
-    """Convert to tensor and possibly mask `memory`.
-    Args:
-      memory: `Tensor`, shaped `[batch_size, max_time, ...]`.
-      memory_sequence_length: `int32` `Tensor`, shaped `[batch_size]`.
-      memory_mask: `boolean` tensor with shape [batch_size, max_time]. The
-      memory should be skipped when the corresponding mask is False.
-      check_inner_dims_defined: Python boolean.  If `True`, the `memory`
-      argument's shape is checked to ensure all but the two outermost dimensions
-      are fully defined.
-
-    Returns:
-      A (possibly masked), checked, new `memory`.
-
-    Raises:
-      ValueError: If `check_inner_dims_defined` is `True` and not
-        `memory.shape[2:].is_fully_defined()`.
-    """
-    if memory_sequence_length is not None and memory_mask is not None:
-        raise ValueError(
-            "memory_sequence_length and memory_mask can't be provided "
-            "at same time.")
-    if memory_sequence_length is not None:
-        memory_sequence_length = torch.as_tensor(memory_sequence_length)
-    if check_inner_dims_defined:
-
-        def _check_dim(m):
-            for i in m.shape[2:]:
-                if i is None:
-                    raise ValueError(
-                        "Expected memory to have fully defined inner dims, "
-                        "but saw shape: {}".format(m.shape))
-
-        _check_dim(memory)
-    if memory_sequence_length is not None and memory_mask is None:
-        return memory
-    elif memory_sequence_length is not None:
-        seq_len_mask = sequence_mask(memory_sequence_length,
-                                     max_len=memory.shape[1],
-                                     dtype=memory.dtype)
-    else:
-        seq_len_mask = memory_mask.type(memory.dtype)
-
-    def _maybe_mask(m, seq_len_mask):
-        """Mask the memory based on the memory mask."""
-        rank = m.dim()
-        extra_ones = torch.ones(rank-2, dtype=torch.int32)
-        seq_len_mask = torch.reshape(
-            seq_len_mask,
-            torch.cat((seq_len_mask.shape, extra_ones), 0))
-        return m * seq_len_mask
-    return _maybe_mask(memory, seq_len_mask)
 
 
-def _maybe_mask_score(score,
-                      memory_sequence_length=None,
-                      memory_mask=None,
-                      score_mask_value=None):
-    """Mask the attention score based on the masks."""
-    if memory_sequence_length is None and memory_mask is None:
-        return score
-    if memory_sequence_length is not None and memory_mask is not None:
-        raise ValueError(
-            "memory_sequence_length and memory_mask can't be provided "
-            "at same time.")
-    if memory_sequence_length is not None:
-        if memory_sequence_length <= 0:
-            raise ValueError(
-                "All values in memory_sequence_length must be greater "
-                "than zero.")
-        memory_mask = sequence_mask(memory_sequence_length,
-                                    max_len=score.shape[1])
-    score_mask_values = score_mask_value * torch.ones_like(score)
-    return torch.where(memory_mask, score, score_mask_values)
+
+
 
 
 def hardmax(logits):
