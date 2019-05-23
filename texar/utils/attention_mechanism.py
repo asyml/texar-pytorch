@@ -613,9 +613,26 @@ def monotonic_attention(p_choose_i, previous_attention, mode):
         x_tmp = f(x_tmp, torch.transpose(previous_attention, 0, 1))
         attention = p_choose_i * torch.transpose(x_tmp, 0, 1)
     elif mode == "parallel":
-        raise NotImplementedError
+        batch_size = p_choose_i.shape[0]
+        shifted_1mp_choose_i = torch.cat((torch.ones(batch_size, 1),
+                                          1 - p_choose_i[:, :-1]), 1)
+        cumprod_1mp_choose_i = torch.cumprod(shifted_1mp_choose_i, dim=1)
+        # Compute recurrence relation solution
+        attention = p_choose_i * cumprod_1mp_choose_i * torch.cumsum(
+            previous_attention / cumprod_1mp_choose_i.clamp(min=1e-10, max=1.),
+            dim=1)
     elif mode == "hard":
-        raise NotImplementedError
+        # Remove any probabilities before the index chosen last time step
+        p_choose_i = torch.cumsum(previous_attention, dim=1)
+        # Now, use exclusive cumprod to remove probabilities after the first
+        # chosen index, like so:
+        # p_choose_i = [0, 0, 0, 1, 1, 0, 1, 1]
+        # cumprod(1 - p_choose_i, exclusive=True) = [1, 1, 1, 1, 0, 0, 0, 0]
+        # Product of above: [0, 0, 0, 1, 0, 0, 0, 0]
+        batch_size = p_choose_i.shape[0]
+        shifted_1mp_choose_i = torch.cat((torch.ones(batch_size, 1),
+                                          1 - p_choose_i[:, :-1]), 1)
+        attention = p_choose_i*torch.cumprod(shifted_1mp_choose_i, dim=1)
     else:
         raise ValueError("mode must be 'recursive', 'parallel', or 'hard'.")
     return attention
@@ -873,52 +890,53 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
         return alignments, next_state
 
 
+def hardmax(logits):
+    """Returns batched one-hot vectors.
+
+    The depth index containing the `1` is that of the maximum logit value.
+
+    Args:
+      logits: A batch tensor of logit values.
+
+    Returns:
+      A batched one-hot tensor.
+    """
+    depth = logits.shape[-1]
+    return F.one_hot(torch.argmax(logits, -1), depth)
 
 
+def _compute_attention(attention_mechanism, cell_output, attention_state,
+                       attention_layer):
+    """Computes the attention and alignments for a given attention_mechanism."""
+    alignments, next_attention_state = attention_mechanism(
+        cell_output, state=attention_state)
 
+    # Reshape from [batch_size, memory_time] to [batch_size, 1, memory_time]
+    expanded_alignments = torch.unsqueeze(alignments, dim=1)
+    # Context is the inner product of alignments and values along the
+    # memory time dimension.
+    # alignments shape is
+    #   [batch_size, 1, memory_time]
+    # attention_mechanism.values shape is
+    #   [batch_size, memory_time, memory_size]
+    # the batched matmul is over memory_time, so the output shape is
+    #   [batch_size, 1, memory_size].
+    # we then squeeze out the singleton dim.
+    context = torch.matmul(expanded_alignments, attention_mechanism.values)
+    context = torch.squeeze(context, dim=1)
 
+    if attention_layer is not None:
+        attention_input = torch.cat((cell_output, context), dim=1)
+        _attention_layer = attention_layer.get("layer_name")
+        in_features = attention_input.shape[-1]
+        attention = _attention_layer(in_features,
+                                     attention_layer.get("out_features"),
+                                     attention_layer.get("bias"))
+        attention = attention(attention_input)
+    else:
+        attention = context
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    return attention, alignments, next_attention_state
 
 
 class AttentionWrapperState(NamedTuple):
@@ -943,8 +961,8 @@ class AttentionWrapperState(NamedTuple):
     attention: torch.Tensor
     time: int
     alignments: torch.Tensor
-    alignment_history: Any
-    attention_state: Any
+    alignment_history: torch.Tensor
+    attention_state: torch.Tensor
 
     def clone(self, **kwargs):
         """Clone this object, overriding components provided by kwargs.
@@ -984,64 +1002,3 @@ class AttentionWrapperState(NamedTuple):
         return with_same_shape(
             self,
             super(AttentionWrapperState, self)._replace(**kwargs))
-
-
-
-
-
-
-
-
-def hardmax(logits):
-    """Returns batched one-hot vectors.
-
-    The depth index containing the `1` is that of the maximum logit value.
-
-    Args:
-      logits: A batch tensor of logit values.
-
-    Returns:
-      A batched one-hot tensor.
-    """
-    depth = logits.shape[-1]
-    return F.one_hot(torch.argmax(logits, -1), depth)
-
-
-def _compute_attention(attention_mechanism, cell_output, attention_state,
-                       attention_layer):
-    """Computes the attention and alignments for a given attention_mechanism."""
-    if isinstance(attention_mechanism, _BaseAttentionMechanismV2):
-        alignments, next_attention_state = attention_mechanism(
-            [cell_output, attention_state])
-    else:
-        # For other class, assume they are following _BaseAttentionMechanism,
-        # which takes query and state as separate parameter.
-        alignments, next_attention_state = attention_mechanism(
-            cell_output, state=attention_state)
-
-    # Reshape from [batch_size, memory_time] to [batch_size, 1, memory_time]
-    expanded_alignments = torch.unsqueeze(alignments, dim=1)
-    # Context is the inner product of alignments and values along the
-    # memory time dimension.
-    # alignments shape is
-    #   [batch_size, 1, memory_time]
-    # attention_mechanism.values shape is
-    #   [batch_size, memory_time, memory_size]
-    # the batched matmul is over memory_time, so the output shape is
-    #   [batch_size, 1, memory_size].
-    # we then squeeze out the singleton dim.
-    context_ = torch.matmul(expanded_alignments, attention_mechanism.values)
-    context_ = torch.squeeze(context_, dim=1)
-
-    if attention_layer is not None:
-        attention_input = torch.cat((cell_output, context_), dim=1)
-        _attention_layer = attention_layer.get("layer_name")
-        in_features = attention_input.shape[-1]
-        attention = _attention_layer(in_features,
-                                     attention_layer.get("out_features"),
-                                     attention_layer.get("bias"))
-        attention = attention(attention_input)
-    else:
-        attention = context_
-
-    return attention, alignments, next_attention_state

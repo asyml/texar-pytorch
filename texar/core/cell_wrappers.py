@@ -26,6 +26,7 @@ from torch import nn
 
 from texar.utils import utils
 from texar.utils.types import MaybeList
+from texar.utils.attention_mechanism import *
 
 __all__ = [
     'HiddenState',
@@ -482,12 +483,6 @@ class AttentionWrapper(RNNCellBase[State]):
         next time step via the state and is used there. This flag only controls
         whether the attention mechanism is propagated up to the next cell in an
         RNN stack or to the top RNN output.
-      attention_layer: A list of `tf.compat.v1.layers.Layer` instances or a
-        single `tf.compat.v1.layers.Layer` instance taking the context and cell
-        output as inputs to generate attention at each time step. If None
-        (default), use the context as attention at each time step. If
-        attention_mechanism is a list, attention_layer must be a list of the
-        same length. If attention_layers_size is set, this must be None.
 
     Raises:
       TypeError: `attention_layer_size` is not None and (`attention_mechanism`
@@ -510,19 +505,20 @@ class AttentionWrapper(RNNCellBase[State]):
             self._is_multi = False
             if not isinstance(attention_mechanism, AttentionMechanism):
                 raise TypeError(
-                    "attention_mechanism must be an AttentionMechanism or list of "
-                    "multiple AttentionMechanism instances, saw type: %s" %
+                    "attention_mechanism must be an AttentionMechanism or list "
+                    "of multiple AttentionMechanism instances, saw type: %s" %
                     type(attention_mechanism).__name__)
             attention_mechanisms = (attention_mechanism,)
 
         if cell_input_fn is None:
             cell_input_fn = (
-                lambda inputs, attention: torch.cat((inputs, attention), dim=-1)
-            )
+                lambda inputs, attention: torch.cat((inputs, attention),
+                                                    dim=-1))
         else:
             if not callable(cell_input_fn):
-                raise TypeError("cell_input_fn must be callable, saw type: %s" %
-                        type(cell_input_fn).__name__)
+                raise TypeError(
+                    "cell_input_fn must be callable, saw type: %s" %
+                    type(cell_input_fn).__name__)
 
         if attention_layer_size is not None:
             attention_layer_sizes = tuple(
@@ -534,24 +530,24 @@ class AttentionWrapper(RNNCellBase[State]):
                     "If provided, attention_layer_size must contain exactly "
                     "one integer per attention_mechanism, saw: %d vs %d" %
                     (len(attention_layer_sizes), len(attention_mechanisms)))
-            self._attention_layer = tuple(
-                {"layer_name": nn.Linear,
-                 "out_features": attention_layer_size,
-                 "bias": False}
+            self._attention_layers = tuple(
+                {"name": nn.Linear,
+                 "config": [attention_layer_size, False]}
                 for attention_layer_size in attention_layer_sizes)
+            self._attention_layer_size = sum(attention_layer_sizes)
         else:
             self._attention_layers = None
             self._attention_layer_size = sum(
                 attention_mechanism.values.shape[-1]
                 for attention_mechanism in attention_mechanisms)
 
-        self._attention_fn = _compute_attention
         self._cell = cell
         self._attention_mechanisms = attention_mechanisms
         self._cell_input_fn = cell_input_fn
         self._output_attention = output_attention
         self._alignment_history = alignment_history
         self._initial_cell_state = None
+        self._attention_layers_ = []
 
     def _item_or_tuple(self, seq):
         """Returns `seq` as tuple or the singular element.
@@ -675,9 +671,25 @@ class AttentionWrapper(RNNCellBase[State]):
         all_attention_states = []
         maybe_all_histories = []
         for i, attention_mechanism in enumerate(self._attention_mechanisms):
-            attention, alignments, next_attention_state = self._attention_fn(
-                attention_mechanism, cell_output, previous_attention_state[i],
-                self._attention_layers[i] if self._attention_layers else None)
+
+            alignments, next_attention_state = attention_mechanism(
+                cell_output, state=previous_attention_state[i])
+            expanded_alignments = torch.unsqueeze(alignments, dim=1)
+            context = torch.matmul(expanded_alignments,
+                                   attention_mechanism.values)
+            context = torch.squeeze(context, dim=1)
+
+            if self._attention_layers is not None:
+                attention_input = torch.cat((cell_output, context), dim=1)
+                if len(self._attention_layers_) < len(self._attention_layers):
+                    args = [attention_input.shape[-1]] + \
+                           self._attention_layers[i].get("config")
+                    attention = self._attention_layers[i].get("name")(*args)
+                    self._attention_layers_.append(attention)
+                attention = self._attention_layers_[i](attention_input)
+            else:
+                attention = context
+
             alignment_history = previous_alignment_history[i].write(
                 state.time, alignments) if self._alignment_history else ()
 
