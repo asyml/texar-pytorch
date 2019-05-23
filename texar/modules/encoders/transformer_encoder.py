@@ -294,9 +294,9 @@ class TransformerEncoder(EncoderBase):
 
     # pylint: disable=arguments-differ
     def forward(self, # type: ignore
-                inputs: torch.Tensor,
-                sequence_length: Union[LongTensor, List[int]],
-                **kwargs) -> torch.Tensor:
+                inputs: LongTensor,
+                sequence_length: Union[LongTensor, List[int]]) \
+             -> torch.Tensor:
         r"""Encodes the inputs.
 
         Args:
