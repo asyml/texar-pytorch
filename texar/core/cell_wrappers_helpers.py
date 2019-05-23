@@ -25,6 +25,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 from texar.utils.utils import map_structure, sequence_mask
 
@@ -91,7 +92,6 @@ class _BaseAttentionMechanism(AttentionMechanism):
         """
         self._query_layer = query_layer
         self._memory_layer = memory_layer
-        self.dtype = memory_layer.dtype
         if not callable(probability_fn):
             raise TypeError("probability_fn must be callable, saw type: %s" %
                             type(probability_fn).__name__)
@@ -107,14 +107,15 @@ class _BaseAttentionMechanism(AttentionMechanism):
             memory,
             memory_sequence_length=memory_sequence_length,
             check_inner_dims_defined=check_inner_dims_defined)
+        args = [self._values.shape[-1]] + self.memory_layer.get("config")
         self._keys = (
-            self.memory_layer(self._values) if self.memory_layer
-            else self._values)
+            self.memory_layer.get("name")(*args)(self._values) if
+            self.memory_layer else self._values)
         if custom_key_value_fn is not None:
-            self._keys, self._valyes = custom_key_value_fn(self._keys,
+            self._keys, self._values = custom_key_value_fn(self._keys,
                                                            self._values)
         self._batch_size = (self._keys.shape[0])
-        self._alignments_size = self._keys.shape[0]
+        self._alignments_size = self._keys.shape[1]
 
     @property
     def memory_layer(self):
@@ -183,6 +184,310 @@ class _BaseAttentionMechanism(AttentionMechanism):
           `state_size`.
         """
         return self.initial_alignments(batch_size, dtype)
+
+
+def _luong_score(query, keys, scale):
+    """Implements Luong-style (multiplicative) scoring function.
+
+    This attention has two forms.  The first is standard Luong attention,
+    as described in:
+
+    Minh-Thang Luong, Hieu Pham, Christopher D. Manning.
+    "Effective Approaches to Attention-based Neural Machine Translation."
+    EMNLP 2015.  https://arxiv.org/abs/1508.04025
+
+    The second is the scaled form inspired partly by the normalized form of
+    Bahdanau attention.
+
+    To enable the second form, call this function with `scale=True`.
+
+    Args:
+      query: Tensor, shape `[batch_size, num_units]` to compare to keys.
+      keys: Processed memory, shape `[batch_size, max_time, num_units]`.
+      scale: the optional tensor to scale the attention score.
+
+    Returns:
+      A `[batch_size, max_time]` tensor of unnormalized score values.
+
+    Raises:
+      ValueError: If `key` and `query` depths do not match.
+    """
+    depth = query.shape[-1]
+    key_units = keys.shape[-1]
+    if depth != key_units:
+        raise ValueError(
+            "Incompatible or unknown inner dimensions between query and keys.  "
+            "Query (%s) has units: %s.  Keys (%s) have units: %s. "
+            "Perhaps you need to set num_units to the keys' dimension (%s)?" %
+            (query, depth, keys, key_units, key_units))
+
+    # Reshape from [batch_size, depth] to [batch_size, 1, depth]
+    # for matmul.
+    query = torch.unsqueeze(query, 1)
+
+    # Inner product along the query units dimension.
+    # matmul shapes: query is [batch_size, 1, depth] and
+    #                keys is [batch_size, max_time, depth].
+    # the inner product is asked to **transpose keys' inner shape** to get a
+    # batched matmul on:
+    #   [batch_size, 1, depth] . [batch_size, depth, max_time]
+    # resulting in an output shape of:
+    #   [batch_size, 1, max_time].
+    # we then squeeze out the center singleton dimension.
+    score = torch.matmul(query, keys.permute(0, 2, 1))
+    score = torch.squeeze(score, 1)
+
+    if scale is not None:
+        score = scale * score
+    return score
+
+
+class LuongAttention(_BaseAttentionMechanism):
+    """Implements Luong-style (multiplicative) attention scoring.
+
+    This attention has two forms.  The first is standard Luong attention,
+    as described in:
+
+    Minh-Thang Luong, Hieu Pham, Christopher D. Manning.
+    [Effective Approaches to Attention-based Neural Machine Translation.
+    EMNLP 2015.](https://arxiv.org/abs/1508.04025)
+
+    The second is the scaled form inspired partly by the normalized form of
+    Bahdanau attention.
+
+    To enable the second form, construct the object with parameter
+    `scale=True`.
+    """
+
+    def __init__(self,
+                 num_units,
+                 memory,
+                 memory_sequence_length=None,
+                 scale=False,
+                 probability_fn=None,
+                 score_mask_value=None,
+                 dtype=None,
+                 custom_key_value_fn=None):
+        """Construct the AttentionMechanism mechanism.
+
+        Args:
+          num_units: The depth of the attention mechanism.
+          memory: The memory to query; usually the output of an RNN encoder.
+            This tensor should be shaped `[batch_size, max_time, ...]`.
+          memory_sequence_length: (optional) Sequence lengths for the batch
+            entries in memory.  If provided, the memory tensor rows are masked
+            with zeros for values past the respective sequence lengths.
+          scale: Python boolean.  Whether to scale the energy term.
+          probability_fn: (optional) A `callable`.  Converts the score to
+            probabilities.  The default is `tf.nn.softmax`. Other options
+            include `tf.contrib.seq2seq.hardmax` and
+            `tf.contrib.sparsemax.sparsemax`. Its signature should be:
+            `probabilities = probability_fn(score)`.
+          score_mask_value: (optional) The mask value for score before passing
+            into `probability_fn`. The default is -inf. Only used if
+            `memory_sequence_length` is not None.
+          dtype: The data type for the memory layer of the attention mechanism.
+          custom_key_value_fn: (optional): The custom function for
+            computing keys and values.
+        """
+        # For LuongAttention, we only transform the memory layer; thus
+        # num_units **must** match expected the query depth.
+        if probability_fn is None:
+            probability_fn = F.softmax
+        if dtype is None:
+            dtype = torch.float32
+        wrapped_probability_fn = lambda score, _: probability_fn(score)
+        super(LuongAttention, self).__init__(
+            query_layer=None,
+            memory_layer={"name": nn.Linear,
+                          "config": [num_units, False]},
+            memory=memory,
+            probability_fn=wrapped_probability_fn,
+            memory_sequence_length=memory_sequence_length,
+            score_mask_value=score_mask_value,
+            custom_key_value_fn=custom_key_value_fn)
+        self._num_units = num_units
+        self._scale = scale
+
+    def __call__(self, query, state):
+        """Score the query based on the keys and values.
+
+            Args:
+              query: Tensor of dtype matching `self.values` and shape
+              `[batch_size, query_depth]`.
+              state: Tensor of dtype matching `self.values` and shape
+              `[batch_size, alignments_size]` (`alignments_size` is memory's
+              `max_time`).
+
+            Returns:
+              alignments: Tensor of dtype matching `self.values` and shape
+                `[batch_size, alignments_size]` (`alignments_size` is memory's
+                `max_time`).
+        """
+        attention_g = None
+        if self._scale:
+            attention_g = torch.tensor(1)
+        score = _luong_score(query, self._keys, attention_g)
+        alignments = self._probability_fn(score, state)
+        next_state = alignments
+        return alignments, next_state
+
+
+def _bahdanau_score(processed_query,
+                    keys,
+                    attention_v,
+                    attention_g=None,
+                    attention_b=None):
+    """Implements Bahdanau-style (additive) scoring function.
+
+    This attention has two forms.  The first is Bhandanau attention,
+    as described in:
+
+    Dzmitry Bahdanau, Kyunghyun Cho, Yoshua Bengio.
+    "Neural Machine Translation by Jointly Learning to Align and Translate."
+    ICLR 2015. https://arxiv.org/abs/1409.0473
+
+    The second is the normalized form.  This form is inspired by the
+    weight normalization article:
+
+    Tim Salimans, Diederik P. Kingma.
+    "Weight Normalization: A Simple Reparameterization to Accelerate
+     Training of Deep Neural Networks."
+    https://arxiv.org/abs/1602.07868
+
+    To enable the second form, set please pass in attention_g and attention_b.
+
+    Args:
+      processed_query: Tensor, shape `[batch_size, num_units]` to compare to keys.
+      keys: Processed memory, shape `[batch_size, max_time, num_units]`.
+      attention_v: Tensor, shape `[num_units]`.
+      attention_g: Optional scalar tensor for normalization.
+      attention_b: Optional tensor with shape `[num_units]` for normalization.
+
+    Returns:
+      A `[batch_size, max_time]` tensor of unnormalized score values.
+    """
+    # Reshape from [batch_size, ...] to [batch_size, 1, ...] for broadcasting.
+    processed_query = torch.unsqueeze(processed_query, 1)
+    if attention_g is not None and attention_b is not None:
+        normed_v = attention_g * attention_v * \
+                   torch.rsqrt(torch.sum(attention_v**2))
+        return torch.sum(normed_v * F.tanh(keys + processed_query
+                                           + attention_b), 2)
+    else:
+        return torch.sum(attention_v * torch.tanh(keys + processed_query), 2)
+
+
+class BahdanauAttention(_BaseAttentionMechanism):
+    """Implements Bahdanau-style (additive) attention.
+
+      This attention has two forms.  The first is Bahdanau attention,
+      as described in:
+
+      Dzmitry Bahdanau, Kyunghyun Cho, Yoshua Bengio.
+      "Neural Machine Translation by Jointly Learning to Align and Translate."
+      ICLR 2015. https://arxiv.org/abs/1409.0473
+
+      The second is the normalized form.  This form is inspired by the
+      weight normalization article:
+
+      Tim Salimans, Diederik P. Kingma.
+      "Weight Normalization: A Simple Reparameterization to Accelerate
+       Training of Deep Neural Networks."
+      https://arxiv.org/abs/1602.07868
+
+      To enable the second form, construct the object with parameter
+      `normalize=True`.
+    """
+
+    def __init__(self,
+                 num_units,
+                 memory,
+                 memory_sequence_length=None,
+                 normalize=False,
+                 probability_fn=None,
+                 score_mask_value=None,
+                 dtype=None,
+                 custom_key_value_fn=None):
+        """Construct the Attention mechanism.
+
+            Args:
+              num_units: The depth of the query mechanism.
+              memory: The memory to query; usually the output of an RNN encoder.  This
+                tensor should be shaped `[batch_size, max_time, ...]`.
+              memory_sequence_length: (optional) Sequence lengths for the batch entries
+                in memory.  If provided, the memory tensor rows are masked with zeros
+                for values past the respective sequence lengths.
+              normalize: Python boolean.  Whether to normalize the energy term.
+              probability_fn: (optional) A `callable`.  Converts the score to
+                probabilities.  The default is `tf.nn.softmax`. Other options include
+                `tf.contrib.seq2seq.hardmax` and `tf.contrib.sparsemax.sparsemax`.
+                Its signature should be: `probabilities = probability_fn(score)`.
+              score_mask_value: (optional): The mask value for score before passing into
+                `probability_fn`. The default is -inf. Only used if
+                `memory_sequence_length` is not None.
+              dtype: The data type for the query and memory layers of the attention
+                mechanism.
+              custom_key_value_fn: (optional): The custom function for
+                computing keys and values.
+        """
+        if probability_fn is None:
+            probability_fn = F.softmax
+        if dtype is None:
+            dtype = torch.float32
+        wrapped_probability_fn = lambda score, _: probability_fn(score)
+        super(BahdanauAttention, self).__init__(
+            query_layer={"name": nn.Linear,
+                         "config": [num_units, False]},
+            memory_layer={"name": nn.Linear,
+                          "config": [num_units, False]},
+            memory=memory,
+            probability_fn=wrapped_probability_fn,
+            custom_key_value_fn=custom_key_value_fn,
+            memory_sequence_length=memory_sequence_length,
+            score_mask_value=score_mask_value)
+        self._num_units = num_units
+        self._normalize = normalize
+
+    def __call__(self, query, state):
+        """Score the query based on the keys and values.
+
+            Args:
+              query: Tensor of dtype matching `self.values` and shape
+              `[batch_size, query_depth]`.
+              state: Tensor of dtype matching `self.values` and shape
+              `[batch_size, alignments_size]` (`alignments_size` is memory's
+              `max_time`).
+
+            Returns:
+              alignments: Tensor of dtype matching `self.values` and shape
+                `[batch_size, alignments_size]` (`alignments_size` is memory's
+                `max_time`).
+        """
+        args = [query.shape[-1]] + self.query_layer.get("config")
+        processed_query = self.query_layer.get("name")(*args)(query) \
+            if self.query_layer else query
+        attention_v =
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class AttentionWrapperState(NamedTuple):
