@@ -21,6 +21,7 @@ Various helper classes and utilities for cell wrappers.
 from typing import NamedTuple, Optional, Tuple, Any
 
 import numpy as np
+import functools
 
 import torch
 import torch.nn as nn
@@ -555,18 +556,18 @@ def monotonic_attention(p_choose_i, previous_attention, mode):
       explicitly left-to-right manner when generating the output sequence.  In
       addition, once an input sequence element is attended to at a given output
       timestep, elements occurring before it cannot be attended to at subsequent
-      output timesteps.  This function generates attention distributions according
-      to these assumptions.  For more information, see `Online and Linear-Time
-      Attention by Enforcing Monotonic Alignments`.
+      output timesteps.  This function generates attention distributions
+      according to these assumptions.  For more information, see `Online and
+      Linear-Time Attention by Enforcing Monotonic Alignments`.
 
       Args:
-        p_choose_i: Probability of choosing input sequence/memory element i.  Should
-          be of shape (batch_size, input_sequence_length), and should all be in the
-          range [0, 1].
+        p_choose_i: Probability of choosing input sequence/memory element i.
+          Should be of shape (batch_size, input_sequence_length), and should
+          all be in the range [0, 1].
         previous_attention: The attention distribution from the previous output
-          timestep.  Should be of shape (batch_size, input_sequence_length).  For
-          the first output timestep, preevious_attention[n] should be [1, 0, 0, ...,
-          0] for all n in [0, ... batch_size - 1].
+          timestep.  Should be of shape (batch_size, input_sequence_length).
+          For the first output timestep, preevious_attention[n] should be
+          [1, 0, 0, ..., 0] for all n in [0, ... batch_size - 1].
         mode: How to compute the attention distribution.  Must be one of
           'recursive', 'parallel', or 'hard'.
             * 'recursive' uses tf.scan to recursively compute the distribution.
@@ -575,12 +576,13 @@ def monotonic_attention(p_choose_i, previous_attention, mode):
             * 'parallel' uses parallelized cumulative-sum and cumulative-product
               operations to compute a closed-form solution to the recurrence
               relation defining the attention distribution.  This makes it more
-              efficient than 'recursive', but it requires numerical checks which
-              make the distribution non-exact.  This can be a problem in particular
-              when input_sequence_length is long and/or p_choose_i has entries very
-              close to 0 or 1.
-            * 'hard' requires that the probabilities in p_choose_i are all either 0
-              or 1, and subsequently uses a more efficient and exact solution.
+              efficient than 'recursive', but it requires numerical checks
+              which make the distribution non-exact.  This can be a problem in
+              particular when input_sequence_length is long and/or p_choose_i
+              has entries very close to 0 or 1.
+            * 'hard' requires that the probabilities in p_choose_i are all
+              either 0 or 1, and subsequently uses a more efficient and exact
+              solution.
 
       Returns:
         A tensor of shape (batch_size, input_sequence_length) representing the
@@ -687,6 +689,192 @@ class _BaseMonotonicAttentionMechanism(_BaseAttentionMechanism):
               (`alignments_size` is the values' `max_time`).
         """
         max_time = self._alignments_size
+        return F.one_hot(torch.zeros((batch_size,), dtype=torch.int64),
+                         max_time, dtype=dtype)
+
+
+class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
+    """Monotonic attention mechanism with Bahadanau-style energy function.
+
+      This type of attention enforces a monotonic constraint on the attention
+      distributions; that is once the model attends to a given point in the memory
+      it can't attend to any prior points at subsequence output timesteps.  It
+      achieves this by using the _monotonic_probability_fn instead of softmax to
+      construct its attention distributions.  Since the attention scores are passed
+      through a sigmoid, a learnable scalar bias parameter is applied after the
+      score function and before the sigmoid.  Otherwise, it is equivalent to
+      BahdanauAttention.  This approach is proposed in
+
+      Colin Raffel, Minh-Thang Luong, Peter J. Liu, Ron J. Weiss, Douglas Eck,
+      "Online and Linear-Time Attention by Enforcing Monotonic Alignments."
+      ICML 2017.  https://arxiv.org/abs/1704.00784
+    """
+
+    def __init__(self,
+                 num_units,
+                 memory,
+                 memory_sequence_length=None,
+                 normalize=False,
+                 score_mask_value=None,
+                 sigmoid_noise=0.,
+                 score_bias_init=0.,
+                 mode="parallel"):
+        """Construct the Attention mechanism.
+
+            Args:
+              num_units: The depth of the query mechanism.
+              memory: The memory to query; usually the output of an RNN encoder.
+                This tensor should be shaped `[batch_size, max_time, ...]`.
+              memory_sequence_length (optional): Sequence lengths for the batch
+                entries in memory.  If provided, the memory tensor rows are
+                masked with zeros for values past the respective sequence
+                lengths.
+              normalize: Python boolean.  Whether to normalize the energy term.
+              score_mask_value: (optional): The mask value for score before
+                passing into `probability_fn`. The default is -inf. Only used if
+                `memory_sequence_length` is not None.
+              sigmoid_noise: Standard deviation of pre-sigmoid noise.  See the
+                docstring for `_monotonic_probability_fn` for more information.
+              score_bias_init: Initial value for score bias scalar.  It's
+                recommended to initialize this to a negative value when the
+                length of the memory is large.
+              mode: How to compute the attention distribution.  Must be one of
+                'recursive', 'parallel', or 'hard'.  See the docstring for
+                `tf.contrib.seq2seq.monotonic_attention` for more information.
+        """
+        wrapped_probability_fn = functools.partial(
+            _monotonic_probability_fn, sigmoid_noise=sigmoid_noise, mode=mode)
+        super(BahdanauMonotonicAttention, self).__init__(
+            query_layer={"name": nn.Linear,
+                         "config": [num_units, False]},
+            memory_layer={"name": nn.Linear,
+                          "config": [num_units, False]},
+            memory=memory,
+            probability_fn=wrapped_probability_fn,
+            memory_sequence_length=memory_sequence_length,
+            score_mask_value=score_mask_value)
+        self._num_units = num_units
+        self._normalize = normalize
+        self._score_bias_init = score_bias_init
+
+    def __call__(self, query, state):
+        """Score the query based on the keys and values.
+
+            Args:
+              query: Tensor of dtype matching `self.values` and shape
+                `[batch_size, query_depth]`.
+              state: Tensor of dtype matching `self.values` and shape
+                `[batch_size, alignments_size]`
+                (`alignments_size` is memory's `max_time`).
+
+            Returns:
+              alignments: Tensor of dtype matching `self.values` and shape
+                `[batch_size, alignments_size]` (`alignments_size` is memory's
+                `max_time`).
+        """
+        if self.query_layer is None and self._query_layer_ is not None:
+            args = [query.shape[-1]] + self._query_layer_.get("config")
+            self._query_layer = self._query_layer_.get("name")(*args)
+
+        processed_query = self.query_layer(query) if self.query_layer else query
+        score = _bahdanau_score(processed_query, self._keys, self._normalize)
+        score_bias = Variable(torch.tensor(self._score_bias_init),
+                              requires_grad=True,
+                              dtype=processed_query.dtype)
+        score += score_bias
+        alignments = self._probability_fn(score, state)
+        next_state = alignments
+        return alignments, next_state
+
+
+class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
+    """Monotonic attention mechanism with Luong-style energy function.
+
+      This type of attention enforces a monotonic constraint on the attention
+      distributions; that is once the model attends to a given point in the memory
+      it can't attend to any prior points at subsequence output timesteps.  It
+      achieves this by using the _monotonic_probability_fn instead of softmax to
+      construct its attention distributions.  Otherwise, it is equivalent to
+      LuongAttention.  This approach is proposed in
+
+      Colin Raffel, Minh-Thang Luong, Peter J. Liu, Ron J. Weiss, Douglas Eck,
+      "Online and Linear-Time Attention by Enforcing Monotonic Alignments."
+      ICML 2017.  https://arxiv.org/abs/1704.00784
+    """
+
+    def __init__(self,
+                 num_units,
+                 memory,
+                 memory_sequence_length=None,
+                 scale=False,
+                 score_mask_value=None,
+                 sigmoid_noise=0.,
+                 score_bias_init=0.,
+                 mode="parallel"):
+        """Construct the Attention mechanism.
+
+            Args:
+              num_units: The depth of the query mechanism.
+              memory: The memory to query; usually the output of an RNN encoder.
+                This tensor should be shaped `[batch_size, max_time, ...]`.
+              memory_sequence_length (optional): Sequence lengths for the batch
+                entries in memory.  If provided, the memory tensor rows are
+                masked with zeros for values past the respective sequence
+                lengths.
+              scale: Python boolean.  Whether to scale the energy term.
+              score_mask_value: (optional): The mask value for score before
+                passing into `probability_fn`. The default is -inf. Only used if
+                `memory_sequence_length` is not None.
+              sigmoid_noise: Standard deviation of pre-sigmoid noise.  See the
+                docstring for `_monotonic_probability_fn` for more information.
+              score_bias_init: Initial value for score bias scalar.  It's
+                recommended to initialize this to a negative value when the
+                length of the memory is large.
+              mode: How to compute the attention distribution.  Must be one of
+                'recursive', 'parallel', or 'hard'.  See the docstring for
+                `tf.contrib.seq2seq.monotonic_attention` for more information.
+        """
+        wrapped_probability_fn = functools.partial(
+            _monotonic_probability_fn, sigmoid_noise=sigmoid_noise, mode=mode)
+        super(LuongMonotonicAttention, self).__init__(
+            query_layer=None,
+            memory_layer={"name": nn.Linear,
+                          "config": [num_units, False]},
+            memory=memory,
+            probability_fn=wrapped_probability_fn,
+            memory_sequence_length=memory_sequence_length,
+            score_mask_value=score_mask_value)
+        self._num_units = num_units
+        self._scale = scale
+        self._score_bias_init = score_bias_init
+
+    def __call__(self, query, state):
+        """Score the query based on the keys and values.
+
+            Args:
+              query: Tensor of dtype matching `self.values` and shape
+                `[batch_size, query_depth]`.
+              state: Tensor of dtype matching `self.values` and shape
+                `[batch_size, alignments_size]`
+                (`alignments_size` is memory's `max_time`).
+
+            Returns:
+              alignments: Tensor of dtype matching `self.values` and shape
+                `[batch_size, alignments_size]` (`alignments_size` is memory's
+                `max_time`).
+        """
+        score = _luong_score(query, self._keys, self._scale)
+        score_bias = Variable(torch.tesnor(self._score_bias_init),
+                              requires_grad=True,
+                              dtype=query.dtype)
+        score += score_bias
+        alignments = self._probability_fn(score, state)
+        next_state = alignments
+        return alignments, next_state
+
+
+
+
 
 
 
