@@ -325,6 +325,22 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                 sequence_length=data_batch['target_length']-1)
     """
 
+    def __init__(self,
+                 memory,
+                 memory_sequence_length=None,
+                 cell=None,
+                 cell_dropout_mode=None,
+                 vocab_size=None,
+                 output_layer=None,
+                 # attention_layer=None, # TODO(zhiting): only valid for tf>=1.0
+                 cell_input_fn=None,
+                 hparams=None):
+        super().__init__()
+
+
+
+
+
     @staticmethod
     def default_hparams():
         """Returns a dictionary of hyperparameters with default values:
