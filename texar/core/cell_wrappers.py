@@ -459,37 +459,42 @@ class AttentionWrapper(RNNCellBase[State]):
 
         Args:
             cell: An instance of `RNNCell`.
-            attention_mechanism: A list of `AttentionMechanism` instances or a single
-        instance.
-      attention_layer_size: A list of Python integers or a single Python
-        integer, the depth of the attention (output) layer(s). If None
-        (default), use the context as attention at each time step. Otherwise,
-        feed the context and cell output into the attention layer to generate
-        attention at each time step. If attention_mechanism is a list,
-        attention_layer_size must be a list of the same length. If
-        attention_layer is set, this must be None. If attention_fn is set, it
-        must guaranteed that the outputs of attention_fn also meet the above
-        requirements.
-      alignment_history: Python boolean, whether to store alignment history from
-        all time steps in the final output state (currently stored as a time
-        major `TensorArray` on which you must call `stack()`).
-      cell_input_fn: (optional) A `callable`.  The default is:
-        `lambda inputs, attention: array_ops.concat([inputs, attention], -1)`.
-      output_attention: Python bool.  If `True` (default), the output at each
-        time step is the attention value.  This is the behavior of Luong-style
-        attention mechanisms.  If `False`, the output at each time step is the
-        output of `cell`.  This is the behavior of Bhadanau-style attention
-        mechanisms.  In both cases, the `attention` tensor is propagated to the
-        next time step via the state and is used there. This flag only controls
-        whether the attention mechanism is propagated up to the next cell in an
-        RNN stack or to the top RNN output.
+            attention_mechanism: A list of `AttentionMechanism` instances or a
+              single instance.
+            attention_layer_size: A list of Python integers or a single Python
+              integer, the depth of the attention (output) layer(s). If None
+              (default), use the context as attention at each time step.
+              Otherwise, feed the context and cell output into the attention
+              layer to generate attention at each time step. If
+              attention_mechanism is a list, attention_layer_size must be a
+              list of the same length. If attention_layer is set, this must be
+              None. If attention_fn is set, it must guaranteed that the outputs
+              of attention_fn also meet the above requirements.
+            alignment_history: Python boolean, whether to store alignment
+            history from all time steps in the final output state (currently
+            stored as a time major `TensorArray` on which you must call
+            `stack()`).
+            cell_input_fn: (optional) A `callable`.  The default is:
+              `lambda inputs, attention: array_ops.concat([inputs, attention],
+               -1)`.
+            output_attention: Python bool.  If `True` (default), the output at
+              each time step is the attention value.  This is the behavior of
+              Luong-style attention mechanisms.  If `False`, the output at each
+              time step is the output of `cell`.  This is the behavior of
+              Bhadanau-style attention mechanisms.  In both cases, the
+              `attention` tensor is propagated to the next time step via the
+              state and is used there. This flag only controls whether the
+              attention mechanism is propagated up to the next cell in an RNN
+              stack or to the top RNN output.
 
-    Raises:
-      TypeError: `attention_layer_size` is not None and (`attention_mechanism`
-        is a list but `attention_layer_size` is not; or vice versa).
-      ValueError: if `attention_layer_size` is not None, `attention_mechanism`
-        is a list, and its length does not match that of `attention_layer_size`;
-        if `attention_layer_size` and `attention_layer` are set simultaneously.
+        Raises:
+            TypeError: `attention_layer_size` is not None and
+              (`attention_mechanism` is a list but `attention_layer_size` is
+              not; or vice versa).
+            ValueError: if `attention_layer_size` is not None,
+              `attention_mechanism` is a list, and its length does not match
+              that of `attention_layer_size`; if `attention_layer_size` and
+              `attention_layer` are set simultaneously.
         """
         super().__init__(cell)
         if isinstance(attention_mechanism, (list, tuple)):
@@ -522,18 +527,18 @@ class AttentionWrapper(RNNCellBase[State]):
 
         if attention_layer_size is not None:
             attention_layer_sizes = tuple(
-                attention_layer_size if isinstance(
-                    attention_layer_size, (list, tuple))
+                attention_layer_size
+                if isinstance(attention_layer_size, (list, tuple))
                 else (attention_layer_size,))
             if len(attention_layer_sizes) != len(attention_mechanisms):
                 raise ValueError(
                     "If provided, attention_layer_size must contain exactly "
-                    "one integer per attention_mechanism, saw: %d vs %d" %
-                    (len(attention_layer_sizes), len(attention_mechanisms)))
-            self._attention_layers = tuple(
-                {"name": nn.Linear,
-                 "config": [attention_layer_size, False]}
-                for attention_layer_size in attention_layer_sizes)
+                    "one integer per attention_mechanism, saw: %d vs %d"
+                    % (len(attention_layer_sizes), len(attention_mechanisms)))
+            self._attention_layers_ = tuple(nn.Linear(
+                attention_mechanisms[i].values.shape[-1] + cell.hidden_size,
+                attention_layer_sizes[i],
+                False) for i in range(len(attention_layer_sizes)))
             self._attention_layer_size = sum(attention_layer_sizes)
         else:
             self._attention_layers = None
@@ -549,11 +554,17 @@ class AttentionWrapper(RNNCellBase[State]):
         self._initial_cell_state = None
         self._attention_layers_ = []
 
+    def _batch_size_checks(self, batch_size, error_message):
+        for attention_mechanism in self._attention_mechanisms:
+            if attention_mechanism.batch_size != batch_size:
+                raise ValueError(error_message)
+        return
+
     def _item_or_tuple(self, seq):
         """Returns `seq` as tuple or the singular element.
 
-        Which is returned is determined by how the AttentionMechanism(s) were passed
-        to the constructor.
+        Which is returned is determined by how the AttentionMechanism(s) were
+        passed to the constructor.
 
         Args:
           seq: A non-empty sequence of items or generator.
@@ -573,7 +584,7 @@ class AttentionWrapper(RNNCellBase[State]):
         if self._output_attention:
             return self._attention_layer_size
         else:
-            return self._cell.output_size
+            return self._cell.hidden_size
 
     @property
     def state_size(self):
@@ -583,7 +594,7 @@ class AttentionWrapper(RNNCellBase[State]):
           An `AttentionWrapperState` tuple containing shapes used by this object.
         """
         return AttentionWrapperState(
-            cell_state=self._cell.state_size,
+            cell_state=self._cell.hidden_size,
             time=torch.Size([]),
             attention=self._attention_layer_size,
             alignments=self._item_or_tuple(
@@ -614,7 +625,31 @@ class AttentionWrapper(RNNCellBase[State]):
             `batch_size` does not match the output size of the encoder passed
             to the wrapper object at initialization time.
         """
-        raise NotImplementedError
+        cell_state = super().zero_state(batch_size)
+        error_message = (
+                "When calling zero_state of AttentionWrapper: Non-matching "
+                "batch sizes between the memory (encoder output) and the "
+                "requested batch size.")
+        self._batch_size_checks(batch_size, error_message)
+        initial_alignments = [
+            attention_mechanism.initial_alignments(batch_size, dtype)
+            for attention_mechanism in self._attention_mechanisms]
+
+        if self._alignment_history:
+            alignment_history = [[] for _ in initial_alignments]
+        else:
+            alignment_history = None
+
+        return AttentionWrapperState(
+            cell_state=cell_state,
+            time=torch.tensor(0),
+            attention=torch.zeros(batch_size, self._attention_layer_size,
+                                  dtype=dtype),
+            alignments=self._item_or_tuple(initial_alignments),
+            attention_state=self._item_or_tuple(
+              attention_mechanism.initial_state(batch_size, dtype)
+              for attention_mechanism in self._attention_mechanisms),
+            alignment_history=alignment_history)
 
     def forward(self, inputs, state):
         """Perform a step of attention-wrapped RNN.
@@ -634,9 +669,9 @@ class AttentionWrapper(RNNCellBase[State]):
 
         Args:
           inputs: (Possibly nested tuple of) Tensor, the input at this time
-           step.
+            step.
           state: An instance of `AttentionWrapperState` containing tensors from
-           the previous time step.
+            the previous time step.
 
         Returns:
           A tuple `(attention_or_cell_output, next_state)`, where:
@@ -657,7 +692,20 @@ class AttentionWrapper(RNNCellBase[State]):
         # previous attention value.
         cell_inputs = self._cell_input_fn(inputs, state.attention)
         cell_state = state.cell_state
-        cell_output, next_cell_state = self._cell(cell_inputs, cell_state)
+
+        if isinstance(self._cell, torch.nn.modules.rnn.LSTMCell):
+            cell_output, next_cell_state = self._cell(cell_inputs, cell_state)
+            next_cell_state = (cell_output, next_cell_state)
+        else:
+            cell_output = self._cell(cell_inputs, cell_state)
+            next_cell_state = cell_output
+
+        cell_batch_size = cell_output.shape[0]
+        error_message = (
+                "When applying AttentionWrapper: Non-matching batch sizes "
+                "between the memory (encoder output) and the query "
+                "(decoder output).")
+        self._batch_size_checks(cell_batch_size, error_message)
 
         if self._is_multi:
             previous_attention_state = state.attention_state
@@ -671,27 +719,12 @@ class AttentionWrapper(RNNCellBase[State]):
         all_attention_states = []
         maybe_all_histories = []
         for i, attention_mechanism in enumerate(self._attention_mechanisms):
+            attention, alignments, next_attention_state = compute_attention(
+                attention_mechanism, cell_output, previous_attention_state[i],
+                self._attention_layers[i] if self._attention_layers else None)
 
-            alignments, next_attention_state = attention_mechanism(
-                cell_output, state=previous_attention_state[i])
-            expanded_alignments = torch.unsqueeze(alignments, dim=1)
-            context = torch.matmul(expanded_alignments,
-                                   attention_mechanism.values)
-            context = torch.squeeze(context, dim=1)
-
-            if self._attention_layers is not None:
-                attention_input = torch.cat((cell_output, context), dim=1)
-                if len(self._attention_layers_) < len(self._attention_layers):
-                    args = [attention_input.shape[-1]] + \
-                           self._attention_layers[i].get("config")
-                    attention = self._attention_layers[i].get("name")(*args)
-                    self._attention_layers_.append(attention)
-                attention = self._attention_layers_[i](attention_input)
-            else:
-                attention = context
-
-            alignment_history = previous_alignment_history[i].write(
-                state.time, alignments) if self._alignment_history else ()
+            if self._alignment_history:
+                alignment_history = previous_alignment_history[i]+[alignments]
 
             all_attention_states.append(next_attention_state)
             all_alignments.append(alignments)

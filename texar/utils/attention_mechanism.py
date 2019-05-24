@@ -18,7 +18,7 @@ Various helper classes and utilities for cell wrappers.
 # pylint: disable=too-many-arguments, too-many-instance-attributes
 # pylint: disable=missing-docstring  # does not support generic classes
 
-from typing import NamedTuple, Optional, Tuple, Any
+from typing import NamedTuple, Union, Optional, List
 
 import numpy as np
 import functools
@@ -28,7 +28,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from texar.utils.utils import map_structure, sequence_mask
+from texar.utils.utils import sequence_mask
+from texar.utils.types import MaybeTuple
 
 __all__ = [
     "AttentionMechanism",
@@ -37,6 +38,7 @@ __all__ = [
     "BahdanauAttention",
     "hardmax",
     "safe_cumprod",
+    "compute_attention",
     "monotonic_attention",
     "BahdanauMonotonicAttention",
     "LuongMonotonicAttention",
@@ -915,8 +917,8 @@ def hardmax(logits):
     return F.one_hot(torch.argmax(logits, -1), depth)
 
 
-def _compute_attention(attention_mechanism, cell_output, attention_state,
-                       attention_layer):
+def compute_attention(attention_mechanism, cell_output, attention_state,
+                      attention_layer):
     """Computes the attention and alignments for a given attention_mechanism."""
     alignments, next_attention_state = attention_mechanism(
         cell_output, state=attention_state)
@@ -936,13 +938,7 @@ def _compute_attention(attention_mechanism, cell_output, attention_state,
     context = torch.squeeze(context, dim=1)
 
     if attention_layer is not None:
-        attention_input = torch.cat((cell_output, context), dim=1)
-        _attention_layer = attention_layer.get("layer_name")
-        in_features = attention_input.shape[-1]
-        attention = _attention_layer(in_features,
-                                     attention_layer.get("out_features"),
-                                     attention_layer.get("bias"))
-        attention = attention(attention_input)
+        attention = attention_layer(torch.cat((cell_output, context), dim=1))
     else:
         attention = context
 
@@ -969,10 +965,10 @@ class AttentionWrapperState(NamedTuple):
     """
     cell_state: torch.Tensor
     attention: torch.Tensor
-    time: int
-    alignments: torch.Tensor
-    alignment_history: torch.Tensor
-    attention_state: torch.Tensor
+    time: torch.Tensor
+    alignments: MaybeTuple[torch.Tensor]
+    alignment_history: Optional[MaybeTuple[List[torch.Tensor]]]
+    attention_state: MaybeTuple[torch.Tensor]
 
     def clone(self, **kwargs):
         """Clone this object, overriding components provided by kwargs.
@@ -1006,9 +1002,7 @@ class AttentionWrapperState(NamedTuple):
                         "expected to be same as the one to clone. "
                         "self.shape: {}, input.shape: {}".fotmat
                         (old.shape, new.shape))
-                return new
             return new
 
         return with_same_shape(
-            self,
-            super(AttentionWrapperState, self)._replace(**kwargs))
+            self, super(AttentionWrapperState, self)._replace(**kwargs))
