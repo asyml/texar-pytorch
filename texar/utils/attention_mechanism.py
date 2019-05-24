@@ -54,21 +54,18 @@ class AttentionMechanism(object):
         raise NotImplementedError
 
 
-def _prepare_memory(memory,
-                    memory_sequence_length):
+def _prepare_memory(memory, memory_sequence_length):
     """Convert to tensor and possibly mask `memory`.
+
     Args:
       memory: `Tensor`, shaped `[batch_size, max_time, ...]`.
       memory_sequence_length: `int32` `Tensor`, shaped `[batch_size]`.
 
     Returns:
-      A (possibly masked), checked, new `memory`.
-
-    Raises:
-      ValueError: If `check_inner_dims_defined` is `True` and not
-        `memory.shape[2:].is_fully_defined()`.
+      A (possibly masked), new `memory`.
     """
-    if memory_sequence_length is not None:
+    if memory_sequence_length is not None and \
+            not isinstance(memory_sequence_length, torch.Tensor):
         memory_sequence_length = torch.tensor(memory_sequence_length)
 
     if memory_sequence_length is None:
@@ -82,7 +79,7 @@ def _prepare_memory(memory,
     def _maybe_mask(m, seq_len_mask):
         """Mask the memory based on the memory mask."""
         rank = m.dim()
-        extra_ones = torch.ones(rank-2, dtype=torch.int32)
+        extra_ones = torch.ones(rank - 2, dtype=torch.int32)
         m_batch_size = m.shape[0]
 
         if memory_sequence_length is not None:
@@ -99,9 +96,7 @@ def _prepare_memory(memory,
     return _maybe_mask(memory, seq_len_mask)
 
 
-def _maybe_mask_score(score,
-                      memory_sequence_length,
-                      score_mask_value):
+def _maybe_mask_score(score, memory_sequence_length, score_mask_value):
     """Mask the attention score based on the masks."""
     if memory_sequence_length is None:
         return score
@@ -113,7 +108,7 @@ def _maybe_mask_score(score,
                 "than zero.")
 
     score_mask = sequence_mask(memory_sequence_length,
-                                max_len=score.shape[1])
+                               max_len=score.shape[1])
     score_mask_values = score_mask_value * torch.ones_like(score)
     return torch.where(score_mask, score, score_mask_values)
 
@@ -136,10 +131,10 @@ class _BaseAttentionMechanism(AttentionMechanism):
         """Construct base AttentionMechanism class.
 
         Args:
-          query_layer: Callable.  Instance of `tf.compat.v1.layers.Layer`.  The
+          query_layer: Callable. Instance of `tf.compat.v1.layers.Layer`. The
             layer's depth must match the depth of `memory_layer`.  If
             `query_layer` is not provided, the shape of `query` must match that
-            of `memory_layer`.  # TODO: Change in the future
+            of `memory_layer`.
           memory: The memory to query; usually the output of an RNN encoder.
             This tensor should be shaped `[batch_size, max_time, ...]`.
           probability_fn: A `callable`.  Converts the score and previous
@@ -151,13 +146,21 @@ class _BaseAttentionMechanism(AttentionMechanism):
           memory_layer: Instance of `tf.compat.v1.layers.Layer` (may be None).
             The layer's depth must match the depth of `query_layer`. If
             `memory_layer` is not provided, the shape of `memory` must match
-            that of `query_layer`.  # TODO: Change in the future
+            that of `query_layer`.
           score_mask_value: (optional): The mask value for score before passing
             into `probability_fn`. The default is -inf. Only used if
             `memory_sequence_length` is not None.
         """
-        self._query_layer = None # TODO: might be corrected
-        self._query_layer_ = query_layer
+        if (query_layer is not None and
+                not isinstance(query_layer, torch.nn.modules.linear.Linear)):
+            raise TypeError("query_layer is not a Linear Layer: %s"
+                            % type(query_layer).__name__)
+        if (memory_layer is not None and
+                not isinstance(memory_layer, torch.nn.modules.linear.Linear)):
+            raise TypeError("memory_layer is not a Linear Layer: %s"
+                            % type(memory_layer).__name__)
+        self._query_layer = query_layer
+        self._memory_layer = memory_layer
 
         if not callable(probability_fn):
             raise TypeError("probability_fn must be callable, saw type: %s" %
@@ -166,22 +169,14 @@ class _BaseAttentionMechanism(AttentionMechanism):
             score_mask_value = torch.tensor(-np.inf)
         self._probability_fn = lambda score, prev: (
             probability_fn(
-                _maybe_mask_score(
-                    score,
-                    memory_sequence_length=memory_sequence_length,
-                    score_mask_value=score_mask_value), prev))
-        self._values = _prepare_memory(
-            memory,
-            memory_sequence_length=memory_sequence_length)
-
-        args = [self._values.shape[-1]] + self.memory_layer.get("config")
-        self._memory_layer = memory_layer.get("name")(*args)
-
+                _maybe_mask_score(score, memory_sequence_length,
+                                  score_mask_value), prev))
+        self._values = _prepare_memory(memory, memory_sequence_length)
         self._keys = (
             self.memory_layer(self._values) if self.memory_layer
             else self._values)
 
-        self._batch_size = (self._keys.shape[0])
+        self._batch_size = self._keys.shape[0]
         self._alignments_size = self._keys.shape[1]
 
     @property
@@ -306,6 +301,7 @@ def _luong_score(query, keys, scale):
     score = torch.squeeze(score, 1)
 
     if scale:
+        # Scalar used in weight scaling
         g = Variable(torch.tensor(1.0), requires_grad=True)
         score = g * score
     return score
@@ -361,8 +357,7 @@ class LuongAttention(_BaseAttentionMechanism):
         wrapped_probability_fn = lambda score, _: probability_fn(score)
         super(LuongAttention, self).__init__(
             query_layer=None,
-            memory_layer={"name": nn.Linear,
-                          "config": [num_units, False]},
+            memory_layer=nn.Linear(memory.shape[-1], num_units, False),
             memory=memory,
             probability_fn=wrapped_probability_fn,
             memory_sequence_length=memory_sequence_length,
@@ -373,17 +368,17 @@ class LuongAttention(_BaseAttentionMechanism):
     def __call__(self, query, state):
         """Score the query based on the keys and values.
 
-            Args:
-              query: Tensor of dtype matching `self.values` and shape
-              `[batch_size, query_depth]`.
-              state: Tensor of dtype matching `self.values` and shape
-              `[batch_size, alignments_size]` (`alignments_size` is memory's
-              `max_time`).
+        Args:
+          query: Tensor of dtype matching `self.values` and shape
+            `[batch_size, query_depth]`.
+          state: Tensor of dtype matching `self.values` and shape
+            `[batch_size, alignments_size]` (`alignments_size` is memory's
+            `max_time`).
 
-            Returns:
-              alignments: Tensor of dtype matching `self.values` and shape
-                `[batch_size, alignments_size]` (`alignments_size` is memory's
-                `max_time`).
+        Returns:
+          alignments: Tensor of dtype matching `self.values` and shape
+            `[batch_size, alignments_size]` (`alignments_size` is memory's
+            `max_time`).
         """
         score = _luong_score(query, self._keys, self._scale)
         alignments = self._probability_fn(score, state)
@@ -391,9 +386,7 @@ class LuongAttention(_BaseAttentionMechanism):
         return alignments, next_state
 
 
-def _bahdanau_score(processed_query,
-                    keys,
-                    normalize):
+def _bahdanau_score(processed_query, keys, normalize):
     """Implements Bahdanau-style (additive) scoring function.
 
     This attention has two forms.  The first is Bhandanau attention,
@@ -411,10 +404,11 @@ def _bahdanau_score(processed_query,
      Training of Deep Neural Networks."
     https://arxiv.org/abs/1602.07868
 
-    To enable the second form, set please pass in attention_g and attention_b.
+    To enable the second form, set `normalize=True`.
 
     Args:
-      processed_query: Tensor, shape `[batch_size, num_units]` to compare to keys.
+      processed_query: Tensor, shape `[batch_size, num_units]` to compare
+        to keys.
       keys: Processed memory, shape `[batch_size, max_time, num_units]`.
       normalize: Whether to normalize the score function.
 
@@ -426,7 +420,11 @@ def _bahdanau_score(processed_query,
     num_units = keys.shape[2]
     # Reshape from [batch_size, ...] to [batch_size, 1, ...] for broadcasting.
     processed_query = torch.unsqueeze(processed_query, 1)
-    v = torch.empty(size=[num_units], dtype=dtype)  # TODO: might be changed
+
+    limit = np.sqrt(3./num_units)
+    v = 2*limit*torch.rand(num_units, dtype=dtype) - limit
+    v = Variable(v, requires_grad=True)
+
     if normalize:
         # Scalar used in weight normalization
         g = Variable(torch.sqrt(torch.tensor(1. / num_units)),
@@ -475,28 +473,28 @@ class BahdanauAttention(_BaseAttentionMechanism):
 
             Args:
               num_units: The depth of the query mechanism.
-              memory: The memory to query; usually the output of an RNN encoder.  This
-                tensor should be shaped `[batch_size, max_time, ...]`.
-              memory_sequence_length: (optional) Sequence lengths for the batch entries
-                in memory.  If provided, the memory tensor rows are masked with zeros
-                for values past the respective sequence lengths.
+              memory: The memory to query; usually the output of an RNN encoder.
+                This tensor should be shaped `[batch_size, max_time, ...]`.
+              memory_sequence_length: (optional) Sequence lengths for the batch
+                entries in memory.  If provided, the memory tensor rows are
+                masked with zeros for values past the respective sequence
+                lengths.
               normalize: Python boolean.  Whether to normalize the energy term.
               probability_fn: (optional) A `callable`.  Converts the score to
-                probabilities.  The default is `tf.nn.softmax`. Other options include
-                `tf.contrib.seq2seq.hardmax` and `tf.contrib.sparsemax.sparsemax`.
-                Its signature should be: `probabilities = probability_fn(score)`.
-              score_mask_value: (optional): The mask value for score before passing into
-                `probability_fn`. The default is -inf. Only used if
+                probabilities.  The default is `tf.nn.softmax`. Other options
+                include `tf.contrib.seq2seq.hardmax` and
+                `tf.contrib.sparsemax.sparsemax`. Its signature should be:
+                `probabilities = probability_fn(score)`.
+              score_mask_value: (optional): The mask value for score before
+                passing into `probability_fn`. The default is -inf. Only used if
                 `memory_sequence_length` is not None.
         """
         if probability_fn is None:
             probability_fn = F.softmax
         wrapped_probability_fn = lambda score, _: probability_fn(score)
         super(BahdanauAttention, self).__init__(
-            query_layer={"name": nn.Linear,
-                         "config": [num_units, False]},
-            memory_layer={"name": nn.Linear,
-                          "config": [num_units, False]},
+            query_layer=None,
+            memory_layer=nn.Linear(memory.shape[-1], num_units, False),
             memory=memory,
             probability_fn=wrapped_probability_fn,
             memory_sequence_length=memory_sequence_length,
@@ -519,9 +517,9 @@ class BahdanauAttention(_BaseAttentionMechanism):
                 `[batch_size, alignments_size]` (`alignments_size` is memory's
                 `max_time`).
         """
-        if self.query_layer is None and self._query_layer_ is not None:
-            args = [query.shape[-1]] + self._query_layer_.get("config")
-            self._query_layer = self._query_layer_.get("name")(*args)
+        if self.query_layer is None:
+            self._query_layer = nn.Linear(query.shape[-1],
+                                          self._keys.shape[-1], False)
 
         processed_query = self.query_layer(query) if self.query_layer else query
         score = _bahdanau_score(processed_query, self._keys, self._normalize)
@@ -543,6 +541,7 @@ def safe_cumprod(x, *args, **kwargs):
         x: Tensor to take the cumulative product of.
         *args: Passed on to cumsum; these are identical to those in cumprod.
         **kwargs: Passed on to cumsum; these are identical to those in cumprod.
+
       Returns:
         Cumulative product of x.
     """
