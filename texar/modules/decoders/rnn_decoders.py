@@ -333,13 +333,16 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                  memory,
                  memory_sequence_length=None,
                  cell=None,
-                 cell_dropout_mode=None,
                  vocab_size=None,
                  output_layer=None,
                  # attention_layer=None, # TODO(zhiting): only valid for tf>=1.0
                  cell_input_fn=None,
                  hparams=None):
-        super().__init__()
+
+        super().__init__(cell=cell,
+                         vocab_size=vocab_size,
+                         output_layer=output_layer,
+                         hparams=hparams)
 
         attn_hparams = self._hparams['attention']
         attn_kwargs = attn_hparams['kwargs'].todict()
@@ -500,32 +503,25 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         }
         return hparams
 
+    def step(self, helper, time, inputs, state):
+        wrapper_outputs, wrapper_state = self._cell(inputs, state)
+        # Essentisally the same as in BasicRNNDecoder.step()
+        logits = self._output_layer(wrapper_outputs)
+        sample_ids = helper.sample(
+            time=time, outputs=logits, state=wrapper_state)
+        (finished, next_inputs, next_state) = helper.next_inputs(
+            time=time,
+            outputs=logits,
+            state=wrapper_state,
+            sample_ids=sample_ids)
 
+        attention_scores = wrapper_state.alignments
+        attention_context = wrapper_state.attention
+        outputs = AttentionRNNDecoderOutput(
+            logits, sample_ids, wrapper_outputs,
+            attention_scores, attention_context)
 
-
-
-    def finalize(self, outputs, final_state, sequence_lengths):
-        return outputs, final_state
-
-    def _alignments_size(self):
-        # Reimplementation of the alignments_size of each of
-        # AttentionWrapper.attention_mechanisms. The original implementation
-        # of `_BaseAttentionMechanism._alignments_size`:
-        #
-        #    self._alignments_size = (self._keys.shape[1].value or
-        #                       array_ops.shape(self._keys)[1])
-        #
-        # can be `None` when the seq length of encoder outputs are priori
-        # unknown.
-        alignments_size = []
-        for am in self._cell._attention_mechanisms:
-            az = am._keys.shape[1]
-            alignments_size.append(az)
-        return self._cell._item_or_tuple(alignments_size)
-
-
-
-
+        return outputs, next_state, next_inputs, finished
 
     def wrapper_zero_state(self, batch_size, dtype):
         """Returns zero state of the attention-wrapped cell.
