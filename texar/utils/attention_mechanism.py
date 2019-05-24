@@ -591,8 +591,12 @@ def monotonic_attention(p_choose_i, previous_attention, mode):
         ValueError: mode is not one of 'recursive', 'parallel', 'hard'.
     """
     # Force things to be tensors
-    p_choose_i = torch.tensor(p_choose_i)
-    previous_attention = torch.tensor(previous_attention)
+    if not isinstance(p_choose_i, torch.Tensor):
+        p_choose_i = torch.tensor(p_choose_i)
+
+    if not isinstance(previous_attention, torch.Tensor):
+        previous_attention = torch.tensor(previous_attention)
+
     if mode == "recursive":
         # Use .shape[0] when it's not None, or fall back on symbolic shape
         batch_size = p_choose_i.shape[0]
@@ -610,6 +614,7 @@ def monotonic_attention(p_choose_i, previous_attention, mode):
         x_tmp = f(torch.zeros((batch_size,)), torch.transpose(
             shifted_1mp_choose_i, 0, 1))
         x_tmp = f(x_tmp, torch.transpose(previous_attention, 0, 1))
+
         attention = p_choose_i * torch.transpose(x_tmp, 0, 1)
     elif mode == "parallel":
         batch_size = p_choose_i.shape[0]
@@ -622,7 +627,7 @@ def monotonic_attention(p_choose_i, previous_attention, mode):
             dim=1)
     elif mode == "hard":
         # Remove any probabilities before the index chosen last time step
-        p_choose_i = torch.cumsum(previous_attention, dim=1)
+        p_choose_i *= torch.cumsum(previous_attention, dim=1)
         # Now, use exclusive cumprod to remove probabilities after the first
         # chosen index, like so:
         # p_choose_i = [0, 0, 0, 1, 1, 0, 1, 1]
@@ -713,13 +718,14 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
     """Monotonic attention mechanism with Bahadanau-style energy function.
 
       This type of attention enforces a monotonic constraint on the attention
-      distributions; that is once the model attends to a given point in the memory
-      it can't attend to any prior points at subsequence output timesteps.  It
-      achieves this by using the _monotonic_probability_fn instead of softmax to
-      construct its attention distributions.  Since the attention scores are passed
-      through a sigmoid, a learnable scalar bias parameter is applied after the
-      score function and before the sigmoid.  Otherwise, it is equivalent to
-      BahdanauAttention.  This approach is proposed in
+      distributions; that is once the model attends to a given point in the
+      memory it can't attend to any prior points at subsequence output
+      timesteps.  It achieves this by using the _monotonic_probability_fn
+      instead of softmax to construct its attention distributions.  Since the
+      attention scores are passed through a sigmoid, a learnable scalar bias
+      parameter is applied after the score function and before the sigmoid.
+      Otherwise, it is equivalent to BahdanauAttention.  This approach is
+      proposed in
 
       Colin Raffel, Minh-Thang Luong, Peter J. Liu, Ron J. Weiss, Douglas Eck,
       "Online and Linear-Time Attention by Enforcing Monotonic Alignments."
@@ -758,19 +764,20 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 'recursive', 'parallel', or 'hard'.  See the docstring for
                 `tf.contrib.seq2seq.monotonic_attention` for more information.
         """
+        # Set up the monotonic probability fn with supplied parameters
         wrapped_probability_fn = functools.partial(
             _monotonic_probability_fn, sigmoid_noise=sigmoid_noise, mode=mode)
         super(BahdanauMonotonicAttention, self).__init__(
-            query_layer={"name": nn.Linear,
-                         "config": [num_units, False]},
-            memory_layer={"name": nn.Linear,
-                          "config": [num_units, False]},
+            query_layer=None,
+            memory_layer=nn.Linear(memory.shape[-1], num_units, False),
             memory=memory,
             probability_fn=wrapped_probability_fn,
             memory_sequence_length=memory_sequence_length,
             score_mask_value=score_mask_value)
         self._num_units = num_units
         self._normalize = normalize
+        if not isinstance(score_bias_init, torch.Tensor):
+            score_bias_init = torch.tensor(score_bias_init)
         self._score_bias_init = score_bias_init
 
     def __call__(self, query, state):
@@ -788,13 +795,13 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 `[batch_size, alignments_size]` (`alignments_size` is memory's
                 `max_time`).
         """
-        if self.query_layer is None and self._query_layer_ is not None:
-            args = [query.shape[-1]] + self._query_layer_.get("config")
-            self._query_layer = self._query_layer_.get("name")(*args)
+        if self.query_layer is None:
+            self._query_layer = nn.Linear(query.shape[-1],
+                                          self._keys.shape[-1], False)
 
         processed_query = self.query_layer(query) if self.query_layer else query
         score = _bahdanau_score(processed_query, self._keys, self._normalize)
-        score_bias = Variable(torch.tensor(self._score_bias_init),
+        score_bias = Variable(self._score_bias_init,
                               requires_grad=True,
                               dtype=processed_query.dtype)
         score += score_bias
@@ -807,11 +814,11 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
     """Monotonic attention mechanism with Luong-style energy function.
 
       This type of attention enforces a monotonic constraint on the attention
-      distributions; that is once the model attends to a given point in the memory
-      it can't attend to any prior points at subsequence output timesteps.  It
-      achieves this by using the _monotonic_probability_fn instead of softmax to
-      construct its attention distributions.  Otherwise, it is equivalent to
-      LuongAttention.  This approach is proposed in
+      distributions; that is once the model attends to a given point in the
+      memory it can't attend to any prior points at subsequence output
+      timesteps.  It achieves this by using the _monotonic_probability_fn
+      instead of softmax to construct its attention distributions.  Otherwise,
+      it is equivalent to LuongAttention.  This approach is proposed in
 
       Colin Raffel, Minh-Thang Luong, Peter J. Liu, Ron J. Weiss, Douglas Eck,
       "Online and Linear-Time Attention by Enforcing Monotonic Alignments."
@@ -850,18 +857,20 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 'recursive', 'parallel', or 'hard'.  See the docstring for
                 `tf.contrib.seq2seq.monotonic_attention` for more information.
         """
+        # Set up the monotonic probability fn with supplied parameters
         wrapped_probability_fn = functools.partial(
             _monotonic_probability_fn, sigmoid_noise=sigmoid_noise, mode=mode)
         super(LuongMonotonicAttention, self).__init__(
             query_layer=None,
-            memory_layer={"name": nn.Linear,
-                          "config": [num_units, False]},
+            memory_layer=nn.Linear(memory.shape[-1], num_units, False),
             memory=memory,
             probability_fn=wrapped_probability_fn,
             memory_sequence_length=memory_sequence_length,
             score_mask_value=score_mask_value)
         self._num_units = num_units
         self._scale = scale
+        if not isinstance(score_bias_init, torch.Tensor):
+            score_bias_init = torch.tensor(score_bias_init)
         self._score_bias_init = score_bias_init
 
     def __call__(self, query, state):
@@ -880,7 +889,7 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 `max_time`).
         """
         score = _luong_score(query, self._keys, self._scale)
-        score_bias = Variable(torch.tesnor(self._score_bias_init),
+        score_bias = Variable(self._score_bias_init,
                               requires_grad=True,
                               dtype=query.dtype)
         score += score_bias
@@ -900,6 +909,8 @@ def hardmax(logits):
     Returns:
       A batched one-hot tensor.
     """
+    if not isinstance(logits, torch.Tensor):
+        logits = torch.tensor(logits)
     depth = logits.shape[-1]
     return F.one_hot(torch.argmax(logits, -1), depth)
 
