@@ -523,6 +523,15 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
 
         return outputs, next_state, next_inputs, finished
 
+    @property
+    def output_size(self):
+        return AttentionRNNDecoderOutput(
+            logits=self._rnn_output_size(),
+            sample_id=self._helper.sample_ids_shape,
+            cell_output=self._cell.output_size,
+            attention_scores=self._alignments_size(),
+            attention_context=self._cell.state_size.attention)
+
     def wrapper_zero_state(self, batch_size, dtype):
         """Returns zero state of the attention-wrapped cell.
         Equivalent to :attr:`decoder.cell.zero_state`.
