@@ -27,6 +27,10 @@ from texar.modules.decoders.decoder_helpers import Helper
 from texar.modules.decoders.rnn_decoder_base import RNNDecoderBase
 from texar.utils.types import MaybeTuple
 
+from texar.utils.utils import get_function, check_or_get_instance
+from texar.utils.attention_mechanism import AttentionMechanism
+from texar.core.cell_wrappers import AttentionWrapper
+
 __all__ = [
     'BasicRNNDecoderOutput',
     'AttentionRNNDecoderOutput',
@@ -337,9 +341,39 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                  hparams=None):
         super().__init__()
 
+        attn_hparams = self._hparams['attention']
+        attn_kwargs = attn_hparams['kwargs'].todict()
 
+        # Parse the 'probability_fn' argument
+        if 'probability_fn' in attn_kwargs:
+            prob_fn = attn_kwargs['probability_fn']
+            if prob_fn is not None and not callable(prob_fn):
+                prob_fn = get_function(prob_fn, ['torch.nn.functional'])
+            attn_kwargs['probability_fn'] = prob_fn
 
+        attn_kwargs.update({
+            "memory_sequence_length": memory_sequence_length,
+            "memory": memory})
+        self._attn_kwargs = attn_kwargs
+        attn_modules = ['texar.utils']
+        attention_mechanism = check_or_get_instance(
+            attn_hparams["type"], attn_kwargs, attn_modules,
+            classtype=AttentionMechanism)
 
+        self._attn_cell_kwargs = {
+            "attention_layer_size": attn_hparams["attention_layer_size"],
+            "alignment_history": attn_hparams["alignment_history"],
+            "output_attention": attn_hparams["output_attention"],
+        }
+        self._cell_input_fn = cell_input_fn
+
+        attn_cell = AttentionWrapper(
+            self._cell,
+            attention_mechanism,
+            cell_input_fn=self._cell_input_fn,
+            #attention_layer=attention_layer,
+            **self._attn_cell_kwargs)
+        self._cell = attn_cell
 
     @staticmethod
     def default_hparams():
@@ -465,3 +499,43 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
             "output_attention": True,
         }
         return hparams
+
+
+
+
+
+    def finalize(self, outputs, final_state, sequence_lengths):
+        return outputs, final_state
+
+    def _alignments_size(self):
+        # Reimplementation of the alignments_size of each of
+        # AttentionWrapper.attention_mechanisms. The original implementation
+        # of `_BaseAttentionMechanism._alignments_size`:
+        #
+        #    self._alignments_size = (self._keys.shape[1].value or
+        #                       array_ops.shape(self._keys)[1])
+        #
+        # can be `None` when the seq length of encoder outputs are priori
+        # unknown.
+        alignments_size = []
+        for am in self._cell._attention_mechanisms:
+            az = am._keys.shape[1]
+            alignments_size.append(az)
+        return self._cell._item_or_tuple(alignments_size)
+
+
+
+
+
+    def wrapper_zero_state(self, batch_size, dtype):
+        """Returns zero state of the attention-wrapped cell.
+        Equivalent to :attr:`decoder.cell.zero_state`.
+        """
+        return self._cell.zero_state(batch_size=batch_size)
+
+    @property
+    def wrapper_state_size(self):
+        """The state size of the attention-wrapped cell.
+        Equivalent to :attr:`decoder.cell.state_size`.
+        """
+        return self._cell.hidden_size
