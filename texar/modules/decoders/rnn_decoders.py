@@ -376,8 +376,9 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         self._cell_input_fn = cell_input_fn
 
         if attn_hparams["output_attention"] and vocab_size is not None:
-            self._output_layer = nn.Linear(self.attention_mechanism.values.shape[-1],
-                                           vocab_size)
+            self._output_layer = nn.Linear(
+                self.attention_mechanism.values.shape[-1],
+                vocab_size)
 
         attn_cell = AttentionWrapper(
             self._cell,
