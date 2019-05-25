@@ -21,6 +21,7 @@ Various RNN decoders.
 from typing import NamedTuple, Optional, Tuple
 
 import torch
+from torch import nn
 
 from texar.core.cell_wrappers import HiddenState
 from texar.modules.decoders.decoder_helpers import Helper
@@ -333,6 +334,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                  memory,
                  memory_sequence_length=None,
                  cell=None,
+                 input_size=None,
                  vocab_size=None,
                  output_layer=None,
                  # attention_layer=None, # TODO(zhiting): only valid for tf>=1.0
@@ -340,9 +342,12 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                  hparams=None):
 
         super().__init__(cell=cell,
+                         input_size=input_size,
                          vocab_size=vocab_size,
                          output_layer=output_layer,
                          hparams=hparams)
+
+        self.dtype = memory.dtype
 
         attn_hparams = self._hparams['attention']
         attn_kwargs = attn_hparams['kwargs'].todict()
@@ -359,7 +364,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
             "memory": memory})
         self._attn_kwargs = attn_kwargs
         attn_modules = ['texar.utils']
-        attention_mechanism = check_or_get_instance(
+        self.attention_mechanism = check_or_get_instance(
             attn_hparams["type"], attn_kwargs, attn_modules,
             classtype=AttentionMechanism)
 
@@ -370,9 +375,13 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         }
         self._cell_input_fn = cell_input_fn
 
+        if attn_hparams["output_attention"] and vocab_size is not None:
+            self._output_layer = nn.Linear(self.attention_mechanism.values.shape[-1],
+                                           vocab_size)
+
         attn_cell = AttentionWrapper(
             self._cell,
-            attention_mechanism,
+            self.attention_mechanism,
             cell_input_fn=self._cell_input_fn,
             #attention_layer=attention_layer,
             **self._attn_cell_kwargs)
@@ -502,6 +511,20 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
             "output_attention": True,
         }
         return hparams
+
+    def initialize(self, helper, inputs, sequence_length, initial_state):
+        initial_finished, initial_inputs = helper.initialize(
+            inputs, sequence_length)
+
+        if inputs is not None:
+            batch_size = inputs.shape[0]
+        else:
+            batch_size = helper._batch_size
+
+        initial_state = self._cell.zero_state(
+            batch_size=batch_size,
+            dtype=self.dtype)
+        return initial_finished, initial_inputs, initial_state
 
     def step(self, helper, time, inputs, state):
         wrapper_outputs, wrapper_state = self._cell(inputs, state)

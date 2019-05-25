@@ -81,7 +81,7 @@ def _prepare_memory(memory, memory_sequence_length):
     def _maybe_mask(m, seq_len_mask):
         """Mask the memory based on the memory mask."""
         rank = m.dim()
-        extra_ones = torch.ones(rank - 2, dtype=torch.int32)
+        extra_ones = [1] * (rank-2)
         m_batch_size = m.shape[0]
 
         if memory_sequence_length is not None:
@@ -90,7 +90,7 @@ def _prepare_memory(memory, memory_sequence_length):
                                  "batch sizes do not match.")
             seq_len_mask = torch.reshape(
                 seq_len_mask,
-                torch.cat((seq_len_mask.shape, extra_ones), 0))
+                tuple(list(seq_len_mask.shape) + extra_ones))
             return m * seq_len_mask
         else:
             return m

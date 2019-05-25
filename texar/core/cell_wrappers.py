@@ -205,7 +205,7 @@ class LSTMCell(BuiltinCellWrapper[LSTMState]):
         r"""Returns the zero state for LSTMs as (h, c)."""
         state = self._param.new_zeros(
             batch_size, self.hidden_size, requires_grad=False)
-        return (state, state)
+        return state, state
 
     def forward(self,  # type: ignore
                 input: torch.Tensor, state: Optional[LSTMState] = None) \
@@ -591,7 +591,8 @@ class AttentionWrapper(RNNCellBase[State]):
         """The `state_size` property of `AttentionWrapper`.
 
         Returns:
-          An `AttentionWrapperState` tuple containing shapes used by this object.
+          An `AttentionWrapperState` tuple containing shapes used by this
+          object.
         """
         return AttentionWrapperState(
             cell_state=self._cell.hidden_size,
@@ -693,9 +694,8 @@ class AttentionWrapper(RNNCellBase[State]):
         cell_inputs = self._cell_input_fn(inputs, state.attention)
         cell_state = state.cell_state
 
-        if isinstance(self._cell, torch.nn.modules.rnn.LSTMCell):
+        if isinstance(self._cell, LSTMCell):
             cell_output, next_cell_state = self._cell(cell_inputs, cell_state)
-            next_cell_state = (cell_output, next_cell_state)
         else:
             cell_output = self._cell(cell_inputs, cell_state)
             next_cell_state = cell_output
@@ -725,6 +725,8 @@ class AttentionWrapper(RNNCellBase[State]):
 
             if self._alignment_history:
                 alignment_history = previous_alignment_history[i]+[alignments]
+            else:
+                alignment_history = None
 
             all_attention_states.append(next_attention_state)
             all_alignments.append(alignments)
