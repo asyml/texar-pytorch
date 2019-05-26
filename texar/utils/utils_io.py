@@ -1,4 +1,5 @@
-# Copyright 2019 The Texar Authors. All Rights Reserved.
+# -*- coding: utf-8 -*-
+# Copyright 2018 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of texar library.
+Utility functions related to input/output.
 """
+import os
 
-# pylint: disable=wildcard-import
 
-from texar import core
-from texar import data
-from texar import utils
-from texar import losses
-from texar import evals
-from texar.hyperparams import *
-from texar.module_base import *
+def maybe_create_dir(dirname):
+    """Creates directory if doesn't exist
+    """
+    if not os.path.isdir(dirname):
+        os.makedirs(dirname)
+        return True
+    return False

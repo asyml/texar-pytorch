@@ -12,15 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of texar library.
+Modules of texar library data inputs.
 """
 
-# pylint: disable=wildcard-import
-
-from texar import core
-from texar import data
-from texar import utils
-from texar import losses
-from texar import evals
-from texar.hyperparams import *
-from texar.module_base import *
+from texar.data.data.data_base import *
+from texar.data.data.data_iterators import *
+from texar.data.data.mono_text_data import *
