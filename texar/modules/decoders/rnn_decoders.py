@@ -400,7 +400,9 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
             cell_input_fn=self._cell_input_fn,
             #attention_layer=attention_layer,
             **self._attn_cell_kwargs)
+
         self._cell = attn_cell
+        self._cell: AttentionWrapper
 
     @staticmethod
     def default_hparams():
@@ -542,7 +544,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         else:
             batch_size = helper._batch_size  # type: ignore
 
-        initial_state = self._cell.zero_state(batch_size=batch_size)
+        initial_state = self._cell.zero_state(batch_size=batch_size,
+                                              dtype=self.dtype)
         return initial_finished, initial_inputs, initial_state
 
     def step(self,  # type: ignore
@@ -582,11 +585,12 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
 
     def wrapper_zero_state(self,
                            batch_size: int,
-                           dtype: torch.dtype) -> State:
+                           dtype: torch.dtype) -> AttentionWrapperState:
         """Returns zero state of the attention-wrapped cell.
         Equivalent to :attr:`decoder.cell.zero_state`.
         """
-        return self._cell.zero_state(batch_size=batch_size)
+        return self._cell.zero_state(batch_size=batch_size,
+                                     dtype=dtype)
 
     @property
     def wrapper_state_size(self) -> int:
