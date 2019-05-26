@@ -18,19 +18,21 @@ Various RNN decoders.
 # pylint: disable=no-name-in-module, too-many-arguments, too-many-locals
 # pylint: disable=not-context-manager, protected-access, invalid-name
 
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional, Tuple, Union, Callable,TypeVar
 
 import torch
 from torch import nn
 
+from texar import HParams
+from texar.core import RNNCellBase
 from texar.core.cell_wrappers import HiddenState
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.modules.decoders.rnn_decoder_base import RNNDecoderBase
 from texar.utils.types import MaybeTuple
 
 from texar.utils.utils import get_function, check_or_get_instance
-from texar.utils.attention_mechanism import AttentionMechanism
 from texar.core.cell_wrappers import AttentionWrapper
+from texar.utils.attention_mechanism import *
 
 __all__ = [
     'BasicRNNDecoderOutput',
@@ -38,6 +40,13 @@ __all__ = [
     'BasicRNNDecoder',
     'AttentionRNNDecoder'
 ]
+
+State = TypeVar('State')
+
+AttentionMechanismType = Union[LuongAttention,
+                               BahdanauAttention,
+                               LuongMonotonicAttention,
+                               BahdanauMonotonicAttention]
 
 
 class BasicRNNDecoderOutput(NamedTuple):
@@ -331,15 +340,16 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
     """
 
     def __init__(self,
-                 memory,
-                 memory_sequence_length=None,
-                 cell=None,
-                 input_size=None,
-                 vocab_size=None,
-                 output_layer=None,
+                 memory: torch.Tensor,
+                 memory_sequence_length: Optional[torch.Tensor] = None,
+                 cell: Optional[RNNCellBase] = None,
+                 input_size: Optional[int] = None,
+                 vocab_size: Optional[int] = None,
+                 output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
                  # attention_layer=None, # TODO(zhiting): only valid for tf>=1.0
-                 cell_input_fn=None,
-                 hparams=None):
+                 cell_input_fn: Optional[Callable[[torch.Tensor],
+                                         torch.Tensor]] = None,
+                 hparams: Optional[HParams] = None):
 
         super().__init__(cell=cell,
                          input_size=input_size,
@@ -347,6 +357,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                          output_layer=output_layer,
                          hparams=hparams)
 
+        self.dtype: torch.dtype
         self.dtype = memory.dtype
 
         attn_hparams = self._hparams['attention']
@@ -364,6 +375,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
             "memory": memory})
         self._attn_kwargs = attn_kwargs
         attn_modules = ['texar.utils']
+
+        self.attention_mechanism: AttentionMechanismType
         self.attention_mechanism = check_or_get_instance(
             attn_hparams["type"], attn_kwargs, attn_modules,
             classtype=AttentionMechanism)
@@ -375,12 +388,13 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         }
         self._cell_input_fn = cell_input_fn
 
-        if attn_hparams["output_attention"] and vocab_size is not None:
+        if attn_hparams["output_attention"] and vocab_size is not None and \
+                self.attention_mechanism is not None:
             self._output_layer = nn.Linear(
                 self.attention_mechanism.values.shape[-1],
                 vocab_size)
 
-        attn_cell = AttentionWrapper(
+        attn_cell = AttentionWrapper(  # type: ignore
             self._cell,
             self.attention_mechanism,
             cell_input_fn=self._cell_input_fn,
@@ -513,21 +527,31 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         }
         return hparams
 
-    def initialize(self, helper, inputs, sequence_length, initial_state):
+    def initialize(self,  # type: ignore
+                   helper: Helper,
+                   inputs: Optional[torch.Tensor],
+                   sequence_length: Optional[torch.LongTensor],
+                   initial_state: Optional[AttentionWrapperState]) -> \
+            Tuple[torch.ByteTensor, torch.Tensor,
+                  Optional[AttentionWrapperState]]:
         initial_finished, initial_inputs = helper.initialize(
             inputs, sequence_length)
 
         if inputs is not None:
             batch_size = inputs.shape[0]
         else:
-            batch_size = helper._batch_size
+            batch_size = helper._batch_size  # type: ignore
 
-        initial_state = self._cell.zero_state(
-            batch_size=batch_size,
-            dtype=self.dtype)
+        initial_state = self._cell.zero_state(batch_size=batch_size)
         return initial_finished, initial_inputs, initial_state
 
-    def step(self, helper, time, inputs, state):
+    def step(self,  # type: ignore
+             helper: Helper,
+             time: int,
+             inputs: torch.Tensor,
+             state: AttentionWrapperState) -> \
+            Tuple[AttentionRNNDecoderOutput, AttentionWrapperState,
+                  torch.Tensor, torch.ByteTensor]:
         wrapper_outputs, wrapper_state = self._cell(inputs, state)
         # Essentisally the same as in BasicRNNDecoder.step()
         logits = self._output_layer(wrapper_outputs)
@@ -545,7 +569,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
             logits, sample_ids, wrapper_outputs,
             attention_scores, attention_context)
 
-        return outputs, next_state, next_inputs, finished
+        return outputs, next_state, next_inputs, finished  # type: ignore
 
     @property
     def output_size(self):
@@ -556,14 +580,16 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
             attention_scores=self._alignments_size(),
             attention_context=self._cell.state_size.attention)
 
-    def wrapper_zero_state(self, batch_size, dtype):
+    def wrapper_zero_state(self,
+                           batch_size: int,
+                           dtype: torch.dtype) -> State:
         """Returns zero state of the attention-wrapped cell.
         Equivalent to :attr:`decoder.cell.zero_state`.
         """
         return self._cell.zero_state(batch_size=batch_size)
 
     @property
-    def wrapper_state_size(self):
+    def wrapper_state_size(self) -> int:
         """The state size of the attention-wrapped cell.
         Equivalent to :attr:`decoder.cell.state_size`.
         """

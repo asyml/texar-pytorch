@@ -18,7 +18,7 @@ Various helper classes and utilities for cell wrappers.
 # pylint: disable=too-many-arguments, too-many-instance-attributes
 # pylint: disable=missing-docstring  # does not support generic classes
 
-from typing import NamedTuple, Optional, List
+from typing import NamedTuple, Optional, List, Union, Callable, Tuple, TypeVar
 
 import numpy as np
 import functools
@@ -26,7 +26,6 @@ import functools
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 
 from texar.utils.utils import sequence_mask
 from texar.utils.types import MaybeTuple
@@ -44,6 +43,8 @@ __all__ = [
     "LuongMonotonicAttention",
 ]
 
+State = TypeVar('State')
+
 
 class AttentionMechanism(object):
 
@@ -56,7 +57,9 @@ class AttentionMechanism(object):
         raise NotImplementedError
 
 
-def _prepare_memory(memory, memory_sequence_length):
+def _prepare_memory(memory: torch.Tensor,
+                    memory_sequence_length: Optional[torch.LongTensor]) -> \
+        torch.Tensor:
     """Convert to tensor and possibly mask `memory`.
 
     Args:
@@ -78,13 +81,14 @@ def _prepare_memory(memory, memory_sequence_length):
                                      dtype=memory.dtype)
         seq_len_batch_size = memory_sequence_length.shape[0]
 
-    def _maybe_mask(m, seq_len_mask):
+    def _maybe_mask(m: torch.Tensor,
+                    seq_len_mask: Optional[torch.ByteTensor]) -> torch.Tensor:
         """Mask the memory based on the memory mask."""
         rank = m.dim()
         extra_ones = [1] * (rank-2)
         m_batch_size = m.shape[0]
 
-        if memory_sequence_length is not None:
+        if seq_len_mask is not None:
             if seq_len_batch_size != m_batch_size:
                 raise ValueError("memory_sequence_length and memory tensor "
                                  "batch sizes do not match.")
@@ -98,7 +102,9 @@ def _prepare_memory(memory, memory_sequence_length):
     return _maybe_mask(memory, seq_len_mask)
 
 
-def _maybe_mask_score(score, memory_sequence_length, score_mask_value):
+def _maybe_mask_score(score: torch.Tensor,
+                      memory_sequence_length: Optional[torch.LongTensor],
+                      score_mask_value: torch.Tensor) -> torch.Tensor:
     """Mask the attention score based on the masks."""
     if memory_sequence_length is None:
         return score
@@ -124,12 +130,13 @@ class _BaseAttentionMechanism(AttentionMechanism):
     """
 
     def __init__(self,
-                 query_layer,
-                 memory,
-                 probability_fn,
-                 memory_sequence_length=None,
-                 memory_layer=None,
-                 score_mask_value=None):
+                 query_layer: Optional[nn.Module],
+                 memory: torch.Tensor,
+                 probability_fn: Callable[[torch.Tensor,
+                                           torch.Tensor], torch.Tensor],
+                 memory_sequence_length: Optional[torch.LongTensor] = None,
+                 memory_layer: Optional[nn.Module] = None,
+                 score_mask_value: Optional[torch.Tensor] = None):
         """Construct base AttentionMechanism class.
 
         Args:
@@ -174,42 +181,48 @@ class _BaseAttentionMechanism(AttentionMechanism):
                 _maybe_mask_score(score, memory_sequence_length,
                                   score_mask_value), prev))
         self._values = _prepare_memory(memory, memory_sequence_length)
-        self._keys = (
-            self.memory_layer(self._values) if self.memory_layer
-            else self._values)
+
+        self._keys: torch.Tensor
+
+        if self.memory_layer is not None:
+            self._keys = self.memory_layer(self._values)
+        else:
+            self._keys = self._values
 
         self._batch_size = self._keys.shape[0]
         self._alignments_size = self._keys.shape[1]
 
     @property
-    def memory_layer(self):
+    def memory_layer(self) -> Optional[nn.Module]:
         return self._memory_layer
 
     @property
-    def query_layer(self):
+    def query_layer(self) -> Optional[nn.Module]:
         return self._query_layer
 
     @property
-    def values(self):
+    def values(self) -> torch.Tensor:
         return self._values
 
     @property
-    def keys(self):
+    def keys(self) -> torch.Tensor:
         return self._keys
 
     @property
-    def batch_size(self):
+    def batch_size(self) -> int:
         return self._batch_size
 
     @property
-    def alignments_size(self):
+    def alignments_size(self) -> int:
         return self._alignments_size
 
     @property
-    def state_size(self):
+    def state_size(self) -> int:
         return self._alignments_size
 
-    def initial_alignments(self, batch_size, dtype):
+    def initial_alignments(self,
+                           batch_size: int,
+                           dtype: torch.dtype) -> torch.Tensor:
         """Creates the initial alignment values for the `AttentionWrapper`
         class.
 
@@ -230,7 +243,9 @@ class _BaseAttentionMechanism(AttentionMechanism):
         max_time = self._alignments_size
         return torch.zeros(batch_size, max_time, dtype=dtype)
 
-    def initial_state(self, batch_size, dtype):
+    def initial_state(self,
+                      batch_size: int,
+                      dtype: torch.dtype) -> torch.Tensor:
         """Creates the initial state values for the `AttentionWrapper` class.
 
         This is important for AttentionMechanisms that use the previous
@@ -250,7 +265,9 @@ class _BaseAttentionMechanism(AttentionMechanism):
         return self.initial_alignments(batch_size, dtype)
 
 
-def _luong_score(query, keys, scale):
+def _luong_score(query: torch.Tensor,
+                 keys: torch.Tensor,
+                 scale: Optional[bool]) -> torch.Tensor:
     """Implements Luong-style (multiplicative) scoring function.
 
     This attention has two forms.  The first is standard Luong attention,
@@ -284,6 +301,8 @@ def _luong_score(query, keys, scale):
             "Query (%s) has units: %s.  Keys (%s) have units: %s. "
             "Perhaps you need to set num_units to the keys' dimension (%s)?" %
             (query, depth, keys, key_units, key_units))
+
+    dtype: torch.dtype
     dtype = query.dtype
 
     # Reshape from [batch_size, depth] to [batch_size, 1, depth]
@@ -299,12 +318,12 @@ def _luong_score(query, keys, scale):
     # resulting in an output shape of:
     #   [batch_size, 1, max_time].
     # we then squeeze out the center singleton dimension.
-    score = torch.matmul(query, keys.permute(0, 2, 1))
+    score = torch.matmul(query, keys.permute(0, 2, 1))  # type: ignore
     score = torch.squeeze(score, 1)
 
     if scale:
         # Scalar used in weight scaling
-        g = Variable(torch.tensor(1.0), requires_grad=True)
+        g = torch.tensor(1.0, requires_grad=True)
         score = g * score
     return score
 
@@ -327,12 +346,13 @@ class LuongAttention(_BaseAttentionMechanism):
     """
 
     def __init__(self,
-                 num_units,
-                 memory,
-                 memory_sequence_length=None,
-                 scale=False,
-                 probability_fn=None,
-                 score_mask_value=None):
+                 num_units: int,
+                 memory: torch.Tensor,
+                 memory_sequence_length: Optional[torch.Tensor] = None,
+                 scale: Optional[bool] = False,
+                 probability_fn: Optional[Callable[[torch.Tensor],
+                                                   torch.Tensor]] = None,
+                 score_mask_value: Optional[torch.Tensor] = None):
         """Construct the AttentionMechanism mechanism.
 
         Args:
@@ -367,7 +387,9 @@ class LuongAttention(_BaseAttentionMechanism):
         self._num_units = num_units
         self._scale = scale
 
-    def __call__(self, query, state):
+    def __call__(self,
+                 query: torch.Tensor,
+                 state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Score the query based on the keys and values.
 
         Args:
@@ -388,7 +410,9 @@ class LuongAttention(_BaseAttentionMechanism):
         return alignments, next_state
 
 
-def _bahdanau_score(processed_query, keys, normalize):
+def _bahdanau_score(processed_query: torch.Tensor,
+                    keys: torch.Tensor,
+                    normalize: Optional[bool]) -> torch.Tensor:
     """Implements Bahdanau-style (additive) scoring function.
 
     This attention has two forms.  The first is Bhandanau attention,
@@ -417,6 +441,7 @@ def _bahdanau_score(processed_query, keys, normalize):
     Returns:
       A `[batch_size, max_time]` tensor of unnormalized score values.
     """
+    dtype: torch.dtype
     dtype = processed_query.dtype
     # Get the number of hidden units from the trailing dimension of keys
     num_units = keys.shape[2]
@@ -425,15 +450,14 @@ def _bahdanau_score(processed_query, keys, normalize):
 
     limit = np.sqrt(3./num_units)
     v = 2*limit*torch.rand(num_units, dtype=dtype) - limit
-    v = Variable(v, requires_grad=True)
+    v = v.requires_grad_()
 
     if normalize:
         # Scalar used in weight normalization
-        g = Variable(torch.sqrt(torch.tensor(1. / num_units)),
-                     requires_grad=True)
+        g = torch.sqrt(torch.tensor(1. / num_units))
+        g = g.requires_grad_()
         # Bias added prior to the nonlinearity
-        b = Variable(torch.zeros([num_units], dtype=dtype),
-                     requires_grad=True)
+        b = torch.zeros(num_units, dtype=dtype, requires_grad=True)
         # normed_v = g * v / ||v||
         normed_v = g * v * torch.rsqrt(torch.sum(v**2))
         return torch.sum(normed_v * F.tanh(keys + processed_query
@@ -465,12 +489,13 @@ class BahdanauAttention(_BaseAttentionMechanism):
     """
 
     def __init__(self,
-                 num_units,
-                 memory,
-                 memory_sequence_length=None,
-                 normalize=False,
-                 probability_fn=None,
-                 score_mask_value=None):
+                 num_units: int,
+                 memory: torch.Tensor,
+                 memory_sequence_length: Optional[torch.Tensor] = None,
+                 normalize: Optional[bool] = False,
+                 probability_fn: Optional[Callable[[torch.Tensor],
+                                                   torch.Tensor]] = None,
+                 score_mask_value: Optional[torch.Tensor] = None):
         """Construct the Attention mechanism.
 
             Args:
@@ -504,7 +529,9 @@ class BahdanauAttention(_BaseAttentionMechanism):
         self._num_units = num_units
         self._normalize = normalize
 
-    def __call__(self, query, state):
+    def __call__(self,
+                 query: torch.Tensor,
+                 state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Score the query based on the keys and values.
 
             Args:
@@ -550,7 +577,9 @@ def safe_cumprod(x, *args, **kwargs):
     raise NotImplementedError
 
 
-def monotonic_attention(p_choose_i, previous_attention, mode):
+def monotonic_attention(p_choose_i: torch.Tensor,
+                        previous_attention: torch.Tensor,
+                        mode: str) -> torch.Tensor:
     """Compute monotonic attention distribution from choosing probabilities.
 
       Monotonic attention implies that the input sequence is processed in an
@@ -644,7 +673,10 @@ def monotonic_attention(p_choose_i, previous_attention, mode):
     return attention
 
 
-def _monotonic_probability_fn(score, previous_alignments, sigmoid_noise, mode):
+def _monotonic_probability_fn(score: torch.Tensor,
+                              previous_alignments: torch.Tensor,
+                              sigmoid_noise: float,
+                              mode: str) -> torch.Tensor:
     """Attention probability function for monotonic attention.
 
       Takes in unnormalized attention scores, adds pre-sigmoid noise to
@@ -697,7 +729,9 @@ class _BaseMonotonicAttentionMechanism(_BaseAttentionMechanism):
       distributions to have the correct behavior.
     """
 
-    def initial_alignments(self, batch_size, dtype):
+    def initial_alignments(self,
+                           batch_size: int,
+                           dtype: torch.dtype) -> torch.Tensor:
         """Creates the initial alignment values for the monotonic attentions.
 
             Initializes to dirac distributions, i.e. [1, 0, 0, ...memory length
@@ -735,14 +769,14 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
     """
 
     def __init__(self,
-                 num_units,
-                 memory,
-                 memory_sequence_length=None,
-                 normalize=False,
-                 score_mask_value=None,
-                 sigmoid_noise=0.,
-                 score_bias_init=0.,
-                 mode="parallel"):
+                 num_units: int,
+                 memory: torch.Tensor,
+                 memory_sequence_length: Optional[torch.Tensor] = None,
+                 normalize: bool = False,
+                 score_mask_value: Optional[torch.Tensor] = None,
+                 sigmoid_noise: float = 0.,
+                 score_bias_init: float = 0.,
+                 mode: str = "parallel"):
         """Construct the Attention mechanism.
 
             Args:
@@ -780,9 +814,13 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
         self._normalize = normalize
         if not isinstance(score_bias_init, torch.Tensor):
             score_bias_init = torch.tensor(score_bias_init)
+
+        self._score_bias_init: torch.Tensor
         self._score_bias_init = score_bias_init
 
-    def __call__(self, query, state):
+    def __call__(self,
+                 query: torch.Tensor,
+                 state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Score the query based on the keys and values.
 
             Args:
@@ -803,8 +841,8 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
 
         processed_query = self.query_layer(query) if self.query_layer else query
         score = _bahdanau_score(processed_query, self._keys, self._normalize)
-        score_bias = Variable(self._score_bias_init.type(processed_query.dtype),
-                              requires_grad=True)
+        score_bias = self._score_bias_init.type(processed_query.dtype)
+        score_bias = score_bias.requires_grad_()
         score += score_bias
         alignments = self._probability_fn(score, state)
         next_state = alignments
@@ -827,14 +865,14 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
     """
 
     def __init__(self,
-                 num_units,
-                 memory,
-                 memory_sequence_length=None,
-                 scale=False,
-                 score_mask_value=None,
-                 sigmoid_noise=0.,
-                 score_bias_init=0.,
-                 mode="parallel"):
+                 num_units: int,
+                 memory: torch.Tensor,
+                 memory_sequence_length: Optional[torch.Tensor] = None,
+                 scale: bool = False,
+                 score_mask_value: Optional[torch.Tensor] = None,
+                 sigmoid_noise: float = 0.,
+                 score_bias_init: float = 0.,
+                 mode: str = "parallel"):
         """Construct the Attention mechanism.
 
             Args:
@@ -872,9 +910,13 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
         self._scale = scale
         if not isinstance(score_bias_init, torch.Tensor):
             score_bias_init = torch.tensor(score_bias_init)
+
+        self._score_bias_init: torch.Tensor
         self._score_bias_init = score_bias_init
 
-    def __call__(self, query, state):
+    def __call__(self,
+                 query: torch.Tensor,
+                 state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Score the query based on the keys and values.
 
             Args:
@@ -890,15 +932,15 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 `max_time`).
         """
         score = _luong_score(query, self._keys, self._scale)
-        score_bias = Variable(self._score_bias_init.type(query.dtype),
-                              requires_grad=True)
+        score_bias = self._score_bias_init.type(query.dtype)
+        score_bias = score_bias.requires_grad_()
         score += score_bias
         alignments = self._probability_fn(score, state)
         next_state = alignments
         return alignments, next_state
 
 
-def hardmax(logits):
+def hardmax(logits: torch.Tensor) -> torch.Tensor:
     """Returns batched one-hot vectors.
 
     The depth index containing the `1` is that of the maximum logit value.
@@ -915,8 +957,14 @@ def hardmax(logits):
     return F.one_hot(torch.argmax(logits, -1), depth)
 
 
-def compute_attention(attention_mechanism, cell_output, attention_state,
-                      attention_layer):
+def compute_attention(attention_mechanism: Union[LuongAttention,
+                                                 BahdanauAttention,
+                                                 LuongMonotonicAttention,
+                                                 BahdanauMonotonicAttention],
+                      cell_output: torch.Tensor,
+                      attention_state: torch.Tensor,
+                      attention_layer: Optional[nn.Module]) -> \
+        Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Computes the attention and alignments for a given attention_mechanism."""
     alignments, next_attention_state = attention_mechanism(
         cell_output, state=attention_state)
