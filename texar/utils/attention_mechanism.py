@@ -18,7 +18,7 @@ Various helper classes and utilities for cell wrappers.
 # pylint: disable=too-many-arguments, too-many-instance-attributes
 # pylint: disable=missing-docstring  # does not support generic classes
 
-from typing import NamedTuple, Union, Optional, List
+from typing import NamedTuple, Optional, List
 
 import numpy as np
 import functools
@@ -355,7 +355,7 @@ class LuongAttention(_BaseAttentionMechanism):
         # For LuongAttention, we only transform the memory layer; thus
         # num_units **must** match expected the query depth.
         if probability_fn is None:
-            probability_fn = F.softmax
+            probability_fn = lambda x: F.softmax(x, dim=-1)
         wrapped_probability_fn = lambda score, _: probability_fn(score)
         super(LuongAttention, self).__init__(
             query_layer=None,
@@ -492,7 +492,7 @@ class BahdanauAttention(_BaseAttentionMechanism):
                 `memory_sequence_length` is not None.
         """
         if probability_fn is None:
-            probability_fn = F.softmax
+            probability_fn = lambda x: F.softmax(x, dim=-1)
         wrapped_probability_fn = lambda score, _: probability_fn(score)
         super(BahdanauAttention, self).__init__(
             query_layer=None,
@@ -684,7 +684,7 @@ def _monotonic_probability_fn(score, previous_alignments, sigmoid_noise, mode):
         # When mode is hard, use a hard sigmoid
         p_choose_i = (score > 0).type(score.dtype)
     else:
-        p_choose_i = F.sigmoid(score)
+        p_choose_i = torch.sigmoid(score)
     # Convert from choosing probabilities to attention distribution
     return monotonic_attention(p_choose_i, previous_alignments, mode)
 
@@ -803,9 +803,8 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
 
         processed_query = self.query_layer(query) if self.query_layer else query
         score = _bahdanau_score(processed_query, self._keys, self._normalize)
-        score_bias = Variable(self._score_bias_init,
-                              requires_grad=True,
-                              dtype=processed_query.dtype)
+        score_bias = Variable(self._score_bias_init.type(processed_query.dtype),
+                              requires_grad=True)
         score += score_bias
         alignments = self._probability_fn(score, state)
         next_state = alignments
@@ -891,9 +890,8 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 `max_time`).
         """
         score = _luong_score(query, self._keys, self._scale)
-        score_bias = Variable(self._score_bias_init,
-                              requires_grad=True,
-                              dtype=query.dtype)
+        score_bias = Variable(self._score_bias_init.type(query.dtype),
+                              requires_grad=True)
         score += score_bias
         alignments = self._probability_fn(score, state)
         next_state = alignments
