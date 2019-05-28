@@ -21,22 +21,57 @@ Base class for decoders.
 
 import copy
 from abc import ABC
-from typing import Generic, Optional, Tuple, TypeVar
+from typing import Generic, Optional, Tuple, TypeVar, Union, overload
 
 import torch
+from torch import nn
 
 from texar import HParams
+from texar.core import identity
 from texar.module_base import ModuleBase
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_helpers import Embedding, Helper
 from texar.utils import utils
 
 __all__ = [
+    '_make_output_layer',
     'DecoderBase',
 ]
 
 State = TypeVar('State')
 Output = TypeVar('Output')  # output type can be of any nested structure
+
+
+def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
+                       vocab_size: Optional[int],
+                       output_size: int,
+                       bias: bool) -> Tuple[nn.Module, Optional[int]]:
+    r"""Makes a decoder output layer.
+    """
+    if isinstance(layer, nn.Module):
+        output_layer = layer
+    elif layer is None:
+        if vocab_size is None:
+            raise ValueError(
+                "Either `output_layer` or `vocab_size` must be provided. "
+                "Set `output_layer=texar.core.identity` if no output layer is "
+                "wanted.")
+        output_layer = nn.Linear(output_size, vocab_size, bias)
+    elif torch.is_tensor(layer):
+        vocab_size = layer.size(1)
+        output_layer = nn.Linear(layer.size(0), vocab_size, bias)
+        layer = layer.t().contiguous()
+        if not isinstance(layer, nn.Parameter):
+            layer = nn.Parameter(layer, requires_grad=False)
+        output_layer.weight = layer
+    elif layer is identity:
+        output_layer = identity  # type: ignore
+    else:
+        raise ValueError(
+            f"output_layer should be an instance of `nn.Module`, a tensor,"
+            f"or None. Unsupported type: {type(layer)}")
+
+    return output_layer, vocab_size
 
 
 class DecoderBase(ModuleBase, Generic[State, Output], ABC):
@@ -47,8 +82,8 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
     """
 
     def __init__(self,
+                 input_size: int,
                  vocab_size: Optional[int] = None,
-                 input_size: Optional[int] = None,
                  input_time_major: bool = False,
                  output_time_major: bool = False,
                  hparams: Optional[HParams] = None):
@@ -81,13 +116,13 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
 
             - **"train_greedy"**: decoding in teacher-forcing fashion (i.e.,
               feeding `ground truth` to decode the next step), and each sample
-              is obtained by taking the `argmax` of the RNN output logits.
-              Arguments :attr:`(inputs, sequence_length, input_time_major)`
+              is obtained by taking the `argmax` of the output logits.
+              Arguments :attr:`(inputs, sequence_length)`
               are required for this strategy, and argument :attr:`embedding`
               is optional.
             - **"infer_greedy"**: decoding in inference fashion (i.e., feeding
               the `generated` sample to decode the next step), and each sample
-              is obtained by taking the `argmax` of the RNN output logits.
+              is obtained by taking the `argmax` of the output logits.
               Arguments :attr:`(embedding, start_tokens, end_token)` are
               required for this strategy, and argument
               :attr:`max_decoding_length` is optional.
@@ -277,6 +312,22 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             helper = decoder_helpers.get_helper(helper_type, **kwargs_)
         return helper
 
+    def _create_or_get_helper(self, infer_mode: Optional[bool] = None,
+                              **kwargs) -> Helper:
+        # Prefer creating a new helper when at least one kwarg is specified.
+        prefer_new = (len(kwargs) > 0)
+        kwargs.update(infer_mode=infer_mode)
+        is_training = (not infer_mode if infer_mode is not None
+                       else self.training)
+        helper = self._train_helper if is_training else self._infer_helper
+        if prefer_new or helper is None:
+            helper = self.create_helper(**kwargs)
+            if is_training and self._train_helper is None:
+                self._train_helper = helper
+            elif not is_training and self._infer_helper is None:
+                self._infer_helper = helper
+        return helper
+
     def set_default_train_helper(self, helper: Helper):
         r"""Set the default helper used in training mode.
 
@@ -313,7 +364,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             helper, inputs, sequence_length, initial_state)
 
         zero_outputs = step_inputs.new_zeros(
-            step_inputs.size(0), self._cell.hidden_size)
+            step_inputs.size(0), self.output_size)
 
         if max_decoding_length is not None:
             finished |= (max_decoding_length <= 0)
@@ -379,11 +430,10 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         """
         raise NotImplementedError
 
-    def initialize(self, helper: Helper,
-                   inputs: Optional[torch.Tensor],
+    def initialize(self, helper: Helper, inputs: Optional[torch.Tensor],
                    sequence_length: Optional[torch.LongTensor],
                    initial_state: Optional[State]) \
-            -> Tuple[torch.ByteTensor, torch.Tensor, Optional[State]]:
+            -> Tuple[torch.ByteTensor, torch.Tensor, State]:
         r"""Called before any decoding iterations.
 
         This methods must compute initial input values and initial state.
@@ -399,9 +449,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             `(finished, initial_inputs, initial_state)`: initial values of
             'finished' flags, inputs and state.
         """
-        initial_finished, initial_inputs = helper.initialize(
-            inputs, sequence_length)
-        return (initial_finished, initial_inputs, initial_state)
+        raise NotImplementedError
 
     def step(self, helper: Helper, time: int,
              inputs: torch.Tensor, state: Optional[State]) \
@@ -425,6 +473,17 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             in the batch.
         """
         raise NotImplementedError
+
+    @overload
+    def finalize(self, outputs: Output, final_state: State,
+                 sequence_lengths: torch.LongTensor) -> Tuple[Output, State]:
+        ...
+
+    @overload
+    def finalize(self, outputs: Output, final_state: Optional[State],
+                 sequence_lengths: torch.LongTensor) \
+            -> Tuple[Output, Optional[State]]:
+        ...
 
     def finalize(self, outputs: Output, final_state: Optional[State],
                  sequence_lengths: torch.LongTensor) \

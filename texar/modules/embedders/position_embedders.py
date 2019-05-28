@@ -16,12 +16,15 @@ Various position embedders.
 """
 
 import math
+from typing import Optional
 
 import torch
+import torch.nn.functional as F
 
+from texar import HParams
+from texar.modules.embedders import embedder_utils
 from texar.modules.embedders.embedder_base import EmbedderBase
 from texar.modules.embedders.embedder_base import EmbeddingDropout
-from texar.modules.embedders import embedder_utils
 from texar.utils.shapes import mask_sequences
 
 # pylint: disable=arguments-differ, invalid-name
@@ -30,6 +33,7 @@ __all__ = [
     "PositionEmbedder",
     "SinusoidsPositionEmbedder",
 ]
+
 
 class PositionEmbedder(EmbedderBase):
     """Simple position embedder that maps position indexes into embeddings
@@ -52,7 +56,7 @@ class PositionEmbedder(EmbedderBase):
             not given.
         hparams (dict, optional): Embedder hyperparameters. If it is not
             specified, the default hyperparameter setting is used. See
-            :attr:`default_hparams` for the sturcture and default values.
+            :attr:`default_hparams` for the structure and default values.
 
 
     .. document private functions
@@ -138,8 +142,7 @@ class PositionEmbedder(EmbedderBase):
                 raise ValueError(
                     'Either `positions` or `sequence_length` is required.')
             max_length = torch.max(sequence_length)
-            single_inputs = torch.arange(
-                start=0, end=max_length)
+            single_inputs = torch.arange(start=0, end=max_length)
             # Expands `single_inputs` to have shape [batch_size, max_length]
             inputs = single_inputs.unsqueeze(0)
             inputs = inputs.expand(len(sequence_length), -1).contiguous()
@@ -155,7 +158,6 @@ class PositionEmbedder(EmbedderBase):
             noise_shape = self._get_noise_shape(
                 self._hparams, dropout_strategy=st, dropout_input=embedding)
             embedding = self._dropout_layer(embedding, noise_shape)
-
 
         # Embeds
         outputs = torch.nn.functional.embedding(
@@ -207,7 +209,7 @@ class SinusoidsPositionEmbedder(EmbedderBase):
     Timing signals should be added to some precursors of both the query
     and the memory inputs to attention.
     The use of relative position is possible because sin(x+y) and
-    cos(x+y) can be experessed in terms of y, sin(x) and cos(x).
+    cos(x+y) can be expressed in terms of y, sin(x) and cos(x).
     In particular, we use a geometric sequence of timescales starting with
     min_timescale and ending with max_timescale.  The number of different
     timescales is equal to dim / 2. For each timescale, we
@@ -222,32 +224,33 @@ class SinusoidsPositionEmbedder(EmbedderBase):
     .. document private functions
     .. automethod:: _build
     """
-    def __init__(self, position_size, hparams=None):
-        EmbedderBase.__init__(self, hparams=hparams)
+
+    def __init__(self, position_size: int, hparams: Optional[HParams] = None):
+        super().__init__(hparams=hparams)
+        self._num_embeds = position_size
+        self._dim = self._hparams.dim
 
         dim = self._hparams.dim
         num_timescales = dim // 2
         min_timescale = self._hparams.min_timescale
         max_timescale = self._hparams.max_timescale
 
-        positions = torch.arange(
-            position_size).type(torch.float)
-        # pylint: disable=not-callable
+        positions = torch.arange(position_size, dtype=torch.float)
         log_timescale_increment = (
-            math.log(float(max_timescale) / float(min_timescale)) /
-            (torch.tensor(num_timescales).type(torch.float) - 1))
+                math.log(max_timescale / min_timescale) / (num_timescales - 1))
         inv_timescales = min_timescale * torch.exp(
-            (torch.arange(num_timescales).type(torch.float) *
+            (torch.arange(num_timescales, dtype=torch.float) *
              -log_timescale_increment))
-        scaled_time = torch.unsqueeze(positions, 1) \
-            * torch.unsqueeze(inv_timescales, 0)
+        scaled_time = positions.unsqueeze(1) * inv_timescales.unsqueeze(0)
         signal = torch.cat(
             [torch.sin(scaled_time), torch.cos(scaled_time)], dim=1)
-        signal = torch.pad(
-            signal, [[0, 0], [0, torch.remainder(dim, 2)]])
-        self.signal = signal
+        if dim % 2 == 1:
+            signal = torch.cat(
+                [signal, signal.new_zeros(signal.size(0), 1)], dim=1)
+        self.signal = signal.reshape(position_size, dim)
 
-    def default_hparams(self):
+    @staticmethod
+    def default_hparams():
         """Returns a dictionary of hyperparameters with default values
         We use a geometric sequence of timescales starting with
         min_timescale and ending with max_timescale. The number of different
@@ -262,15 +265,17 @@ class SinusoidsPositionEmbedder(EmbedderBase):
                 'name':'sinusoid_posisiton_embedder',
             }
         """
-        hparams = {
+        return {
             'min_timescale': 1.0,
             'max_timescale': 1.0e4,
             'dim': 512,
-            'name':'sinusoid_posisiton_embedder',
+            'name': 'sinusoid_posisiton_embedder',
         }
-        return hparams
 
-    def forward(self, positions=None, sequence_length=None, **kwargs):
+    def forward(self,  # type: ignore
+                positions: Optional[torch.LongTensor] = None,
+                sequence_length: Optional[torch.LongTensor] = None, **kwargs) \
+            -> torch.Tensor:
         """Embeds.
         Either :attr:`positions` or :attr:`sequence_length` is required:
 
@@ -290,25 +295,20 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         Returns:
             A `Tensor` of shape `[batch_size, position_size, dim]`.
         """
-        inputs = positions
         if positions is None:
             if sequence_length is None:
                 raise ValueError(
                     'Either `positions` or `sequence_length` is required.')
-            max_length = torch.max(sequence_length)
-            single_inputs = torch.arange(
-                start=0, limit=max_length)
-            # Expands `single_inputs` to have shape [batch_size, max_length]
-            inputs = single_inputs.unsqueeze(0)
-            inputs = inputs.expand(len(sequence_length), -1).contiguous()
+            max_length = sequence_length.max()
+            batch_size = sequence_length.size(0)
+            inputs = torch.arange(max_length).to(device=sequence_length.device)
+            inputs = inputs.expand(batch_size, max_length)
+        else:
+            inputs = positions
 
-        embedding = self.signal
-        outputs = torch.nn.functional.embedding(
-            inputs.type(torch.long), embedding, **kwargs)
+        outputs = F.embedding(inputs, self.signal, **kwargs)
 
-        # Optionally masks
         if sequence_length is not None:
-            outputs = mask_sequences(
-                outputs, sequence_length)
+            outputs = mask_sequences(outputs, sequence_length)
 
         return outputs

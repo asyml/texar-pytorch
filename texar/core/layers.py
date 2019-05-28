@@ -16,6 +16,7 @@ Various neural network layers
 """
 
 # pylint: disable=too-many-branches
+
 import functools
 import copy
 from typing import Optional, Callable, Union, List, Dict, Tuple, Any
@@ -357,7 +358,7 @@ def get_initializer(hparams: Optional[HParams] = None) \
     if isinstance(kwargs, HParams):
         kwargs = kwargs.todict()
     modules = ['torch.nn.init', 'torch', 'texar.custom']
-    initializer_fn = utils.get_function(hparams["type"], modules)
+    initializer_fn = utils.get_function(hparams['type'], modules)
     initializer = functools.partial(initializer_fn, **kwargs)
 
     return initializer
@@ -847,3 +848,4 @@ _layer_class_to_default_kwargs_map = {
     nn.AvgPool2d: default_avg_pool2d_kwargs(),
     nn.AvgPool3d: default_avg_pool3d_kwargs(),
 }
+

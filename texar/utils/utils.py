@@ -25,6 +25,8 @@ import inspect
 from pydoc import locate
 from typing import *
 
+import torch
+
 import funcsigs
 import numpy as np
 import torch
@@ -177,7 +179,7 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
     """
     if not torch.is_tensor(lengths):
         lengths = torch.tensor(lengths, device=device)
-    lengths: torch.Tensor
+    lengths: torch.LongTensor
     if max_len is None:
         max_len = torch.max(lengths).item()
 

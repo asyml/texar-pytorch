@@ -245,3 +245,10 @@ class WordEmbedder(EmbedderBase):
         """The vocabulary size.
         """
         return self._vocab_size
+
+    @property
+    def num_embeddings(self):
+        r"""The vocabulary size. This interface matches
+        :class:`~torch.nn.Embedding.`
+        """
+        return self._vocab_size

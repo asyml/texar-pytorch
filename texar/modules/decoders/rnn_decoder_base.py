@@ -28,7 +28,7 @@ from texar import HParams
 from texar.core import RNNCellBase, layers
 from texar.core.cell_wrappers import HiddenState
 from texar.modules.decoders import decoder_helpers
-from texar.modules.decoders.decoder_base import DecoderBase, State
+from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.utils import utils
 
@@ -47,14 +47,14 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
     """
 
     def __init__(self,
+                 input_size: int,
+                 vocab_size: int,
                  cell: Optional[RNNCellBase] = None,
-                 vocab_size: Optional[int] = None,
                  output_layer: Optional[nn.Module] = None,
-                 input_size: Optional[int] = None,
                  input_time_major: bool = False,
                  output_time_major: bool = False,
                  hparams: Optional[HParams] = None):
-        super().__init__(vocab_size, input_size, input_time_major,
+        super().__init__(input_size, vocab_size, input_time_major,
                          output_time_major, hparams)
 
         # Make RNN cell
@@ -63,21 +63,9 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
         self._beam_search_cell = None
 
         # Make the output layer
-        if output_layer is not None:
-            if (output_layer is not layers.identity and
-                    not isinstance(output_layer, nn.Module)):
-                raise ValueError(
-                    "`output_layer` must be either `texar.core.identity` or "
-                    "an instance of `nn.Module`.")
-            self._output_layer = output_layer
-        elif self._vocab_size is not None:
-            self._output_layer = nn.Linear(
-                self._cell.hidden_size, self._vocab_size)
-        else:
-            raise ValueError(
-                "Either `output_layer` or `vocab_size` must be provided. "
-                "Set `output_layer=texar.core.identity` if no output layer "
-                "is desired.")
+        self._output_layer, _ = _make_output_layer(
+            output_layer, self._vocab_size, self._cell.hidden_size,
+            self._hparams.output_layer_bias)
 
     @staticmethod
     def default_hparams():
@@ -95,6 +83,7 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
             'max_decoding_length_train': None,
             'max_decoding_length_infer': None,
             'name': 'rnn_decoder',
+            "output_layer_bias": True,
         }
 
     @classmethod
@@ -181,18 +170,7 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
 
         # Helper
         if helper is None:
-            # Prefer creating a new helper when at least one kwarg is specified.
-            prefer_new = (len(kwargs) > 0)
-            kwargs.update(infer_mode=infer_mode)
-            is_training = (not infer_mode if infer_mode is not None
-                           else self.training)
-            helper = self._train_helper if is_training else self._infer_helper
-            if prefer_new or helper is None:
-                helper = self.create_helper(**kwargs)
-                if is_training and self._train_helper is None:
-                    self._train_helper = helper
-                elif not is_training and self._infer_helper is None:
-                    self._infer_helper = helper
+            helper = self._create_or_get_helper(infer_mode, **kwargs)
 
         if (isinstance(helper, decoder_helpers.TrainingHelper) and
                 (inputs is None or sequence_length is None)):
@@ -225,27 +203,18 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
         """
         raise NotImplementedError
 
+    def initialize(self, helper: Helper, inputs: Optional[torch.Tensor],
+                   sequence_length: Optional[torch.LongTensor],
+                   initial_state: Optional[HiddenState]) \
+            -> Tuple[torch.ByteTensor, torch.Tensor, HiddenState]:
+        initial_finished, initial_inputs = helper.initialize(
+            inputs, sequence_length)
+        state = initial_state or self._cell.init_batch()
+        return (initial_finished, initial_inputs, state)
+
     def step(self, helper: Helper, time: int,
              inputs: torch.Tensor, state: Optional[HiddenState]) \
             -> Tuple[Output, HiddenState, torch.Tensor, torch.ByteTensor]:
-        r"""Called per step of decoding (but only once for dynamic decoding).
-
-        Args:
-            helper: The :class:`~texar.modules.Helper` instance to use.
-            time: Scalar `int32` tensor. Current step number.
-            inputs: RNNCell input (possibly nested tuple of) tensor[s] for this
-                time step.
-            state: RNNCell state (possibly nested tuple of) tensor[s] from
-                previous time step.
-
-        Returns:
-            `(outputs, next_state, next_inputs, finished)`: `outputs` is an
-            object containing the decoder output, `next_state` is a (structure
-            of) state tensors and TensorArrays, `next_inputs` is the tensor that
-            should be used as input for the next step, `finished` is a boolean
-            tensor telling whether the sequence is complete, for each sequence
-            in the batch.
-        """
         raise NotImplementedError
 
     @property

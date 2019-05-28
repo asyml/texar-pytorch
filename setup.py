@@ -28,9 +28,10 @@ setuptools.setup(
         'pyyaml',
         'requests',
         'funcsigs',
+        'mypy_extensions',
     ],
     extras_require={
-        'torch': ['torch>=1.0.0'],
+        'torch': ['torch==1.0.1'],
     },
     package_data={
         "texar": [

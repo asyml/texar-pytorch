@@ -247,13 +247,12 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
                      torch.Tensor, torch.ByteTensor]:
         cell_outputs, cell_state = self._cell(inputs, state)
         logits = self._output_layer(cell_outputs)
-        sample_ids = helper.sample(
-            time=time, outputs=logits, state=cell_state)
-        (finished, next_inputs, next_state) = helper.next_inputs(
+        sample_ids = helper.sample(time=time, outputs=logits)
+        (finished, next_inputs) = helper.next_inputs(
             time=time,
             outputs=logits,
-            state=cell_state,
             sample_ids=sample_ids)
+        next_state = cell_state
         outputs = BasicRNNDecoderOutput(logits, sample_ids, cell_outputs)
         return (outputs, next_state, next_inputs, finished)
 
@@ -261,10 +260,7 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
     def output_size(self):
         r"""Output size of one step.
         """
-        return BasicRNNDecoderOutput(
-            logits=self._rnn_output_size(),
-            sample_id=self._helper.sample_ids_shape,
-            cell_output=self._cell.output_size)
+        return self._cell.hidden_size
 
 
 class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
@@ -597,4 +593,3 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         """The state size of the attention-wrapped cell.
         Equivalent to :attr:`decoder.cell.state_size`.
         """
-        return self._cell.hidden_size

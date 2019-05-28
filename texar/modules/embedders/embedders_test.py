@@ -10,7 +10,9 @@ import torch
 import numpy as np
 
 from texar.modules.embedders.embedders import WordEmbedder
-from texar.modules.embedders.position_embedders import PositionEmbedder
+from texar.modules.embedders.position_embedders import \
+    PositionEmbedder, SinusoidsPositionEmbedder
+
 
 class EmbedderTest(unittest.TestCase):
     """Tests parameterized embedder.
@@ -58,7 +60,7 @@ class EmbedderTest(unittest.TestCase):
         emb_dim = embedder.dim
         if isinstance(emb_dim, int):
             emb_dim = [emb_dim]
-        if not isinstance(emb_dim, (list)):
+        if not isinstance(emb_dim, list):
             emb_dim = list(emb_dim)
 
         hparams_dim = hparams["dim"]
@@ -71,65 +73,42 @@ class EmbedderTest(unittest.TestCase):
         seq_length = torch.empty([64]).uniform_(pos_size).type(torch.int32)
         outputs = embedder(sequence_length=seq_length)
 
+    def test_sinusoids_position_embedder(self):
+        """Tests :class:`texar.modules.SinusoidsPositionEmbedder`.
+        """
+        position_size = 64
+        input_size = [100]
+        hparams = {'dim': 513}  # use odd dimension to ensure padding correct
+        embedder = SinusoidsPositionEmbedder(position_size, hparams=hparams)
+        inputs = torch.randint(position_size - 1, input_size)
+        outputs = embedder(inputs)
+
+        self.assertEqual(list(outputs.shape), input_size + [hparams['dim']])
+
     def test_embedder(self):
         """Tests various embedders.
         """
-        # no dropout
-        hparams = {"dim": 1024, "dropout_rate": 0}
-        self._test_word_embedder(hparams)
-        self._test_position_embedder(hparams)
+        test_dims = [
+            1024,
+            [1024],
+            [1024, 10],
+        ]
+        test_hparams = [
+            # no dropout
+            {"dropout_rate": 0},
+            # dropout with default strategy
+            {"dropout_rate": 0.3},
+            # dropout with different strategies
+            {"dropout_rate": 0.3, "dropout_strategy": "item"},
+            {"dropout_rate": 0.3, "dropout_strategy": "item_type"},
+        ]
 
-        hparams = {"dim": [1024], "dropout_rate": 0}
-        self._test_word_embedder(hparams)
-        self._test_position_embedder(hparams)
-
-        hparams = {"dim": [1024, 10], "dropout_rate": 0}
-        self._test_word_embedder(hparams)
-        self._test_position_embedder(hparams)
-
-        # dropout with default strategy
-        hparams = {"dim": 1024, "dropout_rate": 0.3}
-        self._test_word_embedder(hparams)
-        self._test_position_embedder(hparams)
-
-        hparams = {"dim": [1024], "dropout_rate": 0.3}
-        self._test_word_embedder(hparams)
-        self._test_position_embedder(hparams)
-
-        hparams = {"dim": [1024, 10], "dropout_rate": 0.3}
-        self._test_word_embedder(hparams)
-        self._test_position_embedder(hparams)
-
-        # dropout with different strategies
-        hparams = {"dim": 1024, "dropout_rate": 0.3,
-                   "dropout_strategy": "item"}
-        self._test_word_embedder(hparams)
-        self._test_position_embedder(hparams)
-
-        hparams = {"dim": [1024], "dropout_rate": 0.3,
-                   "dropout_strategy": "item"}
-        self._test_word_embedder(hparams)
-        self._test_position_embedder(hparams)
-
-        hparams = {"dim": [1024, 10], "dropout_rate": 0.3,
-                   "dropout_strategy": "item"}
-        self._test_word_embedder(hparams)
-        self._test_position_embedder(hparams)
-
-        hparams = {"dim": 1024, "dropout_rate": 0.3,
-                   "dropout_strategy": "item_type"}
-        self._test_word_embedder(hparams)
-        self._test_position_embedder(hparams)
-
-        hparams = {"dim": [1024], "dropout_rate": 0.3,
-                   "dropout_strategy": "item_type"}
-        self._test_word_embedder(hparams)
-        self._test_position_embedder(hparams)
-
-        hparams = {"dim": [1024, 10], "dropout_rate": 0.3,
-                   "dropout_strategy": "item_type"}
-        self._test_word_embedder(hparams)
-        self._test_position_embedder(hparams)
+        for base_hparams in test_hparams:
+            for dim in test_dims:
+                hparams = base_hparams.copy()
+                hparams['dim'] = dim
+                self._test_word_embedder(hparams)
+                self._test_position_embedder(hparams)
 
     def test_embedder_multi_calls(self):
         """Tests embedders called by multiple times.
@@ -167,6 +146,7 @@ class EmbedderTest(unittest.TestCase):
         outputs = embedder(ids=torch.from_numpy(ids))
         soft_outputs = embedder(soft_ids=torch.from_numpy(soft_ids))
         self.assertEqual(outputs, soft_outputs)
+
 
 if __name__ == "__main__":
     unittest.main()

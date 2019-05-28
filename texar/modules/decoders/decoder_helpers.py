@@ -19,25 +19,20 @@ Various helper classes and utilities for RNN decoders.
 # pylint: disable=missing-docstring  # does not support generic classes
 
 from abc import ABC
-from typing import Generic, Optional, Tuple, TypeVar, Union, Type
+from typing import Callable, Generic, Optional, Tuple, Type, TypeVar, \
+    Union, overload
 
 import torch
-from torch import nn
+import torch.nn.functional as F
 from torch.distributions import Categorical, Gumbel
 
-from texar.core.cell_wrappers import HiddenState
-from texar.utils import utils
-
-
-class EmbedderBase:
-    # pylint: disable=too-few-public-methods
-    r"""Temporary workaround for embedders."""
-    embedding: torch.Tensor
-
+from texar.utils import get_args, utils
 
 __all__ = [
+    '_convert_embedding',
     'Helper',
     'TrainingHelper',
+    'EmbeddingHelper',
     'GreedyEmbeddingHelper',
     'SampleEmbeddingHelper',
     'TopKSampleEmbeddingHelper',
@@ -51,35 +46,42 @@ __all__ = [
 #     `ScheduledOutputTrainingHelper`
 
 HelperInitTuple = Tuple[torch.ByteTensor, torch.Tensor]
-NextInputTuple = Tuple[torch.ByteTensor, torch.Tensor, HiddenState]
+NextInputTuple = Tuple[torch.ByteTensor, torch.Tensor]
 
-Embedding = Union[nn.Embedding, torch.Tensor, EmbedderBase]
+Embedding = Union[
+    torch.Tensor,  # embedding weights
+    Callable[[torch.LongTensor], torch.Tensor],  # indices -> embeddings
+]
+# indices, position -> embeddings
+EmbeddingWithPos = Callable[[torch.LongTensor, torch.LongTensor], torch.Tensor]
 
 
-def _get_raw_embedding(embedding: Embedding) -> nn.Embedding:
-    r"""Convert raw tensors and Embedders into nn.Embedding.
-    TODO: After Embedders are implemented, refactor this to convert everything
-        to Embedders.
+@overload
+def _convert_embedding(embedding: Embedding) \
+        -> Callable[[torch.LongTensor], torch.Tensor]: ...
+
+
+@overload
+def _convert_embedding(embedding: EmbeddingWithPos) -> EmbeddingWithPos: ...
+
+
+def _convert_embedding(embedding):
+    r"""Wrap raw tensors into callables. If the input is already a callable,
+    it is returned as is.
 
     Args:
-        embedding (nn.Embedding or torch.Tensor or EmbedderBase): the embedding
-            to convert.
+        embedding (torch.Tensor or callable): the embedding to convert.
 
     Returns:
-        An instance of nn.Embedding.
+        An instance of Embedder or nn.Embedding.
     """
-    if not (callable(embedding) or
-            torch.is_tensor(embedding) or
-            isinstance(embedding, EmbedderBase)):
+    if callable(embedding):
+        return embedding
+    elif torch.is_tensor(embedding):
+        return lambda x: F.embedding(x, embedding)
+    else:
         raise ValueError(
-            "'embedding' must either be a torch.Tensor, a callable, or an "
-            "Embedder instance.")
-    if isinstance(embedding, EmbedderBase):
-        embedding = embedding.embedding
-    if torch.is_tensor(embedding):
-        return nn.Embedding(embedding.size(0), embedding.size(1),
-                            _weight=embedding)
-    return embedding
+            "'embedding' must either be a torch.Tensor or a callable.")
 
 
 IDType = TypeVar('IDType', bound=torch.Tensor)
@@ -112,12 +114,11 @@ class Helper(Generic[IDType], ABC):
         """
         raise NotImplementedError
 
-    def sample(self, time: int, outputs: torch.Tensor,
-               state: HiddenState) -> IDType:
+    def sample(self, time: int, outputs: torch.Tensor) -> IDType:
         r"""Returns `sample_ids`."""
         raise NotImplementedError
 
-    def next_inputs(self, time: int, outputs: torch.Tensor, state: HiddenState,
+    def next_inputs(self, time: int, outputs: torch.Tensor,
                     sample_ids: IDType) -> NextInputTuple:
         r"""Returns `(finished, next_inputs, next_state)`."""
         raise NotImplementedError
@@ -128,7 +129,7 @@ class TrainingHelper(Helper[torch.LongTensor]):
 
     Returned sample_ids are the argmax of the RNN output logits.
     """
-    _embedding: Optional[nn.Embedding]
+    _embedding: Optional[Embedding]
 
     # the following are set in `initialize`
     _inputs: torch.Tensor
@@ -153,7 +154,7 @@ class TrainingHelper(Helper[torch.LongTensor]):
             ValueError: if `sequence_length` is not a 1D tensor.
         """
         if embedding is not None:
-            self._embedding = _get_raw_embedding(embedding)
+            self._embedding = _convert_embedding(embedding)
         else:
             self._embedding = None
 
@@ -193,13 +194,12 @@ class TrainingHelper(Helper[torch.LongTensor]):
         next_inputs = inputs[0] if not all_finished else self._zero_inputs
         return (finished, next_inputs)
 
-    def sample(self, time: int, outputs: torch.Tensor,
-               state: HiddenState) -> torch.LongTensor:
-        # pylint: disable=unused-variable, no-self-use
+    def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
+        del time
         sample_ids = torch.argmax(outputs, dim=-1)
         return sample_ids
 
-    def next_inputs(self, time: int, outputs: torch.Tensor, state: HiddenState,
+    def next_inputs(self, time: int, outputs: torch.Tensor,
                     sample_ids: torch.LongTensor) -> NextInputTuple:
         r"""next_inputs_fn for TrainingHelper."""
         next_time = time + 1
@@ -208,7 +208,7 @@ class TrainingHelper(Helper[torch.LongTensor]):
 
         next_inputs = (self._inputs[next_time] if not all_finished
                        else self._zero_inputs)
-        return (finished, next_inputs, state)
+        return (finished, next_inputs)
 
 
 class EmbeddingHelper(Helper[IDType], ABC):
@@ -218,14 +218,13 @@ class EmbeddingHelper(Helper[IDType], ABC):
     layer to get the next input.
     """
 
-    def __init__(self, embedding: Embedding, start_tokens: torch.LongTensor,
+    _start_inputs: torch.Tensor
+
+    def __init__(self, start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor]):
-        """Initializer.
+        r"""Initializer.
 
         Args:
-            embedding: A callable that takes a vector tensor of `ids` (argmax
-                ids), or the `params` argument for `embedding_lookup`. The
-                returned tensor will be passed to the decoder input.
             start_tokens: 1D LongTensor shaped `[batch_size]`, the start tokens.
             end_token: `int32` scalar, the token that marks end of decoding.
 
@@ -238,22 +237,23 @@ class EmbeddingHelper(Helper[IDType], ABC):
         if not isinstance(end_token, int) and end_token.dim() != 0:
             raise ValueError("end_token must be a scalar")
 
-        self._embedding = _get_raw_embedding(embedding)
-
         self._start_tokens = start_tokens
         self._batch_size = start_tokens.size(0)
-        self._zero_inputs = start_tokens.new_zeros(start_tokens.size())
         if isinstance(end_token, int):
             self._end_token = start_tokens.new_tensor(end_token)
         else:
             self._end_token = end_token
+
+    @property
+    def batch_size(self) -> int:
+        return self._batch_size
 
     def initialize(self, inputs: Optional[torch.Tensor],
                    sequence_length: Optional[torch.LongTensor]) \
             -> HelperInitTuple:
         finished = self._start_tokens.new_zeros(
             self._batch_size, dtype=torch.uint8)
-        return (finished, self._embedding(self._start_tokens))
+        return (finished, self._start_inputs)
 
 
 class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
@@ -261,23 +261,66 @@ class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
 
     Based on :class:`~texar.modules.EmbeddingHelper`, this class returns samples
     that are vocabulary indices, and use the corresponding embeddings as the
-    next input.
+    next input. This class also supports callables as embeddings.
     """
+
+    def __init__(self, embedding: Union[Embedding, EmbeddingWithPos],
+                 start_tokens: torch.LongTensor,
+                 end_token: Union[int, torch.LongTensor]):
+        r"""Initializer
+
+        Args:
+            embedding: A callable or the `params` argument for
+                `embedding_lookup`.
+                If a callable, it can take a vector tensor of `ids` (argmax
+                ids), or take two arguments (`ids`, `times`), where `ids` is a
+                vector of argmax ids, and `times` is a vector of current time
+                steps (i.e., position ids). The latter case can be used when
+                attr:`embedding` is a combination of word embedding and position
+                embedding.
+                The returned tensor will be passed to the decoder input.
+            start_tokens: 1D LongTensor shaped `[batch_size]`, the start tokens.
+            end_token: `int32` scalar, the token that marks end of decoding.
+
+        Raises:
+            ValueError: if `start_tokens` is not a 1D tensor or `end_token` is
+                not a scalar.
+        """
+        super().__init__(start_tokens, end_token)
+
+        self._embedding_fn = _convert_embedding(embedding)
+
+        self._embedding_args_cnt = len(get_args(self._embedding_fn))
+        if self._embedding_args_cnt == 1:
+            self._start_inputs = self._embedding_fn(  # type: ignore
+                self._start_tokens)
+        elif self._embedding_args_cnt == 2:
+            # Position index is 0 in the beginning
+            times = self._start_tokens.new_zeros(self._batch_size)
+            self._start_inputs = self._embedding_fn(  # type: ignore
+                self._start_tokens, times)
+        else:
+            raise ValueError('`embedding` should expect 1 or 2 arguments.')
 
     @property
     def sample_ids_shape(self) -> torch.Size:
         return torch.Size()
 
-    def next_inputs(self, time: int, outputs: torch.Tensor, state: HiddenState,
+    def next_inputs(self, time: int, outputs: torch.Tensor,
                     sample_ids: torch.LongTensor) -> NextInputTuple:
         r"""next_inputs_fn for GreedyEmbeddingHelper."""
-        del time, outputs  # unused by next_inputs_fn
+        del outputs  # unused by next_inputs_fn
         finished = (sample_ids == self._end_token)
         all_finished = torch.all(finished).item()
 
-        next_inputs = (self._embedding(sample_ids) if not all_finished
-                       else self._zero_inputs)
-        return (finished, next_inputs, state)
+        if self._embedding_args_cnt == 1:
+            embeddings = self._embedding_fn(sample_ids)  # type: ignore
+        else:
+            times = self._start_tokens.new_full((self._batch_size,), time + 1)
+            embeddings = self._embedding_fn(sample_ids, times)  # type: ignore
+
+        next_inputs = (embeddings if not all_finished else self._start_inputs)
+        return (finished, next_inputs)
 
 
 class GreedyEmbeddingHelper(SingleEmbeddingHelper):
@@ -285,9 +328,16 @@ class GreedyEmbeddingHelper(SingleEmbeddingHelper):
 
     Uses the argmax of the output (treated as logits) and passes the
     result through an embedding layer to get the next input.
+
+    Note that for greedy decoding, Texar's decoders provide a simpler
+    interface by specifying `decoding_strategy='infer_greedy'` when calling a
+    decoder (see, e.g.,,
+    :meth:`RNN decoder <texar.modules.RNNDecoderBase._build>`). In this case,
+    use of GreedyEmbeddingHelper is not necessary.
     """
 
-    def __init__(self, embedding: Embedding, start_tokens: torch.LongTensor,
+    def __init__(self, embedding: Union[Embedding, EmbeddingWithPos],
+                 start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor]):
         r"""Initializer.
 
@@ -304,10 +354,9 @@ class GreedyEmbeddingHelper(SingleEmbeddingHelper):
         """
         super().__init__(embedding, start_tokens, end_token)
 
-    def sample(self, time: int, outputs: torch.Tensor,
-               state: HiddenState) -> torch.LongTensor:
+    def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
         r"""sample for GreedyEmbeddingHelper."""
-        del time, state  # unused by sample_fn
+        del time  # unused by sample_fn
         # Outputs are logits, use argmax to get the most probable id
         if not torch.is_tensor(outputs):
             raise TypeError(
@@ -323,7 +372,8 @@ class SampleEmbeddingHelper(SingleEmbeddingHelper):
     result through an embedding layer to get the next input.
     """
 
-    def __init__(self, embedding: Embedding, start_tokens: torch.LongTensor,
+    def __init__(self, embedding: Union[Embedding, EmbeddingWithPos],
+                 start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor],
                  softmax_temperature: Optional[float] = None):
         r"""Initializer.
@@ -347,10 +397,9 @@ class SampleEmbeddingHelper(SingleEmbeddingHelper):
         super().__init__(embedding, start_tokens, end_token)
         self._softmax_temperature = softmax_temperature
 
-    def sample(self, time: int, outputs: torch.Tensor,
-               state: HiddenState) -> torch.LongTensor:
+    def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
         r"""sample for SampleEmbeddingHelper."""
-        del time, state  # unused by sample_fn
+        del time  # unused by sample_fn
         # Outputs are logits, we sample instead of argmax (greedy).
         if not torch.is_tensor(outputs):
             raise TypeError(
@@ -416,16 +465,15 @@ class TopKSampleEmbeddingHelper(SingleEmbeddingHelper):
                 not a scalar.
         """
         super().__init__(embedding, start_tokens, end_token)
-        if top_k > self._embedding.num_embeddings:
-            raise ValueError(
-                "'top_k' should not be greater than the number of embeddings.")
+        # if top_k > self._embedding.num_embeddings:
+        #     raise ValueError("'top_k' should not be greater than "
+        #                      "the number of embeddings.")
         self._top_k = top_k
         self._softmax_temperature = softmax_temperature
 
-    def sample(self, time: int, outputs: torch.Tensor,
-               state: HiddenState) -> torch.LongTensor:
+    def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
         r"""sample for SampleEmbeddingHelper."""
-        del time, state  # unused by sample_fn
+        del time  # unused by sample_fn
         # Outputs are logits, we sample from the top-k candidates
         if not torch.is_tensor(outputs):
             raise TypeError(
@@ -454,7 +502,7 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
     :class:`~texar.modules.RNNDecoderBase` :meth:`_build` in inference mode.
     """
 
-    def __init__(self, embedding: Embedding, start_tokens: torch.LongTensor,
+    def __init__(self, embedding: torch.Tensor, start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor], tau: float,
                  stop_gradient: bool = False, use_finish: bool = True):
         r"""Initializer
@@ -475,25 +523,31 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
                 generated. If `False`, decoding will continue until
                 `max_decoding_length` of the decoder is reached.
         """
-        super().__init__(embedding, start_tokens, end_token)
+        super().__init__(start_tokens, end_token)
+
+        self._embedding = embedding
+        self._num_embeddings = embedding.size(0)
+
+        self._start_inputs = F.embedding(self._start_tokens, embedding)
+
         self._tau = tau
         self._stop_gradient = stop_gradient
         self._use_finish = use_finish
 
     @property
     def sample_ids_shape(self) -> torch.Size:
-        return torch.Size([self._embedding.num_embeddings])
+        return torch.Size([self._num_embeddings])
 
-    def sample(self, time: int, outputs: torch.Tensor,
-               state: HiddenState) -> torch.Tensor:
+    def sample(self, time: int, outputs: torch.Tensor) -> torch.Tensor:
         r"""Returns `sample_id` which is softmax distributions over vocabulary
         with temperature `tau`. Shape = `[batch_size, vocab_size]`
         """
+        del time
         sample_ids = torch.softmax(outputs / self._tau, dim=-1)
         return sample_ids
 
-    def next_inputs(self, time: int, outputs: torch.Tensor, state: HiddenState,
-                    sample_ids: torch.Tensor) -> NextInputTuple:
+    def next_inputs(self, time: int, outputs: torch.Tensor,
+                    sample_ids: torch.LongTensor) -> NextInputTuple:
         r"""next_inputs_fn for SoftmaxEmbeddingHelper."""
         del time, outputs  # unused by next_inputs_fn
         if self._use_finish:
@@ -504,8 +558,8 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
                 self._batch_size, dtype=torch.uint8)
         if self._stop_gradient:
             sample_ids = sample_ids.detach()
-        next_inputs = torch.matmul(sample_ids, self._embedding.weight)
-        return (finished, next_inputs, state)
+        next_inputs = torch.matmul(sample_ids, self._embedding)
+        return (finished, next_inputs)
 
 
 class GumbelSoftmaxEmbeddingHelper(SoftmaxEmbeddingHelper):
@@ -521,7 +575,7 @@ class GumbelSoftmaxEmbeddingHelper(SoftmaxEmbeddingHelper):
     Gumbel softmax (instead of softmax) is used.
     """
 
-    def __init__(self, embedding: Embedding, start_tokens: torch.LongTensor,
+    def __init__(self, embedding: torch.Tensor, start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor], tau: float,
                  straight_through: bool = False,
                  stop_gradient: bool = False, use_finish: bool = True):
@@ -553,11 +607,9 @@ class GumbelSoftmaxEmbeddingHelper(SoftmaxEmbeddingHelper):
                          stop_gradient, use_finish)
         self._straight_through = straight_through
         # unit-scale, zero-location Gumbel distribution
-        self._gumbel = Gumbel(loc=torch.tensor(0.0),
-                              scale=torch.tensor(1.0))
+        self._gumbel = Gumbel(loc=torch.tensor(0.0), scale=torch.tensor(1.0))
 
-    def sample(self, time: int, outputs: torch.Tensor,
-               state: HiddenState) -> torch.Tensor:
+    def sample(self, time: int, outputs: torch.Tensor) -> torch.Tensor:
         r"""Returns `sample_id` of shape `[batch_size, vocab_size]`. If
         `straight_through` is False, this is gumbel softmax distributions over
         vocabulary with temperature `tau`. If `straight_through` is True,
