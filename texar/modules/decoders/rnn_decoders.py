@@ -43,11 +43,6 @@ __all__ = [
 
 State = TypeVar('State')
 
-AttentionMechanismType = Union[LuongAttention,
-                               BahdanauAttention,
-                               LuongMonotonicAttention,
-                               BahdanauMonotonicAttention]
-
 
 class BasicRNNDecoderOutput(NamedTuple):
     r"""The outputs of basic RNN decoder that include both RNN outputs and
@@ -337,10 +332,10 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
 
     def __init__(self,
                  memory: torch.Tensor,
+                 input_size: int,
+                 vocab_size: int,
                  memory_sequence_length: Optional[torch.Tensor] = None,
                  cell: Optional[RNNCellBase] = None,
-                 input_size: Optional[int] = None,
-                 vocab_size: Optional[int] = None,
                  output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
                  # attention_layer=None, # TODO(zhiting): only valid for tf>=1.0
                  cell_input_fn: Optional[Callable[[torch.Tensor],
@@ -353,8 +348,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                          output_layer=output_layer,
                          hparams=hparams)
 
-        self.dtype: torch.dtype
-        self.dtype = memory.dtype
+        self.dtype: torch.dtype = memory.dtype
 
         attn_hparams = self._hparams['attention']
         attn_kwargs = attn_hparams['kwargs'].todict()
@@ -372,7 +366,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         self._attn_kwargs = attn_kwargs
         attn_modules = ['texar.utils']
 
-        self.attention_mechanism: AttentionMechanismType
+        self.attention_mechanism: AttentionMechanism
         self.attention_mechanism = check_or_get_instance(
             attn_hparams["type"], attn_kwargs, attn_modules,
             classtype=AttentionMechanism)
@@ -540,8 +534,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         else:
             batch_size = helper._batch_size  # type: ignore
 
-        initial_state = self._cell.zero_state(batch_size=batch_size,
-                                              dtype=self.dtype)
+        initial_state = self._cell.zero_state(batch_size=batch_size)
         return initial_finished, initial_inputs, initial_state
 
     def step(self,  # type: ignore
@@ -554,12 +547,10 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         wrapper_outputs, wrapper_state = self._cell(inputs, state)
         # Essentisally the same as in BasicRNNDecoder.step()
         logits = self._output_layer(wrapper_outputs)
-        sample_ids = helper.sample(
-            time=time, outputs=logits, state=wrapper_state)
-        (finished, next_inputs, next_state) = helper.next_inputs(
+        sample_ids = helper.sample(time=time, outputs=logits)
+        finished, next_inputs = helper.next_inputs(
             time=time,
             outputs=logits,
-            state=wrapper_state,
             sample_ids=sample_ids)
 
         attention_scores = wrapper_state.alignments
@@ -567,8 +558,9 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         outputs = AttentionRNNDecoderOutput(
             logits, sample_ids, wrapper_outputs,
             attention_scores, attention_context)
+        next_state = wrapper_state
 
-        return outputs, next_state, next_inputs, finished  # type: ignore
+        return outputs, next_state, next_inputs, finished
 
     @property
     def output_size(self):
@@ -580,16 +572,15 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
             attention_context=self._cell.state_size.attention)
 
     def wrapper_zero_state(self,
-                           batch_size: int,
-                           dtype: torch.dtype) -> AttentionWrapperState:
+                           batch_size: int) -> AttentionWrapperState:
         """Returns zero state of the attention-wrapped cell.
         Equivalent to :attr:`decoder.cell.zero_state`.
         """
-        return self._cell.zero_state(batch_size=batch_size,
-                                     dtype=dtype)
+        return self._cell.zero_state(batch_size=batch_size)
 
     @property
-    def wrapper_state_size(self) -> int:
+    def wrapper_state_size(self) -> AttentionWrapperState:
         """The state size of the attention-wrapped cell.
         Equivalent to :attr:`decoder.cell.state_size`.
         """
+        return self._cell.state_size

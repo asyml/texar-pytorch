@@ -25,7 +25,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from texar.utils import utils
-from texar.utils.types import MaybeList, MaybeTuple
+from texar.utils.types import MaybeList, MaybeSeq
 from texar.core.attention_mechanism import *
 
 __all__ = [
@@ -47,11 +47,6 @@ RNNState = torch.Tensor
 LSTMState = Tuple[torch.Tensor, torch.Tensor]
 
 HiddenState = MaybeList[Union[RNNState, LSTMState]]
-
-AttentionMechanismType = Union[LuongAttention,
-                               BahdanauAttention,
-                               LuongMonotonicAttention,
-                               BahdanauMonotonicAttention]
 
 
 def wrap_builtin_cell(cell: nn.RNNCellBase):
@@ -450,13 +445,12 @@ class MultiRNNCell(RNNCellBase[List[State]]):
         return output, new_states
 
 
-class AttentionWrapper(RNNCellBase[State]):
+class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
     """Wraps another `RNNCell` with attention."""
 
     def __init__(self,
                  cell: nn.RNNCellBase,
-                 attention_mechanism: Union[MaybeTuple[AttentionMechanismType],
-                                            MaybeList[AttentionMechanismType]],
+                 attention_mechanism: MaybeList[AttentionMechanism],
                  attention_layer_size: Optional[MaybeList[int]] = None,
                  alignment_history: bool = False,
                  cell_input_fn: Optional[Callable[[torch.Tensor, torch.Tensor],
@@ -521,7 +515,7 @@ class AttentionWrapper(RNNCellBase[State]):
                     "attention_mechanism must be an AttentionMechanism or list "
                     "of multiple AttentionMechanism instances, saw type: %s" %
                     type(attention_mechanism).__name__)
-            attention_mechanisms = (attention_mechanism,)
+            attention_mechanisms = [attention_mechanism, ]
 
         if cell_input_fn is None:
             cell_input_fn = (
@@ -616,9 +610,8 @@ class AttentionWrapper(RNNCellBase[State]):
                 a.alignments_size if self._alignment_history else ()
                 for a in self._attention_mechanisms))
 
-    def zero_state(self,  # type: ignore
-                   batch_size: int,
-                   dtype: torch.dtype) -> AttentionWrapperState:
+    def zero_state(self,
+                   batch_size: int) -> AttentionWrapperState:
         """Return an initial (zero) state tuple for this `AttentionWrapper`.
 
         **NOTE** Please see the initializer documentation for details of how
@@ -638,27 +631,29 @@ class AttentionWrapper(RNNCellBase[State]):
             `batch_size` does not match the output size of the encoder passed
             to the wrapper object at initialization time.
         """
-        cell_state = super().zero_state(batch_size)
+        cell_state: torch.Tensor = super().zero_state(  # type: ignore
+            batch_size)
         error_message = (
                 "When calling zero_state of AttentionWrapper: Non-matching "
                 "batch sizes between the memory (encoder output) and the "
                 "requested batch size.")
         self._batch_size_checks(batch_size, error_message)
         initial_alignments = [
-            attention_mechanism.initial_alignments(batch_size, dtype)
+            attention_mechanism.initial_alignments(batch_size)
             for attention_mechanism in self._attention_mechanisms]
 
         alignment_history: List[List[Optional[torch.Tensor]]]
         alignment_history = [[] for _ in initial_alignments]
 
-        return AttentionWrapperState(  # type: ignore
+        return AttentionWrapperState(
             cell_state=cell_state,
-            time=torch.tensor(0),
-            attention=torch.zeros(batch_size, self._attention_layer_size,
-                                  dtype=dtype),
+            time=0,
+            attention=self._param.new_zeros(batch_size,
+                                            self._attention_layer_size,
+                                            requires_grad=False),
             alignments=self._item_or_tuple(initial_alignments),
             attention_state=self._item_or_tuple(
-              attention_mechanism.initial_state(batch_size, dtype)
+              attention_mechanism.initial_state(batch_size)
               for attention_mechanism in self._attention_mechanisms),
             alignment_history=self._item_or_tuple(alignment_history))
 
