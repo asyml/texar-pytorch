@@ -702,11 +702,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
         cell_inputs = self._cell_input_fn(inputs, state.attention)
         cell_state = state.cell_state
 
-        if isinstance(self._cell, LSTMCell):
-            cell_output, next_cell_state = self._cell(cell_inputs, cell_state)
-        else:
-            cell_output = self._cell(cell_inputs, cell_state)
-            next_cell_state = cell_output
+        cell_output, next_cell_state = self._cell(cell_inputs, cell_state)
 
         cell_batch_size = cell_output.shape[0]
         error_message = (

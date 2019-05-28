@@ -205,17 +205,57 @@ class AttentionRNNDecoderTest(unittest.TestCase):
                                           self._max_time,
                                           64)
         hparams = {
+            "rnn_cell": {
+                'type': 'RNNCell',
+                'kwargs': {
+                    'num_units': 256,
+                },
+            },
             "attention": {
                 "kwargs": {
                     "num_units": self._attention_dim
                 },
             }
         }
-        self._hparams = HParams(hparams, AttentionRNNDecoder.default_hparams())
+        self._hparams_rnn = HParams(hparams,
+                                    AttentionRNNDecoder.default_hparams())
+
+        hparams = {
+            "rnn_cell": {
+                'type': 'LSTMCell',
+                'kwargs': {
+                    'num_units': 256,
+                },
+            },
+            "attention": {
+                "kwargs": {
+                    "num_units": self._attention_dim
+                },
+            }
+        }
+        self._hparams_lstm = HParams(hparams,
+                                     AttentionRNNDecoder.default_hparams())
+
+        hparams = {
+            "rnn_cell": {
+                'type': 'GRUCell',
+                'kwargs': {
+                    'num_units': 256,
+                },
+            },
+            "attention": {
+                "kwargs": {
+                    "num_units": self._attention_dim
+                },
+            }
+        }
+        self._hparams_gru = HParams(hparams,
+                                    AttentionRNNDecoder.default_hparams())
 
     def _test_outputs(self, decoder, outputs, final_state, sequence_lengths,
                       test_mode=False, helper=None):
         hidden_size = decoder.hparams.rnn_cell.kwargs.num_units
+        cell_type = decoder.hparams.rnn_cell.type
 
         self.assertIsInstance(outputs, AttentionRNNDecoderOutput)
         max_time = (self._max_time if not test_mode
@@ -230,10 +270,15 @@ class AttentionRNNDecoderTest(unittest.TestCase):
         if not test_mode:
             np.testing.assert_array_equal(
                 sequence_lengths, [max_time] * self._batch_size)
-        self.assertEqual(final_state.cell_state[0].shape, (self._batch_size,
-                                                           hidden_size))
 
-    def test_decode_train(self):
+        if cell_type == 'LSTMCell':
+            self.assertEqual(final_state.cell_state[0].shape, (self._batch_size,
+                                                               hidden_size))
+        else:
+            self.assertEqual(final_state.cell_state.shape, (self._batch_size,
+                                                               hidden_size))
+
+    def test_rnn_decode_train(self):
         """Tests decoding in training mode.
         """
         seq_length = np.random.randint(
@@ -245,7 +290,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
             memory_sequence_length=encoder_values_length,
             vocab_size=self._vocab_size,
             input_size=self._emb_dim + 64,
-            hparams=self._hparams)
+            hparams=self._hparams_rnn)
 
         sequence_length = torch.tensor([self._max_time] * self._batch_size)
 
@@ -255,10 +300,11 @@ class AttentionRNNDecoderTest(unittest.TestCase):
             inputs=self._inputs,
             sequence_length=sequence_length)
 
-        self.assertEqual(len(decoder.trainable_variables), 6)
+        self.assertEqual(len(decoder.trainable_variables), 7)
+
         self._test_outputs(decoder, outputs, final_state, sequence_lengths)
 
-    def test_decode_infer(self):
+    def test_rnn_decode_infer(self):
         """Tests decoding in inference mode.
         """
         seq_length = np.random.randint(
@@ -270,7 +316,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
             memory_sequence_length=encoder_values_length,
             vocab_size=self._vocab_size,
             input_size=self._emb_dim + 64,
-            hparams=self._hparams)
+            hparams=self._hparams_rnn)
 
         decoder.eval()
 
@@ -282,7 +328,115 @@ class AttentionRNNDecoderTest(unittest.TestCase):
         outputs, final_state, sequence_lengths = decoder(
             helper=helper_infer)
 
-        self.assertEqual(len(decoder.trainable_variables), 6)
+        self.assertEqual(len(decoder.trainable_variables), 7)
+        self._test_outputs(decoder, outputs, final_state, sequence_lengths,
+                           test_mode=True)
+
+    def test_lstm_decode_train(self):
+        """Tests decoding in training mode.
+        """
+        seq_length = np.random.randint(
+            self._max_time, size=[self._batch_size]) + 1
+        encoder_values_length = torch.tensor(seq_length)
+
+        decoder = AttentionRNNDecoder(
+            memory=self._encoder_output,
+            memory_sequence_length=encoder_values_length,
+            vocab_size=self._vocab_size,
+            input_size=self._emb_dim + 64,
+            hparams=self._hparams_lstm)
+
+        sequence_length = torch.tensor([self._max_time] * self._batch_size)
+
+        helper_train = decoder.create_helper()
+        outputs, final_state, sequence_lengths = decoder(
+            helper=helper_train,
+            inputs=self._inputs,
+            sequence_length=sequence_length)
+
+        self.assertEqual(len(decoder.trainable_variables), 7)
+
+        self._test_outputs(decoder, outputs, final_state, sequence_lengths)
+
+    def test_lstm_decode_infer(self):
+        """Tests decoding in inference mode.
+        """
+        seq_length = np.random.randint(
+            self._max_time, size=[self._batch_size]) + 1
+        encoder_values_length = torch.tensor(seq_length)
+
+        decoder = AttentionRNNDecoder(
+            memory=self._encoder_output,
+            memory_sequence_length=encoder_values_length,
+            vocab_size=self._vocab_size,
+            input_size=self._emb_dim + 64,
+            hparams=self._hparams_lstm)
+
+        decoder.eval()
+
+        helper_infer = decoder.create_helper(
+            embedding=self._embedding,
+            start_tokens=torch.tensor([1]*self._batch_size),
+            end_token=2)
+
+        outputs, final_state, sequence_lengths = decoder(
+            helper=helper_infer)
+
+        self.assertEqual(len(decoder.trainable_variables), 7)
+        self._test_outputs(decoder, outputs, final_state, sequence_lengths,
+                           test_mode=True)
+
+    def test_gru_decode_train(self):
+        """Tests decoding in training mode.
+        """
+        seq_length = np.random.randint(
+            self._max_time, size=[self._batch_size]) + 1
+        encoder_values_length = torch.tensor(seq_length)
+
+        decoder = AttentionRNNDecoder(
+            memory=self._encoder_output,
+            memory_sequence_length=encoder_values_length,
+            vocab_size=self._vocab_size,
+            input_size=self._emb_dim + 64,
+            hparams=self._hparams_gru)
+
+        sequence_length = torch.tensor([self._max_time] * self._batch_size)
+
+        helper_train = decoder.create_helper()
+        outputs, final_state, sequence_lengths = decoder(
+            helper=helper_train,
+            inputs=self._inputs,
+            sequence_length=sequence_length)
+
+        self.assertEqual(len(decoder.trainable_variables), 7)
+
+        self._test_outputs(decoder, outputs, final_state, sequence_lengths)
+
+    def test_gru_decode_infer(self):
+        """Tests decoding in inference mode.
+        """
+        seq_length = np.random.randint(
+            self._max_time, size=[self._batch_size]) + 1
+        encoder_values_length = torch.tensor(seq_length)
+
+        decoder = AttentionRNNDecoder(
+            memory=self._encoder_output,
+            memory_sequence_length=encoder_values_length,
+            vocab_size=self._vocab_size,
+            input_size=self._emb_dim + 64,
+            hparams=self._hparams_gru)
+
+        decoder.eval()
+
+        helper_infer = decoder.create_helper(
+            embedding=self._embedding,
+            start_tokens=torch.tensor([1]*self._batch_size),
+            end_token=2)
+
+        outputs, final_state, sequence_lengths = decoder(
+            helper=helper_infer)
+
+        self.assertEqual(len(decoder.trainable_variables), 7)
         self._test_outputs(decoder, outputs, final_state, sequence_lengths,
                            test_mode=True)
 

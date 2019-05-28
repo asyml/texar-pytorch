@@ -364,7 +364,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
             "memory_sequence_length": memory_sequence_length,
             "memory": memory})
         self._attn_kwargs = attn_kwargs
-        attn_modules = ['texar.utils']
+        attn_modules = ['texar.core']
 
         self.attention_mechanism: AttentionMechanism
         self.attention_mechanism = check_or_get_instance(
@@ -564,12 +564,9 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
 
     @property
     def output_size(self):
-        return AttentionRNNDecoderOutput(
-            logits=self._rnn_output_size(),
-            sample_id=self._helper.sample_ids_shape,
-            cell_output=self._cell.output_size,
-            attention_scores=self._alignments_size(),
-            attention_context=self._cell.state_size.attention)
+        r"""Output size of one step.
+                """
+        return self._cell.hidden_size
 
     def wrapper_zero_state(self,
                            batch_size: int) -> AttentionWrapperState:
