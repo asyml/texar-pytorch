@@ -32,7 +32,7 @@ from texar.utils.types import MaybeTuple
 
 from texar.utils.utils import get_function, check_or_get_instance
 from texar.core.cell_wrappers import AttentionWrapper
-from texar.utils.attention_mechanism import *
+from texar.core.attention_mechanism import *
 
 __all__ = [
     'BasicRNNDecoderOutput',

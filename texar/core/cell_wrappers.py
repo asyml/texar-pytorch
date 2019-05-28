@@ -25,8 +25,8 @@ import torch.nn.functional as F
 from torch import nn
 
 from texar.utils import utils
-from texar.utils.types import MaybeList, MaybeTuple, MaybeSeq
-from texar.utils.attention_mechanism import *
+from texar.utils.types import MaybeList, MaybeTuple
+from texar.core.attention_mechanism import *
 
 __all__ = [
     'HiddenState',

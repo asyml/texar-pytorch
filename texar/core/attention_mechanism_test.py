@@ -7,7 +7,7 @@ import unittest
 import torch
 import numpy as np
 
-from texar.utils.attention_mechanism import *
+from texar.core.attention_mechanism import *
 
 
 class AttentionMechanismTest(unittest.TestCase):
