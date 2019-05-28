@@ -33,7 +33,8 @@ class MLELossesTest(unittest.TestCase):
         self._logits = torch.rand(self._batch_size, self._max_time,
                                   self._num_classes)
         self._sequence_length = torch.randint(size=(self._batch_size,),
-                                              high=self._max_time)
+                                              high=self._max_time,
+                                              dtype=torch.int64)
 
     def _test_sequence_loss(self, loss_fn, labels, logits, sequence_length):
         loss = loss_fn(labels, logits, sequence_length)

@@ -45,7 +45,6 @@ def binary_adversarial_losses(
             :python:`logits, ... = discriminator_fn(data)`.
             The return value of `discriminator_fn` can be the logits, or
             a tuple where the logits are the first element.
-
         mode (str): Mode of the generator loss. Either "max_real" or "min_fake".
 
             - **"max_real"** (default): minimizing the generator loss is to\
