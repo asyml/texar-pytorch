@@ -15,7 +15,6 @@
 Various convolutional network encoders.
 """
 
-import torch
 
 from typing import Dict, Optional, Any
 
@@ -53,4 +52,3 @@ class Conv1DEncoder(Conv1DNetwork, EncoderBase):  # type: ignore
         hparams = Conv1DNetwork.default_hparams()
         hparams['name'] = 'conv_encoder'
         return hparams
-

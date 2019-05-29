@@ -12,5 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=empty-docstring
+"""
+"""
+
 from texar.modules.encoders.encoder_base import *
+from texar.modules.encoders.transformer_encoder import *
 from texar.modules.encoders.conv_encoders import *
