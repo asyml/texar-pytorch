@@ -7,6 +7,7 @@ import torch
 
 from texar.modules.encoders import TransformerEncoder
 
+
 # pylint: disable=too-many-instance-attributes
 
 class TransformerEncoderTest(unittest.TestCase):
@@ -71,6 +72,7 @@ class TransformerEncoderTest(unittest.TestCase):
                          torch.Size((self._batch_size,
                                      self._max_time,
                                      self._emb_dim)))
+
 
 if __name__ == "__main__":
     unittest.main()

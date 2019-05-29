@@ -15,22 +15,20 @@
 Transformer encoders with multihead self attention.
 """
 
-from typing import Optional, Union, Dict, List
+from typing import Optional, Dict
 
 import torch
-from torch import nn
-from torch import LongTensor
-
 from texar import HParams
+from texar import utils
 from texar.core import layers
-from texar.utils import transformer_attentions as attn
 from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.encoders.multihead_attention import \
     MultiheadAttentionEncoder
 from texar.modules.networks.networks import FeedForwardNetwork
-from texar import utils
-from texar.utils.utils import sequence_mask
+from texar.utils import transformer_attentions as attn
 from texar.utils.shapes import shape_list
+from texar.utils.utils import sequence_mask
+from torch import nn
 
 # pylint: disable=too-many-locals, invalid-name
 # pylint: disable=arguments-differ, too-many-branches, too-many-statements
@@ -39,6 +37,7 @@ __all__ = [
     "default_transformer_poswise_net_hparams",
     "TransformerEncoder"
 ]
+
 
 def default_transformer_poswise_net_hparams(input_dim: int,
                                             output_dim: int = 512) \
@@ -121,6 +120,7 @@ def default_transformer_poswise_net_hparams(input_dim: int,
         "name": "ffn"
     }
 
+
 # pylint: disable=too-many-instance-attributes
 class TransformerEncoder(EncoderBase):
     r"""Transformer encoder that applies multi-head self attention for encoding
@@ -145,6 +145,7 @@ class TransformerEncoder(EncoderBase):
     .. document private functions
     .. automethod:: _build
     """
+
     def __init__(self, hparams: Optional[HParams] = None):
         # pylint: disable=too-many-instance-attributes
         EncoderBase.__init__(self, hparams)
@@ -194,7 +195,6 @@ class TransformerEncoder(EncoderBase):
             assert initialize is not None
             for param in self.parameters():
                 initialize(param)
-
 
     @staticmethod
     def default_hparams():
@@ -293,10 +293,10 @@ class TransformerEncoder(EncoderBase):
         }
 
     # pylint: disable=arguments-differ
-    def forward(self, # type: ignore
-                inputs: LongTensor,
-                sequence_length: Union[LongTensor, List[int]]) \
-             -> torch.Tensor:
+    def forward(self,  # type: ignore
+                inputs: torch.Tensor,
+                sequence_length: torch.LongTensor) \
+            -> torch.Tensor:
         r"""Encodes the inputs.
 
         Args:
