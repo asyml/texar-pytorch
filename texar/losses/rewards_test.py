@@ -13,6 +13,7 @@ import numpy as np
 
 import texar as tx
 
+
 class RewardTest(unittest.TestCase):
     """Tests reward related functions.
     """

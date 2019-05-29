@@ -85,7 +85,6 @@ def discount_reward(reward,
             # discounted_r == [[3. + 4.*0.1 + 5.*0.1^2, 4. + 5.*0.1, 5.],
             #                  [6. + 7.*0.1,            7.,          0.]]
     """
-
     if isinstance(reward, torch.Tensor) or isinstance(sequence_length,
                                                       torch.Tensor):
         if tensor_rank == 1:
@@ -101,6 +100,7 @@ def discount_reward(reward,
             mu = torch.mean(disc_reward, dim=(0, 1), keepdim=True)
             var = torch.std(disc_reward, dim=(0, 1), keepdim=True)
             disc_reward = (disc_reward - mu) / (torch.sqrt(var) + 1e-8)
+
     else:
         reward = np.array(reward)
         tensor_rank = reward.ndim
@@ -121,50 +121,9 @@ def discount_reward(reward,
     return disc_reward
 
 
-def _discount_reward_py_1d(reward, sequence_length, discount=1., dtype=None):
-    if sequence_length is None:
-        raise ValueError('sequence_length must not be `None` for 1D reward.')
-
-    reward = np.array(reward)
-    sequence_length = np.array(sequence_length)
-
-    batch_size = reward.shape[0]
-    max_seq_length = np.max(sequence_length)
-    dtype = dtype or reward.dtype
-
-    if discount == 1.:
-        dmat = np.ones([batch_size, max_seq_length], dtype=dtype)
-    else:
-        steps = np.tile(np.arange(max_seq_length), [batch_size, 1])
-        mask = np.asarray(steps < (sequence_length-1)[:, None], dtype=dtype)
-        # Make each row = [discount, ..., discount, 1, ..., 1]
-        dmat = mask * discount + (1 - mask)
-        dmat = np.cumprod(dmat[:, ::-1], axis=1)[:, ::-1]
-
-    disc_reward = dmat * reward[:, None]
-    disc_reward = mask_sequences(disc_reward, sequence_length, dtype=dtype)
-    #mask = np.asarray(steps < sequence_length[:, None], dtype=dtype)
-    #disc_reward = mask * disc_reward
-
-    return disc_reward
-
-
-def _discount_reward_py_2d(reward, sequence_length=None,
+def _discount_reward_py_1d(reward, sequence_length,
                            discount=1., dtype=None):
-    if sequence_length is not None:
-        reward = mask_sequences(reward, sequence_length, dtype=dtype)
-
-    dtype = dtype or reward.dtype
-
-    if discount == 1.:
-        disc_reward = np.cumsum(
-            reward[:, ::-1], axis=1, dtype=dtype)[:, ::-1]
-    else:
-        disc_reward = np.copy(reward)
-        for i in range(reward.shape[1]-2, -1, -1):
-            disc_reward[:, i] += disc_reward[:, i+1] * discount
-
-    return disc_reward
+    raise NotImplementedError
 
 
 def _discount_reward_tensor_1d(reward, sequence_length,
@@ -176,7 +135,7 @@ def _discount_reward_tensor_1d(reward, sequence_length,
     max_seq_length = torch.max(sequence_length)
     dtype = dtype or reward.dtype
 
-    if discount == 1:
+    if discount == 1.:
         dmat = torch.ones(batch_size, max_seq_length, dtype=dtype)
     else:
         mask = sequence_mask(sequence_length, dtype=dtype)
@@ -190,6 +149,11 @@ def _discount_reward_tensor_1d(reward, sequence_length,
     disc_reward = mask_sequences(disc_reward, sequence_length, dtype=dtype)
 
     return disc_reward
+
+
+def _discount_reward_py_2d(reward, sequence_length=None,
+                           discount=1., dtype=None):
+    raise NotImplementedError
 
 
 def _discount_reward_tensor_2d(reward, sequence_length=None,
@@ -218,3 +182,5 @@ def _discount_reward_tensor_2d(reward, sequence_length=None,
         disc_reward = torch.flip(rev_reward_T_cum.permute(1, 0), [1])
 
     return disc_reward
+
+
