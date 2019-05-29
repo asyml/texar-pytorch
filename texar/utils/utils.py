@@ -628,7 +628,7 @@ def dict_fetch(src_dict: Optional[ParamDict],
 
     if isinstance(tgt_dict_or_keys, HParams):
         tgt_dict_or_keys = tgt_dict_or_keys.todict()
-    if isinstance(tgt_dict_or_keys, collections.MutableMapping):
+    if isinstance(tgt_dict_or_keys, MutableMapping):
         tgt_dict_or_keys = tgt_dict_or_keys.keys()  # type: ignore
     keys = list(tgt_dict_or_keys)
 
@@ -678,7 +678,7 @@ def flatten_dict(dict_: AnyDict, parent_key: str = "", sep: str = "."):
     items: List[Tuple[str, Any]] = []
     for key, value in dict_.items():
         key_ = parent_key + sep + key if parent_key else key
-        if isinstance(value, collections.MutableMapping):
+        if isinstance(value, MutableMapping):
             items.extend(flatten_dict(value, key_, sep=sep).items())
         elif isinstance(value, tuple) and hasattr(value, '_asdict'):
             # namedtuple

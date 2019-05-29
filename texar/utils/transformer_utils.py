@@ -55,7 +55,7 @@ class PadRemover(object):
         self.nonpad_ids = None
         self.dim_origin = None
 
-        pad_mask = torch.reshape(pad_mask, [-1])    
+        pad_mask = torch.reshape(pad_mask, (-1,))
         # Flatten the batch
         # nonpad_ids contains coordinates of zeros rows (as pad_mask is
         # float32, checking zero equality is done with |x| < epsilon, with

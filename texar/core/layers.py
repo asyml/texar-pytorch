@@ -414,7 +414,7 @@ def get_activation_fn(fn_name: Optional[Union[str,
 
 
 def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
-    """Makes a layer instance.
+    r"""Makes a layer instance.
 
     The layer must be an instance of :torch_docs:`torch.nn.Module <nn.html>`.
 
