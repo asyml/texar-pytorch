@@ -398,6 +398,8 @@ class LuongAttention(_BaseAttentionMechanism):
             score_mask_value=score_mask_value)
         self._num_units = num_units
         self._scale = scale
+
+        self.attention_g: Optional[torch.Tensor]
         if self._scale:
             self.attention_g = nn.Parameter(torch.tensor(1.0),
                                             requires_grad=True)
@@ -495,6 +497,7 @@ class BahdanauAttention(_BaseAttentionMechanism):
 
     def __init__(self,
                  num_units: int,
+                 cell_output_size: int,
                  memory: torch.Tensor,
                  memory_sequence_length: Optional[torch.Tensor] = None,
                  normalize: bool = False,
@@ -505,6 +508,7 @@ class BahdanauAttention(_BaseAttentionMechanism):
 
             Args:
               num_units: The depth of the query mechanism.
+              cell_output_size: The output size of the decoder cell.
               memory: The memory to query; usually the output of an RNN encoder.
                 This tensor should be shaped `[batch_size, max_time, ...]`.
               memory_sequence_length: (optional) Sequence lengths for the batch
@@ -525,7 +529,7 @@ class BahdanauAttention(_BaseAttentionMechanism):
             probability_fn = lambda x: F.softmax(x, dim=-1)
         wrapped_probability_fn = lambda score, _: probability_fn(score)
         super(BahdanauAttention, self).__init__(
-            query_layer=None,
+            query_layer=nn.Linear(cell_output_size, num_units, False),
             memory_layer=nn.Linear(memory.shape[-1], num_units, False),
             memory=memory,
             probability_fn=wrapped_probability_fn,
@@ -541,6 +545,8 @@ class BahdanauAttention(_BaseAttentionMechanism):
         self.attention_v = nn.Parameter(self.attention_v,
                                         requires_grad=True)
 
+        self.attention_g: Optional[torch.Tensor]
+        self.attention_b: Optional[torch.Tensor]
         if self._normalize:
             self.attention_g = torch.sqrt(torch.tensor(1. / num_units))
             self.attention_g = nn.Parameter(self.attention_g,
@@ -570,10 +576,6 @@ class BahdanauAttention(_BaseAttentionMechanism):
                 `[batch_size, alignments_size]` (`alignments_size` is memory's
                 `max_time`).
         """
-        if self.query_layer is None:
-            self._query_layer = nn.Linear(query.shape[-1],
-                                          self._keys.shape[-1], False)
-
         processed_query = self.query_layer(query) if self.query_layer else query
 
         score = _bahdanau_score(processed_query,
@@ -809,6 +811,7 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
 
     def __init__(self,
                  num_units: int,
+                 cell_output_size: int,
                  memory: torch.Tensor,
                  memory_sequence_length: Optional[torch.Tensor] = None,
                  normalize: bool = False,
@@ -820,6 +823,7 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
 
             Args:
               num_units: The depth of the query mechanism.
+              cell_output_size: The output size of the decoder cell.
               memory: The memory to query; usually the output of an RNN encoder.
                 This tensor should be shaped `[batch_size, max_time, ...]`.
               memory_sequence_length (optional): Sequence lengths for the batch
@@ -843,7 +847,7 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
         wrapped_probability_fn = functools.partial(
             _monotonic_probability_fn, sigmoid_noise=sigmoid_noise, mode=mode)
         super(BahdanauMonotonicAttention, self).__init__(
-            query_layer=None,
+            query_layer=nn.Linear(cell_output_size, num_units, False),
             memory_layer=nn.Linear(memory.shape[-1], num_units, False),
             memory=memory,
             probability_fn=wrapped_probability_fn,
@@ -860,6 +864,8 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
         self.attention_v = nn.Parameter(self.attention_v,
                                         requires_grad=True)
 
+        self.attention_g: Optional[torch.Tensor]
+        self.attention_b: Optional[torch.Tensor]
         if self._normalize:
             self.attention_g = torch.sqrt(torch.tensor(1. / num_units))
             self.attention_g = nn.Parameter(self.attention_g,
@@ -893,10 +899,6 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 `[batch_size, alignments_size]` (`alignments_size` is memory's
                 `max_time`).
         """
-        if self.query_layer is None:
-            self._query_layer = nn.Linear(query.shape[-1],
-                                          self._keys.shape[-1], False)
-
         processed_query = self.query_layer(query) if self.query_layer else query
 
         score = _bahdanau_score(processed_query,
@@ -970,9 +972,13 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
             score_mask_value=score_mask_value)
         self._num_units = num_units
         self._scale = scale
+
+        self.attention_g: Optional[torch.Tensor]
         if self._scale:
             self.attention_g = nn.Parameter(
                 torch.tensor(1.0, requires_grad=True))
+        else:
+            self.attention_g = None
 
         if not isinstance(score_bias_init, torch.Tensor):
             self.attention_score_bias = torch.tensor(score_bias_init)

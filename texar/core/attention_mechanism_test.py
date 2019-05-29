@@ -78,6 +78,7 @@ class AttentionMechanismTest(unittest.TestCase):
         """
         attention_mechanism = BahdanauAttention(
             num_units=self._attention_dim,
+            cell_output_size=128,
             memory=self._memory,
             memory_sequence_length=self._memory_sequence_length)
 
@@ -99,6 +100,7 @@ class AttentionMechanismTest(unittest.TestCase):
 
         attention_mechanism = BahdanauAttention(
             num_units=self._attention_dim,
+            cell_output_size=128,
             memory=self._memory,
             memory_sequence_length=self._memory_sequence_length,
             normalize=True)
@@ -170,6 +172,7 @@ class AttentionMechanismTest(unittest.TestCase):
         """
         attention_mechanism = BahdanauMonotonicAttention(
             num_units=self._attention_dim,
+            cell_output_size=128,
             memory=self._memory,
             memory_sequence_length=self._memory_sequence_length)
 
@@ -191,6 +194,7 @@ class AttentionMechanismTest(unittest.TestCase):
 
         attention_mechanism = BahdanauMonotonicAttention(
             num_units=self._attention_dim,
+            cell_output_size=128,
             memory=self._memory,
             memory_sequence_length=self._memory_sequence_length,
             normalize=True)

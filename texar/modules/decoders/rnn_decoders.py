@@ -360,6 +360,10 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                 prob_fn = get_function(prob_fn, ['torch.nn.functional'])
             attn_kwargs['probability_fn'] = prob_fn
 
+        if attn_hparams['type'] in ['BahdanauAttention',
+                                    'BahdanauMonotonicAttention']:
+            attn_kwargs.update({"cell_output_size": self._cell.hidden_size})
+
         attn_kwargs.update({
             "memory_sequence_length": memory_sequence_length,
             "memory": memory})
