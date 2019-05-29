@@ -29,6 +29,8 @@ from texar.modules.decoders.decoder_helpers import EmbeddingHelper
 from texar.modules.embedders import EmbedderBase
 from texar.modules.encoders.multihead_attention import \
     Cache, MultiheadAttentionEncoder
+from texar.modules.encoders.transformer_encoder import \
+    default_transformer_poswise_net_hparams
 # from texar.utils import beam_search
 from texar.utils import get_instance, transformer_attentions as attn
 from texar.utils.shapes import mask_sequences
@@ -38,6 +40,7 @@ __all__ = [
     'TransformerDecoderOutput',
     'TransformerDecoder',
 ]
+
 
 
 class TransformerDecoderOutput(NamedTuple):
@@ -52,82 +55,6 @@ class TransformerDecoderOutput(NamedTuple):
     logits: torch.Tensor
     sample_id: torch.LongTensor
 
-
-def default_transformer_poswise_net_hparams(input_dim, output_dim=512):
-    """Returns default hyperparameters of a
-    :class:`~texar.modules.FeedForwardNetwork` as a pos-wise network used
-    in :class:`~texar.modules.TransformerEncoder` and
-    :class:`~texar.modules.TransformerDecoder`.
-
-    This is a 2-layer dense network with dropout in-between.
-
-    .. code-block:: python
-
-        {
-            "layers": [
-                {
-                    "type": "Dense",
-                    "kwargs": {
-                        "name": "conv1",
-                        "units": output_dim*4,
-                        "activation": "relu",
-                        "use_bias": True,
-                    }
-                },
-                {
-                    "type": "Dropout",
-                    "kwargs": {
-                        "rate": 0.1,
-                    }
-                },
-                {
-                    "type": "Dense",
-                    "kwargs": {
-                        "name": "conv2",
-                        "units": output_dim,
-                        "use_bias": True,
-                    }
-                }
-            ],
-            "name": "ffn"
-        }
-
-    Args:
-        output_dim (int): The size of output dense layer.
-    """
-    return {
-        "layers": [
-            {
-                "type": "Linear",
-                "kwargs": {
-                    "in_features": input_dim,
-                    "out_features": output_dim * 4,
-                    "bias": True,
-                }
-            },
-            {
-                "type": "ReLU",
-                "kwargs": {
-                    "inplace": True,
-                }
-            },
-            {
-                "type": "Dropout",
-                "kwargs": {
-                    "p": 0.1,
-                }
-            },
-            {
-                "type": "Linear",
-                "kwargs": {
-                    "in_features": output_dim * 4,
-                    "out_features": output_dim,
-                    "bias": True,
-                }
-            }
-        ],
-        "name": "ffn"
-    }
 
 
 class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):

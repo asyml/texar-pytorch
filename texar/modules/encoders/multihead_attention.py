@@ -22,6 +22,7 @@ from typing import List, Optional
 import torch
 import torch.nn.functional as F
 from mypy_extensions import TypedDict
+# pylint: disable=ungrouped-imports
 from torch import nn
 
 from texar import HParams
@@ -34,13 +35,17 @@ __all__ = [
     'Cache',
 ]
 
-
+# pylint: disable=empty-docstring
 class LayerCache(TypedDict):
+    """
+    """
     keys: MaybeList[torch.Tensor]
     values: MaybeList[torch.Tensor]
 
 
 class Cache(TypedDict):
+    """
+    """
     memory: Optional[torch.Tensor]
     memory_attention_bias: Optional[torch.Tensor]
     layers: List[LayerCache]
@@ -73,6 +78,7 @@ class MultiheadAttentionEncoder(EncoderBase):
                                  self._hparams.output_dim, bias=use_bias)
 
         if self._hparams.initializer:
+            # pylint: disable=fixme
             # TODO: This might be different to what TensorFlow does
             initialize = layers.get_initializer(self._hparams.initializer)
             assert initialize is not None
@@ -84,7 +90,6 @@ class MultiheadAttentionEncoder(EncoderBase):
         r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
-
             {
                 "initializer": None,
                 'num_heads': 8,
@@ -131,6 +136,7 @@ class MultiheadAttentionEncoder(EncoderBase):
             'name': 'multihead_attention',
         }
 
+    # pylint: disable=arguments-differ, too-many-locals
     def forward(self,  # type: ignore
                 queries: torch.Tensor,
                 memory: torch.Tensor,
@@ -224,9 +230,8 @@ class MultiheadAttentionEncoder(EncoderBase):
 
     def _split_heads(self, x: torch.Tensor) -> torch.Tensor:
         r"""Split channels (dimension 2) into multiple heads,
-        becomes dimension 1).
-
-        Must ensure `x.shape[-1]` can be divided by num_heads
+        becomes dimension 1). Must ensure `x.shape[-1]` can be
+        divided by num_heads.
         """
         depth = x.size(-1)
         split_x = torch.reshape(x, (
@@ -236,9 +241,9 @@ class MultiheadAttentionEncoder(EncoderBase):
 
     def _combine_heads(self, x: torch.Tensor) -> torch.Tensor:
         r"""
+
         Args:
             x: A Tensor of shape `[batch, num_heads, seq_len, dim]`
-
         Returns:
             A Tensor of shape `[batch, seq_len, num_heads * dim]`
         """
@@ -249,4 +254,7 @@ class MultiheadAttentionEncoder(EncoderBase):
 
     @property
     def output_size(self):
+        r"""Provides output dimension as property.
+        """
+
         return self._hparams.output_dim
