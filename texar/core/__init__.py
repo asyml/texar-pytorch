@@ -20,3 +20,4 @@ Modules of texar core.
 from texar.core.cell_wrappers import *
 from texar.core.layers import *
 from texar.core.regularizers import *
+from texar.core.attention_mechanism import *
