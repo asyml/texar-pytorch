@@ -258,7 +258,7 @@ class _BaseAttentionMechanism(AttentionMechanism):
           (`alignments_size` is the values' `max_time`).
         """
         max_time = self._alignments_size
-        return torch.zeros(batch_size, max_time, dtype=self._keys.dtype)
+        return self._keys.new_zeros(batch_size, max_time)
 
     def initial_state(self,
                       batch_size: int) -> torch.Tensor:
@@ -398,7 +398,11 @@ class LuongAttention(_BaseAttentionMechanism):
             score_mask_value=score_mask_value)
         self._num_units = num_units
         self._scale = scale
-        self.attention_g: Optional[torch.Tensor] = None
+        if self._scale:
+            self.attention_g = nn.Parameter(torch.tensor(1.0),
+                                            requires_grad=True)
+        else:
+            self.attention_g = None
 
     def forward(self,  # type: ignore
                 query: torch.Tensor,
@@ -417,10 +421,6 @@ class LuongAttention(_BaseAttentionMechanism):
             `[batch_size, alignments_size]` (`alignments_size` is memory's
             `max_time`).
         """
-        if self._scale:
-            if self.attention_g is None:
-                self.attention_g = nn.Parameter(torch.tensor(1.0),
-                                                requires_grad=True)
         score = _luong_score(query, self._keys, self.attention_g)
         alignments = self._probability_fn(score, state)
         next_state = alignments
@@ -466,7 +466,7 @@ def _bahdanau_score(processed_query: torch.Tensor,
         normed_v = attention_g * attention_v * torch.rsqrt(
             torch.sum(attention_v ** 2))
         return torch.sum(normed_v * torch.tanh(keys + processed_query
-                                           + attention_b), 2)
+                                               + attention_b), 2)
     else:
         return torch.sum(attention_v * torch.tanh(keys + processed_query), 2)
 
@@ -533,9 +533,25 @@ class BahdanauAttention(_BaseAttentionMechanism):
             score_mask_value=score_mask_value)
         self._num_units = num_units
         self._normalize = normalize
-        self.attention_v: Optional[torch.Tensor] = None
-        self.attention_g: Optional[torch.Tensor] = None
-        self.attention_b: Optional[torch.Tensor] = None
+
+        num_units = self._keys.shape[2]
+        limit = np.sqrt(3. / num_units)
+        self.attention_v = 2 * limit * torch.rand(
+            num_units, dtype=self.values.dtype) - limit
+        self.attention_v = nn.Parameter(self.attention_v,
+                                        requires_grad=True)
+
+        if self._normalize:
+            self.attention_g = torch.sqrt(torch.tensor(1. / num_units))
+            self.attention_g = nn.Parameter(self.attention_g,
+                                            requires_grad=True)
+            self.attention_b = torch.zeros(num_units,
+                                           dtype=self.values.dtype)
+            self.attention_b = nn.Parameter(self.attention_b,
+                                            requires_grad=True)
+        else:
+            self.attention_g = None
+            self.attention_b = None
 
     def forward(self,  # type: ignore
                 query: torch.Tensor,
@@ -559,26 +575,6 @@ class BahdanauAttention(_BaseAttentionMechanism):
                                           self._keys.shape[-1], False)
 
         processed_query = self.query_layer(query) if self.query_layer else query
-
-        if self.attention_v is None:
-            num_units = self._keys.shape[2]
-            limit = np.sqrt(3./num_units)
-            self.attention_v = 2*limit*torch.rand(
-                num_units,
-                dtype=processed_query.dtype) - limit
-            self.attention_v = nn.Parameter(self.attention_v,
-                                            requires_grad=True)
-
-        if self._normalize:
-            if self.attention_g is None:
-                self.attention_g = torch.sqrt(torch.tensor(1./num_units))
-                self.attention_g = nn.Parameter(self.attention_g,
-                                                requires_grad=True)
-            if self.attention_b is None:
-                self.attention_b = torch.zeros(num_units,
-                                               dtype=processed_query.dtype)
-                self.attention_b = nn.Parameter(self.attention_b,
-                                                requires_grad=True)
 
         score = _bahdanau_score(processed_query,
                                 self._keys,
@@ -610,7 +606,11 @@ def safe_cumprod(x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
     if not isinstance(x, torch.Tensor):
         x = torch.tensor(x)
 
-    tiny = np.finfo(x.detach().numpy().dtype).tiny
+    type_map = {torch.float16: np.float16,
+                torch.float32: np.float32,
+                torch.float64: np.float64}
+
+    tiny = np.finfo(type_map[x.dtype]).tiny
     return torch.exp(torch.cumsum(torch.log(torch.clamp(x, tiny, 1)),
                                   *args, **kwargs))
 
@@ -783,7 +783,8 @@ class _BaseMonotonicAttentionMechanism(_BaseAttentionMechanism):
               (`alignments_size` is the values' `max_time`).
         """
         max_time = self._alignments_size
-        labels = torch.zeros((batch_size,), dtype=torch.int64)
+        labels = torch.zeros((batch_size,), dtype=torch.int64,
+                             device=self._values.device)
         one_hot = torch.eye(max_time, dtype=torch.int64)
         return F.embedding(labels, one_hot)
 
@@ -850,15 +851,29 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
             score_mask_value=score_mask_value)
         self._num_units = num_units
         self._normalize = normalize
-        self.attention_v: Optional[torch.Tensor] = None
-        self.attention_g: Optional[torch.Tensor] = None
-        self.attention_b: Optional[torch.Tensor] = None
+
+        num_units = self._keys.shape[2]
+        limit = np.sqrt(3. / num_units)
+        self.attention_v = 2 * limit * torch.rand(
+            num_units,
+            dtype=self.values.dtype) - limit
+        self.attention_v = nn.Parameter(self.attention_v,
+                                        requires_grad=True)
+
+        if self._normalize:
+            self.attention_g = torch.sqrt(torch.tensor(1. / num_units))
+            self.attention_g = nn.Parameter(self.attention_g,
+                                            requires_grad=True)
+            self.attention_b = torch.zeros(num_units,
+                                           dtype=self.values.dtype)
+            self.attention_b = nn.Parameter(self.attention_b,
+                                            requires_grad=True)
+        else:
+            self.attention_g = None
+            self.attention_b = None
 
         if not isinstance(score_bias_init, torch.Tensor):
-            self.attention_score_bias = torch.tensor(score_bias_init,
-                                                     requires_grad=True)
-        else:
-            self.attention_score_bias = score_bias_init.requires_grad_()
+            self.attention_score_bias = torch.tensor(score_bias_init)
         self.attention_score_bias = nn.Parameter(self.attention_score_bias)
 
     def forward(self,  # type: ignore
@@ -883,26 +898,6 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
                                           self._keys.shape[-1], False)
 
         processed_query = self.query_layer(query) if self.query_layer else query
-
-        if self.attention_v is None:
-            num_units = self._keys.shape[2]
-            limit = np.sqrt(3./num_units)
-            self.attention_v = 2*limit*torch.rand(
-                num_units,
-                dtype=processed_query.dtype) - limit
-            self.attention_v = nn.Parameter(self.attention_v,
-                                            requires_grad=True)
-
-        if self._normalize:
-            if self.attention_g is None:
-                self.attention_g = torch.sqrt(torch.tensor(1./num_units))
-                self.attention_g = nn.Parameter(self.attention_g,
-                                                requires_grad=True)
-            if self.attention_b is None:
-                self.attention_b = torch.zeros(num_units,
-                                               dtype=processed_query.dtype)
-                self.attention_b = nn.Parameter(self.attention_b,
-                                                requires_grad=True)
 
         score = _bahdanau_score(processed_query,
                                 self._keys,
@@ -975,13 +970,12 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
             score_mask_value=score_mask_value)
         self._num_units = num_units
         self._scale = scale
-        self.attention_g: Optional[torch.Tensor] = None
+        if self._scale:
+            self.attention_g = nn.Parameter(
+                torch.tensor(1.0, requires_grad=True))
 
         if not isinstance(score_bias_init, torch.Tensor):
-            self.attention_score_bias = torch.tensor(score_bias_init,
-                                                     requires_grad=True)
-        else:
-            self.attention_score_bias = score_bias_init.requires_grad_()
+            self.attention_score_bias = torch.tensor(score_bias_init)
         self.attention_score_bias = nn.Parameter(self.attention_score_bias)
 
     def forward(self,  # type: ignore
@@ -1001,10 +995,6 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 `[batch_size, alignments_size]` (`alignments_size` is memory's
                 `max_time`).
         """
-        if self._scale:
-            if self.attention_g is None:
-                self.attention_g = nn.Parameter(
-                    torch.tensor(1.0, requires_grad=True))
         score = _luong_score(query, self._keys, self.attention_g)
         score += self.attention_score_bias
         alignments = self._probability_fn(score, state)
