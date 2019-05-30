@@ -16,27 +16,212 @@ Base data class that is inherited by all data classes.
 A data defines data reading, parsing, batching, and other
 preprocessing operations.
 """
+import warnings
 from abc import ABC
-from typing import Callable, List, TypeVar, Generic
+from typing import Callable, Dict, Generic, Iterable, Iterator, List, \
+    Optional, Sequence, Tuple, TypeVar
 
 from torch.utils.data import Dataset
 
 from texar.data.data.dataset_utils import Batch
+from texar.data.data.dataset_utils import _CacheStrategy, _LazyStrategy
 from texar.hyperparams import HParams
 
 __all__ = [
-    "DataBase"
+    "DataSource",
+    "IterDataSource",
+    "DataBase",
 ]
 
-Example = TypeVar('Example')  # type of a single data example
+RawExample = TypeVar('RawExample')  # type of a raw example loaded from source
+Example = TypeVar('Example')  # type of a data example
 
 
-class DataBase(Dataset, Generic[Example], ABC):
+class DataSource(Generic[RawExample], ABC):
+    r"""Base class for all datasets. Different to PyTorch
+    :class:`~torch.utils.data.Dataset`, subclasses of this class are not
+    required to implement `__getitem__` (default implementation raises
+    `TypeError`), which is beneficial for certain sources that only supports
+    iteration (reading from text files, reading Python iterators, etc.)
+    """
+
+    def __getitem__(self, index: int) -> RawExample:
+        raise TypeError("This DataSource does not support random access")
+
+    def __iter__(self) -> Iterator[RawExample]:
+        raise NotImplementedError
+
+    def __len__(self) -> int:
+        raise TypeError("This DataSource does not support random access")
+
+
+class SequenceDataSource(DataSource[RawExample]):
+    r"""Data source for reading from Python sequences.
+    """
+
+    def __init__(self, sequence: Sequence[RawExample]):
+        self._seq = sequence
+
+    def __getitem__(self, index: int) -> RawExample:
+        return self._seq[index]
+
+    def __iter__(self) -> Iterator[RawExample]:
+        return iter(self._seq)
+
+    def __len__(self) -> int:
+        return len(self._seq)
+
+
+class IterDataSource(DataSource[RawExample]):
+    r"""Data source for reading from Python iterables.
+    """
+
+    def __init__(self, iterable: Iterable[RawExample]):
+        self._iter = iterable
+
+    def __iter__(self) -> Iterator[RawExample]:
+        return iter(self._iter)
+
+
+class ZipDataSource(DataSource[Tuple[RawExample, ...]]):
+    r"""Data source by combining multiple sources.
+    """
+
+    def __init__(self, sources: List[DataSource[RawExample]]):
+        self._sources = sources
+
+    def __getitem__(self, index: int) -> Tuple[RawExample, ...]:
+        return tuple(source[index] for source in self._sources)
+
+    def __iter__(self) -> Iterator[Tuple[RawExample, ...]]:
+        return zip(*[iter(source) for source in self._sources])
+
+    def __len__(self) -> int:
+        return min(len(source) for source in self._sources)
+
+
+class RecordDataSource(DataSource[Dict[str, RawExample]]):
+    r"""Data source by structuring multiple source.
+    """
+
+    def __init__(self, sources: Dict[str, DataSource[RawExample]]):
+        self._sources = sources
+
+    def __getitem__(self, index: int) -> Dict[str, RawExample]:
+        return {key: source[index] for key, source in self._sources.items()}
+
+    def __iter__(self) -> Iterator[Dict[str, RawExample]]:
+        keys = list(self._sources.keys())
+        iterator = zip(*[iter(source) for source in self._sources.values()])
+        for values in iterator:
+            yield {key: value for key, value in zip(keys, values)}
+
+    def __len__(self) -> int:
+        return min(len(source) for source in self._sources.values())
+
+
+class _CachedDataSource(DataSource[Example]):
+    r"""Wrapper for random access support over a data source that does not
+    implement `__getitem__`. This class is only used internally in
+    :class:`~texar.data.data.DataBase`, while conforming to user
+    `cache_strategy` and `shuffle_buffer_size` settings.
+    """
+
+    def __init__(self, data_source: DataSource[Example],
+                 erase_after_access: bool = True):
+        r"""
+
+        Args:
+            data_source: The data source to wrap around.
+            erase_after_access: If `True`, cached examples are erased after
+                being accessed through `__getitem__`. Useful when
+                :class:`~texar.data.data.DataBase` hyperparameter
+                `cache_strategy` is set to `none` or `processed`.
+        """
+        self._source = data_source
+        self._iter = iter(data_source)
+        self._max_index = -1
+        self._erase_after_access = erase_after_access
+        if erase_after_access:
+            self._cache: Dict[int, Example] = {}
+        else:
+            self._cache: List[Example] = []
+
+    def __getitem__(self, index: int) -> Example:
+        # If specified `index` is not yet prefetched (or has already been
+        # accessed), this method may throw `IndexError` or `KeyError`.
+        example = self._cache[index]
+        if self._erase_after_access:
+            del self._cache[index]
+        return example
+
+    def __iter__(self) -> Iterator[Example]:
+        return iter(self._source)
+
+    def prefetch(self, index: int):
+        while self._max_index < index:
+            self._max_index += 1
+            example = next(self._iter)
+            if self._erase_after_access:
+                self._cache[self._max_index] = example
+            else:
+                self._cache.append(example)
+
+    @property
+    def max_index(self) -> int:
+        return self._max_index
+
+    def reset(self) -> None:
+        self._max_index = -1
+        if self._erase_after_access:
+            self._cache = {}
+
+
+class DataBase(Dataset, Generic[RawExample, Example], ABC):
     r"""Base class inherited by all data classes.
     """
 
-    def __init__(self, hparams):
+    _source: DataSource[RawExample]
+
+    def __init__(self, source: DataSource[RawExample], hparams):
+        self._source = source
         self._hparams = HParams(hparams, self.default_hparams())
+
+        # Check and convert strategy hyperparameters.
+        self._lazy_strategy = _LazyStrategy(self._hparams.lazy_loading)
+        self._cache_strategy = _CacheStrategy(self._hparams.cache_strategy)
+        if self._lazy_strategy is _LazyStrategy.NONE:
+            self._cache_strategy = _CacheStrategy.PROCESSED
+        elif self._lazy_strategy is _LazyStrategy.PROCESS:
+            if self._cache_strategy is _CacheStrategy.NONE:
+                self._cache_strategy = _CacheStrategy.LOADED
+
+        # Check whether data source supports random access, and obtain dataset
+        # size if it does.
+        self._supports_random_access = True
+        if self._lazy_strategy is not _LazyStrategy.NONE:
+            try:
+                self._dataset_size = len(self._source)
+                _ = self._source[0]
+            except TypeError:
+                self._supports_random_access = False
+                erase_after_access = (
+                        self._cache_strategy is not _CacheStrategy.LOADED)
+                self._source = _CachedDataSource(source, erase_after_access)
+                self._dataset_size = None
+
+        # Perform eager loading/processing if required.
+        if self._lazy_strategy is _LazyStrategy.NONE:
+            # Process entire dataset and cache.
+            self._cache = []
+            for raw_example in self._source:
+                self._cache.append(self._process(raw_example))
+            self._dataset_size = len(self._cache)
+        elif self._lazy_strategy is _LazyStrategy.PROCESS:
+            # Load entire dataset. Note that if data source supports random
+            # access, we assume it is already loaded into memory.
+            if not self._supports_random_access:
+                self._prefetch_source(None)
 
     @staticmethod
     def default_hparams():
@@ -122,12 +307,43 @@ class DataBase(Dataset, Generic[Example], ABC):
 
                 For example, consider a dataset with elements [1, 2, 3], with
                 "num_epochs"`=2` and some fixed seed, the resulting sequence
-                can be: 2 1 3, 1 3 2 | 2 1 3, 1 3 2, ... That is, the orders are
-                different **within** every `num_epochs`, but are the same
+                can be: `2 1 3, 1 3 2 | 2 1 3, 1 3 2, ...` That is, the orders
+                are different **within** every `num_epochs`, but are the same
                 **across** the `num_epochs`.
 
             name : str
                 Name of the data.
+
+            lazy_strategy : str
+                Lazy strategy for data examples. Lazy loading/processing defers
+                data loading/processing until when it's being accessed.
+                Non-lazy (eager) loading/processing would load/process all data
+                upon construction of dataset. Available options are:
+
+                    - `none`: Perform eager loading and processing.
+                    - `process`: Perform eager loading and lazy processing.
+                    - `all`: Perform lazy loading and processing.
+
+                Defaults to `all`.
+
+            cache_strategy: str
+                Caching strategy for data examples. Available options are:
+
+                    - `none`: No data is cached. Data is always loaded from
+                        source (e.g. file) and processed upon access.
+                    - `loaded`: Only cache raw data loaded from source,
+                        processing routines are performed upon access.
+                    - `processed`: Processed data is cached. **Note:** raw data
+                        will not be cached in this case, because raw data is
+                        only used to construct the processed data.
+
+                Default value is `loaded`. This option depends on the value of
+                `lazy_strategy`, specifically:
+
+                    - When `lazy_strategy` is `none`, all choices of
+                        `cache_strategy` are equivalent to `processed`.
+                    - When `lazy_strategy` is `process`, `none` is equivalent
+                        to `loaded`.
         """
         return {
             "name": "data",
@@ -140,8 +356,61 @@ class DataBase(Dataset, Generic[Example], ABC):
             "num_parallel_calls": 1,
             "prefetch_buffer_size": 0,
             "max_dataset_size": -1,
-            "seed": None
+            "seed": None,
+            "lazy_strategy": 'all',
+            "cache_strategy": 'loaded',
         }
+
+    def _prefetch_source(self, index: Optional[int]) -> Optional[int]:
+        r"""Prefetches data so `__getitem__` will be available. This method
+        should only be called in the main process, because data sources are not
+        guaranteed to be thread-safe.
+
+        Args:
+            index: Prefetch data up to this index. If `None`, prefetch all data.
+
+        Returns:
+            If `index` is `None`, or `index` is greater than dataset size,
+            returns the inferred dataset size. Otherwise, returns `None`.
+        """
+        if not self._supports_random_access:
+            self._source: _CachedDataSource
+            try:
+                if index is not None:
+                    self._source.prefetch(index)
+                else:
+                    max_index = 10 ** 8
+                    self._source.prefetch(max_index)
+                    warnings.warn(
+                        f"The data source contains more than {max_index:.2e} "
+                        f"examples. Please check whether it is infinite.")
+                    while True:
+                        max_index *= 2
+                        self._source.prefetch(max_index)
+            except StopIteration:
+                self._dataset_size = self._source.max_index
+                self._source.reset()
+                return self._dataset_size
+        return None
+
+    def __len__(self) -> int:
+        if self._dataset_size is None:
+            warnings.warn(
+                "The provided data source does not support random access. To "
+                "obtain dataset size, a full traversal must be performed. "
+                "This is often unnecessary and slow, consider redesigning your "
+                "use case.")
+            self._prefetch_source(None)
+        return self._dataset_size
+
+    def _process(self, raw_example: RawExample) -> Example:
+        raise NotImplementedError
+
+    def __getitem__(self, index: int) -> Example:
+        if self._cache_strategy is _CacheStrategy.PROCESSED:
+            return self._cache[index]
+        else:
+            return self._process(self._source[index])
 
     @property
     def num_epochs(self):
@@ -173,10 +442,18 @@ class DataBase(Dataset, Generic[Example], ABC):
         r"""Create a `collate_fn` for :class:`~torch.utils.data.DataLoader` that
         is used to combine examples into batches. This function takes a list of
         examples, and return an instance of :class:`~texar.data.data.Batch`.
-        Implementation should make sure that the returned callable does not
-        depend on `self`, and should be multi-processing-safe.
+        Implementation should make sure that the returned callable is safe and
+        efficient under multi-processing scenarios.
 
         Returns:
             A callable `collate_fn`.
         """
         raise NotImplementedError
+
+    @property
+    def cache_strategy(self) -> _CacheStrategy:
+        return self._cache_strategy
+
+    @property
+    def lazy_strategy(self) -> _LazyStrategy:
+        return self._lazy_strategy

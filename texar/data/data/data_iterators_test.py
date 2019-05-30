@@ -1,21 +1,87 @@
-# -*- coding: utf-8 -*-
-#
 """
 Unit tests for data iterator related operations.
 """
 import copy
 import tempfile
 import unittest
+from typing import Optional, List
 
 import numpy as np
+import torch
 from torch.utils.data import TensorDataset
 
 import texar.data
-import torch
+from texar.data.data.data_iterators import BufferBasedShuffler
+from texar.data.data.dataset_utils import _CacheStrategy, _LazyStrategy
+
+
+class SamplerTest(unittest.TestCase):
+    r"""Tests samplers.
+    """
+
+    class MockDataBase:
+        def __init__(self, size: int, lazy_strategy: str,
+                     cache_strategy: str, unknown_size: bool = False):
+            self.size = size
+            self.lazy_strategy = _LazyStrategy(lazy_strategy)
+            self.cache_strategy = _CacheStrategy(cache_strategy)
+            self._dataset_size = size if not unknown_size else None
+            self._unknown_size = unknown_size
+
+        def _prefetch_source(self, index: int) -> Optional[int]:
+            if self._unknown_size:
+                if index >= self.size:
+                    self._dataset_size = self.size
+                    return self._dataset_size
+            return None
+
+        def __getitem__(self, item):
+            return item
+
+    def setUp(self) -> None:
+        self.size = 10
+        self.buffer_size = 5
+
+    def _test_data(self, data: MockDataBase,
+                   returns_data: bool = False,
+                   always_returns_data: bool = False):
+        sampler = BufferBasedShuffler(data, self.buffer_size)
+        for epoch in range(2):
+            indices = list(iter(sampler))
+            if always_returns_data or (returns_data and epoch == 0):
+                examples = [ex[1] for ex in indices]
+                indices = [ex[0] for ex in indices]
+                np.testing.assert_array_equal(indices, examples)
+            self.assertEqual(len(set(indices)), self.size)
+            self.assertEqual(min(indices), 0)
+            self.assertEqual(max(indices), self.size - 1)
+
+    def test_known_size(self):
+        data = self.MockDataBase(self.size, 'none', 'processed')
+        self._test_data(data)
+        data = self.MockDataBase(self.size, 'all', 'none', unknown_size=True)
+        self._test_data(data, always_returns_data=True)
+
+    def test_non_lazy_loading(self):
+        strategies = [
+            ('none', 'processed'),
+            ('process', 'loaded'),
+            ('process', 'processed'),
+        ]
+        for lazy, cache in strategies:
+            data = self.MockDataBase(self.size, lazy, cache)
+            self._test_data(data)
+
+    def test_lazy_loading(self):
+        data = self.MockDataBase(self.size, 'all', 'loaded', unknown_size=True)
+        self._test_data(data, returns_data=True)
+        data = self.MockDataBase(self.size, 'all', 'processed',
+                                 unknown_size=True)
+        self._test_data(data, returns_data=True)
 
 
 class DataIteratorTest(unittest.TestCase):
-    """Tests data iterators.
+    r"""Tests data iterators.
     """
 
     def setUp(self):
@@ -68,7 +134,7 @@ class DataIteratorTest(unittest.TestCase):
         }
 
     def test_iterator_single_dataset(self):
-        """Tests iterating over a single dataset.
+        r"""Tests iterating over a single dataset.
         """
         data = texar.data.MonoTextData(self._test_hparams)
         data_iterator = texar.data.DataIterator(data)
@@ -84,7 +150,7 @@ class DataIteratorTest(unittest.TestCase):
         self.assertEqual(i, 2001)
 
     def test_iterator_single_dataset_parallel(self):
-        """Tests iterating over a single dataset with multiple workers.
+        r"""Tests iterating over a single dataset with multiple workers.
         """
         hparams = copy.deepcopy(self._test_hparams)
         hparams['num_parallel_calls'] = 2
@@ -102,7 +168,7 @@ class DataIteratorTest(unittest.TestCase):
         self.assertEqual(i, 2001)
 
     def test_iterator_multi_datasets(self):
-        """Tests iterating over multiple datasets.
+        r"""Tests iterating over multiple datasets.
         """
         train = TensorDataset(torch.from_numpy(np.arange(0, 100, 1)))
         test = TensorDataset(torch.from_numpy(np.arange(100, 200, 1)))
@@ -130,7 +196,7 @@ class DataIteratorTest(unittest.TestCase):
         self.assertTrue('not found' in str(context.exception))
 
     def test_train_test_data_iterator(self):
-        """Tests :class:`texar.data.TrainTestDataIterator`
+        r"""Tests :class:`texar.data.TrainTestDataIterator`
         """
         train_data = TensorDataset(torch.from_numpy(np.arange(0, 100, 1)))
         test_data = TensorDataset(torch.from_numpy(np.arange(100, 200, 1)))

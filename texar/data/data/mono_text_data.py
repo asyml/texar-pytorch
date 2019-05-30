@@ -18,12 +18,12 @@ preprocessing operations.
 from typing import Callable, List
 
 import numpy as np
-
 import torch
-from texar.data.data.dataset_utils import Batch
-from texar.data.embedding import Embedding
+
 from texar.data.data import dataset_utils as dsutils
-from texar.data.data.text_data_base import TextDataBase, TextLineDataset
+from texar.data.data.dataset_utils import Batch
+from texar.data.data.text_data_base import TextDataBase, TextLineDataSource
+from texar.data.embedding import Embedding
 from texar.data.vocabulary import SpecialTokens, Vocab
 from texar.utils import utils
 from texar.utils.dtypes import is_callable
@@ -340,7 +340,7 @@ class MonoTextData(TextDataBase[List[str]]):
 
     @staticmethod
     def _make_mono_text_dataset(dataset_hparams):
-        dataset = TextLineDataset(
+        dataset = TextLineDataSource(
             dataset_hparams["files"],
             compression_type=dataset_hparams["compression_type"])
         return dataset

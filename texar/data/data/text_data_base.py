@@ -15,45 +15,36 @@
 Base text data class that is inherited by all text data classes.
 """
 from abc import ABC
-from typing import Iterable, List, Optional, TypeVar
+from typing import Iterable, Optional, TypeVar
 
-from torch.utils.data import Dataset
-
-from texar.data.data.data_base import DataBase
+from texar.data.data.data_base import DataBase, DataSource
 from texar.utils.types import MaybeList
 
 __all__ = [
-    "TextLineDataset",
+    "TextLineDataSource",
     "TextDataBase",
 ]
 
 Example = TypeVar('Example')
 
 
-class TextLineDataset(Dataset):
+class TextLineDataSource(DataSource[str]):
     def __init__(self, file_paths: MaybeList[str],
                  compression_type: Optional[str] = None):
         if compression_type is not None:
             raise NotImplementedError
         if isinstance(file_paths, str):
             file_paths = [file_paths]
-        lines: List[str] = []
-        for path in file_paths:
-            with open(path, 'r') as f:
-                lines.extend(line.rstrip('\n') for line in f)
-        self._lines = lines
-
-    def __getitem__(self, index) -> str:
-        return self._lines[index]
+        self._file_paths = file_paths
 
     def __iter__(self) -> Iterable[str]:
-        return iter(self._lines)
+        for path in self._file_paths:
+            with open(path, 'r') as f:
+                for line in f:
+                    yield line.rstrip('\n')
 
-    def __len__(self) -> int:
-        return len(self._lines)
 
-
-class TextDataBase(DataBase[Example], ABC):  # pylint: disable=too-few-public-methods
+class TextDataBase(DataBase[str, Example], ABC):  # pylint: disable=too-few-public-methods
     """Base class inherited by all text data classes.
     """
 

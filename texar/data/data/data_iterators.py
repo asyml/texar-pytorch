@@ -14,13 +14,13 @@
 """
 Various data iterator classes.
 """
-from typing import Dict, Iterable, List, Optional, Sequence, Union
-
-from torch.utils.data import DataLoader, Sampler
+from typing import Dict, Iterable, List, Optional, Sequence, Union, Iterator
 
 import torch
+from torch.utils.data import DataLoader, Sampler
+
 from texar.data.data.data_base import DataBase
-from texar.data.data.dataset_utils import Batch
+from texar.data.data.dataset_utils import Batch, _CacheStrategy, _LazyStrategy
 from texar.utils.types import MaybeSeq
 
 __all__ = [
@@ -37,29 +37,67 @@ class BufferBasedShuffler(Sampler):
     sample is drawn from the buffer, and the drawn sample is replaced with the
     next data example.
 
+    This class is used internally in :class:`~texar.data.data.DataIterator`.
+    It calls the :meth:`~texar.data.data.DataBase._prefetch_source` method to
+    ensure the required number of
+
     Args:
-        data_source: The dataset.
-        buffer_size: The size of the shuffle buffer. Buffer-bases shuffling
-            guarantees that each data example is at most `buffer_size` positions
-            away from its original position. Use larger buffer sizes for more
-            uniformly-random shuffling.
+        data: The :class:`~texar.data.data.DataBase` instance.
+        buffer_size: The size of the shuffle buffer. Use larger buffer sizes for
+            more uniformly-random shuffling.
     """
 
-    def __init__(self, data_source: DataBase, buffer_size: int):
-        super().__init__(data_source)
-        self.size = len(data_source)
+    def __init__(self, data: DataBase, buffer_size: int):
+        super().__init__(data)
         self.buffer_size = buffer_size
 
-    def __iter__(self) -> Iterable[int]:  # type: ignore
-        if self.buffer_size <= self.size:
-            return iter(torch.randperm(self.size).tolist())
+        self._source = data
+        self.size: Optional[int] = data._dataset_size
+
+    def _iterator_given_size(self, size) -> Iterator[int]:
+        if self.buffer_size >= size:
+            return iter(torch.randperm(size).tolist())
 
         buffer = list(range(self.buffer_size))
-        for x in range(self.buffer_size, self.size):
+        for x in range(self.buffer_size, size):
             sample = torch.randint(self.buffer_size, (1,)).item()
-            yield buffer[sample]
+            index = buffer[sample]
+            yield index
             buffer[sample] = x
         yield from (buffer[x] for x in torch.randperm(self.buffer_size))
+
+    def _iterator_unknown_size(self) -> Iterator[int]:
+        buffer = list(range(self.buffer_size))
+        x = self.buffer_size
+        while True:
+            sample = torch.randint(self.buffer_size, (1,)).item()
+            index = buffer[sample]
+            cur_size = self._source._prefetch_source(index)
+            if cur_size is not None:
+                self.size = cur_size
+            if self.size is not None and index >= self.size:
+                break
+            yield index
+            buffer[sample] = x
+            x += 1
+        yield from (buffer[x] for x in torch.randperm(self.buffer_size)
+                    if buffer[x] < self.size)
+
+    def __iter__(self) -> Iterator[int]:
+        if self.size is not None:
+            # Non-lazy loading, or when dataset has been fully iterated.
+            iterator = self._iterator_given_size(self.size)
+        else:
+            # First epoch of lazy loading, calling prefetch, and returning
+            # indices and examples.
+            iterator = self._iterator_unknown_size()
+
+        if self.size is None or (
+                self._source.cache_strategy is _CacheStrategy.NONE and
+                self._source.lazy_strategy is _LazyStrategy.ALL):
+            # Return indices and examples for any epoch in this case.
+            iterator = map(lambda idx: (idx, self._source[idx]), iterator)
+        return iterator
 
     def __len__(self):
         return self.size

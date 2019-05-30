@@ -1,4 +1,5 @@
-from typing import Dict, Any, Optional, KeysView, ValuesView, ItemsView
+from enum import Enum
+from typing import Any, Dict, ItemsView, KeysView, Optional, ValuesView
 
 
 class Batch:
@@ -52,3 +53,15 @@ class FieldBatch(Batch):
             super().__init__(batch_size, _batch_dict)
         else:
             super().__init__(0)
+
+
+class _LazyStrategy(Enum):
+    NONE = "none"
+    PROCESS = "process"
+    ALL = "all"
+
+
+class _CacheStrategy(Enum):
+    NONE = "none"
+    LOADED = "loaded"
+    PROCESSED = "processed"
