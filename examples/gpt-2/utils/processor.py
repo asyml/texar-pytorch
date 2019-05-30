@@ -19,8 +19,9 @@ def bytes_to_unicode():
     When you're at something like a 10B token dataset you end up needing around
     5K for decent coverage. This is a significant percentage of your normal,
     say, 32K bpe vocab.
-    To avoid that, we want lookup tables between utf-8 bytes and unicode strings.
-    And avoids mapping to whitespace/control characters the bpe code barfs on.
+    To avoid that, we want lookup tables between utf-8 bytes and unicode
+    strings. And avoids mapping to whitespace/control characters the bpe code
+    barfs on.
     """
     bs = (list(range(ord("!"), ord("~") + 1)) +
           list(range(ord("¡"), ord("¬") + 1)) +

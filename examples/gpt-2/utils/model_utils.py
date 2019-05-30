@@ -61,8 +61,8 @@ def transform_gpt2_to_texar_config(input_json_path):
                 {
                     "type": "Linear",
                     "kwargs": {
-                        "in_features": dim * 4,
-                        "out_features": dim,
+                        "in_features": hidden_dim * 4,
+                        "out_features": hidden_dim,
                         "bias": True,
                     }
                 }
@@ -102,13 +102,13 @@ def init_gpt2_checkpoint(word_embedder, pos_embedder, decoder, init_checkpoint):
         "ln_1/g": "self_attn_layer_norm.{}.weight",
         "ln_2/b": "poswise_layer_norm.{}.bias",
         "ln_2/g": "poswise_layer_norm.{}.weight",
-        "mlp/c_fc/b": "poswise_networks.{}.network.0.bias",
-        "mlp/c_proj/b": "poswise_networks.{}.network.2.bias",
+        "mlp/c_fc/b": "poswise_networks.{}._layers.0.bias",
+        "mlp/c_proj/b": "poswise_networks.{}._layers.2.bias",
         "attn/c_proj/b": "self_attns.{}.O_dense.bias",
     }
     layer_transpose_map = {
-        "mlp/c_fc/w": "poswise_networks.{}.network.0.weight",
-        "mlp/c_proj/w": "poswise_networks.{}.network.2.weight",
+        "mlp/c_fc/w": "poswise_networks.{}._layers.0.weight",
+        "mlp/c_proj/w": "poswise_networks.{}._layers.2.weight",
         "attn/c_proj/w": "self_attns.{}.O_dense.weight",
     }
 
@@ -128,6 +128,7 @@ def init_gpt2_checkpoint(word_embedder, pos_embedder, decoder, init_checkpoint):
     for name, _ in pos_embedder.named_parameters():
         tensor_names.append(name)
     for name, _ in decoder.named_parameters():
+        print(name)
         tensor_names.append(name)
 
     idx = 0
