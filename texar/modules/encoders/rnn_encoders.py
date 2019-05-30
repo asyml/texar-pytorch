@@ -19,10 +19,12 @@ import functools
 import numpy as np
 
 import torch
-from torch import nn
+import torch.nn as nn
+import torch.nn.functional as F
 
 from typing import Optional
 
+from texar.core.cell_wrappers import LSTMCell
 from texar import HParams
 from texar import ModuleBase
 from texar.modules.encoders import EncoderBase
@@ -83,7 +85,8 @@ def _build_dense_output_layer(cell_output_size, hparams):
         kwargs_i.update(other_kwargs)
 
         layer_hparams = {"type": nn.Linear, "kwargs": kwargs_i}
-        dense_layers.append(layers.get_layer(hparams=layer_hparams))
+        dense_layer = layers.get_layer(hparams=layer_hparams)
+        # dense_layers.append(layers.get_layer(hparams=layer_hparams))
 
         if i == nlayers - 1:
             activation = hparams.final_layer_activation
@@ -92,7 +95,12 @@ def _build_dense_output_layer(cell_output_size, hparams):
 
         if activation is not None:
             layer_hparams = {"type": activation, "kwargs": {}}
-            dense_layers.append(layers.get_layer(hparams=layer_hparams))
+            activation_layer = layers.get_layer(hparams=layer_hparams)
+            #  dense_layers.append(layers.get_layer(hparams=layer_hparams))
+        else:
+            activation_layer = None
+
+        dense_layers.append((dense_layer, activation_layer))
 
     if len(dense_layers) == 1:
         dense_layers = dense_layers[0]
@@ -100,7 +108,7 @@ def _build_dense_output_layer(cell_output_size, hparams):
     return dense_layers
 
 
-def _forward_single_output_layer(inputs, input_size, output_layer):
+def _forward_single_output_layer(inputs, output_layer):
     """Forwards the input through a single output layer.
 
     Args:
@@ -108,28 +116,18 @@ def _forward_single_output_layer(inputs, input_size, output_layer):
             :attr:`time_major=False`, or shape
             `[max_time, batch_size] + input_size` if :attr:`time_major=True`.
         input_size: An `int` or 1D `int` array.
+        output_layer: A tuple of (Linear Layer, Activation).
     """
-    dim = np.prod(input_size)
-    inputs_flat = inputs
-    inputs_flat = torch.reshape(inputs_flat, (-1, dim))
+    layer, activation = output_layer
     # Feed to the layer
-    output_flat = output_layer(inputs_flat)
-
-    # Reshape output to [batch_size/max_time, max_time/batch_size, output_size]
-    output = torch.reshape(output_flat, (inputs.shape[0], inputs.shape[1], -1))
-
-
-    input_dim = np.prod(input_size)
-    inputs_flat = inputs.view(-1, input_dim)
-    # Feed to the layer
-    output_flat = output_layer(inputs_flat)
-    # Reshape output to [batch_size/max_time, max_time/batch_size, output_size]
-    output = output_flat.view(inputs.size()[0], inputs.size()[1], -1)
-    output_size = np.array(output.size())[2:]
+    output = layer(inputs)
+    if activation is not None:
+        output = activation(output)
+    output_size = output.shape[-1]
     return output, output_size
 
 
-def _apply_dropout(inputs, hparams, training):
+def _apply_dropout(inputs, time_major, hparams, training):
     """Applies dropout to the inputs.
 
     :attr:`inputs` is a Tensor of shape `[batch_size, max_time, dim]`
@@ -137,23 +135,31 @@ def _apply_dropout(inputs, hparams, training):
     if :attr:`time_major=True`.
     """
     noise_shape = None
+    # TODO: Implement variational dropout layer
     if hparams.variational_dropout:
-        # TODO: Implement variational dropout layer
-        raise NotImplementedError
-    return torch.nn.dropout(inputs, p=hparams.dropout_rate, training=training)
+        if time_major:
+            raise NotImplementedError
+        else:
+            raise NotImplementedError
+
+    return F.dropout(inputs, p=hparams.dropout_rate, training=training)
 
 
-def _forward_output_layers(inputs, input_size, output_layer, batch_first,
+def _forward_output_layers(inputs, input_size, output_layer, time_major,
                            hparams, mode, sequence_length=None):
     """Forwards inputs through the output layers.
+
     Args:
         inputs: A Tensor of shape `[batch_size, max_time] + input_size` if
-            :attr:`batch_first=True`, or shape
-            `[max_time, batch_size] + input_size` if :attr:`batch_first=False`.
+            :attr:`time_major=False`, or shape
+            `[max_time, batch_size] + input_size` if :attr:`time_major=True`.
+
     Returns:
         A pair :attr:`(outputs, outputs_size), where
+
         - :attr:`outputs`: A Tensor of shape \
           `[batch_size, max_time] + outputs_size`.
+
         - :attr:`outputs_size`: An `int` or 1D `int` array representing the \
           output size.
     """
@@ -162,58 +168,46 @@ def _forward_output_layers(inputs, input_size, output_layer, batch_first,
 
     if hparams is None:
         # output_layer was passed in from the constructor
-        if isinstance(output_layer, (list, tuple)):
-            raise ValueError('output_layer must not be a list or tuple.')
-        output, output_size = _forward_single_output_layer(
-            inputs, input_size, output_layer)
+        if isinstance(output_layer, list):
+            raise ValueError('output_layer must not be a list.')
+        output, output_size = _forward_single_output_layer(inputs, output_layer)
     else:
         # output_layer was built based on hparams
         output_layer = _to_list(output_layer)
 
         dropout_layer_ids = _to_list(hparams.dropout_layer_ids)
         if len(dropout_layer_ids) > 0:
-            training = is_train_mode(mode)
+            training = mode
 
         output = inputs
         output_size = input_size
         for i, layer in enumerate(output_layer):
             if i in dropout_layer_ids:
-                output = _apply_dropout(output, hparams, training)
-            output, output_size = _forward_single_output_layer(
-                output, output_size, layer)
+                output = _apply_dropout(output, time_major, hparams, training)
+            output, output_size = _forward_single_output_layer(output, layer)
 
         if len(output_layer) in dropout_layer_ids:
             output = _apply_dropout(output, hparams, training)
 
     if sequence_length is not None:
-        output = mask_sequences(
-            output, sequence_length, batch_first=batch_first, tensor_rank=3)
+        output = mask_sequences(output, sequence_length, time_major=time_major)
 
     return output, output_size
 
 
-def _apply_rnn_encoder_output_layer(output_layer, batch_first, hparams, mode,
+def _apply_rnn_encoder_output_layer(output_layer, time_major, hparams, mode,
                                     cell_outputs, cell_output_size):
-    cell_outputs_dim = cell_outputs.size()[-1]
-    cell_output_size_dim = cell_output_size.size()[-1]
-
-    cell_outputs_flat = cell_outputs.view(-1, cell_outputs_dim)
-    cell_output_size_flat = cell_output_size.view(-1, cell_output_size_dim)
-
     map_func = functools.partial(
         _forward_output_layers,
         output_layer=output_layer,
-        batch_first=batch_first,
+        time_major=time_major,
         hparams=hparams,
         mode=mode)
 
-    o = [map_func(inputs=x, input_size=xs)
-         for x, xs in zip(cell_outputs_flat, cell_output_size_flat)]
+    output, output_size = map_func(inputs=cell_outputs,
+                                   input_size=cell_output_size)
 
-    outputs_flat, output_size_flat = zip(*o)
-    outputs = cell_outputs_flat.view_as(cell_outputs)
-    output_size = cell_outputs_size_flat.view_as(cell_outputs_size)
-    return outputs, output_size
+    return output, output_size
 
 
 
@@ -491,7 +485,6 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
                 sequence_length=None,
                 initial_state=None,
                 time_major=False,
-                mode=None,
                 return_cell_output=False,
                 return_output_size=False,
                 **kwargs):
@@ -575,8 +568,8 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
             batch_first=True)
 
         outputs, output_size = _apply_rnn_encoder_output_layer(
-            self._output_layer, batch_first, self._output_layer_hparams,
-            self.mode, cell_outputs, self._cell.output_size)
+            self._output_layer, time_major, self._output_layer_hparams,
+            self.training, cell_outputs, self._cell.hidden_size)
 
         rets = (outputs, state)
         if return_cell_output:
@@ -596,7 +589,10 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
         """The state size of encoder cell.
         Same as :attr:`encoder.cell.state_size`.
         """
-        return self._cell.hidden_size
+        if isinstance(self._cell, LSTMCell):
+            return 2 * self._cell.hidden_size
+        else:
+            return self._cell.hidden_size
 
     @property
     def output_layer(self):
