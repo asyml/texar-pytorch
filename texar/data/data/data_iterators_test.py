@@ -3,14 +3,15 @@
 """
 Unit tests for data iterator related operations.
 """
-import torch
+import copy
+import tempfile
+import unittest
+
+import numpy as np
 from torch.utils.data import TensorDataset
 
-import unittest
-import tempfile
-import numpy as np
-
-import texar as tx
+import texar.data
+import torch
 
 
 class DataIteratorTest(unittest.TestCase):
@@ -55,7 +56,7 @@ class DataIteratorTest(unittest.TestCase):
 
         self._test_hparams = {
             "num_epochs": 1,
-            "batch_size": 1,
+            "batch_size": 2,
             "shuffle": False,
             "dataset": {
                 "files": self._test_text_file.name,
@@ -69,22 +70,43 @@ class DataIteratorTest(unittest.TestCase):
     def test_iterator_single_dataset(self):
         """Tests iterating over a single dataset.
         """
-        # todo(avinash): use this dataset once MonoTextData is ready
-        # data = tx.data.MonoTextData(self._test_hparams)
-        data = TensorDataset(torch.from_numpy(np.arange(0, 100, 1)))
-        data_iterator = tx.data.DataIterator(data)
+        data = texar.data.MonoTextData(self._test_hparams)
+        data_iterator = texar.data.DataIterator(data)
         data_iterator.switch_to_dataset(dataset_name="data")
         iterator = data_iterator.get_iterator()
-        for idx, val in enumerate(iterator):
-            self.assertEqual(len(val), self._test_hparams["batch_size"])
-            self.assertEqual(val[0], torch.tensor(idx))
+        i = 1001
+        for idx, batch in enumerate(iterator):
+            self.assertEqual(batch.batch_size, self._test_hparams['batch_size'])
+            np.testing.assert_array_equal(batch['length'], [1, 1])
+            for example in batch['text']:
+                self.assertEqual(example[0], str(i))
+                i += 1
+        self.assertEqual(i, 2001)
+
+    def test_iterator_single_dataset_parallel(self):
+        """Tests iterating over a single dataset with multiple workers.
+        """
+        hparams = copy.deepcopy(self._test_hparams)
+        hparams['num_parallel_calls'] = 2
+        data = texar.data.MonoTextData(hparams)
+        data_iterator = texar.data.DataIterator(data)
+        data_iterator.switch_to_dataset(dataset_name="data")
+        iterator = data_iterator.get_iterator()
+        i = 1001
+        for idx, batch in enumerate(iterator):
+            self.assertEqual(batch.batch_size, self._test_hparams['batch_size'])
+            np.testing.assert_array_equal(batch['length'], [1, 1])
+            for example in batch['text']:
+                self.assertEqual(example[0], str(i))
+                i += 1
+        self.assertEqual(i, 2001)
 
     def test_iterator_multi_datasets(self):
         """Tests iterating over multiple datasets.
         """
         train = TensorDataset(torch.from_numpy(np.arange(0, 100, 1)))
         test = TensorDataset(torch.from_numpy(np.arange(100, 200, 1)))
-        data_iterator = tx.data.DataIterator({"train": train, "test": test})
+        data_iterator = texar.data.DataIterator({"train": train, "test": test})
         data_iterator.switch_to_dataset(dataset_name="train")
         iterator = data_iterator.get_iterator()
         for idx, val in enumerate(iterator):
@@ -97,14 +119,24 @@ class DataIteratorTest(unittest.TestCase):
             self.assertEqual(len(val), self._test_hparams["batch_size"])
             self.assertEqual(val[0], torch.tensor(idx + 100))
 
+        # test `get_iterator` interface
+        for idx, val in enumerate(data_iterator.get_iterator('train')):
+            self.assertEqual(len(val), self._train_hparams["batch_size"])
+            self.assertEqual(val[0], torch.tensor(idx))
+
+        # test exception for invalid dataset name
+        with self.assertRaises(ValueError) as context:
+            data_iterator.switch_to_dataset('val')
+        self.assertTrue('not found' in str(context.exception))
+
     def test_train_test_data_iterator(self):
         """Tests :class:`texar.data.TrainTestDataIterator`
         """
         train_data = TensorDataset(torch.from_numpy(np.arange(0, 100, 1)))
         test_data = TensorDataset(torch.from_numpy(np.arange(100, 200, 1)))
 
-        data_iterator = tx.data.TrainTestDataIterator(train=train_data,
-                                                      test=test_data)
+        data_iterator = texar.data.TrainTestDataIterator(
+            train=train_data, test=test_data)
         data_iterator.switch_to_train_data()
         iterator = data_iterator.get_iterator()
 
@@ -117,6 +149,16 @@ class DataIteratorTest(unittest.TestCase):
         for idx, val in enumerate(iterator):
             self.assertEqual(len(val), self._test_hparams["batch_size"])
             self.assertEqual(val[0], torch.tensor(idx + 100))
+
+        # test `get_*_iterator` interface
+        for idx, val in enumerate(data_iterator.get_test_iterator()):
+            self.assertEqual(len(val), self._test_hparams["batch_size"])
+            self.assertEqual(val[0], torch.tensor(idx + 100))
+
+        # test exception for invalid dataset name
+        with self.assertRaises(ValueError) as context:
+            data_iterator.switch_to_val_data()
+        self.assertTrue('Val data not provided' in str(context.exception))
 
 
 if __name__ == "__main__":

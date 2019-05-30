@@ -15,16 +15,22 @@
 Mono text data class that define data reading, parsing, batching, and other
 preprocessing operations.
 """
+from typing import Any, Callable, List
+
+import numpy as np
+
 import torch
 
+from data.data.dataset_utils import Batch
+from data.embedding import Embedding
+from texar.data.data import dataset_utils as dsutils
+from texar.data.data.text_data_base import TextDataBase, TextLineDataset
+# from texar.data.data_decoders import TextDataDecoder, VarUttTextDataDecoder
+from texar.data.vocabulary import SpecialTokens, Vocab
 from texar.utils import utils
 from texar.utils.dtypes import is_callable
-from texar.data.data_utils import count_file_lines
-from texar.data.data import dataset_utils as dsutils
-from texar.data.data.text_data_base import TextDataBase
-from texar.data.data_decoders import TextDataDecoder, VarUttTextDataDecoder
-from texar.data.vocabulary import Vocab, SpecialTokens
-from texar.data.embedding import Embedding
+
+# from texar.data.embedding import Embedding
 
 # pylint: disable=invalid-name, arguments-differ, protected-access, no-member
 
@@ -140,6 +146,8 @@ class MonoTextData(TextDataBase):
 
     def __init__(self, hparams):
         TextDataBase.__init__(self, hparams)
+        if self._hparams.dataset.variable_utterance:
+            raise NotImplementedError
         self._make_data()
 
     @staticmethod
@@ -336,7 +344,7 @@ class MonoTextData(TextDataBase):
 
     @staticmethod
     def _make_mono_text_dataset(dataset_hparams):
-        dataset = tf.data.TextLineDataset(
+        dataset = TextLineDataset(
             dataset_hparams["files"],
             compression_type=dataset_hparams["compression_type"])
         return dataset
@@ -378,7 +386,7 @@ class MonoTextData(TextDataBase):
                 max_seq_length=max_seq_length,
                 token_to_id_map=data_spec.vocab.token_to_id_map)
         else:
-            decoder = VarUttTextDataDecoder( # pylint: disable=redefined-variable-type
+            decoder = VarUttTextDataDecoder(  # pylint: disable=redefined-variable-type
                 sentence_delimiter=dataset_hparams["utterance_delimiter"],
                 delimiter=dataset_hparams["delimiter"],
                 bos_token=dataset_hparams["bos_token"],
@@ -503,31 +511,86 @@ class MonoTextData(TextDataBase):
 
         # Create and shuffle dataset
         dataset = self._make_mono_text_dataset(dataset_hparams)
-        dataset, dataset_size = self._shuffle_dataset(
-            dataset, self._hparams, self._hparams.dataset.files)
-        self._dataset_size = dataset_size
+        self._dataset_size = len(dataset)
+
+        self._dataset = []
+        delimiter = self._hparams.dataset.delimiter
+        bos = self._hparams.dataset.bos_token
+        eos = self._hparams.dataset.eos_token
+        max_seq_length = self._hparams.dataset.max_seq_length
+        length_filter_mode = self._hparams.dataset.length_filter_mode
+        for line in dataset:
+            words = line.split(delimiter)
+            if max_seq_length is not None and len(words) > max_seq_length:
+                if length_filter_mode == _LengthFilterMode.TRUNC:
+                    words = words[:max_seq_length]
+                elif length_filter_mode == _LengthFilterMode.DISCARD:
+                    continue
+                else:
+                    raise ValueError(
+                        f"Invalid length filter mode \"{length_filter_mode}\"")
+            if bos != '':
+                words.insert(0, bos)
+            if eos != '':
+                words.append(eos)
+            self._dataset.append(words)
 
         # Processing
-        data_spec = dsutils._DataSpec(dataset=dataset,
-                                      dataset_size=self._dataset_size,
-                                      vocab=self._vocab,
-                                      embedding=self._embedding)
-        dataset, data_spec = self._process_dataset(dataset, self._hparams,
-                                                   data_spec)
-        self._data_spec = data_spec
-        self._decoder = data_spec.decoder
+        # TODO
+        # data_spec = dsutils._DataSpec(dataset=dataset,
+        #                               dataset_size=self._dataset_size,
+        #                               vocab=self._vocab,
+        #                               embedding=self._embedding)
+        # dataset, data_spec = self._process_dataset(dataset, self._hparams,
+        #                                            data_spec)
+        # self._data_spec = data_spec
+        # self._decoder = data_spec.decoder
 
-        # Batching
-        length_fn = self._make_bucket_length_fn()
-        padded_shapes = self._make_padded_shapes(dataset, self._decoder)
-        dataset = self._make_batch(
-            dataset, self._hparams, length_fn, padded_shapes)
+    @property
+    def collate_fn(self) -> Callable[[List[Any]], Batch]:
+        r"""Create a `collate_fn` for :class:`~torch.utils.data.DataLoader` that
+        is used to combine examples into batches. This function takes a list of
+        examples, and return an instance of :class:`~texar.data.data.Batch`.
+        Implementation should make sure that the returned callable does not
+        depend on `self`, and should be multi-processing-safe.
 
-        # Prefetching
-        if self._hparams.prefetch_buffer_size > 0:
-            dataset = dataset.prefetch(self._hparams.prefetch_buffer_size)
+        Returns:
+            A callable `collate_fn`.
+        """
 
-        self._dataset = dataset
+        # For `MonoTextData`, each example is represented as a list of strings.
+        # `collate_fn` takes care of padding and numericalization.
+        # TODO: Discuss whether it's necessary to store sentence as list of
+        #   strings, instead of raw strings. For extremely large datasets
+        #   (e.g. language modeling), memory consumption could be more than 7x
+        #   higher.
+        pad = self._hparams.dataset.pad_to_max_seq_length
+        vocab = self._vocab
+        max_seq_length = self._hparams.dataset.max_seq_length
+
+        def collate_fn(batch: List[List[str]]) -> Batch:
+            lengths = torch.tensor([len(sent) for sent in batch],
+                                   dtype=torch.long)
+            if pad:
+                if max_seq_length is None:
+                    # Here in PyTorch we support `max_seq_length` of `None`,
+                    # which means # to pad to the longest sentence in batch.
+                    pad_length = lengths.max()
+                else:
+                    pad_length = max_seq_length
+                batch = [
+                    sent + [''] * (pad_length - len(sent))
+                    if len(sent) < pad_length else sent
+                    for sent in batch
+                ]
+            ids = np.zeros((len(batch), len(batch[0])), dtype=np.long)
+            for b_idx, sent in enumerate(batch):
+                length = lengths[b_idx]
+                ids[b_idx, :length] = vocab.map_tokens_to_ids_py(sent[:length])
+            return Batch(len(batch), text=batch,
+                         text_ids=ids, length=lengths)
+
+        return collate_fn
 
     def list_items(self):
         """Returns the list of item names that the data can produce.
@@ -535,7 +598,13 @@ class MonoTextData(TextDataBase):
         Returns:
             A list of strings.
         """
-        return list(self._dataset.output_types.keys())
+        return ['text', 'text_ids', 'length']
+
+    def __len__(self):
+        return len(self._dataset)
+
+    def __getitem__(self, item):
+        return self._dataset[item]
 
     @property
     def dataset(self):
@@ -550,10 +619,6 @@ class MonoTextData(TextDataBase):
         Note that this is the total data count in the raw files, before any
         filtering and truncation.
         """
-        if not self._dataset_size:
-            # pylint: disable=attribute-defined-outside-init
-            self._dataset_size = count_file_lines(
-                self._hparams.dataset.files)
         return self._dataset_size
 
     @property
@@ -570,42 +635,3 @@ class MonoTextData(TextDataBase):
         if self._embedding is None:
             return None
         return self._embedding.word_vecs
-
-    @property
-    def text_name(self):
-        """The name of text tensor, "text" by default.
-        """
-        name = dsutils._connect_name(
-            self._data_spec.name_prefix,
-            self._data_spec.decoder.text_tensor_name)
-        return name
-
-    @property
-    def length_name(self):
-        """The name of length tensor, "length" by default.
-        """
-        name = dsutils._connect_name(
-            self._data_spec.name_prefix,
-            self._data_spec.decoder.length_tensor_name)
-        return name
-
-    @property
-    def text_id_name(self):
-        """The name of text index tensor, "text_ids" by default.
-        """
-        name = dsutils._connect_name(
-            self._data_spec.name_prefix,
-            self._data_spec.decoder.text_id_tensor_name)
-        return name
-
-    @property
-    def utterance_cnt_name(self):
-        """The name of utterance count tensor, "utterance_cnt" by default.
-        """
-        if not self._hparams.dataset.variable_utterance:
-            raise ValueError("`utterance_cnt_name` is not defined.")
-        name = dsutils._connect_name(
-            self._data_spec.name_prefix,
-            self._data_spec.decoder.utterance_cnt_tensor_name)
-        return name
-

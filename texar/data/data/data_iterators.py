@@ -14,80 +14,93 @@
 """
 Various data iterator classes.
 """
-import torch
-from torch.utils.data import Dataset, DataLoader
+from typing import Dict, Iterable, List, Optional, Union
 
-import texar as tx
+from torch.utils.data import DataLoader, Sampler
+from torch.utils.data.dataloader import default_collate
+
+import torch
+from texar.data.data import DataBase
+from texar.utils.types import MaybeSeq
 
 __all__ = [
-    "DataIteratorBase",
     "DataIterator",
     "TrainTestDataIterator",
-    "FeedableDataIterator",
-    "TrainTestFeedableDataIterator"
 ]
 
+DatasetsType = Union[Dict[str, DataBase], MaybeSeq[DataBase]]
 
-class DataIteratorBase(object):
-    """Base class for all data iterator classes to inherit. A data iterator
-    is a wrapper of :tf_main:`tf.data.Iterator <data/Iterator>`, and can
-    switch between and iterate through **multiple** datasets.
+
+class BufferBasedShuffler(Sampler):
+    r"""A :class:`~torch.utils.data.Sampler` that uses a shuffle buffer, as
+    in TensorFlow. The buffer is first filled with data examples. Each time a
+    sample is drawn from the buffer, and the drawn sample is replaced with the
+    next data example.
 
     Args:
-        datasets: Datasets to iterates through. This can be:
-
-            - A single instance of :tf_main:`tf.data.Dataset <data/Dataset>` \
-            or instance of subclass of :class:`~texar.data.DataBase`.
-            - A `dict` that maps dataset name to \
-            instance of :tf_main:`tf.data.Dataset <data/Dataset>` or \
-            subclass of :class:`~texar.data.DataBase`.
-            - A `list` of instances of subclasses of \
-            :class:`texar.data.DataBase`. The name of instances \
-            (:attr:`texar.data.DataBase.name`) must be unique.
+        data_source: The dataset.
+        buffer_size: The size of the shuffle buffer. Buffer-bases shuffling
+            guarantees that each data example is at most `buffer_size` positions
+            away from its original position. Use larger buffer sizes for more
+            uniformly-random shuffling.
     """
 
-    def __init__(self, datasets):
-        self._default_dataset_name = 'data'
-        if isinstance(datasets, (Dataset, tx.data.DataBase)):
-            datasets = {self._default_dataset_name: datasets}
-        elif isinstance(datasets, (list, tuple)):
-            if any(not isinstance(d, tx.data.DataBase) for d in datasets):
-                raise ValueError("`datasets` must be an non-empty list of "
-                                 "`texar.data.DataBase` instances.")
-            num_datasets = len(datasets)
-            datasets = {d.name: d for d in datasets}
-            if len(datasets) < num_datasets:
-                raise ValueError("Names of datasets must be unique.")
+    def __init__(self, data_source: DataBase, buffer_size: int):
+        super().__init__(data_source)
+        self.size = len(data_source)
+        self.buffer_size = buffer_size
 
-        _datasets = {}
-        for k, v in datasets.items():  # pylint: disable=invalid-name
-            _datasets[k] = v if isinstance(v, torch.utils.data.Dataset) \
-                else v.dataset
-        self._datasets = _datasets
+    def __iter__(self) -> Iterable[int]:
+        if self.buffer_size <= self.size:
+            return iter(torch.randperm(self.size).tolist())
 
-        if len(self._datasets) <= 0:
-            raise ValueError("`datasets` must not be empty.")
+        buffer = list(range(self.buffer_size))
+        for x in range(self.buffer_size, self.size):
+            sample = torch.randint(self.buffer_size, (1,)).item()
+            yield buffer[sample]
+            buffer[sample] = x
+        yield from (buffer[x] for x in torch.randperm(self.buffer_size))
 
-    @property
-    def num_datasets(self):
-        """Number of datasets.
-        """
-        return len(self._datasets)
-
-    @property
-    def dataset_names(self):
-        """A list of dataset names.
-        """
-        return list(self._datasets.keys())
+    def __len__(self):
+        return self.size
 
 
-class DataIterator(DataIteratorBase):
-    """Data iterator that switches and iterates through multiple datasets.
-
-    This is a wrapper of TF reinitializble :tf_main:`iterator <data/Iterator>`.
+class SingleDatasetIterator(DataLoader):
+    r"""Iterator for a single dataset. This iterator is based on the PyTorch
+    :class:`~torch.utils.data.DataLoader` interface, with a custom shuffling
+    routine. This class is used internally.
 
     Args:
-        datasets: Datasets to iterates through. This can be:
+        dataset: The dataset to iterator through. The dataset must be an
+            instance of :class:`texar.data.DataBase`, because configurations are
+            read from the dataset `HParams`.
+    """
+
+    def __init__(self, dataset: DataBase):
+        shuffle = dataset.hparams.shuffle
+        shuffle_buffer_size = dataset.hparams.shuffle_buffer_size
+        if shuffle and shuffle_buffer_size is not None:
+            sampler = BufferBasedShuffler(dataset, shuffle_buffer_size)
+        else:
+            sampler = None
+
+        num_parallel_calls = dataset.hparams.num_parallel_calls
+        allow_smaller_final_batch = dataset.hparams.allow_smaller_final_batch
+        collate_fn = dataset.collate_fn
+        super().__init__(
+            dataset, dataset.batch_size, shuffle=shuffle, sampler=sampler,
+            collate_fn=collate_fn,
+            num_workers=(0 if num_parallel_calls == 1 else num_parallel_calls),
+            drop_last=(not allow_smaller_final_batch))
+
+
+class DataIterator:
+    r"""Data iterator that switches and iterates through multiple datasets.
+
+    This is a wrapper of TF reinitializable :tf_main:`iterator <data/Iterator>`.
+
+    Args:
+        datasets: Datasets to iterate through. This can be:
 
             - A single instance of :tf_main:`tf.data.Dataset <data/Dataset>` \
             or instance of subclass of :class:`~texar.data.DataBase`.
@@ -126,24 +139,44 @@ class DataIterator(DataIteratorBase):
                         print("End of test epoch.")
     """
 
-    def __init__(self, datasets):
-        DataIteratorBase.__init__(self, datasets)
-        self._iterator = None
-        """first_dataset = self._datasets[sorted(self.dataset_names)[0]]
-        self._iterator = tf.data.Iterator.from_structure(
-            first_dataset.output_types, first_dataset.output_shapes)
-        self._iterator_init_ops = {
-            name: self._iterator.make_initializer(d)
-            for name, d in self._datasets.items()
-        }"""
+    # TODO: Think about whether we should support save/load.
 
-    def switch_to_dataset(self, dataset_name=None):
-        """Re-initializes the iterator of a given dataset and starts iterating
-        over the dataset (from the beginning).
+    def __init__(self, datasets: DatasetsType):
+        self._default_dataset_name = 'data'
+        if isinstance(datasets, DataBase):
+            datasets = {self._default_dataset_name: datasets}
+        elif isinstance(datasets, (list, tuple)):
+            if any(not isinstance(d, DataBase) for d in datasets):
+                raise ValueError("`datasets` must be an non-empty list of "
+                                 "`texar.data.DataBase` instances.")
+            num_datasets = len(datasets)
+            datasets = {d.name: d for d in datasets}
+            if len(datasets) < num_datasets:
+                raise ValueError("Names of datasets must be unique.")
 
-        Args:
-            dataset_name (optional): Name of the dataset. If not provided,
-                there must be only one Dataset.
+        _datasets = {name: SingleDatasetIterator(dataset)
+                     for name, dataset in datasets.items()}
+        self._datasets = _datasets
+
+        if len(self._datasets) <= 0:
+            raise ValueError("`datasets` must not be empty.")
+
+        self._current_dataset_name: Optional[str] = None
+
+    @property
+    def num_datasets(self) -> int:
+        r"""Number of datasets.
+        """
+        return len(self._datasets)
+
+    @property
+    def dataset_names(self) -> List[str]:
+        r"""A list of dataset names.
+        """
+        return list(self._datasets.keys())
+
+    def _validate_dataset_name(self, dataset_name: Optional[str]) -> str:
+        r"""Validate the provided dataset name, and return the validated name.
         """
         if dataset_name is None:
             if self.num_datasets > 1:
@@ -152,12 +185,34 @@ class DataIterator(DataIteratorBase):
             dataset_name = next(iter(self._datasets))
         if dataset_name not in self._datasets:
             raise ValueError("Dataset not found: ", dataset_name)
-        self._iterator = DataLoader(dataset=self._datasets[dataset_name])
+        return dataset_name
 
-    def get_iterator(self):
-        """Returns the next element of the activated dataset.
+    def switch_to_dataset(self, dataset_name: Optional[str] = None):
+        r"""Re-initializes the iterator of a given dataset and starts iterating
+        over the dataset (from the beginning).
+
+        Args:
+            dataset_name (optional): Name of the dataset. If not provided,
+                there must be only one Dataset.
         """
-        return self._iterator
+        self._current_dataset_name = self._validate_dataset_name(dataset_name)
+
+    def get_iterator(self, dataset_name: Optional[str] = None):
+        r"""Re-initializes the iterator of a given dataset and starts iterating
+        over the dataset (from the beginning).
+
+        Args:
+            dataset_name (optional): Name of the dataset. If not provided,
+                there must be only one Dataset.
+        """
+        if dataset_name is not None or self._current_dataset_name is None:
+            dataset_name = self._validate_dataset_name(dataset_name)
+        elif self._current_dataset_name is not None:
+            dataset_name = self._current_dataset_name
+        else:
+            raise ValueError("No dataset is selected.")
+
+        return iter(self._datasets[dataset_name])
 
 
 class TrainTestDataIterator(DataIterator):
@@ -202,7 +257,9 @@ class TrainTestDataIterator(DataIterator):
                         print("End of val epoch.")
     """
 
-    def __init__(self, train=None, val=None, test=None):
+    def __init__(self, train: Optional[DataBase] = None,
+                 val: Optional[DataBase] = None,
+                 test: Optional[DataBase] = None):
         dataset_dict = {}
         self._train_name = 'train'
         self._val_name = 'val'
@@ -217,8 +274,7 @@ class TrainTestDataIterator(DataIterator):
             raise ValueError("At least one of `train`, `val`, and `test` "
                              "must be provided.")
 
-        DataIterator.__init__(self, dataset_dict)
-        self._iterator = None
+        super().__init__(dataset_dict)
 
     def switch_to_train_data(self):
         """Starts to iterate through training data (from the beginning).
@@ -241,312 +297,23 @@ class TrainTestDataIterator(DataIterator):
             raise ValueError("Test data not provided.")
         self.switch_to_dataset(self._test_name)
 
-
-class FeedableDataIterator(DataIteratorBase):
-    """Data iterator that iterates through **multiple** datasets and switches
-    between datasets.
-
-    The iterator can switch to a dataset and resume from where we
-    left off last time we visited the dataset. This is a wrapper of TF
-    feedable :tf_main:`iterator <data/Iterator>`.
-
-    Args:
-        datasets: Datasets to iterates through. This can be:
-
-            - A single instance of :tf_main:`tf.data.Dataset <data/Dataset>` \
-            or instance of subclass of :class:`~texar.data.DataBase`.
-            - A `dict` that maps dataset name to \
-            instance of :tf_main:`tf.data.Dataset <data/Dataset>` or \
-            subclass of :class:`~texar.data.DataBase`.
-            - A `list` of instances of subclasses of \
-            :class:`texar.data.DataBase`. The name of instances \
-            (:attr:`texar.data.DataBase.name`) must be unique.
-
-    Example:
-
-        .. code-block:: python
-
-            train_data = MonoTextData(hparams={'num_epochs': 200, ...})
-            test_data = MonoTextData(hparams_test)
-            iterator = FeedableDataIterator({'train': train_data,
-                                             'test': test_data})
-            batch = iterator.get_next()
-
-            sess = tf.Session()
-
-            def _eval_epoch(): # Iterate through test data for one epoch
-                # Initialize and start from beginning of test data
-                iterator.initialize_dataset(sess, 'test')
-                while True:
-                    try:
-                        fetch_dict = { # Read from test data
-                            iterator.handle: Iterator.get_handle(sess, 'test')
-                        }
-                        test_batch_ = sess.run(batch, feed_dict=feed_dict)
-                    except tf.errors.OutOfRangeError:
-                        print("End of val epoch.")
-
-            # Initialize and start from beginning of training data
-            iterator.initialize_dataset(sess, 'train')
-            step = 0
-            while True:
-                try:
-                    fetch_dict = { # Read from training data
-                        iterator.handle: Iterator.get_handle(sess, 'train')
-                    }
-                    train_batch_ = sess.run(batch, fetch_dict=fetch_dict)
-
-                    step +=1
-                    if step % 200 == 0: # Evaluate periodically
-                        _eval_epoch()
-                except tf.errors.OutOfRangeError:
-                    print("End of training.")
-    """
-
-    def __init__(self, datasets):
-        DataIteratorBase.__init__(self, datasets)
-
-        self._handle = tf.placeholder(tf.string, shape=[], name='handle')
-        first_dataset = self._datasets[sorted(self.dataset_names)[0]]
-        self._iterator = tf.data.Iterator.from_string_handle(
-            self._handle, first_dataset.output_types,
-            first_dataset.output_shapes)
-
-        self._dataset_iterators = {
-            name: dataset.make_initializable_iterator()
-            for name, dataset in self._datasets.items()
-        }
-
-    def get_handle(self, sess, dataset_name=None):
-        """Returns a dataset handle used to feed the
-        :attr:`handle` placeholder to fetch data from the dataset.
-
-        Args:
-            sess: The current tf session.
-            dataset_name (optional): Name of the dataset. If not provided,
-                there must be only one Dataset.
-
-        Returns:
-            A string handle to be fed to the :attr:`handle` placeholder.
-
-        Example:
-
-            .. code-block:: python
-
-                next_element = iterator.get_next()
-                train_handle = iterator.get_handle(sess, 'train')
-                # Gets the next training element
-                ne_ = sess.run(next_element,
-                               feed_dict={iterator.handle: train_handle})
-        """
-        if dataset_name is None:
-            if self.num_datasets > 1:
-                raise ValueError("`dataset_name` is required if there are "
-                                 "more than one datasets.")
-            dataset_name = next(iter(self._datasets))
-        if dataset_name not in self._datasets:
-            raise ValueError("Dataset not found: ", dataset_name)
-        return sess.run(self._dataset_iterators[dataset_name].string_handle())
-
-    def restart_dataset(self, sess, dataset_name=None):
-        """Restarts datasets so that next iteration will fetch data from
-        the beginning of the datasets.
-
-        Args:
-            sess: The current tf session.
-            dataset_name (optional): A dataset name or a list of dataset names
-                that specifies which dataset(s) to restart. If `None`, all
-                datasets are restart.
-        """
-        self.initialize_dataset(sess, dataset_name)
-
-    def initialize_dataset(self, sess, dataset_name=None):
-        """Initializes datasets. A dataset must be initialized before being
-        used.
-
-        Args:
-            sess: The current tf session.
-            dataset_name (optional): A dataset name or a list of dataset names
-                that specifies which dataset(s) to initialize. If `None`, all
-                datasets are initialized.
-        """
-        if dataset_name is None:
-            dataset_name = self.dataset_names
-        if not isinstance(dataset_name, (tuple, list)):
-            dataset_name = [dataset_name]
-
-        for name in dataset_name:
-            sess.run(self._dataset_iterators[name].initializer)
-
-    def get_next(self):
-        """Returns the next element of the activated dataset.
-        """
-        return self._iterator.get_next()
-
-    @property
-    def handle(self):
-        """The handle placeholder that can be fed with a dataset handle to
-        fetch data from the dataset.
-        """
-        return self._handle
-
-
-class TrainTestFeedableDataIterator(FeedableDataIterator):
-    """Feedable data iterator that alternatives between train, val, and test
-    datasets.
-
-    This is a wrapper of :class:`~texar.data.FeedableDataIterator`.
-    The iterator can switch to a dataset and resume from where it was
-    left off when it was visited last time.
-
-    :attr:`train`, :attr:`val`, and :attr:`test` can be instance of
-    either :tf_main:`tf.data.Dataset <data/Dataset>` or subclass of
-    :class:`~texar.data.DataBase`. At least one of them must be provided.
-
-    Args:
-        train (optional): Training data.
-        val (optional): Validation data.
-        test (optional): Test data.
-
-    Example:
-
-        .. code-block:: python
-
-            train_data = MonoTextData(hparams={'num_epochs': 200, ...})
-            test_data = MonoTextData(hparams_test)
-            iterator = TrainTestFeedableDataIterator(train=train_data,
-                                                     test=test_data)
-            batch = iterator.get_next()
-
-            sess = tf.Session()
-
-            def _eval_epoch(): # Iterate through test data for one epoch
-                # Initialize and start from beginning of test data
-                iterator.initialize_test_dataset(sess)
-                while True:
-                    try:
-                        fetch_dict = { # Read from test data
-                            iterator.handle: Iterator.get_test_handle(sess)
-                        }
-                        test_batch_ = sess.run(batch, feed_dict=feed_dict)
-                    except tf.errors.OutOfRangeError:
-                        print("End of test epoch.")
-
-            # Initialize and start from beginning of training data
-            iterator.initialize_train_dataset(sess)
-            step = 0
-            while True:
-                try:
-                    fetch_dict = { # Read from training data
-                        iterator.handle: Iterator.get_train_handle(sess)
-                    }
-                    train_batch_ = sess.run(batch, fetch_dict=fetch_dict)
-
-                    step +=1
-                    if step % 200 == 0: # Evaluate periodically
-                        _eval_epoch()
-                except tf.errors.OutOfRangeError:
-                    print("End of training.")
-    """
-
-    def __init__(self, train=None, val=None, test=None):
-        dataset_dict = {}
-        self._train_name = 'train'
-        self._val_name = 'val'
-        self._test_name = 'test'
-        if train is not None:
-            dataset_dict[self._train_name] = train
-        if val is not None:
-            dataset_dict[self._val_name] = val
-        if test is not None:
-            dataset_dict[self._test_name] = test
-        if len(dataset_dict) == 0:
-            raise ValueError("At least one of `train`, `val`, and `test` "
-                             "must be provided.")
-
-        FeedableDataIterator.__init__(self, dataset_dict)
-
-    def get_train_handle(self, sess):
-        """Returns the handle of the training dataset. The handle can be used
-        to feed the :attr:`handle` placeholder to fetch training data.
-
-        Args:
-            sess: The current tf session.
-
-        Returns:
-            A string handle to be fed to the :attr:`handle` placeholder.
-
-        Example:
-
-            .. code-block:: python
-
-                next_element = iterator.get_next()
-                train_handle = iterator.get_train_handle(sess)
-                # Gets the next training element
-                ne_ = sess.run(next_element,
-                               feed_dict={iterator.handle: train_handle})
+    def get_train_iterator(self):
+        """Starts to iterate through train data (from the beginning).
         """
         if self._train_name not in self._datasets:
             raise ValueError("Training data not provided.")
-        return self.get_handle(sess, self._train_name)
+        return self.get_iterator(self._train_name)
 
-    def get_val_handle(self, sess):
-        """Returns the handle of the validation dataset. The handle can be used
-        to feed the :attr:`handle` placeholder to fetch validation data.
-
-        Args:
-            sess: The current tf session.
-
-        Returns:
-            A string handle to be fed to the :attr:`handle` placeholder.
+    def get_val_iterator(self):
+        """Starts to iterate through val data (from the beginning).
         """
         if self._val_name not in self._datasets:
             raise ValueError("Val data not provided.")
-        return self.get_handle(sess, self._val_name)
+        return self.get_iterator(self._val_name)
 
-    def get_test_handle(self, sess):
-        """Returns the handle of the test dataset. The handle can be used
-        to feed the :attr:`handle` placeholder to fetch test data.
-
-        Args:
-            sess: The current tf session.
-
-        Returns:
-            A string handle to be fed to the :attr:`handle` placeholder.
+    def get_test_iterator(self):
+        """Starts to iterate through test data (from the beginning).
         """
         if self._test_name not in self._datasets:
             raise ValueError("Test data not provided.")
-        return self.get_handle(sess, self._test_name)
-
-    def restart_train_dataset(self, sess):
-        """Restarts the training dataset so that next iteration will fetch
-        data from the beginning of the training dataset.
-
-        Args:
-            sess: The current tf session.
-        """
-        if self._train_name not in self._datasets:
-            raise ValueError("Training data not provided.")
-        self.restart_dataset(sess, self._train_name)
-
-    def restart_val_dataset(self, sess):
-        """Restarts the validation dataset so that next iteration will fetch
-        data from the beginning of the validation dataset.
-
-        Args:
-            sess: The current tf session.
-        """
-        if self._val_name not in self._datasets:
-            raise ValueError("Val data not provided.")
-        self.restart_dataset(sess, self._val_name)
-
-    def restart_test_dataset(self, sess):
-        """Restarts the test dataset so that next iteration will fetch
-        data from the beginning of the test dataset.
-
-        Args:
-            sess: The current tf session.
-        """
-        if self._test_name not in self._datasets:
-            raise ValueError("Test data not provided.")
-        self.restart_dataset(sess, self._test_name)
+        return self.get_iterator(self._test_name)

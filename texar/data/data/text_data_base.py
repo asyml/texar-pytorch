@@ -12,17 +12,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Base text data class that is enherited by all text data classes.
+Base text data class that is inherited by all text data classes.
 """
-import torch
+from typing import Optional, Iterable
+
+from torch.utils.data import Dataset
 
 from texar.data.data.data_base import DataBase
-from texar.data.data import dataset_utils as dsutils
-
+from utils.types import MaybeList
 
 __all__ = [
-    "TextDataBase"
+    "TextLineDataset",
+    "TextDataBase",
 ]
+
+
+class TextLineDataset(Dataset):
+    def __init__(self, file_paths: MaybeList[str],
+                 compression_type: Optional[str] = None):
+        if compression_type is not None:
+            raise NotImplementedError
+        if isinstance(file_paths, str):
+            file_paths = [file_paths]
+        lines = []
+        for path in file_paths:
+            with open(path, 'r') as f:
+                lines.extend(line.rstrip('\n') for line in f)
+        self._lines = lines
+
+    def __getitem__(self, index) -> str:
+        return self._lines[index]
+    
+    def __iter__(self) -> Iterable[str]:
+        return iter(self._lines)
+    
+    def __len__(self) -> int:
+        return len(self._lines)
 
 
 class TextDataBase(DataBase):  # pylint: disable=too-few-public-methods
@@ -82,5 +107,3 @@ class TextDataBase(DataBase):  # pylint: disable=too-few-public-methods
                     lambda *args: filter_fn(dsutils.maybe_tuple(args)))
 
         return dataset"""
-
-

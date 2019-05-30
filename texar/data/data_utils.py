@@ -18,10 +18,10 @@ import os
 import sys
 import tarfile
 import logging
+import urllib.request
 import zipfile
 import collections
 import numpy as np
-from six.moves import urllib
 import requests
 
 
