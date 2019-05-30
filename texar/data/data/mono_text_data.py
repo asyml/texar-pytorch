@@ -20,16 +20,13 @@ from typing import Callable, List
 import numpy as np
 
 import torch
-from data.data.dataset_utils import Batch
-from data.embedding import Embedding
+from texar.data.data.dataset_utils import Batch
+from texar.data.embedding import Embedding
 from texar.data.data import dataset_utils as dsutils
 from texar.data.data.text_data_base import TextDataBase, TextLineDataset
-# from texar.data.data_decoders import TextDataDecoder, VarUttTextDataDecoder
 from texar.data.vocabulary import SpecialTokens, Vocab
 from texar.utils import utils
 from texar.utils.dtypes import is_callable
-
-# from texar.data.embedding import Embedding
 
 # pylint: disable=invalid-name, arguments-differ, protected-access, no-member
 
@@ -350,7 +347,7 @@ class MonoTextData(TextDataBase[List[str]]):
 
     @staticmethod
     def _make_other_transformations(other_trans_hparams, data_spec):
-        """Creates a list of tranformation functions based on the
+        """Creates a list of transformation functions based on the
         hyperparameters.
 
         Args:
@@ -368,47 +365,6 @@ class MonoTextData(TextDataBase[List[str]]):
                 tran = utils.get_function(tran, ["texar.custom"])
             other_trans.append(dsutils.make_partial(tran, data_spec))
         return other_trans
-
-    @staticmethod
-    def _make_processor(dataset_hparams, data_spec, chained=True,
-                        name_prefix=None):
-        # Create data decoder
-        max_seq_length = None
-        if dataset_hparams["length_filter_mode"] == "truncate":
-            max_seq_length = dataset_hparams["max_seq_length"]
-
-        if not dataset_hparams["variable_utterance"]:
-            decoder = TextDataDecoder(
-                delimiter=dataset_hparams["delimiter"],
-                bos_token=dataset_hparams["bos_token"],
-                eos_token=dataset_hparams["eos_token"],
-                max_seq_length=max_seq_length,
-                token_to_id_map=data_spec.vocab.token_to_id_map)
-        else:
-            decoder = VarUttTextDataDecoder(  # pylint: disable=redefined-variable-type
-                sentence_delimiter=dataset_hparams["utterance_delimiter"],
-                delimiter=dataset_hparams["delimiter"],
-                bos_token=dataset_hparams["bos_token"],
-                eos_token=dataset_hparams["eos_token"],
-                max_seq_length=max_seq_length,
-                max_utterance_cnt=dataset_hparams["max_utterance_cnt"],
-                token_to_id_map=data_spec.vocab.token_to_id_map)
-
-        # Create other transformations
-        data_spec.add_spec(decoder=decoder)
-        other_trans = MonoTextData._make_other_transformations(
-            dataset_hparams["other_transformations"], data_spec)
-        if name_prefix:
-            other_trans.append(dsutils.name_prefix_fn(name_prefix))
-
-        data_spec.add_spec(name_prefix=name_prefix)
-
-        if chained:
-            chained_tran = dsutils.make_chained_transformation(
-                [decoder] + other_trans)
-            return chained_tran, data_spec
-        else:
-            return decoder, other_trans, data_spec
 
     @staticmethod
     def _make_length_filter(dataset_hparams, length_name, decoder):
@@ -597,12 +553,13 @@ class MonoTextData(TextDataBase[List[str]]):
         return len(self._dataset)
 
     def __getitem__(self, item):
+        # todo(avinash): apply the transformation logic here
         return self._dataset[item]
 
     @property
     def dataset(self):
         r"""The dataset, an instance of
-        :tf_main:`TF dataset <data/TextLineDataset>`.
+        :class:`texar.data.TextLineDataset` <data/TextLineDataset>`.
         """
         return self._dataset
 

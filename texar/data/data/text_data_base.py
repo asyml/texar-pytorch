@@ -20,7 +20,7 @@ from typing import Iterable, List, Optional, TypeVar
 from torch.utils.data import Dataset
 
 from texar.data.data.data_base import DataBase
-from utils.types import MaybeList
+from texar.utils.types import MaybeList
 
 __all__ = [
     "TextLineDataset",
@@ -72,41 +72,3 @@ class TextDataBase(DataBase[Example], ABC):  # pylint: disable=too-few-public-me
             "bucket_batch_sizes": None,
             "bucket_length_fn": None})
         return hparams
-
-    """@staticmethod
-    def _make_batch(dataset, hparams, element_length_func,
-                    padded_shapes=None, padding_values=None):
-        dataset = dataset.repeat(hparams.num_epochs)
-
-        batch_size = hparams["batch_size"]
-        bucket_boundaries = hparams["bucket_boundaries"]
-        if padded_shapes is None:
-            padded_shapes = dataset.output_shapes
-
-        if len(bucket_boundaries) == 0:
-            if hparams["allow_smaller_final_batch"]:
-                dataset = dataset.padded_batch(
-                    batch_size, padded_shapes, padding_values=padding_values)
-            else:
-                dataset = dataset.apply(
-                    tf.contrib.data.padded_batch_and_drop_remainder(
-                        batch_size, padded_shapes,
-                        padding_values=padding_values))
-        else:
-            bucket_batch_size = hparams["bucket_batch_sizes"]
-            if bucket_batch_size is None:
-                bucket_batch_size = [batch_size] * (len(bucket_boundaries) + 1)
-            dataset = dataset.apply(tf.contrib.data.bucket_by_sequence_length(
-                element_length_func, bucket_boundaries, bucket_batch_size,
-                padded_shapes=padded_shapes, padding_values=padding_values))
-            if not hparams["allow_smaller_final_batch"]:
-                if len(set(bucket_batch_size)) > 1:
-                    raise ValueError(
-                        "Batch size of every bucket must be the same if "
-                        "smaller final batch is not allowed.")
-                batch_size = bucket_batch_size[0]
-                filter_fn = dsutils._make_smaller_batch_filter_fn(batch_size)
-                dataset = dataset.filter(
-                    lambda *args: filter_fn(dsutils.maybe_tuple(args)))
-
-        return dataset"""
