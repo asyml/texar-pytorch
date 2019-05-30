@@ -14,6 +14,7 @@
 """
 Helper functions and classes for embedding processing.
 """
+from typing import Dict, Optional, Callable, Any
 
 import numpy as np
 
@@ -27,7 +28,8 @@ __all__ = [
 ]
 
 
-def load_word2vec(filename, vocab, word_vecs):
+def load_word2vec(filename: str, vocab: Dict[str, int],
+                  word_vecs: np.ndarray) -> np.ndarray:
     """Loads embeddings in the word2vec binary format which has a header line
     containing the number of vectors and their dimensionality (two integers),
     followed with number-of-vectors lines each of which is formatted as
@@ -58,16 +60,17 @@ def load_word2vec(filename, vocab, word_vecs):
                     break
                 if char != b'\n':
                     chars.append(char)
-            word = b''.join(chars)
+            word = b''.join(chars).decode('utf-8')
             if word in vocab:
-                word_vecs[vocab[word]] = np.fromstring(
+                word_vecs[vocab[word]] = np.frombuffer(
                     fin.read(binary_len), dtype='float32')
             else:
                 fin.read(binary_len)
     return word_vecs
 
 
-def load_glove(filename, vocab, word_vecs):
+def load_glove(filename: str, vocab: Dict[str, int],
+               word_vecs: np.ndarray) -> np.ndarray:
     """Loads embeddings in the glove text format in which each line is
     '<word-string> <embedding-vector>'. Dimensions of the embedding vector
     are separated with whitespace characters.
@@ -110,7 +113,8 @@ class Embedding:
             :func:`~texar.data.embedding.load_glove`.
     """
 
-    def __init__(self, vocab, hparams=None):
+    def __init__(self, vocab: Dict[str, int],
+                 hparams: Optional[HParams] = None):
         self._hparams = HParams(hparams, self.default_hparams())
 
         # Initialize embeddings
@@ -118,25 +122,27 @@ class Embedding:
         if "shape" in init_fn_kwargs or "size" in init_fn_kwargs:
             raise ValueError("Argument 'shape' or 'size' must not be "
                              "specified. They are inferred automatically.")
+        init_fn: Callable[..., np.ndarray]
         init_fn = utils.get_function(
             self._hparams.init_fn.type,
             ["numpy.random", "numpy", "texar.custom"])
 
         try:
-            self._word_vecs = init_fn(size=[len(vocab), self._hparams.dim],
-                                      **init_fn_kwargs)
+            self._word_vecs = init_fn(  # type: ignore
+                size=[len(vocab), self._hparams.dim], **init_fn_kwargs)
         except TypeError:
-            self._word_vecs = init_fn(shape=[len(vocab), self._hparams.dim],
-                                      **init_fn_kwargs)
+            self._word_vecs = init_fn(  # type: ignore
+                shape=[len(vocab), self._hparams.dim], **init_fn_kwargs)
 
         # Optionally read embeddings from file
         if self._hparams.file is not None and self._hparams.file != "":
-            read_fn = utils.get_function(
+            read_fn: Callable[[str, Dict[str, int], np.ndarray], np.ndarray]
+            read_fn = utils.get_function(  # type: ignore
                 self._hparams.read_fn,
                 ["texar.data.embedding", "texar.data", "texar.custom"])
 
-            self._word_vecs = \
-                read_fn(self._hparams.file, vocab, self._word_vecs)
+            self._word_vecs = read_fn(self._hparams.file,
+                                      vocab, self._word_vecs)
 
     @staticmethod
     def default_hparams():
@@ -226,6 +232,6 @@ class Embedding:
 
     @property
     def vector_size(self):
-        """The embedding dimention size.
+        """The embedding dimension size.
         """
         return self._hparams.dim

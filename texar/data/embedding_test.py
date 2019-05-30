@@ -16,22 +16,18 @@
 Unit tests for embedding related operations.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import sys
 import tempfile
-import numpy as np
+import unittest
 
-import tensorflow as tf
+import numpy as np
 
 from texar.data import embedding
 
-Py3 = sys.version_info[0] == 3 # pylint: disable=invalid-name
+Py3 = sys.version_info[0] == 3  # pylint: disable=invalid-name
 
-class EmbeddingTest(tf.test.TestCase):
+
+class EmbeddingTest(unittest.TestCase):
     """Tests embedding related operations.
     """
 
@@ -62,9 +58,9 @@ class EmbeddingTest(tf.test.TestCase):
         words = ["word", "词"]
         vec = np.array([1.2, 3.4, 5.6], dtype='float32')
         w2v_file = tempfile.NamedTemporaryFile()
-        w2v_file.write(tf.compat.as_bytes(header + "\n"))
+        w2v_file.write((header + "\n").encode('utf-8'))
         for word in words:
-            w2v_file.write(tf.compat.as_bytes(word + " "))
+            w2v_file.write((word + " ").encode('utf-8'))
             w2v_file.write(vec.tostring() + b'\n')
         w2v_file.flush()
         vocab = {"word": 0, "词": 1}
@@ -84,6 +80,6 @@ class EmbeddingTest(tf.test.TestCase):
         emb = embedding.Embedding(vocab)
         self.assertEqual(len(emb.word_vecs), len(vocab))
 
-if __name__ == "__main__":
-    tf.test.main()
 
+if __name__ == "__main__":
+    unittest.main()

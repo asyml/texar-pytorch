@@ -16,18 +16,23 @@ Base data class that is inherited by all data classes.
 A data defines data reading, parsing, batching, and other
 preprocessing operations.
 """
-import torch
+from abc import ABC
+from typing import Callable, List, TypeVar, Generic
 
-from texar.hyperparams import HParams
 from torch.utils.data import Dataset
+
+from texar.data.data.dataset_utils import Batch
+from texar.hyperparams import HParams
 
 __all__ = [
     "DataBase"
 ]
 
+Example = TypeVar('Example')  # type of a single data example
 
-class DataBase(Dataset):
-    """Base class inheritted by all data classes.
+
+class DataBase(Dataset, Generic[Example], ABC):
+    r"""Base class inherited by all data classes.
     """
 
     def __init__(self, hparams):
@@ -35,7 +40,7 @@ class DataBase(Dataset):
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of default hyperparameters.
+        r"""Returns a dictionary of default hyperparameters.
 
         .. code-block:: python
 
@@ -140,26 +145,38 @@ class DataBase(Dataset):
 
     @property
     def num_epochs(self):
-        """Number of epochs.
+        r"""Number of epochs.
         """
         return self._hparams.num_epochs
 
     @property
     def batch_size(self):
-        """The batch size.
+        r"""The batch size.
         """
         return self._hparams.batch_size
 
     @property
     def hparams(self):
-        """A :class:`~texar.HParams` instance of the
+        r"""A :class:`~texar.HParams` instance of the
         data hyperparameters.
         """
         return self._hparams
 
     @property
     def name(self):
-        """Name of the module.
+        r"""Name of the module.
         """
         return self._hparams.name
 
+    @property
+    def collate_fn(self) -> Callable[[List[Example]], Batch]:
+        r"""Create a `collate_fn` for :class:`~torch.utils.data.DataLoader` that
+        is used to combine examples into batches. This function takes a list of
+        examples, and return an instance of :class:`~texar.data.data.Batch`.
+        Implementation should make sure that the returned callable does not
+        depend on `self`, and should be multi-processing-safe.
+
+        Returns:
+            A callable `collate_fn`.
+        """
+        raise NotImplementedError

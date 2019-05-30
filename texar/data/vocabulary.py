@@ -17,13 +17,11 @@ Helper functions and classes for vocabulary processing.
 """
 import warnings
 from collections import defaultdict
+from typing import List, MutableMapping, Sequence, Tuple, Union
 
 import numpy as np
 
 from texar.utils.utils import dict_lookup
-
-from typing import Union, List, Tuple, DefaultDict, Sequence, MutableMapping
-
 
 __all__ = [
     "SpecialTokens",
@@ -32,7 +30,7 @@ __all__ = [
 
 
 class SpecialTokens(object):
-    """Special tokens, including :attr:`PAD`, :attr:`BOS`, :attr:`EOS`,
+    r"""Special tokens, including :attr:`PAD`, :attr:`BOS`, :attr:`EOS`,
     :attr:`UNK`. These tokens will by default have token ids 0, 1, 2, 3,
     respectively.
     """
@@ -46,7 +44,7 @@ def _make_defaultdict(keys: Sequence[Union[int, str]],
                       values: Sequence[Union[int, str]],
                       default_value: Union[int, str]) -> \
         MutableMapping[Union[int, str], Union[int, str]]:
-    """Creates a python defaultdict.
+    r"""Creates a python defaultdict.
 
     Args:
         keys (list): Keys of the dictionary.
@@ -65,7 +63,7 @@ def _make_defaultdict(keys: Sequence[Union[int, str]],
 
 
 class Vocab(object):
-    """Vocabulary class that loads vocabulary from file, and maintains mapping
+    r"""Vocabulary class that loads vocabulary from file, and maintains mapping
     tables between token strings and indexes.
 
     Each line of the vocab file should contains one vocabulary token, e.g.,::
@@ -104,7 +102,7 @@ class Vocab(object):
 
     def load(self, filename: str) -> \
             Tuple[MutableMapping[int, str], MutableMapping[str, int]]:
-        """Loads the vocabulary from the file.
+        r"""Loads the vocabulary from the file.
 
         Args:
             filename (str): Path to the vocabulary file.
@@ -152,7 +150,7 @@ class Vocab(object):
         return id_to_token_map_py, token_to_id_map_py  # type: ignore
 
     def map_ids_to_tokens_py(self, ids: np.ndarray) -> np.ndarray:
-        """Maps ids into text tokens.
+        r"""Maps ids into text tokens.
 
         The input :attr:`ids` and returned tokens are both python
         arrays or list.
@@ -167,7 +165,7 @@ class Vocab(object):
                            ids, self.unk_token)
 
     def map_tokens_to_ids_py(self, tokens: np.ndarray) -> np.ndarray:
-        """Maps text tokens into ids.
+        r"""Maps text tokens into ids.
 
         The input :attr:`tokens` and returned ids are both python
         arrays or list.
@@ -182,77 +180,77 @@ class Vocab(object):
 
     @property
     def id_to_token_map_py(self) -> MutableMapping[int, str]:
-        """The dictionary instance that maps from token index to the string
+        r"""The dictionary instance that maps from token index to the string
         form.
         """
         return self._id_to_token_map_py
 
     @property
     def token_to_id_map_py(self) -> MutableMapping[str, int]:
-        """The dictionary instance that maps from token string to the index.
+        r"""The dictionary instance that maps from token string to the index.
         """
         return self._token_to_id_map_py
 
     @property
     def size(self) -> int:
-        """The vocabulary size.
+        r"""The vocabulary size.
         """
         return len(self.token_to_id_map_py)
 
     @property
     def bos_token(self) -> str:
-        """A string of the special token indicating the beginning of sequence.
+        r"""A string of the special token indicating the beginning of sequence.
         """
         return self._bos_token
 
     @property
     def bos_token_id(self) -> int:
-        """The `int` index of the special token indicating the beginning
+        r"""The `int` index of the special token indicating the beginning
         of sequence.
         """
         return self.token_to_id_map_py[self._bos_token]
 
     @property
     def eos_token(self) -> str:
-        """A string of the special token indicating the end of sequence.
+        r"""A string of the special token indicating the end of sequence.
         """
         return self._eos_token
 
     @property
     def eos_token_id(self) -> int:
-        """The `int` index of the special token indicating the end
+        r"""The `int` index of the special token indicating the end
         of sequence.
         """
         return self.token_to_id_map_py[self._eos_token]
 
     @property
     def unk_token(self) -> str:
-        """A string of the special token indicating unknown token.
+        r"""A string of the special token indicating unknown token.
         """
         return self._unk_token
 
     @property
     def unk_token_id(self) -> int:
-        """The `int` index of the special token indicating unknown token.
+        r"""The `int` index of the special token indicating unknown token.
         """
         return self.token_to_id_map_py[self._unk_token]
 
     @property
     def pad_token(self) -> str:
-        """A string of the special token indicating padding token. The
+        r"""A string of the special token indicating padding token. The
         default padding token is an empty string.
         """
         return self._pad_token
 
     @property
     def pad_token_id(self) -> int:
-        """The `int` index of the special token indicating padding token.
+        r"""The `int` index of the special token indicating padding token.
         """
         return self.token_to_id_map_py[self._pad_token]
 
     @property
     def special_tokens(self) -> List[str]:
-        """The list of special tokens
+        r"""The list of special tokens
         [:attr:`pad_token`, :attr:`bos_token`, :attr:`eos_token`,
         :attr:`unk_token`].
         """

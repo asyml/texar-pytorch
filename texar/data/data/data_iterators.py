@@ -14,13 +14,13 @@
 """
 Various data iterator classes.
 """
-from typing import Dict, Iterable, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Sequence, Union
 
 from torch.utils.data import DataLoader, Sampler
-from torch.utils.data.dataloader import default_collate
 
 import torch
-from texar.data.data import DataBase
+from texar.data.data.data_base import DataBase
+from texar.data.data.dataset_utils import Batch
 from texar.utils.types import MaybeSeq
 
 __all__ = [
@@ -50,7 +50,7 @@ class BufferBasedShuffler(Sampler):
         self.size = len(data_source)
         self.buffer_size = buffer_size
 
-    def __iter__(self) -> Iterable[int]:
+    def __iter__(self) -> Iterable[int]:  # type: ignore
         if self.buffer_size <= self.size:
             return iter(torch.randperm(self.size).tolist())
 
@@ -79,15 +79,15 @@ class SingleDatasetIterator(DataLoader):
     def __init__(self, dataset: DataBase):
         shuffle = dataset.hparams.shuffle
         shuffle_buffer_size = dataset.hparams.shuffle_buffer_size
+        sampler = None
         if shuffle and shuffle_buffer_size is not None:
             sampler = BufferBasedShuffler(dataset, shuffle_buffer_size)
-        else:
-            sampler = None
+            shuffle = None
 
         num_parallel_calls = dataset.hparams.num_parallel_calls
         allow_smaller_final_batch = dataset.hparams.allow_smaller_final_batch
         collate_fn = dataset.collate_fn
-        super().__init__(
+        super().__init__(  # type: ignore
             dataset, dataset.batch_size, shuffle=shuffle, sampler=sampler,
             collate_fn=collate_fn,
             num_workers=(0 if num_parallel_calls == 1 else num_parallel_calls),
@@ -145,7 +145,7 @@ class DataIterator:
         self._default_dataset_name = 'data'
         if isinstance(datasets, DataBase):
             datasets = {self._default_dataset_name: datasets}
-        elif isinstance(datasets, (list, tuple)):
+        elif isinstance(datasets, Sequence):
             if any(not isinstance(d, DataBase) for d in datasets):
                 raise ValueError("`datasets` must be an non-empty list of "
                                  "`texar.data.DataBase` instances.")
@@ -197,7 +197,8 @@ class DataIterator:
         """
         self._current_dataset_name = self._validate_dataset_name(dataset_name)
 
-    def get_iterator(self, dataset_name: Optional[str] = None):
+    def get_iterator(self,
+                     dataset_name: Optional[str] = None) -> Iterable[Batch]:
         r"""Re-initializes the iterator of a given dataset and starts iterating
         over the dataset (from the beginning).
 
@@ -214,9 +215,14 @@ class DataIterator:
 
         return iter(self._datasets[dataset_name])
 
+    def __iter__(self) -> Iterable[Batch]:
+        r"""Returns the iterator for the currently selected or default dataset.
+        """
+        return self.get_iterator()
+
 
 class TrainTestDataIterator(DataIterator):
-    """Data iterator that alternatives between train, val, and test datasets.
+    r"""Data iterator that alternatives between train, val, and test datasets.
 
     :attr:`train`, :attr:`val`, and :attr:`test` can be instance of
     either :tf_main:`tf.data.Dataset <data/Dataset>` or subclass of
@@ -276,43 +282,43 @@ class TrainTestDataIterator(DataIterator):
 
         super().__init__(dataset_dict)
 
-    def switch_to_train_data(self):
-        """Starts to iterate through training data (from the beginning).
+    def switch_to_train_data(self) -> None:
+        r"""Starts to iterate through training data (from the beginning).
         """
         if self._train_name not in self._datasets:
             raise ValueError("Training data not provided.")
         self.switch_to_dataset(self._train_name)
 
-    def switch_to_val_data(self):
-        """Starts to iterate through val data (from the beginning).
+    def switch_to_val_data(self) -> None:
+        r"""Starts to iterate through val data (from the beginning).
         """
         if self._val_name not in self._datasets:
             raise ValueError("Val data not provided.")
         self.switch_to_dataset(self._val_name)
 
-    def switch_to_test_data(self):
-        """Starts to iterate through test data (from the beginning).
+    def switch_to_test_data(self) -> None:
+        r"""Starts to iterate through test data (from the beginning).
         """
         if self._test_name not in self._datasets:
             raise ValueError("Test data not provided.")
         self.switch_to_dataset(self._test_name)
 
-    def get_train_iterator(self):
-        """Starts to iterate through train data (from the beginning).
+    def get_train_iterator(self) -> Iterable[Batch]:
+        r"""Starts to iterate through train data (from the beginning).
         """
         if self._train_name not in self._datasets:
             raise ValueError("Training data not provided.")
         return self.get_iterator(self._train_name)
 
-    def get_val_iterator(self):
-        """Starts to iterate through val data (from the beginning).
+    def get_val_iterator(self) -> Iterable[Batch]:
+        r"""Starts to iterate through val data (from the beginning).
         """
         if self._val_name not in self._datasets:
             raise ValueError("Val data not provided.")
         return self.get_iterator(self._val_name)
 
-    def get_test_iterator(self):
-        """Starts to iterate through test data (from the beginning).
+    def get_test_iterator(self) -> Iterable[Batch]:
+        r"""Starts to iterate through test data (from the beginning).
         """
         if self._test_name not in self._datasets:
             raise ValueError("Test data not provided.")

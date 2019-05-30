@@ -1,13 +1,11 @@
-# -*- coding: utf-8 -*-
-#
 """
 Unit tests for vocabulary related operations.
 """
+import tempfile
 import unittest
 
-import tempfile
-
 from texar.data import vocabulary
+
 
 # pylint: disable=protected-access
 
@@ -55,4 +53,3 @@ class VocabularyTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

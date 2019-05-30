@@ -15,12 +15,11 @@
 Mono text data class that define data reading, parsing, batching, and other
 preprocessing operations.
 """
-from typing import Any, Callable, List
+from typing import Callable, List
 
 import numpy as np
 
 import torch
-
 from data.data.dataset_utils import Batch
 from data.embedding import Embedding
 from texar.data.data import dataset_utils as dsutils
@@ -41,14 +40,14 @@ __all__ = [
 
 
 class _LengthFilterMode(object):  # pylint: disable=no-init, too-few-public-methods
-    """Options of length filter mode.
+    r"""Options of length filter mode.
     """
     TRUNC = "truncate"
     DISCARD = "discard"
 
 
 def _default_mono_text_dataset_hparams():
-    """Returns hyperparameters of a mono text dataset with default values.
+    r"""Returns hyperparameters of a mono text dataset with default values.
 
     See :meth:`texar.MonoTextData.default_hparams` for details.
     """
@@ -72,8 +71,8 @@ def _default_mono_text_dataset_hparams():
     }
 
 
-class MonoTextData(TextDataBase):
-    """Text data processor that reads single set of text files. This can be
+class MonoTextData(TextDataBase[List[str]]):
+    r"""Text data processor that reads single set of text files. This can be
     used for, e.g., language models, auto-encoders, etc.
 
     Args:
@@ -152,12 +151,12 @@ class MonoTextData(TextDataBase):
 
     @staticmethod
     def default_hparams():
-        """Returns a dicitionary of default hyperparameters:
+        r"""Returns a dictionary of default hyperparameters:
 
         .. code-block:: python
 
             {
-                # (1) Hyperparams specific to text dataset
+                # (1) Hyperparameters specific to text dataset
                 "dataset": {
                     "files": [],
                     "compression_type": None,
@@ -175,7 +174,7 @@ class MonoTextData(TextDataBase):
                     "max_utterance_cnt": 5,
                     "data_name": None,
                 }
-                # (2) General hyperparams
+                # (2) General hyperparameters
                 "num_epochs": 1,
                 "batch_size": 64,
                 "allow_smaller_final_batch": True,
@@ -297,7 +296,7 @@ class MonoTextData(TextDataBase):
                 An int list containing batch size per bucket. Length should be
                 `len(bucket_boundaries) + 1`.
 
-                If `None`, every bucket whill have the same batch size specified
+                If `None`, every bucket will have the same batch size specified
                 in :attr:`batch_size`.
 
             "bucket_length_fn" : str or callable
@@ -547,17 +546,7 @@ class MonoTextData(TextDataBase):
         # self._decoder = data_spec.decoder
 
     @property
-    def collate_fn(self) -> Callable[[List[Any]], Batch]:
-        r"""Create a `collate_fn` for :class:`~torch.utils.data.DataLoader` that
-        is used to combine examples into batches. This function takes a list of
-        examples, and return an instance of :class:`~texar.data.data.Batch`.
-        Implementation should make sure that the returned callable does not
-        depend on `self`, and should be multi-processing-safe.
-
-        Returns:
-            A callable `collate_fn`.
-        """
-
+    def collate_fn(self) -> Callable[[List[List[str]]], Batch]:
         # For `MonoTextData`, each example is represented as a list of strings.
         # `collate_fn` takes care of padding and numericalization.
         # TODO: Discuss whether it's necessary to store sentence as list of
@@ -592,13 +581,17 @@ class MonoTextData(TextDataBase):
 
         return collate_fn
 
-    def list_items(self):
-        """Returns the list of item names that the data can produce.
+    def list_items(self) -> List[str]:
+        r"""Returns the list of item names that the data can produce.
 
         Returns:
             A list of strings.
         """
-        return ['text', 'text_ids', 'length']
+        items = ['text', 'text_ids', 'length']
+        data_name = self._hparams['dataset']['data_name']
+        if data_name is not None:
+            items = [data_name + '_' + item for item in items]
+        return items
 
     def __len__(self):
         return len(self._dataset)
@@ -608,13 +601,13 @@ class MonoTextData(TextDataBase):
 
     @property
     def dataset(self):
-        """The dataset, an instance of
+        r"""The dataset, an instance of
         :tf_main:`TF dataset <data/TextLineDataset>`.
         """
         return self._dataset
 
     def dataset_size(self):
-        """Returns the number of data instances in the data files.
+        r"""Returns the number of data instances in the data files.
 
         Note that this is the total data count in the raw files, before any
         filtering and truncation.
@@ -623,13 +616,13 @@ class MonoTextData(TextDataBase):
 
     @property
     def vocab(self):
-        """The vocabulary, an instance of :class:`~texar.data.Vocab`.
+        r"""The vocabulary, an instance of :class:`~texar.data.Vocab`.
         """
         return self._vocab
 
     @property
     def embedding_init_value(self):
-        """The `Tensor` containing the embedding value loaded from file.
+        r"""The `Tensor` containing the embedding value loaded from file.
         `None` if embedding is not specified.
         """
         if self._embedding is None:

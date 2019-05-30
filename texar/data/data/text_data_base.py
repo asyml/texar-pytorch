@@ -14,7 +14,8 @@
 """
 Base text data class that is inherited by all text data classes.
 """
-from typing import Optional, Iterable
+from abc import ABC
+from typing import Iterable, List, Optional, TypeVar
 
 from torch.utils.data import Dataset
 
@@ -26,6 +27,8 @@ __all__ = [
     "TextDataBase",
 ]
 
+Example = TypeVar('Example')
+
 
 class TextLineDataset(Dataset):
     def __init__(self, file_paths: MaybeList[str],
@@ -34,7 +37,7 @@ class TextLineDataset(Dataset):
             raise NotImplementedError
         if isinstance(file_paths, str):
             file_paths = [file_paths]
-        lines = []
+        lines: List[str] = []
         for path in file_paths:
             with open(path, 'r') as f:
                 lines.extend(line.rstrip('\n') for line in f)
@@ -42,20 +45,20 @@ class TextLineDataset(Dataset):
 
     def __getitem__(self, index) -> str:
         return self._lines[index]
-    
+
     def __iter__(self) -> Iterable[str]:
         return iter(self._lines)
-    
+
     def __len__(self) -> int:
         return len(self._lines)
 
 
-class TextDataBase(DataBase):  # pylint: disable=too-few-public-methods
-    """Base class inheritted by all text data classes.
+class TextDataBase(DataBase[Example], ABC):  # pylint: disable=too-few-public-methods
+    """Base class inherited by all text data classes.
     """
 
     def __init__(self, hparams):
-        DataBase.__init__(self, hparams)
+        super().__init__(hparams)
 
     @staticmethod
     def default_hparams():

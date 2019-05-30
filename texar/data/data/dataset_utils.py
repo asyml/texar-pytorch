@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, KeysView, ValuesView, ItemsView
 
 
 class Batch:
@@ -23,6 +23,15 @@ class Batch:
 
     def __len__(self) -> int:
         return self.batch_size
+
+    def keys(self) -> KeysView[str]:
+        return self._batch.keys()
+
+    def values(self) -> ValuesView[Any]:
+        return self._batch.values()
+
+    def items(self) -> ItemsView[str, Any]:
+        return self._batch.items()
 
 
 class FieldBatch(Batch):
