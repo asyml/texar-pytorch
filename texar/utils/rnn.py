@@ -13,9 +13,14 @@
 # limitations under the License.
 """RNN helpers for PyTorch models."""
 
-import torch
+from typing import Optional, Tuple, List, Union
 
+import torch
+import torch.nn as nn
+
+from texar.core.cell_wrappers import RNNCellBase
 from texar.utils.shapes import mask_sequences
+from texar.utils.types import MaybeTuple
 
 __all__ = [
     "reverse_sequence",
@@ -23,8 +28,12 @@ __all__ = [
     "bidirectional_dynamic_rnn"
 ]
 
+State = torch.Tensor
 
-def reverse_sequence(inputs, seq_lengths, time_major):
+
+def reverse_sequence(inputs: torch.Tensor,
+                     seq_lengths: torch.LongTensor,
+                     time_major: bool) -> torch.Tensor:
     """Reverses variable length slices.
 
       This op first slices input along the dimension batch_axis, and for each
@@ -60,7 +69,8 @@ def reverse_sequence(inputs, seq_lengths, time_major):
     batch_size = inputs.shape[0]
 
     for i in range(batch_size):
-        inputs[i][0:seq_lengths[i]] = torch.flip(inputs[i][0:seq_lengths[i]], [0])
+        inputs[i][0:seq_lengths[i]] = torch.flip(inputs[i][0:seq_lengths[i]],
+                                                 [0])
 
     if time_major:
         inputs = inputs.permute(1, 0, 2)
@@ -68,9 +78,15 @@ def reverse_sequence(inputs, seq_lengths, time_major):
     return inputs
 
 
-def bidirectional_dynamic_rnn(cell_fw, cell_bw, inputs, sequence_length=None,
-                              initial_state_fw=None, initial_state_bw=None,
-                              time_major=False):
+def bidirectional_dynamic_rnn(
+        cell_fw: RNNCellBase[State],
+        cell_bw: RNNCellBase[State],
+        inputs: torch.Tensor,
+        sequence_length: Optional[torch.LongTensor] = None,
+        initial_state_fw: Optional[torch.Tensor] = None,
+        initial_state_bw: Optional[torch.Tensor] = None,
+        time_major: bool = False) -> Tuple[Tuple[torch.Tensor, torch.Tensor],
+                                           Tuple[torch.Tensor, torch.Tensor]]:
     """Creates a dynamic version of bidirectional recurrent neural network.
 
       Takes input and builds independent forward and backward RNNs. The
@@ -88,7 +104,7 @@ def bidirectional_dynamic_rnn(cell_fw, cell_bw, inputs, sequence_length=None,
             `[batch_size, max_time, ...]`, or a nested tuple of such elements.
           If time_major == True, this must be a tensor of shape:
             `[max_time, batch_size, ...]`, or a nested tuple of such elements.
-        sequence_length: (optional) An int32/int64 vector, size `[batch_size]`,
+        sequence_length: (optional) An int32/int64 tensor, size `[batch_size]`,
           containing the actual lengths for each of the sequences in the batch.
           If not provided, all batch entries are assumed to be full sequences;
           and time reversal is applied from time `0` to `max_time` for each
@@ -166,8 +182,12 @@ def bidirectional_dynamic_rnn(cell_fw, cell_bw, inputs, sequence_length=None,
     return outputs, output_states
 
 
-def dynamic_rnn(cell, inputs, sequence_length=None, initial_state=None,
-                time_major=False):
+def dynamic_rnn(
+        cell: RNNCellBase[State],
+        inputs: torch.Tensor,
+        sequence_length: Optional[Union[torch.LongTensor, List[int]]] = None,
+        initial_state: Optional[torch.Tensor] = None,
+        time_major: bool = False) -> Tuple[torch.Tensor, torch.Tensor]:
     """Creates a recurrent neural network specified by RNNCell `cell`.
 
     Performs fully dynamic unrolling of `inputs`.
@@ -189,7 +209,7 @@ def dynamic_rnn(cell, inputs, sequence_length=None, initial_state=None,
           the time is taken).
           The input to `cell` at each time step will be a `Tensor` or (possibly
           nested) tuple of Tensors each with dimensions `[batch_size, ...]`.
-        sequence_length: (optional) An int32/int64 vector sized `[batch_size]`.
+        sequence_length: (optional) An int32/int64 tensor sized `[batch_size]`.
           Used to copy-through state and zero-out outputs when past a batch
           element's sequence length.  So it's more for performance than
           correctness.
@@ -250,14 +270,14 @@ def dynamic_rnn(cell, inputs, sequence_length=None, initial_state=None,
             sequence_length = torch.tensor(sequence_length)
 
         sequence_length = sequence_length.type(torch.int32)
-        if sequence_length.dim() != 1:
+        if sequence_length.dim() != 1:  # type: ignore
             raise ValueError(
                 "sequence_length must be a vector of length batch_size, "
-                "but saw shape: %s" % sequence_length.shape)
-        if sequence_length.shape != torch.Size([batch_size]):
+                "but saw shape: %s" % sequence_length.shape)  # type: ignore
+        if sequence_length.shape != torch.Size([batch_size]):  # type: ignore
             raise ValueError("Expected shape for Tensor sequence_length is %s"
                              % batch_size, " but saw shape: %s"
-                             % sequence_length.shape)
+                             % sequence_length.shape)  # type: ignore
     else:
         sequence_length = torch.tensor([time_steps]*batch_size)
 
@@ -266,7 +286,7 @@ def dynamic_rnn(cell, inputs, sequence_length=None, initial_state=None,
     else:
         state = cell.zero_state(batch_size=batch_size)
 
-    (outputs, final_state) = _dynamic_rnn_loop(cell,
+    (outputs, final_state) = _dynamic_rnn_loop(cell,  # type: ignore
                                                inputs,
                                                state,
                                                sequence_length=sequence_length)
@@ -281,10 +301,11 @@ def dynamic_rnn(cell, inputs, sequence_length=None, initial_state=None,
     return outputs, final_state
 
 
-def _dynamic_rnn_loop(cell,
-                      inputs,
-                      initial_state,
-                      sequence_length=None):
+def _dynamic_rnn_loop(cell: RNNCellBase[State],
+                      inputs: torch.Tensor,
+                      initial_state: torch.Tensor,
+                      sequence_length: Union[torch.LongTensor, List[int]]) -> \
+        Tuple[torch.Tensor, torch.Tensor]:
     """Internal implementation of Dynamic RNN.
 
       Args:
@@ -300,19 +321,24 @@ def _dynamic_rnn_loop(cell,
         Tuple `(final_outputs, final_state)`.
         final_outputs:
           A `Tensor` of shape `[time, batch_size, cell.output_size]`.  If
-          `cell.output_size` is a (possibly nested) tuple of ints or `TensorShape`
-          objects, then this returns a (possibly nested) tuple of Tensors matching
-          the corresponding shapes.
+          `cell.output_size` is a (possibly nested) tuple of ints or
+          `TensorShape` objects, then this returns a (possibly nested) tuple of
+          Tensors matching the corresponding shapes.
         final_state:
           A `Tensor`, or possibly nested tuple of Tensors, matching in length
           and shapes to `initial_state`.
     """
+    if not isinstance(sequence_length, torch.Tensor):
+        sequence_length = torch.tensor(sequence_length)
+
     state = initial_state
     time_steps = inputs.shape[0]
 
     is_tuple = isinstance(state, tuple)
 
     all_outputs = []
+
+    all_state: MaybeTuple[List[torch.Tensor]]
     if is_tuple:
         all_state = ([], [])
     else:
@@ -325,7 +351,7 @@ def _dynamic_rnn_loop(cell,
             all_state[0].append(state[0])
             all_state[1].append(state[1])
         else:
-            all_state.append(state)
+            all_state.append(state)  # type: ignore
 
     # TODO: Do not compute everything regardless of sequence_length
 
@@ -333,6 +359,8 @@ def _dynamic_rnn_loop(cell,
     final_outputs = mask_sequences(final_outputs,
                                    sequence_length=sequence_length,
                                    time_major=True)
+
+    final_state: MaybeTuple[List[torch.Tensor]]
     if is_tuple:
         final_state = ([], [])
     else:
@@ -344,18 +372,19 @@ def _dynamic_rnn_loop(cell,
                 final_state[0].append(all_state[0][time_idx-1][batch_idx])
                 final_state[1].append(all_state[1][time_idx-1][batch_idx])
             else:
-                final_state.append(all_state[time_idx-1][batch_idx])
+                final_state.append(  # type: ignore
+                    all_state[time_idx-1][batch_idx])
         else:
             if is_tuple:
                 final_state[0].append(initial_state[0][batch_idx])
                 final_state[1].append(initial_state[1][batch_idx])
             else:
-                final_state.append(initial_state[batch_idx])
+                final_state.append(initial_state[batch_idx])  # type: ignore
 
     if is_tuple:
         final_state = (torch.stack(final_state[0], dim=0),
                        torch.stack(final_state[1], dim=0))
     else:
-        final_state = torch.stack(final_state, dim=0)
+        final_state = torch.stack(final_state, dim=0)  # type: ignore
 
     return final_outputs, final_state

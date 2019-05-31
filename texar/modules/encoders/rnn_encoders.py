@@ -17,15 +17,16 @@ Various RNN encoders.
 
 import functools
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import ModuleList
+from torch.nn import ModuleList, Module
 
-from typing import Optional
+from typing import Optional, Tuple, Union, Dict
 
 from texar.core.cell_wrappers import LSTMCell
 from texar import HParams
-from texar.modules.encoders import EncoderBase
+from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.networks.conv_networks import _to_list
 from texar.core import layers, RNNCellBase
 from texar.utils.shapes import mask_sequences
@@ -42,7 +43,7 @@ __all__ = [
 ]
 
 
-def _default_output_layer_hparams():
+def _default_output_layer_hparams() -> Dict:
     return {
         "num_layers": 0,
         "layer_size": 128,
@@ -57,7 +58,8 @@ def _default_output_layer_hparams():
     }
 
 
-def _build_dense_output_layer(cell_output_size, hparams):
+def _build_dense_output_layer(cell_output_size: int,
+                              hparams: HParams) -> Optional[ModuleList]:
     nlayers = hparams.num_layers
 
     if nlayers <= 0:
@@ -106,13 +108,12 @@ def _build_dense_output_layer(cell_output_size, hparams):
 
         dense_layers.append(tmp)
 
-    if len(dense_layers) == 1:
-        dense_layers = dense_layers[0]
-
     return dense_layers
 
 
-def _forward_single_output_layer(inputs, output_layer):
+def _forward_single_output_layer(inputs: torch.Tensor,
+                                 output_layer: Union[ModuleList, Module]) -> \
+        Tuple[torch.Tensor, int]:
     """Forwards the input through a single output layer.
 
     Args:
@@ -122,7 +123,7 @@ def _forward_single_output_layer(inputs, output_layer):
         input_size: An `int` or 1D `int` array.
         output_layer: A tuple of (Linear Layer, Activation).
     """
-    if isinstance(output_layer, nn.ModuleList):
+    if isinstance(output_layer, ModuleList):
         layer, activation = output_layer
     else:
         layer = output_layer
@@ -135,7 +136,10 @@ def _forward_single_output_layer(inputs, output_layer):
     return output, output_size
 
 
-def _apply_dropout(inputs, time_major, hparams, training):
+def _apply_dropout(inputs: torch.Tensor,
+                   time_major: bool,
+                   hparams: Dict,
+                   training: bool) -> torch.Tensor:
     """Applies dropout to the inputs.
 
     :attr:`inputs` is a Tensor of shape `[batch_size, max_time, dim]`
@@ -144,17 +148,25 @@ def _apply_dropout(inputs, time_major, hparams, training):
     """
     noise_shape = None
     # TODO: Implement variational dropout layer
-    if hparams.variational_dropout:
+    if hparams.variational_dropout:  # type: ignore
         if time_major:
             raise NotImplementedError
         else:
             raise NotImplementedError
 
-    return F.dropout(inputs, p=hparams.dropout_rate, training=training)
+    return F.dropout(inputs, p=hparams.dropout_rate,  # type: ignore
+                     training=training)
 
 
-def _forward_output_layers(inputs, input_size, output_layer, time_major,
-                           hparams, mode, sequence_length=None):
+def _forward_output_layers(inputs: torch.Tensor,
+                           input_size: int,
+                           output_layer: Optional[Union[ModuleList,
+                                                                 nn.Module]],
+                           time_major: bool,
+                           hparams: Optional[Dict],
+                           mode: bool,
+                           sequence_length: Optional[torch.LongTensor] = None) \
+        -> Tuple[torch.Tensor, int]:
     """Forwards inputs through the output layers.
 
     Args:
@@ -181,7 +193,7 @@ def _forward_output_layers(inputs, input_size, output_layer, time_major,
         output, output_size = _forward_single_output_layer(inputs, output_layer)
     else:
         # output_layer was built based on hparams
-        dropout_layer_ids = _to_list(hparams.dropout_layer_ids)
+        dropout_layer_ids = _to_list(hparams.dropout_layer_ids)  # type: ignore
         if len(dropout_layer_ids) > 0:
             training = mode
 
@@ -201,8 +213,14 @@ def _forward_output_layers(inputs, input_size, output_layer, time_major,
     return output, output_size
 
 
-def _apply_rnn_encoder_output_layer(output_layer, time_major, hparams, mode,
-                                    cell_outputs, cell_output_size):
+def _apply_rnn_encoder_output_layer(output_layer: Optional[Union[ModuleList,
+                                                                 nn.Module]],
+                                    time_major: bool,
+                                    hparams: Optional[Dict],
+                                    mode: bool,
+                                    cell_outputs: torch.Tensor,
+                                    cell_output_size: int) -> \
+        Tuple[torch.Tensor, int]:
     map_func = functools.partial(
         _forward_output_layers,
         output_layer=output_layer,
@@ -263,11 +281,6 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
     Args:
         cell: (RNNCell, optional) If not specified,
             a cell is created as specified in :attr:`hparams["rnn_cell"]`.
-        cell_dropout_mode (optional): A Tensor taking value of
-            :tf_main:`tf.estimator.ModeKeys <estimator/ModeKeys>`, which
-            toggles dropout in the RNN cell (e.g., activates dropout in
-            TRAIN mode). If `None`, :func:`~texar.global_mode` is used.
-            Ignored if :attr:`cell` is given.
         output_layer (optional): An instance of
             :tf_main:`tf.layers.Layer <layers/Layer>`. Applies to the RNN cell
             output of each step. If `None` (default), the output layer is
@@ -310,6 +323,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
                                              self._hparams.rnn_cell)
 
         # Make output layer
+        self._output_layer: Optional[Union[ModuleList, nn.Module]]
         if output_layer is not None:
             self._output_layer = output_layer
             self._output_layer_hparams = None
@@ -319,7 +333,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
             self._output_layer_hparams = self._hparams.output_layer
 
     @staticmethod
-    def default_hparams():
+    def default_hparams() -> Dict:
         """Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
@@ -422,13 +436,13 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
         })
         return hparams
 
-    def forward(self,
-                inputs,
-                sequence_length=None,
-                initial_state=None,
-                time_major=False,
-                return_cell_output=False,
-                return_output_size=False):
+    def forward(self,  # type: ignore
+                inputs: torch.Tensor,
+                sequence_length: Optional[torch.LongTensor] = None,
+                initial_state: Optional[torch.Tensor] = None,
+                time_major: bool = False,
+                return_cell_output: bool = False,
+                return_output_size: bool = False):
         """Encodes the inputs.
 
         Args:
@@ -506,19 +520,19 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
 
         rets = (outputs, state)
         if return_cell_output:
-            rets += (cell_outputs, )
+            rets += (cell_outputs, )  # type: ignore
         if return_output_size:
-            rets += (output_size, )
+            rets += (output_size, )  # type: ignore
         return rets
 
     @property
-    def cell(self):
+    def cell(self) -> RNNCellBase:
         """The RNN cell.
         """
         return self._cell
 
     @property
-    def state_size(self):
+    def state_size(self) -> int:
         """The state size of encoder cell.
         Same as :attr:`encoder.cell.state_size`.
         """
@@ -542,11 +556,6 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             a cell is created as specified in :attr:`hparams["rnn_cell_fw"]`.
         cell_bw (RNNCell, optional): The backward RNN cell. If not given,
             a cell is created as specified in :attr:`hparams["rnn_cell_bw"]`.
-        cell_dropout_mode (optional): A tensor taking value of
-            :tf_main:`tf.estimator.ModeKeys <estimator/ModeKeys>`, which
-            toggles dropout in the RNN cells (e.g., activates dropout in
-            TRAIN mode). If `None`, :func:`~texar.global_mode()` is
-            used. Ignored if respective cell is given.
         output_layer_fw (optional): An instance of
             :tf_main:`tf.layers.Layer <layers/Layer>`. Apply to the forward
             RNN cell output of each step. If `None` (default), the output
@@ -581,12 +590,12 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
     """
 
     def __init__(self,
-                 input_size,
-                 cell_fw=None,
-                 cell_bw=None,
-                 output_layer_fw=None,
-                 output_layer_bw=None,
-                 hparams=None):
+                 input_size: int,
+                 cell_fw: Optional[RNNCellBase] = None,
+                 cell_bw: Optional[RNNCellBase] = None,
+                 output_layer_fw: Optional[Module] = None,
+                 output_layer_bw: Optional[Module] = None,
+                 hparams: Optional[HParams] = None):
         super().__init__(hparams)
 
         # Make RNN cells
@@ -606,28 +615,31 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                                                 self._hparams.rnn_cell_bw)
 
         # Make output layers
+
+        self.__output_layer_fw: Optional[Union[ModuleList, Module]]
         if output_layer_fw is not None:
             self._output_layer_fw = output_layer_fw
             self._output_layer_hparams_fw = None
         else:
-            self._output_layer_fw = _build_dense_output_layer(
+            self._output_layer_fw = _build_dense_output_layer(  # type: ignore
                 self._cell_fw.hidden_size, self._hparams.output_layer_fw)
             self._output_layer_hparams_fw = self._hparams.output_layer_fw
 
+        self.__output_layer_bw: Optional[Union[ModuleList, Module]]
         if output_layer_bw is not None:
             self._output_layer_bw = output_layer_bw
             self._output_layer_hparams_bw = None
         elif self._hparams.output_layer_share_config:
-            self._output_layer_bw = _build_dense_output_layer(
+            self._output_layer_bw = _build_dense_output_layer(  # type: ignore
                 self._cell_bw.hidden_size, self._hparams.output_layer_fw)
             self._output_layer_hparams_bw = self._hparams.output_layer_fw
         else:
-            self._output_layer_bw = _build_dense_output_layer(
+            self._output_layer_bw = _build_dense_output_layer(  # type: ignore
                 self._cell_bw.hidden_size, self._hparams.output_layer_bw)
             self._output_layer_hparams_bw = self._hparams.output_layer_bw
 
     @staticmethod
-    def default_hparams():
+    def default_hparams() -> Dict:
         """Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
@@ -710,14 +722,14 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
         })
         return hparams
 
-    def forward(self,
-                inputs,
-                sequence_length=None,
-                initial_state_fw=None,
-                initial_state_bw=None,
-                time_major=False,
-                return_cell_output=False,
-                return_output_size=False):
+    def forward(self,  # type: ignore
+                inputs: torch.Tensor,
+                sequence_length: Optional[torch.LongTensor] = None,
+                initial_state_fw: Optional[torch.Tensor] = None,
+                initial_state_bw: Optional[torch.Tensor] = None,
+                time_major: bool = False,
+                return_cell_output: bool = False,
+                return_output_size: bool = False):
         """Encodes the inputs.
 
         Args:
@@ -729,7 +741,8 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 Sequence lengths
                 of the batch inputs. Used to copy-through state and zero-out
                 outputs when past a batch element's sequence length.
-            initial_state (optional): Initial state of the RNN.
+            initial_state_fw: (optional): Initial state of the RNN.
+            initial_state_bw: (optional): Initial state of the RNN.
             time_major (bool): The shape format of the :attr:`inputs` and
                 :attr:`outputs` Tensors. If `True`, these tensors are of shape
                 `[max_time, batch_size, depth]`. If `False` (default),
@@ -742,9 +755,8 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 is used.
             return_cell_output (bool): Whether to return the output of the RNN
                 cell. This is the results prior to the output layer.
-            **kwargs: Optional keyword arguments of
-                :tf_main:`tf.nn.dynamic_rnn <nn/dynamic_rnn>`,
-                such as `swap_memory`, `dtype`, `parallel_iterations`, etc.
+            return_output_size (bool): Whether to return the output size of the
+                RNN cell. This is the results after the output layer.
 
         Returns:
             - By default (both `return_cell_output` and `return_output_size` \
@@ -819,25 +831,25 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
 
         returns = (outputs, states)
         if return_cell_output:
-            returns += (cell_outputs, )
+            returns += (cell_outputs, )  # type: ignore
         if return_output_size:
-            returns += (output_size,)
+            returns += (output_size,)  # type: ignore
         return returns
 
     @property
-    def cell_fw(self):
+    def cell_fw(self) -> RNNCellBase:
         """The forward RNN cell.
         """
         return self._cell_fw
 
     @property
-    def cell_bw(self):
+    def cell_bw(self) -> RNNCellBase:
         """The backward RNN cell.
         """
         return self._cell_bw
 
     @property
-    def state_size_fw(self):
+    def state_size_fw(self) -> int:
         """The state size of the forward encoder cell.
         Same as :attr:`encoder.cell_fw.state_size`.
         """
@@ -847,7 +859,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             return self._cell_fw.hidden_size
 
     @property
-    def state_size_bw(self):
+    def state_size_bw(self) -> int:
         """The state size of the backward encoder cell.
         Same as :attr:`encoder.cell_bw.state_size`.
         """
