@@ -12,7 +12,8 @@ class Batch:
                  **kwargs):
         self.batch_size = batch_size
         self._batch = batch or {}
-        self._batch.update(kwargs)
+        if isinstance(self._batch, dict):
+            self._batch.update(kwargs)
 
     def __getattr__(self, item):
         if item not in super().__getattribute__('_batch'):

@@ -23,8 +23,8 @@ class SamplerTest(unittest.TestCase):
         def __init__(self, size: int, lazy_strategy: str,
                      cache_strategy: str, unknown_size: bool = False):
             self.size = size
-            self.lazy_strategy = _LazyStrategy(lazy_strategy)
-            self.cache_strategy = _CacheStrategy(cache_strategy)
+            self._lazy_strategy = _LazyStrategy(lazy_strategy)
+            self._cache_strategy = _CacheStrategy(cache_strategy)
             self._dataset_size = size if not unknown_size else None
             self._unknown_size = unknown_size
 
@@ -170,25 +170,34 @@ class DataIteratorTest(unittest.TestCase):
     def test_iterator_multi_datasets(self):
         r"""Tests iterating over multiple datasets.
         """
-        train = TensorDataset(torch.from_numpy(np.arange(0, 100, 1)))
-        test = TensorDataset(torch.from_numpy(np.arange(100, 200, 1)))
+        train = texar.data.MonoTextData(self._train_hparams)
+        test = texar.data.MonoTextData(self._test_hparams)
+        train_batch_size = self._train_hparams["batch_size"]
+        test_batch_size = self._test_hparams["batch_size"]
         data_iterator = texar.data.DataIterator({"train": train, "test": test})
         data_iterator.switch_to_dataset(dataset_name="train")
         iterator = data_iterator.get_iterator()
         for idx, val in enumerate(iterator):
-            self.assertEqual(len(val), self._train_hparams["batch_size"])
-            self.assertEqual(val[0], torch.tensor(idx))
+            self.assertEqual(len(val), train_batch_size)
+            number = idx * train_batch_size + 1
+            self.assertEqual(val.text[0], [str(number)])
+            # numbers: 1 - 2000, first 4 vocab entries are special tokens
+            self.assertEqual(val.text_ids[0], torch.tensor(number + 3))
 
         data_iterator.switch_to_dataset(dataset_name="test")
         iterator = data_iterator.get_iterator()
         for idx, val in enumerate(iterator):
-            self.assertEqual(len(val), self._test_hparams["batch_size"])
-            self.assertEqual(val[0], torch.tensor(idx + 100))
+            self.assertEqual(len(val), test_batch_size)
+            number = idx * test_batch_size + 1001
+            self.assertEqual(val.text[0], [str(number)])
+            self.assertEqual(val.text_ids[0], torch.tensor(number + 3))
 
         # test `get_iterator` interface
         for idx, val in enumerate(data_iterator.get_iterator('train')):
-            self.assertEqual(len(val), self._train_hparams["batch_size"])
-            self.assertEqual(val[0], torch.tensor(idx))
+            self.assertEqual(len(val), train_batch_size)
+            number = idx * train_batch_size + 1
+            self.assertEqual(val.text[0], [str(number)])
+            self.assertEqual(val.text_ids[0], torch.tensor(number + 3))
 
         # test exception for invalid dataset name
         with self.assertRaises(ValueError) as context:
@@ -198,28 +207,36 @@ class DataIteratorTest(unittest.TestCase):
     def test_train_test_data_iterator(self):
         r"""Tests :class:`texar.data.TrainTestDataIterator`
         """
-        train_data = TensorDataset(torch.from_numpy(np.arange(0, 100, 1)))
-        test_data = TensorDataset(torch.from_numpy(np.arange(100, 200, 1)))
+        train = texar.data.MonoTextData(self._train_hparams)
+        test = texar.data.MonoTextData(self._test_hparams)
+        train_batch_size = self._train_hparams["batch_size"]
+        test_batch_size = self._test_hparams["batch_size"]
 
-        data_iterator = texar.data.TrainTestDataIterator(
-            train=train_data, test=test_data)
+        data_iterator = texar.data.TrainTestDataIterator(train=train, test=test)
         data_iterator.switch_to_train_data()
         iterator = data_iterator.get_iterator()
 
         for idx, val in enumerate(iterator):
-            self.assertEqual(len(val), self._train_hparams["batch_size"])
-            self.assertEqual(val[0], torch.tensor(idx))
+            self.assertEqual(len(val), train_batch_size)
+            number = idx * train_batch_size + 1
+            self.assertEqual(val.text[0], [str(number)])
+            # numbers: 1 - 2000, first 4 vocab entries are special tokens
+            self.assertEqual(val.text_ids[0], torch.tensor(number + 3))
 
         data_iterator.switch_to_test_data()
         iterator = data_iterator.get_iterator()
         for idx, val in enumerate(iterator):
-            self.assertEqual(len(val), self._test_hparams["batch_size"])
-            self.assertEqual(val[0], torch.tensor(idx + 100))
+            self.assertEqual(len(val), test_batch_size)
+            number = idx * test_batch_size + 1001
+            self.assertEqual(val.text[0], [str(number)])
+            self.assertEqual(val.text_ids[0], torch.tensor(number + 3))
 
         # test `get_*_iterator` interface
         for idx, val in enumerate(data_iterator.get_test_iterator()):
-            self.assertEqual(len(val), self._test_hparams["batch_size"])
-            self.assertEqual(val[0], torch.tensor(idx + 100))
+            self.assertEqual(len(val), test_batch_size)
+            number = idx * test_batch_size + 1001
+            self.assertEqual(val.text[0], [str(number)])
+            self.assertEqual(val.text_ids[0], torch.tensor(number + 3))
 
         # test exception for invalid dataset name
         with self.assertRaises(ValueError) as context:

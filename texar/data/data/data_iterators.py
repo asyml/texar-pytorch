@@ -17,7 +17,8 @@ Various data iterator classes.
 from typing import Dict, Iterable, List, Optional, Sequence, Union, Iterator
 
 import torch
-from torch.utils.data import DataLoader, Sampler
+from torch.utils.data import DataLoader
+from torch.utils.data import sampler as torch_sampler
 from torch.utils.data.dataloader import _DataLoaderIter
 
 from texar.data.data.data_base import DataBase
@@ -32,20 +33,18 @@ __all__ = [
 DatasetsType = Union[Dict[str, DataBase], MaybeSeq[DataBase]]
 
 
-class SamplerBase(Sampler):
-    r"""A :class:`~torch.utils.data.Sampler` that uses a shuffle buffer, as
-    in TensorFlow. The buffer is first filled with data examples. Each time a
-    sample is drawn from the buffer, and the drawn sample is replaced with the
-    next data example.
+class SamplerBase(torch_sampler.Sampler):
+    r"""A subclass of :class:`~torch.utils.data.Sampler` that supports:
+
+        - Returning raw examples when required.
+        - Creating iterators with unknown dataset size.
 
     This class is used internally in :class:`~texar.data.data.DataIterator`.
     It calls the :meth:`~texar.data.data.DataBase._prefetch_source` method to
-    ensure the required number of
+    ensure the required number of raw examples are prefetched from source.
 
     Args:
         data: The :class:`~texar.data.data.DataBase` instance.
-        buffer_size: The size of the shuffle buffer. Use larger buffer sizes for
-            more uniformly-random shuffling.
     """
 
     def __init__(self, data: DataBase):
@@ -80,16 +79,59 @@ class SamplerBase(Sampler):
         return self.size
 
 
-# class SequentialSampler(Sampler):
-#     def __init__(self, data: DataBase):
-#         super().__init__(data)
-#         self._data = data
-#
-#     def __iter__(self):
-#         return iter(range(len(self.data_source)))
-#
-#     def __len__(self):
-#         return len(self.data_source)
+class SequentialSampler(SamplerBase):
+    r"""Samples elements sequentially, always in the same order. Same as
+    :class:`torch.utils.data.SequantialSampler`.
+
+    Args:
+        data: The :class:`~texar.data.data.DataBase` instance.
+    """
+
+    def __init__(self, data: DataBase):
+        super().__init__(data)
+
+    def _iterator_given_size(self, size: int) -> Iterator[int]:
+        return iter(range(size))
+
+    def _iterator_unknown_size(self) -> Iterator[int]:
+        index = 0
+        while True:
+            cur_size = self._data._prefetch_source(index)
+            if cur_size is not None:
+                self.size = cur_size
+                break
+            yield index
+            index += 1
+
+
+class RandomSampler(SamplerBase):
+    r"""Samples elements randomly. If without replacement, then sample from a
+    shuffled dataset. If with replacement, then user can specify ``num_samples``
+    to draw.
+
+    This class uses :class:`torch.utils.data.RandomSampler` directly. Given the
+    nature of such shuffling, it cannot be used for iterators with unknown size.
+
+    Args:
+        data: The :class:`~texar.data.data.DataBase` instance.
+        num_samples (int): number of samples to draw, default=len(dataset)
+        replacement (bool): samples are drawn with replacement if ``True``,
+            default=False
+    """
+
+    def __init__(self, data: DataBase, replacement: bool = False,
+                 num_samples: Optional[int] = None):
+        super().__init__(data)
+        self._sampler = torch_sampler.RandomSampler(
+            data, replacement, num_samples)
+
+    def _iterator_given_size(self, size: int) -> Iterator[int]:
+        return iter(self._sampler)
+
+    def _iterator_unknown_size(self) -> Iterator[int]:
+        raise TypeError(
+            "RandomSampler does not support lazy data loading. To perform "
+            "shuffling with lazy loading, use BufferShuffleSampler.")
 
 
 class BufferShuffleSampler(SamplerBase):
@@ -185,17 +227,18 @@ class SingleDatasetIterator(DataLoader):
     def __init__(self, dataset: DataBase):
         shuffle = dataset.hparams.shuffle
         shuffle_buffer_size = dataset.hparams.shuffle_buffer_size
-        sampler = None
         if shuffle and shuffle_buffer_size is not None:
             sampler = BufferShuffleSampler(dataset, shuffle_buffer_size)
-            shuffle = None
+        elif shuffle:
+            sampler = RandomSampler(dataset)
+        else:
+            sampler = SequentialSampler(dataset)
 
         num_parallel_calls = dataset.hparams.num_parallel_calls
         allow_smaller_final_batch = dataset.hparams.allow_smaller_final_batch
         collate_fn = dataset._collate_and_maybe_return
         super().__init__(  # type: ignore
-            dataset, dataset.batch_size, shuffle=shuffle, sampler=sampler,
-            collate_fn=collate_fn,
+            dataset, dataset.batch_size, sampler=sampler, collate_fn=collate_fn,
             num_workers=(0 if num_parallel_calls == 1 else num_parallel_calls),
             drop_last=(not allow_smaller_final_batch))
 

@@ -363,8 +363,8 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             "prefetch_buffer_size": 0,
             "max_dataset_size": -1,
             "seed": None,
-            "lazy_strategy": 'all',
-            "cache_strategy": 'loaded',
+            "lazy_strategy": 'none',
+            "cache_strategy": 'processed',
         }
 
     def _prefetch_source(self, index: Optional[int]) -> Optional[int]:

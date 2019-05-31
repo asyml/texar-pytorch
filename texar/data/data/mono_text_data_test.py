@@ -72,10 +72,11 @@ class MonoTextDataTest(unittest.TestCase):
             mode = text_data.hparams.dataset.length_filter_mode
 
             max_l = max_seq_length
-            if text_data.hparams.dataset.eos_token != '':
-                max_l += 1
-            if text_data.hparams.dataset.bos_token != '':
-                max_l += 1
+            if max_seq_length is not None:
+                if text_data.hparams.dataset.eos_token != '':
+                    max_l += 1
+                if text_data.hparams.dataset.bos_token != '':
+                    max_l += 1
 
             if max_seq_length == 6:
                 for length in data_batch['length']:
@@ -110,6 +111,7 @@ class MonoTextDataTest(unittest.TestCase):
         hparams.update({"allow_smaller_final_batch": False})
         self._run_and_test(hparams, test_batch_size=True)
 
+    @unittest.skip("bucketing is not yet implemented")
     def test_bucketing(self):
         r"""Tests bucketing.
         """

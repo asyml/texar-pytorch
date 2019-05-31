@@ -149,20 +149,15 @@ class MonoTextData(TextDataBase[str, List[str]]):
     _should_pad: bool
 
     def __init__(self, hparams):
-        dataset_hparams = HParams(hparams, self.default_hparams()).dataset
-        if dataset_hparams.variable_utterance:
+        self._hparams = HParams(hparams, self.default_hparams())
+        if self._hparams.dataset.variable_utterance:
             raise NotImplementedError
 
-        data_source = TextLineDataSource(
-            dataset_hparams["files"],
-            compression_type=dataset_hparams["compression_type"])
-
-        super().__init__(data_source, hparams)
-
         # Create vocab and embedding
-        self._vocab = self.make_vocab(dataset_hparams)
+        self._vocab = self.make_vocab(self._hparams.dataset)
         self._embedding = self.make_embedding(
-            dataset_hparams["embedding_init"], self._vocab.token_to_id_map_py)
+            self._hparams.dataset.embedding_init,
+            self._vocab.token_to_id_map_py)
 
         self._delimiter = self._hparams.dataset.delimiter
         self._bos = self._hparams.dataset.bos_token
@@ -174,11 +169,24 @@ class MonoTextData(TextDataBase[str, List[str]]):
         self._max_seq_length = self._hparams.dataset.max_seq_length
         self._length_filter_mode = _LengthFilterMode(
             self._hparams.dataset.length_filter_mode)
-        self._should_pad = self._hparams.dataset.pad_to_max_seq_length
         self._pad_length = self._max_seq_length
         if self._max_seq_length is not None:
             self._pad_length += sum(int(x is not None)
                                     for x in [self._bos, self._eos])
+
+        if (self._length_filter_mode is _LengthFilterMode.DISCARD and
+                self._max_seq_length is not None):
+            data_source = TextLineDataSource(
+                self._hparams.dataset.files,
+                compression_type=self._hparams.dataset.compression_type,
+                delimiter=self._delimiter,
+                max_length=self._max_seq_length)
+        else:
+            data_source = TextLineDataSource(
+                self._hparams.dataset.files,
+                compression_type=self._hparams.dataset.compression_type)
+
+        super().__init__(data_source, hparams)
 
     @staticmethod
     def default_hparams():
@@ -442,9 +450,9 @@ class MonoTextData(TextDataBase[str, List[str]]):
                 len(words) > self._max_seq_length):
             if self._length_filter_mode is _LengthFilterMode.TRUNC:
                 words = words[:self._max_seq_length]
-        if self._bos != '':
+        if self._bos is not None:
             words.insert(0, self._bos)
-        if self._eos != '':
+        if self._eos is not None:
             words.append(self._eos)
 
         return words
@@ -452,17 +460,16 @@ class MonoTextData(TextDataBase[str, List[str]]):
     def _collate(self, examples: List[List[str]]) -> Batch:
         # For `MonoTextData`, each example is represented as a list of strings.
         # `collate_fn` takes care of padding and numericalization.
-        lengths = torch.tensor([len(sent) for sent in examples],
-                               dtype=torch.long)
-        if self._should_pad:
-            # Here in PyTorch we support `max_seq_length` of `None`,
-            # which means to pad to the longest sentence in batch.
-            pad_length = self._pad_length or lengths.max()
-            examples = [
-                sent + [''] * (pad_length - len(sent))
-                if len(sent) < pad_length else sent
-                for sent in examples
-            ]
+
+        # If `pad_length` is `None`, pad to the longest sentence in the batch.
+        lengths = [len(sent) for sent in examples]
+        pad_length = self._pad_length or max(lengths)
+        examples = [
+            sent + [''] * (pad_length - len(sent))
+            if len(sent) < pad_length else sent
+            for sent in examples
+        ]
+
         # If `_should_pad` is `False`, sentences must be of the same length
         # or the following code will raise exceptions.
         ids = np.zeros((len(examples), len(examples[0])), dtype=np.long)
@@ -470,6 +477,8 @@ class MonoTextData(TextDataBase[str, List[str]]):
             length = lengths[b_idx]
             ids[b_idx, :length] = \
                 self._vocab.map_tokens_to_ids_py(sent[:length])
+        ids = torch.from_numpy(ids)
+        lengths = torch.tensor(lengths, dtype=torch.long, )
         return Batch(len(examples), text=examples,
                      text_ids=ids, length=lengths)
 

@@ -31,17 +31,27 @@ Example = TypeVar('Example')
 
 class TextLineDataSource(DataSource[str]):
     def __init__(self, file_paths: MaybeList[str],
-                 compression_type: Optional[str] = None):
+                 compression_type: Optional[str] = None,
+                 delimiter: Optional[str] = None,
+                 max_length: Optional[int] = None):
         if compression_type is not None:
             raise NotImplementedError
         if isinstance(file_paths, str):
             file_paths = [file_paths]
         self._file_paths = file_paths
+        self._max_length = max_length
+        self._delimiter = delimiter
 
     def __iter__(self) -> Iterable[str]:
         for path in self._file_paths:
             with open(path, 'r') as f:
                 for line in f:
+                    line = line.rstrip('\n')
+                    if self._max_length is not None:
+                        # A very brute way to filter out overly long lines at
+                        # this stage.
+                        if line.count(self._delimiter) + 1 > self._max_length:
+                            continue
                     yield line.rstrip('\n')
 
 
