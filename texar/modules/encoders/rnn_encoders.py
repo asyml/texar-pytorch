@@ -22,7 +22,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import ModuleList, Module
 
-from typing import Optional, Tuple, Union, Dict
+from typing import Optional, Tuple, Union, Dict, Any, List
 
 from texar.core.cell_wrappers import LSTMCell
 from texar import HParams
@@ -31,6 +31,7 @@ from texar.modules.networks.conv_networks import _to_list
 from texar.core import layers, RNNCellBase
 from texar.utils.shapes import mask_sequences
 from texar.utils.rnn import dynamic_rnn, bidirectional_dynamic_rnn
+from texar.utils.types import MaybeTuple
 
 
 # pylint: disable=too-many-arguments, too-many-locals, invalid-name, no-member
@@ -42,8 +43,10 @@ __all__ = [
     "BidirectionalRNNEncoder"
 ]
 
+State = torch.Tensor
 
-def _default_output_layer_hparams() -> Dict:
+
+def _default_output_layer_hparams() -> Dict[str, Any]:
     return {
         "num_layers": 0,
         "layer_size": 128,
@@ -160,8 +163,7 @@ def _apply_dropout(inputs: torch.Tensor,
 
 def _forward_output_layers(inputs: torch.Tensor,
                            input_size: int,
-                           output_layer: Optional[Union[ModuleList,
-                                                                 nn.Module]],
+                           output_layer: Optional[Union[ModuleList, Module]],
                            time_major: bool,
                            hparams: Optional[Dict],
                            mode: bool,
@@ -188,7 +190,7 @@ def _forward_output_layers(inputs: torch.Tensor,
 
     if hparams is None:
         # output_layer was passed in from the constructor
-        if isinstance(output_layer, nn.ModuleList):
+        if isinstance(output_layer, ModuleList):
             raise ValueError('output_layer must not be a ModuleList.')
         output, output_size = _forward_single_output_layer(inputs, output_layer)
     else:
@@ -196,6 +198,8 @@ def _forward_output_layers(inputs: torch.Tensor,
         dropout_layer_ids = _to_list(hparams.dropout_layer_ids)  # type: ignore
         if len(dropout_layer_ids) > 0:
             training = mode
+        else:
+            training = False
 
         output = inputs
         output_size = input_size
@@ -214,19 +218,22 @@ def _forward_output_layers(inputs: torch.Tensor,
 
 
 def _apply_rnn_encoder_output_layer(output_layer: Optional[Union[ModuleList,
-                                                                 nn.Module]],
+                                                                 Module]],
                                     time_major: bool,
                                     hparams: Optional[Dict],
                                     mode: bool,
                                     cell_outputs: torch.Tensor,
-                                    cell_output_size: int) -> \
+                                    cell_output_size: int,
+                                    sequence_length: Optional[Union[
+                                        torch.LongTensor, List[int]]]) -> \
         Tuple[torch.Tensor, int]:
     map_func = functools.partial(
         _forward_output_layers,
         output_layer=output_layer,
         time_major=time_major,
         hparams=hparams,
-        mode=mode)
+        mode=mode,
+        sequence_length=sequence_length)
 
     output, output_size = map_func(inputs=cell_outputs,
                                    input_size=cell_output_size)
@@ -310,8 +317,8 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
 
     def __init__(self,
                  input_size: int,
-                 cell: Optional[RNNCellBase] = None,
-                 output_layer: Optional[nn.Module] = None,
+                 cell: Optional[RNNCellBase[State]] = None,
+                 output_layer: Optional[Module] = None,
                  hparams: Optional[HParams] = None):
         super().__init__(hparams)
 
@@ -333,7 +340,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
             self._output_layer_hparams = self._hparams.output_layer
 
     @staticmethod
-    def default_hparams() -> Dict:
+    def default_hparams() -> Dict[str, Any]:
         """Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
@@ -438,8 +445,9 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
 
     def forward(self,  # type: ignore
                 inputs: torch.Tensor,
-                sequence_length: Optional[torch.LongTensor] = None,
-                initial_state: Optional[torch.Tensor] = None,
+                sequence_length: Optional[Union[torch.LongTensor,
+                                                List[int]]] = None,
+                initial_state: Optional[MaybeTuple[torch.Tensor]] = None,
                 time_major: bool = False,
                 return_cell_output: bool = False,
                 return_output_size: bool = False):
@@ -515,8 +523,13 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
             time_major=time_major)
 
         outputs, output_size = _apply_rnn_encoder_output_layer(
-            self._output_layer, time_major, self._output_layer_hparams,
-            self.training, cell_outputs, self._cell.hidden_size)
+            output_layer=self._output_layer,
+            time_major=time_major,
+            hparams=self._output_layer_hparams,
+            mode=self.training,
+            cell_outputs=cell_outputs,
+            cell_output_size=self._cell.hidden_size,
+            sequence_length=sequence_length)
 
         rets = (outputs, state)
         if return_cell_output:
@@ -526,7 +539,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
         return rets
 
     @property
-    def cell(self) -> RNNCellBase:
+    def cell(self) -> RNNCellBase[State]:
         """The RNN cell.
         """
         return self._cell
@@ -542,7 +555,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
             return self._cell.hidden_size
 
     @property
-    def output_layer(self):
+    def output_layer(self) -> Optional[Union[ModuleList, Module]]:
         """The output layer.
         """
         return self._output_layer
@@ -591,8 +604,8 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
 
     def __init__(self,
                  input_size: int,
-                 cell_fw: Optional[RNNCellBase] = None,
-                 cell_bw: Optional[RNNCellBase] = None,
+                 cell_fw: Optional[RNNCellBase[State]] = None,
+                 cell_bw: Optional[RNNCellBase[State]] = None,
                  output_layer_fw: Optional[Module] = None,
                  output_layer_bw: Optional[Module] = None,
                  hparams: Optional[HParams] = None):
@@ -639,7 +652,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             self._output_layer_hparams_bw = self._hparams.output_layer_bw
 
     @staticmethod
-    def default_hparams() -> Dict:
+    def default_hparams() -> Dict[str, Any]:
         """Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
@@ -724,9 +737,10 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
 
     def forward(self,  # type: ignore
                 inputs: torch.Tensor,
-                sequence_length: Optional[torch.LongTensor] = None,
-                initial_state_fw: Optional[torch.Tensor] = None,
-                initial_state_bw: Optional[torch.Tensor] = None,
+                sequence_length: Optional[Union[torch.LongTensor,
+                                                List[int]]] = None,
+                initial_state_fw: Optional[MaybeTuple[torch.Tensor]] = None,
+                initial_state_bw: Optional[MaybeTuple[torch.Tensor]] = None,
                 time_major: bool = False,
                 return_cell_output: bool = False,
                 return_output_size: bool = False):
@@ -819,12 +833,22 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             time_major=time_major)
 
         outputs_fw, output_size_fw = _apply_rnn_encoder_output_layer(
-            self._output_layer_fw, time_major, self._output_layer_hparams_fw,
-            self.training, cell_outputs[0], self._cell_fw.hidden_size)
+            output_layer=self._output_layer_fw,
+            time_major=time_major,
+            hparams=self._output_layer_hparams_fw,
+            mode=self.training,
+            cell_outputs=cell_outputs[0],
+            cell_output_size=self._cell_fw.hidden_size,
+            sequence_length=sequence_length)
 
         outputs_bw, output_size_bw = _apply_rnn_encoder_output_layer(
-            self._output_layer_bw, time_major, self._output_layer_hparams_bw,
-            self.training, cell_outputs[1], self._cell_bw.hidden_size)
+            output_layer=self._output_layer_bw,
+            time_major=time_major,
+            hparams=self._output_layer_hparams_bw,
+            mode=self.training,
+            cell_outputs=cell_outputs[1],
+            cell_output_size=self._cell_bw.hidden_size,
+            sequence_length=sequence_length)
 
         outputs = (outputs_fw, outputs_bw)
         output_size = (output_size_fw, output_size_bw)
@@ -837,13 +861,13 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
         return returns
 
     @property
-    def cell_fw(self) -> RNNCellBase:
+    def cell_fw(self) -> RNNCellBase[State]:
         """The forward RNN cell.
         """
         return self._cell_fw
 
     @property
-    def cell_bw(self) -> RNNCellBase:
+    def cell_bw(self) -> RNNCellBase[State]:
         """The backward RNN cell.
         """
         return self._cell_bw
@@ -869,13 +893,13 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             return self._cell_bw.hidden_size
 
     @property
-    def output_layer_fw(self):
+    def output_layer_fw(self) -> Optional[Union[ModuleList, Module]]:
         """The output layer of the forward RNN.
         """
         return self._output_layer_fw
 
     @property
-    def output_layer_bw(self):
+    def output_layer_bw(self) -> Optional[Union[ModuleList, Module]]:
         """The output layer of the backward RNN.
         """
         return self._output_layer_bw
