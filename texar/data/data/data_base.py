@@ -19,7 +19,7 @@ preprocessing operations.
 import warnings
 from abc import ABC
 from typing import Callable, Dict, Generic, Iterable, Iterator, List, \
-    Optional, Sequence, Tuple, TypeVar
+    Optional, Sequence, Tuple, TypeVar, Union
 
 from torch.utils.data import Dataset
 
@@ -188,7 +188,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         self._hparams = HParams(hparams, self.default_hparams())
 
         # Check and convert strategy hyperparameters.
-        self._lazy_strategy = _LazyStrategy(self._hparams.lazy_loading)
+        self._lazy_strategy = _LazyStrategy(self._hparams.lazy_strategy)
         self._cache_strategy = _CacheStrategy(self._hparams.cache_strategy)
         if self._lazy_strategy is _LazyStrategy.NONE:
             self._cache_strategy = _CacheStrategy.PROCESSED
@@ -210,18 +210,24 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 self._source = _CachedDataSource(source, erase_after_access)
                 self._dataset_size = None
 
+        self._processed_cache = []
+        self._fully_cached = False
         # Perform eager loading/processing if required.
         if self._lazy_strategy is _LazyStrategy.NONE:
             # Process entire dataset and cache.
-            self._cache = []
             for raw_example in self._source:
-                self._cache.append(self._process(raw_example))
-            self._dataset_size = len(self._cache)
-        elif self._lazy_strategy is _LazyStrategy.PROCESS:
-            # Load entire dataset. Note that if data source supports random
-            # access, we assume it is already loaded into memory.
-            if not self._supports_random_access:
-                self._prefetch_source(None)
+                self._processed_cache.append(self._process(raw_example))
+            self._dataset_size = len(self._processed_cache)
+            self._fully_cached = True
+        else:
+            if self._lazy_strategy is _LazyStrategy.PROCESS:
+                # Load entire dataset. Note that if data source supports random
+                # access, we assume it is already loaded into memory.
+                if not self._supports_random_access:
+                    self._prefetch_source(None)
+
+            if self._cache_strategy is _CacheStrategy.PROCESSED:
+                self._reorder_cache: Dict[int, Example] = {}
 
     @staticmethod
     def default_hparams():
@@ -406,11 +412,25 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
     def _process(self, raw_example: RawExample) -> Example:
         raise NotImplementedError
 
-    def __getitem__(self, index: int) -> Example:
-        if self._cache_strategy is _CacheStrategy.PROCESSED:
-            return self._cache[index]
+    def __getitem__(self, index: Union[int, Tuple[int, RawExample]]) -> Example:
+        if isinstance(index, int):
+            if self._fully_cached:
+                return self._processed_cache[index]
+            else:
+                return self._process(self._source[index])
         else:
-            return self._process(self._source[index])
+            # `index` is a tuple of (index, example).
+            return self._process(index[1])
+
+    def _add_cached_examples(self, indices: List[int], examples: List[Example]):
+        for index, example in zip(indices, examples):
+            self._reorder_cache[index] = example
+        while len(self._processed_cache) in self._reorder_cache:
+            index = len(self._processed_cache)
+            self._processed_cache.append(self._reorder_cache[index])
+            del self._reorder_cache[index]
+        if self._dataset_size == len(self._processed_cache):
+            self._fully_cached = True
 
     @property
     def num_epochs(self):
@@ -438,22 +458,50 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         return self._hparams.name
 
     @property
-    def collate_fn(self) -> Callable[[List[Example]], Batch]:
+    def dataset(self):  # TODO: maybe change this to `data_source`
+        r"""The data source.
+        """
+        return self._source
+
+    def _collate(self, examples: List[Example]) -> Batch:
         r"""Create a `collate_fn` for :class:`~torch.utils.data.DataLoader` that
-        is used to combine examples into batches. This function takes a list of
-        examples, and return an instance of :class:`~texar.data.data.Batch`.
+        is used to collate (combine) examples into batches. The function takes a
+        list of processed examples, and returns an instance of
+        :class:`~texar.data.data.Batch`.
+
         Implementation should make sure that the returned callable is safe and
-        efficient under multi-processing scenarios.
+        efficient under multi-processing scenarios. Basically, do not rely on
+        attributes of `self` that could be modified during iteration.
+
+        Args:
+            examples: A list of processed examples in a batch.
 
         Returns:
-            A callable `collate_fn`.
+            The collated batch.
         """
         raise NotImplementedError
 
-    @property
-    def cache_strategy(self) -> _CacheStrategy:
-        return self._cache_strategy
+    def _collate_and_maybe_return(self, examples: List[Example]) -> \
+            Union[Batch, Tuple[List[Example], Batch]]:
+        r"""Called by :class:`~texar.data.data.DataIterator` to obtain the
+        collated batch (and processed examples under certain circumstances).
+
+        Args:
+            examples: A list of processed examples in a batch.
+
+        Returns:
+            The collated batch.
+        """
+        batch = self._collate(examples)
+        if self._should_return_processed_examples:
+            return examples, batch
+        return batch
 
     @property
-    def lazy_strategy(self) -> _LazyStrategy:
-        return self._lazy_strategy
+    def _should_return_processed_examples(self):
+        r"""Returns `True` if the worker threads should perform processing and
+        return the processed examples.
+        """
+        return (not self._fully_cached and
+                self._lazy_strategy is not _LazyStrategy.NONE and
+                self._cache_strategy is _CacheStrategy.PROCESSED)

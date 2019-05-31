@@ -18,6 +18,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Union, Iterator
 
 import torch
 from torch.utils.data import DataLoader, Sampler
+from torch.utils.data.dataloader import _DataLoaderIter
 
 from texar.data.data.data_base import DataBase
 from texar.data.data.dataset_utils import Batch, _CacheStrategy, _LazyStrategy
@@ -31,7 +32,67 @@ __all__ = [
 DatasetsType = Union[Dict[str, DataBase], MaybeSeq[DataBase]]
 
 
-class BufferBasedShuffler(Sampler):
+class SamplerBase(Sampler):
+    r"""A :class:`~torch.utils.data.Sampler` that uses a shuffle buffer, as
+    in TensorFlow. The buffer is first filled with data examples. Each time a
+    sample is drawn from the buffer, and the drawn sample is replaced with the
+    next data example.
+
+    This class is used internally in :class:`~texar.data.data.DataIterator`.
+    It calls the :meth:`~texar.data.data.DataBase._prefetch_source` method to
+    ensure the required number of
+
+    Args:
+        data: The :class:`~texar.data.data.DataBase` instance.
+        buffer_size: The size of the shuffle buffer. Use larger buffer sizes for
+            more uniformly-random shuffling.
+    """
+
+    def __init__(self, data: DataBase):
+        super().__init__(data)
+
+        self._data = data
+        self.size: Optional[int] = data._dataset_size
+
+    def _iterator_given_size(self, size: int) -> Iterator[int]:
+        raise NotImplementedError
+
+    def _iterator_unknown_size(self) -> Iterator[int]:
+        raise NotImplementedError
+
+    def __iter__(self) -> Iterator[int]:
+        if self.size is not None:
+            # Non-lazy loading, or when dataset has been fully iterated.
+            iterator = self._iterator_given_size(self.size)
+        else:
+            # First epoch of lazy loading, calling prefetch, and returning
+            # indices and examples.
+            iterator = self._iterator_unknown_size()
+
+        if self.size is None or (
+                self._data._cache_strategy is _CacheStrategy.NONE and
+                self._data._lazy_strategy is _LazyStrategy.ALL):
+            # Return indices and examples for any epoch in this case.
+            iterator = map(lambda idx: (idx, self._data[idx]), iterator)
+        return iterator
+
+    def __len__(self):
+        return self.size
+
+
+# class SequentialSampler(Sampler):
+#     def __init__(self, data: DataBase):
+#         super().__init__(data)
+#         self._data = data
+#
+#     def __iter__(self):
+#         return iter(range(len(self.data_source)))
+#
+#     def __len__(self):
+#         return len(self.data_source)
+
+
+class BufferShuffleSampler(SamplerBase):
     r"""A :class:`~torch.utils.data.Sampler` that uses a shuffle buffer, as
     in TensorFlow. The buffer is first filled with data examples. Each time a
     sample is drawn from the buffer, and the drawn sample is replaced with the
@@ -51,9 +112,6 @@ class BufferBasedShuffler(Sampler):
         super().__init__(data)
         self.buffer_size = buffer_size
 
-        self._source = data
-        self.size: Optional[int] = data._dataset_size
-
     def _iterator_given_size(self, size) -> Iterator[int]:
         if self.buffer_size >= size:
             return iter(torch.randperm(size).tolist())
@@ -72,7 +130,7 @@ class BufferBasedShuffler(Sampler):
         while True:
             sample = torch.randint(self.buffer_size, (1,)).item()
             index = buffer[sample]
-            cur_size = self._source._prefetch_source(index)
+            cur_size = self._data._prefetch_source(index)
             if cur_size is not None:
                 self.size = cur_size
             if self.size is not None and index >= self.size:
@@ -83,24 +141,33 @@ class BufferBasedShuffler(Sampler):
         yield from (buffer[x] for x in torch.randperm(self.buffer_size)
                     if buffer[x] < self.size)
 
-    def __iter__(self) -> Iterator[int]:
-        if self.size is not None:
-            # Non-lazy loading, or when dataset has been fully iterated.
-            iterator = self._iterator_given_size(self.size)
-        else:
-            # First epoch of lazy loading, calling prefetch, and returning
-            # indices and examples.
-            iterator = self._iterator_unknown_size()
 
-        if self.size is None or (
-                self._source.cache_strategy is _CacheStrategy.NONE and
-                self._source.lazy_strategy is _LazyStrategy.ALL):
-            # Return indices and examples for any epoch in this case.
-            iterator = map(lambda idx: (idx, self._source[idx]), iterator)
-        return iterator
+class _CacheDataLoaderIter(_DataLoaderIter):
+    dataset: DataBase
 
-    def __len__(self):
-        return self.size
+    def __init__(self, loader: DataLoader):
+        super().__init__(self, loader)
+
+        self._indices_dict: Dict[int, List[int]] = {}
+
+    def _put_indices(self):
+        assert self.batches_outstanding < 2 * self.num_workers
+        indices = next(self.sample_iter, None)
+        if indices is None:
+            return
+        self._indices_dict[self.send_idx] = indices
+        self.index_queues[self.worker_queue_idx].put((self.send_idx, indices))
+        self.worker_queue_idx = (self.worker_queue_idx + 1) % self.num_workers
+        self.batches_outstanding += 1
+        self.send_idx += 1
+
+    def _process_next_batch(self, batch):
+        batch = super()._process_next_batch(batch)
+        indices = self._indices_dict[self.rcvd_idx - 1]
+        del self._indices_dict[indices]
+        examples, batch = batch
+        self.dataset._add_cached_examples(indices, examples)
+        return batch
 
 
 class SingleDatasetIterator(DataLoader):
@@ -113,23 +180,31 @@ class SingleDatasetIterator(DataLoader):
             instance of :class:`texar.data.DataBase`, because configurations are
             read from the dataset `HParams`.
     """
+    dataset: DataBase
 
     def __init__(self, dataset: DataBase):
         shuffle = dataset.hparams.shuffle
         shuffle_buffer_size = dataset.hparams.shuffle_buffer_size
         sampler = None
         if shuffle and shuffle_buffer_size is not None:
-            sampler = BufferBasedShuffler(dataset, shuffle_buffer_size)
+            sampler = BufferShuffleSampler(dataset, shuffle_buffer_size)
             shuffle = None
 
         num_parallel_calls = dataset.hparams.num_parallel_calls
         allow_smaller_final_batch = dataset.hparams.allow_smaller_final_batch
-        collate_fn = dataset.collate_fn
+        collate_fn = dataset._collate_and_maybe_return
         super().__init__(  # type: ignore
             dataset, dataset.batch_size, shuffle=shuffle, sampler=sampler,
             collate_fn=collate_fn,
             num_workers=(0 if num_parallel_calls == 1 else num_parallel_calls),
             drop_last=(not allow_smaller_final_batch))
+
+    def __iter__(self):
+        if self.dataset._should_return_processed_examples:
+            # Accepts processed examples from workers and add to dataset cache.
+            return _CacheDataLoaderIter(self)
+        else:
+            return _DataLoaderIter(self)
 
 
 class DataIterator:

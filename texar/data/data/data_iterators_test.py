@@ -11,7 +11,7 @@ import torch
 from torch.utils.data import TensorDataset
 
 import texar.data
-from texar.data.data.data_iterators import BufferBasedShuffler
+from texar.data.data.data_iterators import BufferShuffleSampler
 from texar.data.data.dataset_utils import _CacheStrategy, _LazyStrategy
 
 
@@ -45,7 +45,7 @@ class SamplerTest(unittest.TestCase):
     def _test_data(self, data: MockDataBase,
                    returns_data: bool = False,
                    always_returns_data: bool = False):
-        sampler = BufferBasedShuffler(data, self.buffer_size)
+        sampler = BufferShuffleSampler(data, self.buffer_size)
         for epoch in range(2):
             indices = list(iter(sampler))
             if always_returns_data or (returns_data and epoch == 0):

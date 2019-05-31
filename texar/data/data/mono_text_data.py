@@ -15,16 +15,18 @@
 Mono text data class that define data reading, parsing, batching, and other
 preprocessing operations.
 """
-from typing import Callable, List
+from enum import Enum
+from typing import List, Optional
 
 import numpy as np
-import torch
 
+import torch
 from texar.data.data import dataset_utils as dsutils
 from texar.data.data.dataset_utils import Batch
 from texar.data.data.text_data_base import TextDataBase, TextLineDataSource
 from texar.data.embedding import Embedding
 from texar.data.vocabulary import SpecialTokens, Vocab
+from texar.hyperparams import HParams
 from texar.utils import utils
 from texar.utils.dtypes import is_callable
 
@@ -36,7 +38,7 @@ __all__ = [
 ]
 
 
-class _LengthFilterMode(object):  # pylint: disable=no-init, too-few-public-methods
+class _LengthFilterMode(Enum):  # pylint: disable=no-init, too-few-public-methods
     r"""Options of length filter mode.
     """
     TRUNC = "truncate"
@@ -68,7 +70,7 @@ def _default_mono_text_dataset_hparams():
     }
 
 
-class MonoTextData(TextDataBase[List[str]]):
+class MonoTextData(TextDataBase[str, List[str]]):
     r"""Text data processor that reads single set of text files. This can be
     used for, e.g., language models, auto-encoders, etc.
 
@@ -140,11 +142,43 @@ class MonoTextData(TextDataBase[List[str]]):
             # }
     """
 
+    _delimiter: str
+    _bos: Optional[str]
+    _eos: Optional[str]
+    _max_seq_length: Optional[int]
+    _should_pad: bool
+
     def __init__(self, hparams):
-        TextDataBase.__init__(self, hparams)
-        if self._hparams.dataset.variable_utterance:
+        dataset_hparams = HParams(hparams, self.default_hparams()).dataset
+        if dataset_hparams.variable_utterance:
             raise NotImplementedError
-        self._make_data()
+
+        data_source = TextLineDataSource(
+            dataset_hparams["files"],
+            compression_type=dataset_hparams["compression_type"])
+
+        super().__init__(data_source, hparams)
+
+        # Create vocab and embedding
+        self._vocab = self.make_vocab(dataset_hparams)
+        self._embedding = self.make_embedding(
+            dataset_hparams["embedding_init"], self._vocab.token_to_id_map_py)
+
+        self._delimiter = self._hparams.dataset.delimiter
+        self._bos = self._hparams.dataset.bos_token
+        if self._bos == '':
+            self._bos = None
+        self._eos = self._hparams.dataset.eos_token
+        if self._eos == '':
+            self._eos = None
+        self._max_seq_length = self._hparams.dataset.max_seq_length
+        self._length_filter_mode = _LengthFilterMode(
+            self._hparams.dataset.length_filter_mode)
+        self._should_pad = self._hparams.dataset.pad_to_max_seq_length
+        self._pad_length = self._max_seq_length
+        if self._max_seq_length is not None:
+            self._pad_length += sum(int(x is not None)
+                                    for x in [self._bos, self._eos])
 
     @staticmethod
     def default_hparams():
@@ -339,13 +373,6 @@ class MonoTextData(TextDataBase[List[str]]):
         return embedding
 
     @staticmethod
-    def _make_mono_text_dataset(dataset_hparams):
-        dataset = TextLineDataSource(
-            dataset_hparams["files"],
-            compression_type=dataset_hparams["compression_type"])
-        return dataset
-
-    @staticmethod
     def _make_other_transformations(other_trans_hparams, data_spec):
         """Creates a list of transformation functions based on the
         hyperparameters.
@@ -409,133 +436,42 @@ class MonoTextData(TextDataBase[List[str]]):
             length_fn = utils.get_function(length_fn, ["texar.custom"])
         return length_fn
 
-    @staticmethod
-    def _make_padded_text_and_id_shapes(dataset, dataset_hparams, decoder,
-                                        text_name, text_id_name):
-        max_length = dataset_hparams['max_seq_length']
-        if max_length is None:
-            raise ValueError("hparams 'max_seq_length' must be specified "
-                             "when 'pad_to_max_seq_length' is True.")
-        max_length += decoder.added_length
+    def _process(self, raw_example: str) -> List[str]:
+        words = raw_example.split(self._delimiter)
+        if (self._max_seq_length is not None and
+                len(words) > self._max_seq_length):
+            if self._length_filter_mode is _LengthFilterMode.TRUNC:
+                words = words[:self._max_seq_length]
+        if self._bos != '':
+            words.insert(0, self._bos)
+        if self._eos != '':
+            words.append(self._eos)
 
-        padded_shapes = dataset.output_shapes
+        return words
 
-        def _get_new_shape(name):
-            dim = len(padded_shapes[name])
-            if not dataset_hparams['variable_utterance']:
-                if dim != 1:
-                    raise ValueError(
-                        "Unable to pad data '%s' to max seq length. Expected "
-                        "1D Tensor, but got %dD Tensor." % (name, dim))
-                return tf.TensorShape(max_length)
-            else:
-                if dim != 2:
-                    raise ValueError(
-                        "Unable to pad data '%s' to max seq length. Expected "
-                        "2D Tensor, but got %dD Tensor." % (name, dim))
-                return tf.TensorShape([padded_shapes[name][0], max_length])
-
-        text_and_id_shapes = {}
-        if text_name in padded_shapes:
-            text_and_id_shapes[text_name] = _get_new_shape(text_name)
-        if text_id_name in padded_shapes:
-            text_and_id_shapes[text_id_name] = _get_new_shape(text_id_name)
-
-        return text_and_id_shapes
-
-    def _make_padded_shapes(self, dataset, decoder):
-        if not self._hparams.dataset.pad_to_max_seq_length:
-            return None
-
-        text_and_id_shapes = MonoTextData._make_padded_text_and_id_shapes(
-            dataset, self._hparams.dataset, decoder,
-            self.text_name, self.text_id_name)
-
-        padded_shapes = dataset.output_shapes
-        padded_shapes.update(text_and_id_shapes)
-
-        return padded_shapes
-
-    def _make_data(self):
-        dataset_hparams = self._hparams.dataset
-
-        # Create vocab and embedding
-        self._vocab = self.make_vocab(dataset_hparams)
-        self._embedding = self.make_embedding(
-            dataset_hparams["embedding_init"], self._vocab.token_to_id_map_py)
-
-        # Create and shuffle dataset
-        dataset = self._make_mono_text_dataset(dataset_hparams)
-        self._dataset_size = len(dataset)
-
-        self._dataset = []
-        delimiter = self._hparams.dataset.delimiter
-        bos = self._hparams.dataset.bos_token
-        eos = self._hparams.dataset.eos_token
-        max_seq_length = self._hparams.dataset.max_seq_length
-        length_filter_mode = self._hparams.dataset.length_filter_mode
-        for line in dataset:
-            words = line.split(delimiter)
-            if max_seq_length is not None and len(words) > max_seq_length:
-                if length_filter_mode == _LengthFilterMode.TRUNC:
-                    words = words[:max_seq_length]
-                elif length_filter_mode == _LengthFilterMode.DISCARD:
-                    continue
-                else:
-                    raise ValueError(
-                        f"Invalid length filter mode \"{length_filter_mode}\"")
-            if bos != '':
-                words.insert(0, bos)
-            if eos != '':
-                words.append(eos)
-            self._dataset.append(words)
-
-        # Processing
-        # TODO
-        # data_spec = dsutils._DataSpec(dataset=dataset,
-        #                               dataset_size=self._dataset_size,
-        #                               vocab=self._vocab,
-        #                               embedding=self._embedding)
-        # dataset, data_spec = self._process_dataset(dataset, self._hparams,
-        #                                            data_spec)
-        # self._data_spec = data_spec
-        # self._decoder = data_spec.decoder
-
-    @property
-    def collate_fn(self) -> Callable[[List[List[str]]], Batch]:
+    def _collate(self, examples: List[List[str]]) -> Batch:
         # For `MonoTextData`, each example is represented as a list of strings.
         # `collate_fn` takes care of padding and numericalization.
-        # TODO: Discuss whether it's necessary to store sentence as list of
-        #   strings, instead of raw strings. For extremely large datasets
-        #   (e.g. language modeling), memory consumption could be more than 7x
-        #   higher.
-        pad = self._hparams.dataset.pad_to_max_seq_length
-        vocab = self._vocab
-        max_seq_length = self._hparams.dataset.max_seq_length
-
-        def collate_fn(batch: List[List[str]]) -> Batch:
-            lengths = torch.tensor([len(sent) for sent in batch],
-                                   dtype=torch.long)
-            if pad:
-                if max_seq_length is None:
-                    # Here in PyTorch we support `max_seq_length` of `None`,
-                    # which means # to pad to the longest sentence in batch.
-                    pad_length = lengths.max()
-                else:
-                    pad_length = max_seq_length
-                batch = [
-                    sent + [''] * (pad_length - len(sent))
-                    if len(sent) < pad_length else sent
-                    for sent in batch
-                ]
-            ids = np.zeros((len(batch), len(batch[0])), dtype=np.long)
-            for b_idx, sent in enumerate(batch):
-                length = lengths[b_idx]
-                ids[b_idx, :length] = vocab.map_tokens_to_ids_py(sent[:length])
-            return Batch(len(batch), text=batch,
-                         text_ids=ids, length=lengths)
-
-        return collate_fn
+        lengths = torch.tensor([len(sent) for sent in examples],
+                               dtype=torch.long)
+        if self._should_pad:
+            # Here in PyTorch we support `max_seq_length` of `None`,
+            # which means to pad to the longest sentence in batch.
+            pad_length = self._pad_length or lengths.max()
+            examples = [
+                sent + [''] * (pad_length - len(sent))
+                if len(sent) < pad_length else sent
+                for sent in examples
+            ]
+        # If `_should_pad` is `False`, sentences must be of the same length
+        # or the following code will raise exceptions.
+        ids = np.zeros((len(examples), len(examples[0])), dtype=np.long)
+        for b_idx, sent in enumerate(examples):
+            length = lengths[b_idx]
+            ids[b_idx, :length] = \
+                self._vocab.map_tokens_to_ids_py(sent[:length])
+        return Batch(len(examples), text=examples,
+                     text_ids=ids, length=lengths)
 
     def list_items(self) -> List[str]:
         r"""Returns the list of item names that the data can produce.
@@ -548,28 +484,6 @@ class MonoTextData(TextDataBase[List[str]]):
         if data_name is not None:
             items = [data_name + '_' + item for item in items]
         return items
-
-    def __len__(self):
-        return len(self._dataset)
-
-    def __getitem__(self, item):
-        # todo(avinash): apply the transformation logic here
-        return self._dataset[item]
-
-    @property
-    def dataset(self):
-        r"""The dataset, an instance of
-        :class:`texar.data.TextLineDataset` <data/TextLineDataset>`.
-        """
-        return self._dataset
-
-    def dataset_size(self):
-        r"""Returns the number of data instances in the data files.
-
-        Note that this is the total data count in the raw files, before any
-        filtering and truncation.
-        """
-        return self._dataset_size
 
     @property
     def vocab(self):

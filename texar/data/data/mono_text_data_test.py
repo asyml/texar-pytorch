@@ -70,9 +70,14 @@ class MonoTextDataTest(unittest.TestCase):
 
             max_seq_length = text_data.hparams.dataset.max_seq_length
             mode = text_data.hparams.dataset.length_filter_mode
+
+            max_l = max_seq_length
+            if text_data.hparams.dataset.eos_token != '':
+                max_l += 1
+            if text_data.hparams.dataset.bos_token != '':
+                max_l += 1
+
             if max_seq_length == 6:
-                max_l = max_seq_length
-                max_l += text_data._decoder.added_length
                 for length in data_batch['length']:
                     self.assertLessEqual(length, max_l)
                 if mode == "discard":
@@ -87,7 +92,6 @@ class MonoTextDataTest(unittest.TestCase):
                     raise ValueError("Unknown mode: %s" % mode)
 
             if text_data.hparams.dataset.pad_to_max_seq_length:
-                max_l = max_seq_length + text_data._decoder.added_length
                 for x in data_batch['text']:
                     self.assertEqual(len(x), max_l)
                 for x in data_batch['text_ids']:
@@ -201,7 +205,6 @@ class MonoTextDataTest(unittest.TestCase):
         hparams["allow_smaller_final_batch"] = False
         self._run_and_test(hparams)
 
-    @unittest.skip("Understand the decoder logic and fix this")
     def test_pad_to_max_length(self):
         r"""Tests padding.
         """

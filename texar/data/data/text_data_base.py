@@ -25,6 +25,7 @@ __all__ = [
     "TextDataBase",
 ]
 
+RawExample = TypeVar('RawExample')
 Example = TypeVar('Example')
 
 
@@ -44,12 +45,12 @@ class TextLineDataSource(DataSource[str]):
                     yield line.rstrip('\n')
 
 
-class TextDataBase(DataBase[str, Example], ABC):  # pylint: disable=too-few-public-methods
+class TextDataBase(DataBase[RawExample, Example], ABC):  # pylint: disable=too-few-public-methods
     """Base class inherited by all text data classes.
     """
 
-    def __init__(self, hparams):
-        super().__init__(hparams)
+    def __init__(self, source: DataSource[RawExample], hparams):
+        super().__init__(source, hparams)
 
     @staticmethod
     def default_hparams():
