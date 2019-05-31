@@ -24,43 +24,146 @@ __all__ = [
 ]
 
 
-def reverse_sequence(input, seq_lengths, time_major):
+def reverse_sequence(inputs, seq_lengths, time_major):
+    """Reverses variable length slices.
 
+      This op first slices input along the dimension batch_axis, and for each
+      slice i, reverses the first seq_lengths[i] elements along the dimension
+      seq_axis.
+
+      The elements of seq_lengths must obey seq_lengths[i] <=
+      input.dims[seq_dim], and seq_lengths must be a vector of length
+      input.dims[batch_dim].
+
+      The output slice i along dimension batch_axis is then given by input slice
+      i, with the first seq_lengths[i] slices along dimension seq_axis reversed.
+
+      Args:
+        inputs: A Tensor. The input to reverse.
+        seq_lengths: A Tensor. Must be one of the following types: int32,
+          int64. 1-D with length input.dims(batch_dim) and max(seq_lengths) <=
+          input.dims(seq_dim)
+        time_major: The shape format of the `inputs` and `outputs` Tensors.
+          If true, these `Tensors` must be shaped
+          `[max_time, batch_size, depth]`. If false, these `Tensors` must be
+          shaped `[batch_size, max_time, depth]`.
+          Using `time_major = True` is a bit more efficient because it avoids
+          transposes at the beginning and end of the RNN calculation.  However,
+          most TensorFlow data is batch-major, so by default this function
+          accepts input and emits output in batch-major form.
+      Returns:
+          A Tensor. Has the same type as input.
+    """
     if time_major:
-        input = input.permute(1, 0, 2)
+        inputs = inputs.permute(1, 0, 2)
 
-    batch_size = input.shape[0]
+    batch_size = inputs.shape[0]
 
     for i in range(batch_size):
-        input[i][0:seq_lengths[i]] = torch.flip(input[i][0:seq_lengths[i]], [0])
+        inputs[i][0:seq_lengths[i]] = torch.flip(inputs[i][0:seq_lengths[i]], [0])
 
     if time_major:
-        input = input.permute(1, 0, 2)
+        inputs = inputs.permute(1, 0, 2)
 
-    return input
+    return inputs
 
 
 def bidirectional_dynamic_rnn(cell_fw, cell_bw, inputs, sequence_length=None,
                               initial_state_fw=None, initial_state_bw=None,
                               time_major=False):
+    """Creates a dynamic version of bidirectional recurrent neural network.
 
+      Takes input and builds independent forward and backward RNNs. The
+      input_size of forward and backward cell must match. The initial state for
+      both directions is zero by default (but can be set optionally) and no
+      intermediate states are ever returned -- the network is fully unrolled
+      for the given (passed in) length(s) of the sequence(s) or completely
+      unrolled if length(s) is not given.
+
+      Args:
+        cell_fw: An instance of RNNCell, to be used for forward direction.
+        cell_bw: An instance of RNNCell, to be used for backward direction.
+        inputs: The RNN inputs.
+          If time_major == False (default), this must be a tensor of shape:
+            `[batch_size, max_time, ...]`, or a nested tuple of such elements.
+          If time_major == True, this must be a tensor of shape:
+            `[max_time, batch_size, ...]`, or a nested tuple of such elements.
+        sequence_length: (optional) An int32/int64 vector, size `[batch_size]`,
+          containing the actual lengths for each of the sequences in the batch.
+          If not provided, all batch entries are assumed to be full sequences;
+          and time reversal is applied from time `0` to `max_time` for each
+          sequence.
+        initial_state_fw: (optional) An initial state for the forward RNN.
+          This must be a tensor of appropriate type and shape
+          `[batch_size, cell_fw.state_size]`.
+          If `cell_fw.state_size` is a tuple, this should be a tuple of
+          tensors having shapes `[batch_size, s] for s in cell_fw.state_size`.
+        initial_state_bw: (optional) Same as for `initial_state_fw`, but using
+          the corresponding properties of `cell_bw`.
+        time_major: The shape format of the `inputs` and `outputs` Tensors.
+          If true, these `Tensors` must be shaped
+          `[max_time, batch_size, depth]`.
+          If false, these `Tensors` must be shaped
+          `[batch_size, max_time, depth]`.
+          Using `time_major = True` is a bit more efficient because it avoids
+          transposes at the beginning and end of the RNN calculation.  However,
+          most TensorFlow data is batch-major, so by default this function
+          accepts input and emits output in batch-major form.
+
+      Returns:
+        A tuple (outputs, output_states) where:
+          outputs: A tuple (output_fw, output_bw) containing the forward and
+            the backward rnn output `Tensor`.
+            If time_major == False (default),
+              output_fw will be a `Tensor` shaped:
+              `[batch_size, max_time, cell_fw.output_size]`
+              and output_bw will be a `Tensor` shaped:
+              `[batch_size, max_time, cell_bw.output_size]`.
+            If time_major == True,
+              output_fw will be a `Tensor` shaped:
+              `[max_time, batch_size, cell_fw.output_size]`
+              and output_bw will be a `Tensor` shaped:
+              `[max_time, batch_size, cell_bw.output_size]`.
+            It returns a tuple instead of a single concatenated `Tensor`, unlike
+            in the `bidirectional_rnn`. If the concatenated one is preferred,
+            the forward and backward outputs can be concatenated as
+            `tf.concat(outputs, 2)`.
+          output_states: A tuple (output_state_fw, output_state_bw) containing
+            the forward and the backward final states of bidirectional rnn.
+    """
     output_fw, output_state_fw = dynamic_rnn(cell=cell_fw,
                                              inputs=inputs,
                                              sequence_length=sequence_length,
                                              initial_state=initial_state_fw,
                                              time_major=time_major)
+    if time_major:
+        time_steps = inputs.shape[0]
+        batch_size = inputs.shape[1]
+    else:
+        time_steps = inputs.shape[1]
+        batch_size = inputs.shape[0]
+
+    if sequence_length is None:
+        sequence_length = torch.tensor([time_steps]*batch_size)
 
     # Backward direction
-    if not time_major:
-        time_axis = 1
-        batch_axis = 0
-    else:
-        time_axis = 0
-        batch_axis = 1
+    inputs_reverse = reverse_sequence(inputs=inputs,
+                                      seq_lengths=sequence_length,
+                                      time_major=time_major)
 
+    tmp, output_state_bw = dynamic_rnn(cell=cell_bw,
+                                       inputs=inputs_reverse,
+                                       sequence_length=sequence_length,
+                                       initial_state=initial_state_bw,
+                                       time_major=time_major)
+    output_bw = reverse_sequence(inputs=tmp,
+                                 seq_lengths=sequence_length,
+                                 time_major=time_major)
 
+    outputs = (output_fw, output_bw)
+    output_states = (output_state_fw, output_state_bw)
 
-
+    return outputs, output_states
 
 
 def dynamic_rnn(cell, inputs, sequence_length=None, initial_state=None,
