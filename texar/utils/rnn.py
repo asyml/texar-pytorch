@@ -17,6 +17,51 @@ import torch
 
 from texar.utils.shapes import mask_sequences
 
+__all__ = [
+    "reverse_sequence",
+    "dynamic_rnn",
+    "bidirectional_dynamic_rnn"
+]
+
+
+def reverse_sequence(input, seq_lengths, time_major):
+
+    if time_major:
+        input = input.permute(1, 0, 2)
+
+    batch_size = input.shape[0]
+
+    for i in range(batch_size):
+        input[i][0:seq_lengths[i]] = torch.flip(input[i][0:seq_lengths[i]], [0])
+
+    if time_major:
+        input = input.permute(1, 0, 2)
+
+    return input
+
+
+def bidirectional_dynamic_rnn(cell_fw, cell_bw, inputs, sequence_length=None,
+                              initial_state_fw=None, initial_state_bw=None,
+                              time_major=False):
+
+    output_fw, output_state_fw = dynamic_rnn(cell=cell_fw,
+                                             inputs=inputs,
+                                             sequence_length=sequence_length,
+                                             initial_state=initial_state_fw,
+                                             time_major=time_major)
+
+    # Backward direction
+    if not time_major:
+        time_axis = 1
+        batch_axis = 0
+    else:
+        time_axis = 0
+        batch_axis = 1
+
+
+
+
+
 
 def dynamic_rnn(cell, inputs, sequence_length=None, initial_state=None,
                 time_major=False):
@@ -137,7 +182,28 @@ def _dynamic_rnn_loop(cell,
                       inputs,
                       initial_state,
                       sequence_length=None):
+    """Internal implementation of Dynamic RNN.
 
+      Args:
+        cell: An instance of RNNCell.
+        inputs: A `Tensor` of shape [time, batch_size, input_size], or a nested
+          tuple of such elements.
+        initial_state: A `Tensor` of shape `[batch_size, state_size]`, or if
+          `cell.state_size` is a tuple, then this should be a tuple of
+          tensors having shapes `[batch_size, s] for s in cell.state_size`.
+        sequence_length: (optional) An `int32` `Tensor` of shape [batch_size].
+
+      Returns:
+        Tuple `(final_outputs, final_state)`.
+        final_outputs:
+          A `Tensor` of shape `[time, batch_size, cell.output_size]`.  If
+          `cell.output_size` is a (possibly nested) tuple of ints or `TensorShape`
+          objects, then this returns a (possibly nested) tuple of Tensors matching
+          the corresponding shapes.
+        final_state:
+          A `Tensor`, or possibly nested tuple of Tensors, matching in length
+          and shapes to `initial_state`.
+    """
     state = initial_state
     time_steps = inputs.shape[0]
 

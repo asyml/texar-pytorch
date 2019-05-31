@@ -11,7 +11,48 @@ import unittest
 import torch
 
 from texar.core.cell_wrappers import RNNCell, GRUCell, LSTMCell
-from texar.utils.rnn import dynamic_rnn
+from texar.utils.rnn import dynamic_rnn, reverse_sequence
+
+
+class ReverseSequenceTest(unittest.TestCase):
+    """Tests reverse_sequence.
+    """
+
+    def setUp(self):
+        self.input = [[[10, 11], [12, 13], [14, 15], [16, 17], [18, 19]],
+                      [[20, 21], [22, 23], [24, 25], [26, 27], [28, 29]],
+                      [[30, 31], [32, 33], [34, 35], [36, 37], [38, 39]],
+                      [[40, 41], [42, 43], [44, 45], [46, 47], [48, 49]]]
+        self.input = torch.tensor(self.input)
+
+    def test_reverse_sequence(self):
+        """Tests :meth:`~texar.utils.rnn.reverse_sequence`.
+        """
+        seq_lengths_batch_first = [1, 2, 3, 4]
+        output = reverse_sequence(input=self.input,
+                                  seq_lengths=seq_lengths_batch_first,
+                                  time_major=False)
+
+        expect_out = [[[10, 11], [12, 13], [14, 15], [16, 17], [18, 19]],
+                      [[22, 23], [20, 21], [24, 25], [26, 27], [28, 29]],
+                      [[34, 35], [32, 33], [30, 31], [36, 37], [38, 39]],
+                      [[46, 47], [44, 45], [42, 43], [40, 41], [48, 49]]]
+
+        self.assertEqual(output.tolist(), expect_out)
+
+        seq_lengths_time_first = [0, 1, 2, 3, 4]
+        output = reverse_sequence(input=self.input,
+                                  seq_lengths=seq_lengths_time_first,
+                                  time_major=True)
+
+        print(output)
+
+        expect_out = [[[10, 11], [12, 13], [24, 25], [36, 37], [48, 49]],
+                      [[22, 23], [20, 21], [14, 15], [26, 27], [38, 39]],
+                      [[34, 35], [32, 33], [30, 31], [16, 17], [28, 29]],
+                      [[46, 47], [44, 45], [42, 43], [40, 41], [18, 19]]]
+
+        self.assertEqual(output.tolist(), expect_out)
 
 
 class DynamicRNNTest(unittest.TestCase):

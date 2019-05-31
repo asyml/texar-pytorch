@@ -16,7 +16,6 @@ Various RNN encoders.
 """
 
 import functools
-import numpy as np
 
 import torch
 import torch.nn as nn
@@ -31,6 +30,8 @@ from texar.modules.encoders import EncoderBase
 from texar.modules.networks.conv_networks import _to_list
 from texar.core import layers, RNNCellBase
 from texar.utils.shapes import mask_sequences
+from texar.utils.rnn import dynamic_rnn
+
 
 # pylint: disable=too-many-arguments, too-many-locals, invalid-name, no-member
 
@@ -486,8 +487,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
                 initial_state=None,
                 time_major=False,
                 return_cell_output=False,
-                return_output_size=False,
-                **kwargs):
+                return_output_size=False):
         """Encodes the inputs.
 
         Args:
@@ -504,19 +504,10 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
                 :attr:`outputs` Tensors. If `True`, these tensors are of shape
                 `[max_time, batch_size, depth]`. If `False` (default),
                 these tensors are of shape `[batch_size, max_time, depth]`.
-            mode (optional): A tensor taking value in
-                :tf_main:`tf.estimator.ModeKeys <estimator/ModeKeys>`, including
-                `TRAIN`, `EVAL`, and `PREDICT`. Controls output layer dropout
-                if the output layer is specified with :attr:`hparams`.
-                If `None` (default), :func:`texar.global_mode`
-                is used.
             return_cell_output (bool): Whether to return the output of the RNN
                 cell. This is the results prior to the output layer.
             return_output_size (bool): Whether to return the size of the
                 output (i.e., the results after output layers).
-            **kwargs: Optional keyword arguments of
-                :tf_main:`tf.nn.dynamic_rnn <nn/dynamic_rnn>`,
-                such as `swap_memory`, `dtype`, `parallel_iterations`, etc.
 
         Returns:
             - By default (both `return_cell_output` and \
@@ -561,11 +552,12 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
             :attr:`(outputs, final_state, cell_outputs, output_size)`.
         """
 
-        cell_outputs, state = self._recurrence(
+        cell_outputs, state = dynamic_rnn(
             cell=self._cell,
-            input=input,
+            inputs=inputs,
+            sequence_length=sequence_length,
             initial_state=initial_state,
-            batch_first=True)
+            time_major=time_major)
 
         outputs, output_size = _apply_rnn_encoder_output_layer(
             self._output_layer, time_major, self._output_layer_hparams,
@@ -603,6 +595,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
 
 class BidirectionalRNNEncoder(RNNEncoderBase):
     """Bidirectional forward-backward RNN encoder.
+
     Args:
         cell_fw (RNNCell, optional): The forward RNN cell. If not given,
             a cell is created as specified in :attr:`hparams["rnn_cell_fw"]`.
@@ -625,17 +618,25 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             hyperparamerter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter sturcture and
             default values.
+
     See :meth:`_build` for the inputs and outputs of the encoder.
+
     Example:
+
         .. code-block:: python
+
             # Use with embedder
             embedder = WordEmbedder(vocab_size, hparams=emb_hparams)
             encoder = BidirectionalRNNEncoder(hparams=enc_hparams)
+
             outputs, final_state = encoder(
                 inputs=embedder(data_batch['text_ids']),
                 sequence_length=data_batch['length'])
             # outputs == (outputs_fw, outputs_bw)
             # final_state == (final_state_fw, final_state_bw)
+
+    .. document private functions
+    .. automethod:: _build
     """
 
     def __init__(self,
