@@ -71,8 +71,7 @@ def variance_scaling_initializer(inputs: torch.Tensor,
         # To get stddev = math.sqrt(factor / n) need to
         # adjust for uniform.
         limit = math.sqrt(3.0 * factor / n)
-        ret = inputs.uniform_(-limit, limit)
-        inputs.data = ret
+        inputs.data.uniform_(-limit, limit)
     else:
         # To get stddev = math.sqrt(factor / n) need to
         # adjust for truncated normal.
