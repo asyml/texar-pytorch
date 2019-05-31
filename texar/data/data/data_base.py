@@ -21,6 +21,7 @@ from abc import ABC
 from typing import Dict, Generic, Iterable, Iterator, List, \
     Optional, Sequence, Tuple, TypeVar, Union
 
+import torch
 from torch.utils.data import Dataset
 
 from texar.data.data.dataset_utils import Batch
@@ -187,9 +188,11 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
     _source: DataSource[RawExample]
 
-    def __init__(self, source: DataSource[RawExample], hparams):
+    def __init__(self, source: DataSource[RawExample], hparams,
+                 device: Optional[torch.device] = None):
         self._source = source
         self._hparams = HParams(hparams, self.default_hparams())
+        self.device = device
 
         # Check and convert strategy hyperparameters.
         self._lazy_strategy = _LazyStrategy(self._hparams.lazy_strategy)
@@ -371,6 +374,9 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             "lazy_strategy": 'none',
             "cache_strategy": 'processed',
         }
+
+    def to(self, device: torch.device):
+        self.device = device
 
     def _prefetch_source(self, index: Optional[int]) -> Optional[int]:
         r"""Prefetches data so `__getitem__` will be available. This method

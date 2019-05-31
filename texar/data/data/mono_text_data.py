@@ -148,7 +148,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
     _max_seq_length: Optional[int]
     _should_pad: bool
 
-    def __init__(self, hparams):
+    def __init__(self, hparams, device: Optional[torch.device] = None):
         self._hparams = HParams(hparams, self.default_hparams())
         if self._hparams.dataset.variable_utterance:
             raise NotImplementedError
@@ -187,7 +187,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
                 self._hparams.dataset.files,
                 compression_type=self._hparams.dataset.compression_type)
 
-        super().__init__(data_source, hparams)
+        super().__init__(data_source, hparams, device=device)
 
     @staticmethod
     def default_hparams():
@@ -446,8 +446,8 @@ class MonoTextData(TextDataBase[str, List[str]]):
             length = lengths[b_idx]
             ids[b_idx, :length] = \
                 self._vocab.map_tokens_to_ids_py(sent[:length])
-        ids = torch.from_numpy(ids)
-        lengths = torch.tensor(lengths, dtype=torch.long, )
+        ids = torch.from_numpy(ids).to(device=self.device)
+        lengths = torch.tensor(lengths, dtype=torch.long, device=self.device)
         return Batch(len(examples), text=examples,
                      text_ids=ids, length=lengths)
 
