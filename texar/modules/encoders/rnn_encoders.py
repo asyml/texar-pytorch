@@ -17,15 +17,14 @@ Various RNN encoders.
 
 import functools
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn import ModuleList
 
 from typing import Optional
 
 from texar.core.cell_wrappers import LSTMCell
 from texar import HParams
-from texar import ModuleBase
 from texar.modules.encoders import EncoderBase
 from texar.modules.networks.conv_networks import _to_list
 from texar.core import layers, RNNCellBase
@@ -47,7 +46,7 @@ def _default_output_layer_hparams():
     return {
         "num_layers": 0,
         "layer_size": 128,
-        "activation": "identity",
+        "activation": "Identity",
         "final_layer_activation": None,
         "other_dense_kwargs": None,
         "dropout_layer_ids": [],
@@ -74,7 +73,7 @@ def _build_dense_output_layer(cell_output_size, hparams):
         raise ValueError(
             "hparams 'output_layer.other_dense_kwargs' must be a dict.")
 
-    dense_layers = []
+    dense_layers = ModuleList()
     for i in range(nlayers):
         if i == 0:
             kwargs_i = {"in_features": cell_output_size,
@@ -99,9 +98,13 @@ def _build_dense_output_layer(cell_output_size, hparams):
             activation_layer = layers.get_layer(hparams=layer_hparams)
             #  dense_layers.append(layers.get_layer(hparams=layer_hparams))
         else:
-            activation_layer = None
+            activation_layer = nn.Identity()
 
-        dense_layers.append((dense_layer, activation_layer))
+        tmp = ModuleList()
+        tmp.append(dense_layer)
+        tmp.append(activation_layer)
+
+        dense_layers.append(tmp)
 
     if len(dense_layers) == 1:
         dense_layers = dense_layers[0]
@@ -119,7 +122,11 @@ def _forward_single_output_layer(inputs, output_layer):
         input_size: An `int` or 1D `int` array.
         output_layer: A tuple of (Linear Layer, Activation).
     """
-    layer, activation = output_layer
+    if isinstance(output_layer, nn.ModuleList):
+        layer, activation = output_layer
+    else:
+        layer = output_layer
+        activation = None
     # Feed to the layer
     output = layer(inputs)
     if activation is not None:
@@ -169,13 +176,11 @@ def _forward_output_layers(inputs, input_size, output_layer, time_major,
 
     if hparams is None:
         # output_layer was passed in from the constructor
-        if isinstance(output_layer, list):
-            raise ValueError('output_layer must not be a list.')
+        if isinstance(output_layer, nn.ModuleList):
+            raise ValueError('output_layer must not be a ModuleList.')
         output, output_size = _forward_single_output_layer(inputs, output_layer)
     else:
         # output_layer was built based on hparams
-        output_layer = _to_list(output_layer)
-
         dropout_layer_ids = _to_list(hparams.dropout_layer_ids)
         if len(dropout_layer_ids) > 0:
             training = mode
@@ -188,7 +193,7 @@ def _forward_output_layers(inputs, input_size, output_layer, time_major,
             output, output_size = _forward_single_output_layer(output, layer)
 
         if len(output_layer) in dropout_layer_ids:
-            output = _apply_dropout(output, hparams, training)
+            output = _apply_dropout(output, time_major, hparams, training)
 
     if sequence_length is not None:
         output = mask_sequences(output, sequence_length, time_major=time_major)
