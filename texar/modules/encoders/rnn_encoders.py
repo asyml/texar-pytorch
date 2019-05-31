@@ -30,7 +30,7 @@ from texar.modules.encoders import EncoderBase
 from texar.modules.networks.conv_networks import _to_list
 from texar.core import layers, RNNCellBase
 from texar.utils.shapes import mask_sequences
-from texar.utils.rnn import dynamic_rnn
+from texar.utils.rnn import dynamic_rnn, bidirectional_dynamic_rnn
 
 
 # pylint: disable=too-many-arguments, too-many-locals, invalid-name, no-member
@@ -211,70 +211,6 @@ def _apply_rnn_encoder_output_layer(output_layer, time_major, hparams, mode,
     return output, output_size
 
 
-
-def _flatten(input):
-    return input.view(1, -1).squeeze()
-
-def _reverse(lst):
-    # type: (List[Tensor]) -> List[Tensor]
-    return lst[::-1]
-
-class Recurrence(ModuleBase):
-    def __init__(self, reverse=False):
-        super(Recurrence, self).__init__()
-        # self.cell = cell(*cell_args)
-        self.reverse = reverse
-
-    def forward(self, cell, input, initial_state, batch_first):
-        # type: (Tensor, Tuple[Tensor, Tensor]) -> Tuple[Tensor, Tuple[Tensor, Tensor]]
-        inputs = input.unbind(0)
-        if self.reverse:
-            input = reverse(input)
-        outputs = []
-        for i in range(len(inputs)):
-            out, state = cell(inputs[i], initial_state)
-            outputs += [out]
-        if self.reverse:
-            outputs = reverse(output)
-        stack_dim = 1 if batch_first else 0
-        return torch.stack(outputs, stack_dim), initial_state
-
-
-def _bidirectional_recurrence(cell_fw, cell_bw, input_fw, input_bw,
-                              initial_state_fw, initial_state_bw, batch_first):
-    fwd_recurrence = Recurrence(reverse=False)
-    bwd_recurrence = Recurrence(reverse=True)
-
-    output_fw, output_state_fw = fwd_recurrence(cell_fw, input_fw,
-                                                initial_state_fw, batch_first)
-    output_bw, output_state_bw = bwd_recurrence(cell_bw, input_bw,
-                                                initial_state_bw, batch_first)
-
-    outputs = (output_fw, output_bw)
-    output_states = (output_state_fw, output_state_bw)
-    return (outputs, output_states)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class RNNEncoderBase(EncoderBase):
     """Base class for all RNN encoder classes to inherit.
 
@@ -359,7 +295,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
                  cell: Optional[RNNCellBase] = None,
                  output_layer: Optional[nn.Module] = None,
                  hparams: Optional[HParams] = None):
-        super.__init__(hparams)
+        super().__init__(hparams)
 
         # Make RNN cell
         if cell is not None:
@@ -640,29 +576,29 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
     """
 
     def __init__(self,
+                 input_size,
                  cell_fw=None,
                  cell_bw=None,
-                 cell_dropout_mode=None,
                  output_layer_fw=None,
                  output_layer_bw=None,
                  hparams=None):
-        RNNEncoderBase.__init__(self, hparams)
+        super().__init__(hparams)
 
         # Make RNN cells
         if cell_fw is not None:
             self._cell_fw = cell_fw
         else:
-            self._cell_fw = layers.get_rnn_cell(
-                self._hparams.rnn_cell_fw, cell_dropout_mode)
+            self._cell_fw = layers.get_rnn_cell(input_size,
+                                                self._hparams.rnn_cell_fw)
 
         if cell_bw is not None:
             self._cell_bw = cell_bw
         elif self._hparams.rnn_cell_share_config:
-            self._cell_bw = layers.get_rnn_cell(
-                self._hparams.rnn_cell_fw, cell_dropout_mode)
+            self._cell_bw = layers.get_rnn_cell(input_size,
+                                                self._hparams.rnn_cell_fw)
         else:
-            self._cell_bw = layers.get_rnn_cell(
-                self._hparams.rnn_cell_bw, cell_dropout_mode)
+            self._cell_bw = layers.get_rnn_cell(input_size,
+                                                self._hparams.rnn_cell_bw)
 
         # Make output layers
         if output_layer_fw is not None:
@@ -670,7 +606,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             self._output_layer_hparams_fw = None
         else:
             self._output_layer_fw = _build_dense_output_layer(
-                self._hparams.output_layer_fw)
+                self._cell_fw.hidden_size, self._hparams.output_layer_fw)
             self._output_layer_hparams_fw = self._hparams.output_layer_fw
 
         if output_layer_bw is not None:
@@ -678,17 +614,19 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             self._output_layer_hparams_bw = None
         elif self._hparams.output_layer_share_config:
             self._output_layer_bw = _build_dense_output_layer(
-                self._hparams.output_layer_fw)
+                self._cell_bw.hidden_size, self._hparams.output_layer_fw)
             self._output_layer_hparams_bw = self._hparams.output_layer_fw
         else:
             self._output_layer_bw = _build_dense_output_layer(
-                self._hparams.output_layer_bw)
+                self._cell_bw.hidden_size, self._hparams.output_layer_bw)
             self._output_layer_hparams_bw = self._hparams.output_layer_bw
 
     @staticmethod
     def default_hparams():
         """Returns a dictionary of hyperparameters with default values.
+
         .. code-block:: python
+
             {
                 "rnn_cell_fw": default_rnn_cell_hparams(),
                 "rnn_cell_bw": default_rnn_cell_hparams(),
@@ -710,37 +648,48 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 "output_layer_share_config": True,
                 "name": "bidirectional_rnn_encoder"
             }
+
         Here:
+
         "rnn_cell_fw" : dict
             Hyperparameters of the forward RNN cell.
             Ignored if :attr:`cell_fw` is given to the encoder constructor.
+
             The default value is defined in
             :func:`~texar.core.default_rnn_cell_hparams`.
+
         "rnn_cell_bw" : dict
             Hyperparameters of the backward RNN cell.
             Ignored if :attr:`cell_bw` is given to the encoder constructor
             , or if :attr:`"rnn_cell_share_config"` is `True`.
+
             The default value is defined in
             :meth:`~texar.core.default_rnn_cell_hparams`.
+
         "rnn_cell_share_config" : bool
             Whether share hyperparameters of the backward cell with the
             forward cell. Note that the cell parameters (variables) are not
             shared.
+
         "output_layer_fw" : dict
             Hyperparameters of the forward output layer. Ignored if
             :attr:`output_layer_fw` is given to the constructor.
             See the "output_layer" field of
             :meth:`~texar.modules.UnidirectionalRNNEncoder.default_hparams` for
             details.
+
         "output_layer_bw" : dict
             Hyperparameters of the backward output layer. Ignored if
             :attr:`output_layer_bw` is given to the constructor. Have the
             same structure and defaults with :attr:`"output_layer_fw"`.
+
             Ignored if :attr:`"output_layer_share_config"` is True.
+
         "output_layer_share_config" : bool
             Whether share hyperparameters of the backward output layer
             with the forward output layer. Note that the layer parameters
             (variables) are not shared.
+
         "name" : str
             Name of the encoder
         """
@@ -761,11 +710,11 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 sequence_length=None,
                 initial_state_fw=None,
                 initial_state_bw=None,
-                batch_first=True,
+                time_major=False,
                 return_cell_output=False,
-                return_output_size=False
-                ):
+                return_output_size=False):
         """Encodes the inputs.
+
         Args:
             inputs: A 3D Tensor of shape `[batch_size, max_time, dim]`.
                 The first two dimensions
@@ -791,9 +740,11 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             **kwargs: Optional keyword arguments of
                 :tf_main:`tf.nn.dynamic_rnn <nn/dynamic_rnn>`,
                 such as `swap_memory`, `dtype`, `parallel_iterations`, etc.
+
         Returns:
             - By default (both `return_cell_output` and `return_output_size` \
             are False), returns a pair :attr:`(outputs, final_state)`
+
                 - :attr:`outputs`: A tuple `(outputs_fw, outputs_bw)` \
                 containing \
                 the forward and the backward RNN outputs, each of which is of \
@@ -804,6 +755,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 If RNN cell output is a (nested) tuple of Tensors, then \
                 `outputs_fw` and `outputs_bw` will be a (nested) tuple having \
                 the same structure as the cell output.
+
                 - :attr:`final_state`: A tuple \
                 `(final_state_fw, final_state_bw)` \
                 containing the final states of the forward and backward \
@@ -811,15 +763,19 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 Tensor of shape `[batch_size] + cell.state_size`, or \
                 a (nested) tuple of Tensors if `cell.state_size` is a (nested)\
                 tuple.
+
             - If `return_cell_output` is True, returns a triple \
             :attr:`(outputs, final_state, cell_outputs)` where
+
                 - :attr:`cell_outputs`: A tuple \
                 `(cell_outputs_fw, cell_outputs_bw)` containting the outputs \
                 by the forward and backward RNN cells prior to the \
                 output layers, having the same structure with :attr:`outputs` \
                 except for the `output_dim`.
+
             - If `return_output_size` is True, returns a tuple \
             :attr:`(outputs, final_state, output_size)` where
+
                 - :attr:`output_size`: A tupple \
                 `(output_size_fw, output_size_bw)` containing the size of \
                 `outputs_fw` and `outputs_bw`, respectively. \
@@ -830,35 +786,35 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 a (nested) tuple, then `output_size_fw` has the same \
                 structure as with `outputs_fw`. The same applies to  \
                 `output_size_bw`.
+
             - If both `return_cell_output` and \
             `return_output_size` are True, returns \
             :attr:`(outputs, final_state, cell_outputs, output_size)`.
         """
 
-        cell_outputs, states = _bidirectional_recurrence(
+        cell_outputs, states = bidirectional_dynamic_rnn(
             cell_fw=self._cell_fw,
             cell_bw=self._cell_bw,
-            input_fw=inputs,
-            input_bw=inputs,
+            inputs=inputs,
+            sequence_length=sequence_length,
             initial_state_fw=initial_state_fw,
             initial_state_bw=initial_state_bw,
-            batch_first=batch_first
-        )
+            time_major=time_major)
 
         outputs_fw, output_size_fw = _apply_rnn_encoder_output_layer(
             self._output_layer_fw, time_major, self._output_layer_hparams_fw,
-            mode, cell_outputs[0], self._cell_fw.output_size)
+            self.training, cell_outputs[0], self._cell_fw.hidden_size)
 
         outputs_bw, output_size_bw = _apply_rnn_encoder_output_layer(
             self._output_layer_bw, time_major, self._output_layer_hparams_bw,
-            mode, cell_outputs[1], self._cell_bw.output_size)
+            self.training, cell_outputs[1], self._cell_bw.hidden_size)
 
         outputs = (outputs_fw, outputs_bw)
         output_size = (output_size_fw, output_size_bw)
 
         returns = (outputs, states)
         if return_cell_output:
-            returns += (cell_outputs,)
+            returns += (cell_outputs, )
         if return_output_size:
             returns += (output_size,)
         return returns
@@ -880,14 +836,20 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
         """The state size of the forward encoder cell.
         Same as :attr:`encoder.cell_fw.state_size`.
         """
-        return self.cell_fw.state_size
+        if isinstance(self._cell_fw, LSTMCell):
+            return 2 * self._cell_fw.hidden_size
+        else:
+            return self._cell_fw.hidden_size
 
     @property
     def state_size_bw(self):
         """The state size of the backward encoder cell.
         Same as :attr:`encoder.cell_bw.state_size`.
         """
-        return self.cell_bw.state_size
+        if isinstance(self._cell_bw, LSTMCell):
+            return 2 * self._cell_bw.hidden_size
+        else:
+            return self._cell_bw.hidden_size
 
     @property
     def output_layer_fw(self):
