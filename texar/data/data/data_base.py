@@ -18,7 +18,7 @@ preprocessing operations.
 """
 import warnings
 from abc import ABC
-from typing import Callable, Dict, Generic, Iterable, Iterator, List, \
+from typing import Dict, Generic, Iterable, Iterator, List, \
     Optional, Sequence, Tuple, TypeVar, Union
 
 from torch.utils.data import Dataset
@@ -29,7 +29,10 @@ from texar.hyperparams import HParams
 
 __all__ = [
     "DataSource",
+    "SequenceDataSource",
     "IterDataSource",
+    "ZipDataSource",
+    "RecordDataSource",
     "DataBase",
 ]
 
@@ -73,7 +76,9 @@ class SequenceDataSource(DataSource[RawExample]):
 
 
 class IterDataSource(DataSource[RawExample]):
-    r"""Data source for reading from Python iterables.
+    r"""Data source for reading from Python iterables. Please note: if passed
+    an *iterator* and caching strategy is set to 'none', then the data source
+    can only be iterated over once.
     """
 
     def __init__(self, iterable: Iterable[RawExample]):
@@ -87,8 +92,8 @@ class ZipDataSource(DataSource[Tuple[RawExample, ...]]):
     r"""Data source by combining multiple sources.
     """
 
-    def __init__(self, sources: List[DataSource[RawExample]]):
-        self._sources = sources
+    def __init__(self, *sources: DataSource[RawExample]):
+        self._sources = list(sources)
 
     def __getitem__(self, index: int) -> Tuple[RawExample, ...]:
         return tuple(source[index] for source in self._sources)
@@ -172,9 +177,8 @@ class _CachedDataSource(DataSource[Example]):
         return self._max_index
 
     def reset(self) -> None:
+        self._iter = iter(self._source)
         self._max_index = -1
-        if self._erase_after_access:
-            self._cache = {}
 
 
 class DataBase(Dataset, Generic[RawExample, Example], ABC):
@@ -195,6 +199,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         elif self._lazy_strategy is _LazyStrategy.PROCESS:
             if self._cache_strategy is _CacheStrategy.NONE:
                 self._cache_strategy = _CacheStrategy.LOADED
+        self._uses_multi_processing = self._hparams.num_parallel_calls > 1
 
         # Check whether data source supports random access, and obtain dataset
         # size if it does.
@@ -423,6 +428,16 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             return self._process(index[1])
 
     def _add_cached_examples(self, indices: List[int], examples: List[Example]):
+        # In this case, `_CachedDataSource.__getitem__` will be
+        # called on worker processes, so the cache cannot be
+        # deleted. Thus, we move deletion to
+        # `_add_cached_examples`.
+        if (not self._supports_random_access and
+                self._uses_multi_processing and
+                (self._lazy_strategy is _LazyStrategy.PROCESS and
+                 self._cache_strategy is _CacheStrategy.PROCESSED)):
+            for index in indices:
+                del self._source._cache[index]
         for index, example in zip(indices, examples):
             self._reorder_cache[index] = example
         while len(self._processed_cache) in self._reorder_cache:
@@ -431,6 +446,10 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             del self._reorder_cache[index]
         if self._dataset_size == len(self._processed_cache):
             self._fully_cached = True
+
+    def _start_iteration(self) -> None:
+        if not self._supports_random_access:
+            self._source.reset()
 
     @property
     def num_epochs(self):
@@ -505,3 +524,17 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         return (not self._fully_cached and
                 self._lazy_strategy is not _LazyStrategy.NONE and
                 self._cache_strategy is _CacheStrategy.PROCESSED)
+
+    @property
+    def _should_yield_raw_example(self):
+        r"""Returns `True` if the sampler should yield raw examples.
+        """
+        return (self._lazy_strategy is _LazyStrategy.ALL and
+                (self._cache_strategy is _CacheStrategy.NONE or
+                 not self._fully_cached))
+
+    @property
+    def _should_call_prefetch_source(self):
+        return (self._dataset_size is None or
+                (self._lazy_strategy is _LazyStrategy.ALL and
+                 self._cache_strategy is _CacheStrategy.NONE))

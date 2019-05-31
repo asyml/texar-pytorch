@@ -71,6 +71,8 @@ __all__ = [
 
 T = TypeVar('T')  # type argument
 R = TypeVar('R')  # return type
+K = TypeVar('K')  # key type
+V = TypeVar('V')  # value type
 Kwargs = Dict[str, Any]
 AnyDict = MutableMapping[str, Any]
 ParamDict = Union[HParams, AnyDict]
@@ -585,8 +587,8 @@ def dict_patch(tgt_dict: AnyDict, src_dict: AnyDict) -> AnyDict:
     return tgt_dict
 
 
-def dict_lookup(dict_: AnyDict, keys: np.ndarray,
-                default: Optional[Any] = None) -> np.ndarray:
+def dict_lookup(dict_: MutableMapping[K, V], keys: Union[List[K], np.ndarray],
+                default: Optional[V] = None) -> np.ndarray:
     r"""Looks up :attr:`keys` in the dict, returns the corresponding values.
 
     The :attr:`default` is used for keys not present in the dict.

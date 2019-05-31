@@ -153,26 +153,27 @@ class MonoTextData(TextDataBase[str, List[str]]):
         if self._hparams.dataset.variable_utterance:
             raise NotImplementedError
 
-        # Create vocab and embedding
-        self._vocab = self.make_vocab(self._hparams.dataset)
+        # Create vocabulary
+        self._bos_token = self._hparams.dataset.bos_token
+        self._eos_token = self._hparams.dataset.eos_token
+        bos = utils.default_str(self._bos_token, SpecialTokens.BOS)
+        eos = utils.default_str(self._eos_token, SpecialTokens.EOS)
+        self._vocab = Vocab(self._hparams.dataset.vocab_file,
+                            bos_token=bos, eos_token=eos)
+
+        # Create embedding
         self._embedding = self.make_embedding(
             self._hparams.dataset.embedding_init,
             self._vocab.token_to_id_map_py)
 
         self._delimiter = self._hparams.dataset.delimiter
-        self._bos = self._hparams.dataset.bos_token
-        if self._bos == '':
-            self._bos = None
-        self._eos = self._hparams.dataset.eos_token
-        if self._eos == '':
-            self._eos = None
         self._max_seq_length = self._hparams.dataset.max_seq_length
         self._length_filter_mode = _LengthFilterMode(
             self._hparams.dataset.length_filter_mode)
         self._pad_length = self._max_seq_length
         if self._max_seq_length is not None:
-            self._pad_length += sum(int(x is not None)
-                                    for x in [self._bos, self._eos])
+            self._pad_length += sum(int(x != '')
+                                    for x in [self._bos_token, self._eos_token])
 
         if (self._length_filter_mode is _LengthFilterMode.DISCARD and
                 self._max_seq_length is not None):
@@ -358,19 +359,6 @@ class MonoTextData(TextDataBase[str, List[str]]):
         return hparams
 
     @staticmethod
-    def make_vocab(hparams):
-        """Reads vocab file and returns an instance of
-        :class:`texar.data.Vocab`.
-        """
-        bos_token = utils.default_str(
-            hparams["bos_token"], SpecialTokens.BOS)
-        eos_token = utils.default_str(
-            hparams["eos_token"], SpecialTokens.EOS)
-        vocab = Vocab(hparams["vocab_file"],
-                      bos_token=bos_token, eos_token=eos_token)
-        return vocab
-
-    @staticmethod
     def make_embedding(emb_hparams, token_to_id_map):
         """Optionally loads embedding from file (if provided), and returns
         an instance of :class:`texar.data.Embedding`.
@@ -401,17 +389,6 @@ class MonoTextData(TextDataBase[str, List[str]]):
             other_trans.append(dsutils.make_partial(tran, data_spec))
         return other_trans
 
-    @staticmethod
-    def _make_length_filter(dataset_hparams, length_name, decoder):
-        filter_mode = dataset_hparams["length_filter_mode"]
-        max_length = dataset_hparams["max_seq_length"]
-        filter_fn = None
-        if filter_mode == _LengthFilterMode.DISCARD and max_length is not None:
-            max_length += decoder.added_length
-            filter_fn = dsutils._make_length_filter_fn(length_name,
-                                                       max_length)
-        return filter_fn
-
     def _process_dataset(self, dataset, hparams, data_spec):
         chained_tran, data_spec = self._make_processor(
             hparams["dataset"], data_spec,
@@ -420,15 +397,6 @@ class MonoTextData(TextDataBase[str, List[str]]):
         dataset = dataset.map(
             lambda *args: chained_tran(dsutils.maybe_tuple(args)),
             num_parallel_calls=num_parallel_calls)
-
-        # Filters by length
-        length_name = dsutils._connect_name(
-            data_spec.name_prefix,
-            data_spec.decoder.length_tensor_name)
-        filter_fn = self._make_length_filter(
-            hparams["dataset"], length_name, data_spec.decoder)
-        if filter_fn:
-            dataset = dataset.filter(filter_fn)
 
         # Truncates data count
         dataset = dataset.take(hparams["max_dataset_size"])
@@ -445,21 +413,22 @@ class MonoTextData(TextDataBase[str, List[str]]):
         return length_fn
 
     def _process(self, raw_example: str) -> List[str]:
+        # `_process` truncates sentences and appends BOS/EOS tokens.
         words = raw_example.split(self._delimiter)
         if (self._max_seq_length is not None and
                 len(words) > self._max_seq_length):
             if self._length_filter_mode is _LengthFilterMode.TRUNC:
                 words = words[:self._max_seq_length]
-        if self._bos is not None:
-            words.insert(0, self._bos)
-        if self._eos is not None:
-            words.append(self._eos)
+        if self._bos_token != '':
+            words.insert(0, self._bos_token)
+        if self._eos_token != '':
+            words.append(self._eos_token)
 
         return words
 
     def _collate(self, examples: List[List[str]]) -> Batch:
         # For `MonoTextData`, each example is represented as a list of strings.
-        # `collate_fn` takes care of padding and numericalization.
+        # `_collate` takes care of padding and numericalization.
 
         # If `pad_length` is `None`, pad to the longest sentence in the batch.
         lengths = [len(sent) for sent in examples]

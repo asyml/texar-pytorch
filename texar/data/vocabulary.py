@@ -161,10 +161,9 @@ class Vocab(object):
         Returns:
             A numpy array of text tokens of the same shape as :attr:`ids`.
         """
-        return dict_lookup(self.id_to_token_map_py,  # type: ignore
-                           ids, self.unk_token)
+        return dict_lookup(self.id_to_token_map_py, ids, self.unk_token)
 
-    def map_tokens_to_ids_py(self, tokens: np.ndarray) -> np.ndarray:
+    def map_tokens_to_ids_py(self, tokens: List[str]) -> np.ndarray:
         r"""Maps text tokens into ids.
 
         The input :attr:`tokens` and returned ids are both python

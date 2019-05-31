@@ -14,15 +14,15 @@
 """
 Various data iterator classes.
 """
-from typing import Dict, Iterable, List, Optional, Sequence, Union, Iterator
+from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Union, Mapping
 
-import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import sampler as torch_sampler
 from torch.utils.data.dataloader import _DataLoaderIter
 
+import torch
 from texar.data.data.data_base import DataBase
-from texar.data.data.dataset_utils import Batch, _CacheStrategy, _LazyStrategy
+from texar.data.data.dataset_utils import Batch
 from texar.utils.types import MaybeSeq
 
 __all__ = [
@@ -51,7 +51,7 @@ class SamplerBase(torch_sampler.Sampler):
         super().__init__(data)
 
         self._data = data
-        self.size: Optional[int] = data._dataset_size
+        self.size: Optional[int] = None
 
     def _iterator_given_size(self, size: int) -> Iterator[int]:
         raise NotImplementedError
@@ -60,19 +60,19 @@ class SamplerBase(torch_sampler.Sampler):
         raise NotImplementedError
 
     def __iter__(self) -> Iterator[int]:
-        if self.size is not None:
-            # Non-lazy loading, or when dataset has been fully iterated.
-            iterator = self._iterator_given_size(self.size)
-        else:
+        self.size = self._data._dataset_size
+        if self._data._should_call_prefetch_source:
+            self._data._start_iteration()
             # First epoch of lazy loading, calling prefetch, and returning
             # indices and examples.
             iterator = self._iterator_unknown_size()
+        else:
+            # Non-lazy loading, or when dataset has been fully iterated.
+            iterator = self._iterator_given_size(self.size)
 
-        if self.size is None or (
-                self._data._cache_strategy is _CacheStrategy.NONE and
-                self._data._lazy_strategy is _LazyStrategy.ALL):
+        if self._data._should_yield_raw_example:
             # Return indices and examples for any epoch in this case.
-            iterator = map(lambda idx: (idx, self._data[idx]), iterator)
+            iterator = map(lambda idx: (idx, self._data._source[idx]), iterator)
         return iterator
 
     def __len__(self):
@@ -81,7 +81,7 @@ class SamplerBase(torch_sampler.Sampler):
 
 class SequentialSampler(SamplerBase):
     r"""Samples elements sequentially, always in the same order. Same as
-    :class:`torch.utils.data.SequantialSampler`.
+    :class:`torch.utils.data.SequentialSampler`.
 
     Args:
         data: The :class:`~texar.data.data.DataBase` instance.
@@ -173,7 +173,7 @@ class BufferShuffleSampler(SamplerBase):
             sample = torch.randint(self.buffer_size, (1,)).item()
             index = buffer[sample]
             cur_size = self._data._prefetch_source(index)
-            if cur_size is not None:
+            if cur_size is not None and index >= cur_size:
                 self.size = cur_size
             if self.size is not None and index >= self.size:
                 break
@@ -188,17 +188,18 @@ class _CacheDataLoaderIter(_DataLoaderIter):
     dataset: DataBase
 
     def __init__(self, loader: DataLoader):
-        super().__init__(self, loader)
-
         self._indices_dict: Dict[int, List[int]] = {}
+        super().__init__(loader)
 
     def _put_indices(self):
         assert self.batches_outstanding < 2 * self.num_workers
         indices = next(self.sample_iter, None)
         if indices is None:
             return
-        self._indices_dict[self.send_idx] = indices
         self.index_queues[self.worker_queue_idx].put((self.send_idx, indices))
+        if self.dataset._should_yield_raw_example:
+            indices = [index[0] for index in indices]
+        self._indices_dict[self.send_idx] = indices
         self.worker_queue_idx = (self.worker_queue_idx + 1) % self.num_workers
         self.batches_outstanding += 1
         self.send_idx += 1
@@ -206,10 +207,38 @@ class _CacheDataLoaderIter(_DataLoaderIter):
     def _process_next_batch(self, batch):
         batch = super()._process_next_batch(batch)
         indices = self._indices_dict[self.rcvd_idx - 1]
-        del self._indices_dict[indices]
+        del self._indices_dict[self.rcvd_idx - 1]
         examples, batch = batch
         self.dataset._add_cached_examples(indices, examples)
         return batch
+
+    @staticmethod
+    def pin_memory_batch(batch):
+        if isinstance(batch, torch.Tensor):
+            return batch.pin_memory()
+        elif isinstance(batch, (str, bytes)):
+            return batch
+        elif isinstance(batch, Mapping):
+            return {k: _CacheDataLoaderIter.pin_memory_batch(sample)
+                    for k, sample in batch.items()}
+        elif isinstance(batch, Sequence):
+            return [_CacheDataLoaderIter.pin_memory_batch(sample)
+                    for sample in batch]
+        else:
+            return batch
+
+    def __next__(self):
+        if self.num_workers == 0:  # same-process loading
+            indices = next(self.sample_iter)  # may raise StopIteration
+            batch = self.collate_fn([self.dataset[i] for i in indices])
+            if self.pin_memory:
+                batch = self.pin_memory_batch(batch)
+            if self.dataset._should_yield_raw_example:
+                indices = [index[0] for index in indices]
+            examples, batch = batch
+            self.dataset._add_cached_examples(indices, examples)
+            return batch
+        return super().__next__()
 
 
 class SingleDatasetIterator(DataLoader):
@@ -354,7 +383,7 @@ class DataIterator:
         self._current_dataset_name = self._validate_dataset_name(dataset_name)
 
     def get_iterator(self,
-                     dataset_name: Optional[str] = None) -> Iterable[Batch]:
+                     dataset_name: Optional[str] = None) -> Iterator[Batch]:
         r"""Re-initializes the iterator of a given dataset and starts iterating
         over the dataset (from the beginning).
 
@@ -371,7 +400,7 @@ class DataIterator:
 
         return iter(self._datasets[dataset_name])
 
-    def __iter__(self) -> Iterable[Batch]:
+    def __iter__(self) -> Iterator[Batch]:
         r"""Returns the iterator for the currently selected or default dataset.
         """
         return self.get_iterator()

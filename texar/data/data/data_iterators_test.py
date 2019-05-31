@@ -4,29 +4,42 @@ Unit tests for data iterator related operations.
 import copy
 import tempfile
 import unittest
-from typing import Optional, List
+from typing import List, Optional, Tuple
 
 import numpy as np
-import torch
-from torch.utils.data import TensorDataset
 
-import texar.data
-from texar.data.data.data_iterators import BufferShuffleSampler
+import texar
+import torch
+from texar.data.data.data_base import DataBase, IterDataSource, \
+    SequenceDataSource, ZipDataSource
+from texar.data.data.data_iterators import BufferShuffleSampler, DataIterator, TrainTestDataIterator
+from texar.data.data.dataset_utils import Batch
 from texar.data.data.dataset_utils import _CacheStrategy, _LazyStrategy
+from texar.data.data.mono_text_data import MonoTextData
 
 
 class SamplerTest(unittest.TestCase):
     r"""Tests samplers.
     """
 
-    class MockDataBase:
+    class MockDataBase(DataBase):
+        class MockSource:
+            def __getitem__(self, item):
+                return item
+
+            def reset(self):
+                pass
+
         def __init__(self, size: int, lazy_strategy: str,
                      cache_strategy: str, unknown_size: bool = False):
+            self._source = self.MockSource()
             self.size = size
             self._lazy_strategy = _LazyStrategy(lazy_strategy)
             self._cache_strategy = _CacheStrategy(cache_strategy)
             self._dataset_size = size if not unknown_size else None
             self._unknown_size = unknown_size
+            self._supports_random_access = False
+            self._fully_cached = False
 
         def _prefetch_source(self, index: int) -> Optional[int]:
             if self._unknown_size:
@@ -34,9 +47,6 @@ class SamplerTest(unittest.TestCase):
                     self._dataset_size = self.size
                     return self._dataset_size
             return None
-
-        def __getitem__(self, item):
-            return item
 
     def setUp(self) -> None:
         self.size = 10
@@ -55,6 +65,7 @@ class SamplerTest(unittest.TestCase):
             self.assertEqual(len(set(indices)), self.size)
             self.assertEqual(min(indices), 0)
             self.assertEqual(max(indices), self.size - 1)
+            data._fully_cached = True
 
     def test_known_size(self):
         data = self.MockDataBase(self.size, 'none', 'processed')
@@ -136,8 +147,8 @@ class DataIteratorTest(unittest.TestCase):
     def test_iterator_single_dataset(self):
         r"""Tests iterating over a single dataset.
         """
-        data = texar.data.MonoTextData(self._test_hparams)
-        data_iterator = texar.data.DataIterator(data)
+        data = MonoTextData(self._test_hparams)
+        data_iterator = DataIterator(data)
         data_iterator.switch_to_dataset(dataset_name="data")
         iterator = data_iterator.get_iterator()
         i = 1001
@@ -154,8 +165,8 @@ class DataIteratorTest(unittest.TestCase):
         """
         hparams = copy.deepcopy(self._test_hparams)
         hparams['num_parallel_calls'] = 2
-        data = texar.data.MonoTextData(hparams)
-        data_iterator = texar.data.DataIterator(data)
+        data = MonoTextData(hparams)
+        data_iterator = DataIterator(data)
         data_iterator.switch_to_dataset(dataset_name="data")
         iterator = data_iterator.get_iterator()
         i = 1001
@@ -170,11 +181,11 @@ class DataIteratorTest(unittest.TestCase):
     def test_iterator_multi_datasets(self):
         r"""Tests iterating over multiple datasets.
         """
-        train = texar.data.MonoTextData(self._train_hparams)
-        test = texar.data.MonoTextData(self._test_hparams)
+        train = MonoTextData(self._train_hparams)
+        test = MonoTextData(self._test_hparams)
         train_batch_size = self._train_hparams["batch_size"]
         test_batch_size = self._test_hparams["batch_size"]
-        data_iterator = texar.data.DataIterator({"train": train, "test": test})
+        data_iterator = DataIterator({"train": train, "test": test})
         data_iterator.switch_to_dataset(dataset_name="train")
         iterator = data_iterator.get_iterator()
         for idx, val in enumerate(iterator):
@@ -207,12 +218,12 @@ class DataIteratorTest(unittest.TestCase):
     def test_train_test_data_iterator(self):
         r"""Tests :class:`texar.data.TrainTestDataIterator`
         """
-        train = texar.data.MonoTextData(self._train_hparams)
-        test = texar.data.MonoTextData(self._test_hparams)
+        train = MonoTextData(self._train_hparams)
+        test = MonoTextData(self._test_hparams)
         train_batch_size = self._train_hparams["batch_size"]
         test_batch_size = self._test_hparams["batch_size"]
 
-        data_iterator = texar.data.TrainTestDataIterator(train=train, test=test)
+        data_iterator = TrainTestDataIterator(train=train, test=test)
         data_iterator.switch_to_train_data()
         iterator = data_iterator.get_iterator()
 
@@ -242,6 +253,124 @@ class DataIteratorTest(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             data_iterator.switch_to_val_data()
         self.assertTrue('Val data not provided' in str(context.exception))
+
+
+RawExample = Tuple[List[int], str]
+Example = Tuple[List[int], List[str]]
+
+
+class MockDataBase(DataBase[RawExample, Example]):
+    def _process(self, raw_example: RawExample) -> Example:
+        numbers, string = raw_example
+        numbers = [x + 1 for x in numbers]
+        strings = string.split()
+        return numbers, strings
+
+    def _collate(self, examples: List[Example]) -> Batch:
+        numbers = np.asarray([ex[0] for ex in examples])
+        strings = np.asarray([ex[1] for ex in examples])
+        return Batch(len(numbers), numbers=numbers, strings=strings)
+
+
+class LazinessCachingTest(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.size = 102
+        self.seq_len = 10
+        self.batch_size = 5
+        self.num_workers = 3
+
+    def _test_modes_with_workers(self, lazy_mode: str, cache_mode: str,
+                                 num_workers: int):
+        hparams = {
+            'batch_size': self.batch_size,
+            'lazy_strategy': lazy_mode,
+            'cache_strategy': cache_mode,
+            'num_parallel_calls': num_workers,
+            'shuffle': False,
+        }
+        source = ZipDataSource(
+            IterDataSource([[x] * self.seq_len for x in range(self.size)]),
+            SequenceDataSource([' '.join(map(str, range(self.seq_len)))
+                                for _ in range(self.size)]))
+        data = MockDataBase(source, hparams)
+        iterator = DataIterator(data)
+
+        total_batches = (self.size + self.batch_size - 1) // self.batch_size
+
+        def check_batch(idx, batch):
+            if idx == total_batches - 1:
+                batch_size = (self.size - 1) % self.batch_size + 1
+            else:
+                batch_size = self.batch_size
+            self.assertEqual(batch.numbers.shape,
+                             (batch_size, self.seq_len))
+            numbers = [idx * self.batch_size + x + 1 for x in range(batch_size)]
+            self.assertTrue(np.all(batch.numbers ==
+                                   np.asarray(numbers)[:, np.newaxis]))
+
+        # check laziness
+        if lazy_mode == 'none':
+            self.assertEqual(len(data._processed_cache), self.size)
+        else:
+            self.assertIsInstance(data._source,
+                                  texar.data.data.data_base._CachedDataSource)
+            self.assertEqual(len(data._processed_cache), 0)
+            if lazy_mode == 'process':
+                self.assertEqual(len(data._source._cache), self.size)
+            else:
+                self.assertEqual(len(data._source._cache), 0)
+
+        # first epoch
+        cnt = 0
+        for idx, batch in enumerate(iterator):
+            check_batch(idx, batch)
+            cnt += 1
+        self.assertEqual(cnt, total_batches)
+
+        # check cache
+        if cache_mode == 'none':
+            self.assertEqual(len(data._processed_cache), 0)
+        elif cache_mode == 'loaded':
+            self.assertEqual(len(data._processed_cache), 0)
+        else:
+            self.assertEqual(len(data._processed_cache), self.size)
+        if lazy_mode != 'none':
+            if cache_mode == 'none':
+                self.assertEqual(len(data._source._cache), 0)
+            elif cache_mode == 'loaded':
+                self.assertEqual(len(data._source._cache), self.size)
+            else:
+                self.assertEqual(len(data._source._cache), 0)
+
+        # second epoch
+        cnt = 0
+        for idx, batch in enumerate(iterator):
+            check_batch(idx, batch)
+            cnt += 1
+        self.assertEqual(cnt, total_batches)
+
+    def _test_modes(self, lazy_mode: str, cache_mode: str):
+        self._test_modes_with_workers(lazy_mode, cache_mode, self.num_workers)
+        self._test_modes_with_workers(lazy_mode, cache_mode, 1)
+
+    def test_none_processed(self):
+        self._test_modes('none', 'processed')
+
+    def test_process_loaded(self):
+        self._test_modes('process', 'loaded')
+
+    def test_process_processed(self):
+        self._test_modes('process', 'processed')
+
+    def test_all_none(self):
+        self._test_modes('all', 'none')
+
+    def test_all_loaded(self):
+        self._test_modes('all', 'loaded')
+
+    def test_all_processed(self):
+        self._test_modes('all', 'processed')
 
 
 if __name__ == "__main__":
