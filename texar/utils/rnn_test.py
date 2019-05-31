@@ -123,7 +123,7 @@ class DynamicRNNTest(unittest.TestCase):
         """Tests :meth:`~texar.utils.rnn.dynamic_rnn`.
         """
         inputs = torch.rand(self._batch_size, self._max_time, self._input_size)
-        sequence_length = [2, 43, 23, 63, 12, 54, 33, 8]
+        sequence_length = [0, 43, 23, 63, 12, 54, 33, 8]
 
         # RNN
         outputs, final_state = dynamic_rnn(self._rnn,
