@@ -4,15 +4,15 @@ Unit tests for data iterator related operations.
 import copy
 import tempfile
 import unittest
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, no_type_check
 
 import numpy as np
-
-import texar
 import torch
+
 from texar.data.data.data_base import DataBase, IterDataSource, \
     SequenceDataSource, ZipDataSource
-from texar.data.data.data_iterators import BufferShuffleSampler, DataIterator, TrainTestDataIterator
+from texar.data.data.data_iterators import BufferShuffleSampler, DataIterator, \
+    TrainTestDataIterator
 from texar.data.data.dataset_utils import Batch
 from texar.data.data.dataset_utils import _CacheStrategy, _LazyStrategy
 from texar.data.data.mono_text_data import MonoTextData
@@ -32,7 +32,8 @@ class SamplerTest(unittest.TestCase):
 
         def __init__(self, size: int, lazy_strategy: str,
                      cache_strategy: str, unknown_size: bool = False):
-            self._source = self.MockSource()
+            self._source = self.MockSource()  # type: ignore
+            self._cached_source = self._source
             self.size = size
             self._lazy_strategy = _LazyStrategy(lazy_strategy)
             self._cache_strategy = _CacheStrategy(cache_strategy)
@@ -41,7 +42,7 @@ class SamplerTest(unittest.TestCase):
             self._supports_random_access = False
             self._fully_cached = False
 
-        def _prefetch_source(self, index: int) -> Optional[int]:
+        def _prefetch_source(self, index: int) -> Optional[int]:  # type: ignore
             if self._unknown_size:
                 if index >= self.size:
                     self._dataset_size = self.size
@@ -52,6 +53,7 @@ class SamplerTest(unittest.TestCase):
         self.size = 10
         self.buffer_size = 5
 
+    @no_type_check
     def _test_data(self, data: MockDataBase,
                    returns_data: bool = False,
                    always_returns_data: bool = False):
@@ -289,11 +291,11 @@ class LazinessCachingTest(unittest.TestCase):
             'num_parallel_calls': num_workers,
             'shuffle': False,
         }
-        source = ZipDataSource(
+        source = ZipDataSource(  # type: ignore
             IterDataSource([[x] * self.seq_len for x in range(self.size)]),
             SequenceDataSource([' '.join(map(str, range(self.seq_len)))
                                 for _ in range(self.size)]))
-        data = MockDataBase(source, hparams)
+        data = MockDataBase(source, hparams)  # type: ignore
         iterator = DataIterator(data)
 
         total_batches = (self.size + self.batch_size - 1) // self.batch_size
@@ -313,13 +315,11 @@ class LazinessCachingTest(unittest.TestCase):
         if lazy_mode == 'none':
             self.assertEqual(len(data._processed_cache), self.size)
         else:
-            self.assertIsInstance(data._source,
-                                  texar.data.data.data_base._CachedDataSource)
             self.assertEqual(len(data._processed_cache), 0)
             if lazy_mode == 'process':
-                self.assertEqual(len(data._source._cache), self.size)
+                self.assertEqual(len(data._cached_source._cache), self.size)
             else:
-                self.assertEqual(len(data._source._cache), 0)
+                self.assertEqual(len(data._cached_source._cache), 0)
 
         # first epoch
         cnt = 0
@@ -337,11 +337,11 @@ class LazinessCachingTest(unittest.TestCase):
             self.assertEqual(len(data._processed_cache), self.size)
         if lazy_mode != 'none':
             if cache_mode == 'none':
-                self.assertEqual(len(data._source._cache), 0)
+                self.assertEqual(len(data._cached_source._cache), 0)
             elif cache_mode == 'loaded':
-                self.assertEqual(len(data._source._cache), self.size)
+                self.assertEqual(len(data._cached_source._cache), self.size)
             else:
-                self.assertEqual(len(data._source._cache), 0)
+                self.assertEqual(len(data._cached_source._cache), 0)
 
         # second epoch
         cnt = 0

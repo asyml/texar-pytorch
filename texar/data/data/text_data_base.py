@@ -15,7 +15,9 @@
 Base text data class that is inherited by all text data classes.
 """
 from abc import ABC
-from typing import Iterable, Optional, TypeVar
+from typing import Iterator, Optional, TypeVar
+
+import torch
 
 from texar.data.data.data_base import DataBase, DataSource
 from texar.utils.types import MaybeList
@@ -41,8 +43,11 @@ class TextLineDataSource(DataSource[str]):
         self._file_paths = file_paths
         self._max_length = max_length
         self._delimiter = delimiter
+        if (self._max_length is not None) ^ (self._delimiter is not None):
+            raise ValueError("'max_length' and 'delimiter' should both be"
+                             "None or not None")
 
-    def __iter__(self) -> Iterable[str]:
+    def __iter__(self) -> Iterator[str]:
         for path in self._file_paths:
             with open(path, 'r') as f:
                 for line in f:
@@ -50,7 +55,8 @@ class TextLineDataSource(DataSource[str]):
                     if self._max_length is not None:
                         # A very brute way to filter out overly long lines at
                         # this stage.
-                        if line.count(self._delimiter) + 1 > self._max_length:
+                        if (line.count(self._delimiter) + 1  # type: ignore
+                                > self._max_length):
                             continue
                     yield line.rstrip('\n')
 
@@ -59,8 +65,9 @@ class TextDataBase(DataBase[RawExample, Example], ABC):  # pylint: disable=too-f
     """Base class inherited by all text data classes.
     """
 
-    def __init__(self, source: DataSource[RawExample], hparams):
-        super().__init__(source, hparams)
+    def __init__(self, source: DataSource[RawExample], hparams,
+                 device: Optional[torch.device] = None):
+        super().__init__(source, hparams, device=device)
 
     @staticmethod
     def default_hparams():

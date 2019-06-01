@@ -18,8 +18,8 @@ preprocessing operations.
 """
 import warnings
 from abc import ABC
-from typing import Dict, Generic, Iterable, Iterator, List, \
-    Optional, Sequence, Tuple, TypeVar, Union
+from typing import Dict, Generic, Iterable, Iterator, List, Optional, \
+    Sequence, Tuple, TypeVar, Union
 
 import torch
 from torch.utils.data import Dataset
@@ -133,6 +133,8 @@ class _CachedDataSource(DataSource[Example]):
     `cache_strategy` and `shuffle_buffer_size` settings.
     """
 
+    _cache: Union[Dict[int, Example], List[Example]]
+
     def __init__(self, data_source: DataSource[Example],
                  erase_after_access: bool = True):
         r"""
@@ -171,7 +173,7 @@ class _CachedDataSource(DataSource[Example]):
             if self._erase_after_access:
                 self._cache[self._max_index] = example
             else:
-                self._cache.append(example)
+                self._cache.append(example)  # type: ignore
 
     @property
     def max_index(self) -> int:
@@ -187,6 +189,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
     """
 
     _source: DataSource[RawExample]
+    _dataset_size: Optional[int]
 
     def __init__(self, source: DataSource[RawExample], hparams,
                  device: Optional[torch.device] = None):
@@ -215,10 +218,12 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 self._supports_random_access = False
                 erase_after_access = (
                         self._cache_strategy is not _CacheStrategy.LOADED)
-                self._source = _CachedDataSource(source, erase_after_access)
+                self._cached_source = \
+                    _CachedDataSource(source, erase_after_access)
+                self._source = self._cached_source
                 self._dataset_size = None
 
-        self._processed_cache = []
+        self._processed_cache: List[Example] = []
         self._fully_cached = False
         # Perform eager loading/processing if required.
         if self._lazy_strategy is _LazyStrategy.NONE:
@@ -391,22 +396,21 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             returns the inferred dataset size. Otherwise, returns `None`.
         """
         if not self._supports_random_access:
-            self._source: _CachedDataSource
             try:
                 if index is not None:
-                    self._source.prefetch(index)
+                    self._cached_source.prefetch(index)
                 else:
                     max_index = 10 ** 8
-                    self._source.prefetch(max_index)
+                    self._cached_source.prefetch(max_index)
                     warnings.warn(
                         f"The data source contains more than {max_index:.2e} "
                         f"examples. Please check whether it is infinite.")
                     while True:
                         max_index *= 2
-                        self._source.prefetch(max_index)
+                        self._cached_source.prefetch(max_index)
             except StopIteration:
-                self._dataset_size = self._source.max_index
-                self._source.reset()
+                self._dataset_size = self._cached_source.max_index
+                self._cached_source.reset()
                 return self._dataset_size
         return None
 
@@ -418,6 +422,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 "This is often unnecessary and slow, consider redesigning your "
                 "use case.")
             self._prefetch_source(None)
+            assert self._dataset_size is not None
         return self._dataset_size
 
     def _process(self, raw_example: RawExample) -> Example:
@@ -443,7 +448,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 (self._lazy_strategy is _LazyStrategy.PROCESS and
                  self._cache_strategy is _CacheStrategy.PROCESSED)):
             for index in indices:
-                del self._source._cache[index]
+                del self._cached_source._cache[index]
         for index, example in zip(indices, examples):
             self._reorder_cache[index] = example
         while len(self._processed_cache) in self._reorder_cache:
@@ -455,7 +460,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
     def _start_iteration(self) -> None:
         if not self._supports_random_access:
-            self._source.reset()
+            self._cached_source.reset()
 
     @property
     def num_epochs(self):

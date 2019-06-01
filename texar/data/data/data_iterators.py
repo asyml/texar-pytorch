@@ -14,13 +14,14 @@
 """
 Various data iterator classes.
 """
-from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Union, Mapping
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, \
+    Sequence, Tuple, Union
 
+import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import sampler as torch_sampler
 from torch.utils.data.dataloader import _DataLoaderIter
 
-import torch
 from texar.data.data.data_base import DataBase
 from texar.data.data.dataset_utils import Batch
 from texar.utils.types import MaybeSeq
@@ -59,7 +60,7 @@ class SamplerBase(torch_sampler.Sampler):
     def _iterator_unknown_size(self) -> Iterator[int]:
         raise NotImplementedError
 
-    def __iter__(self) -> Iterator[int]:
+    def __iter__(self) -> Union[Iterator[int], Iterator[Tuple[int, Any]]]:
         self.size = self._data._dataset_size
         if self._data._should_call_prefetch_source:
             self._data._start_iteration()
@@ -68,11 +69,12 @@ class SamplerBase(torch_sampler.Sampler):
             iterator = self._iterator_unknown_size()
         else:
             # Non-lazy loading, or when dataset has been fully iterated.
+            assert self.size is not None
             iterator = self._iterator_given_size(self.size)
 
         if self._data._should_yield_raw_example:
             # Return indices and examples for any epoch in this case.
-            iterator = map(lambda idx: (idx, self._data._source[idx]), iterator)
+            return map(lambda idx: (idx, self._data._source[idx]), iterator)
         return iterator
 
     def __len__(self):
@@ -256,6 +258,7 @@ class SingleDatasetIterator(DataLoader):
     def __init__(self, dataset: DataBase):
         shuffle = dataset.hparams.shuffle
         shuffle_buffer_size = dataset.hparams.shuffle_buffer_size
+        sampler: SamplerBase
         if shuffle and shuffle_buffer_size is not None:
             sampler = BufferShuffleSampler(dataset, shuffle_buffer_size)
         elif shuffle:
@@ -266,7 +269,7 @@ class SingleDatasetIterator(DataLoader):
         num_parallel_calls = dataset.hparams.num_parallel_calls
         allow_smaller_final_batch = dataset.hparams.allow_smaller_final_batch
         collate_fn = dataset._collate_and_maybe_return
-        super().__init__(  # type: ignore
+        super().__init__(
             dataset, dataset.batch_size, sampler=sampler, collate_fn=collate_fn,
             num_workers=(0 if num_parallel_calls == 1 else num_parallel_calls),
             drop_last=(not allow_smaller_final_batch))

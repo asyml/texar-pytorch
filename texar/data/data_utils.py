@@ -14,16 +14,16 @@
 """
 Various utilities specific to data processing.
 """
+import collections
+import logging
 import os
 import sys
 import tarfile
-import logging
 import urllib.request
 import zipfile
-import collections
+
 import numpy as np
 import requests
-
 
 from texar.utils import utils_io
 

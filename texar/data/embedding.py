@@ -14,12 +14,12 @@
 """
 Helper functions and classes for embedding processing.
 """
-from typing import Dict, Optional, Callable, Any
+from typing import Callable, Dict, Optional
 
 import numpy as np
 
-from texar.utils import utils
 from texar.hyperparams import HParams
+from texar.utils import utils
 
 __all__ = [
     "load_word2vec",

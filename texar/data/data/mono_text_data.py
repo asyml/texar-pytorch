@@ -19,8 +19,8 @@ from enum import Enum
 from typing import List, Optional
 
 import numpy as np
-
 import torch
+
 from texar.data.data import dataset_utils as dsutils
 from texar.data.data.dataset_utils import Batch
 from texar.data.data.text_data_base import TextDataBase, TextLineDataSource
@@ -171,7 +171,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
         self._length_filter_mode = _LengthFilterMode(
             self._hparams.dataset.length_filter_mode)
         self._pad_length = self._max_seq_length
-        if self._max_seq_length is not None:
+        if self._pad_length is not None:
             self._pad_length += sum(int(x != '')
                                     for x in [self._bos_token, self._eos_token])
 

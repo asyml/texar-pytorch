@@ -606,7 +606,7 @@ def dict_lookup(dict_: MutableMapping[K, V], keys: Union[List[K], np.ndarray],
     Raises:
         TypeError: If key is not in :attr:`dict_` and :attr:`default` is `None`.
     """
-    return np.vectorize(lambda x: dict_.get(x, default))(keys)
+    return np.vectorize(lambda x: dict_.get(x, default))(keys)  # type: ignore
 
 
 def dict_fetch(src_dict: Optional[ParamDict],
