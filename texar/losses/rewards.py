@@ -15,7 +15,7 @@
 Various reward related functions.
 """
 
-import numpy as np
+from typing import Optional
 
 import torch
 
@@ -26,114 +26,80 @@ from texar.utils.utils import sequence_mask
 
 __all__ = [
     "discount_reward",
-    "_discount_reward_py_1d",
     "_discount_reward_tensor_1d",
-    "_discount_reward_py_2d",
     "_discount_reward_tensor_2d"
 ]
 
 
-def discount_reward(reward,
-                    sequence_length=None,
-                    discount=1.,
-                    normalize=False,
-                    dtype=None,
-                    tensor_rank=1):
+def discount_reward(reward: torch.Tensor,
+                    sequence_length: Optional[torch.LongTensor] = None,
+                    discount: float = 1.,
+                    normalize: bool = False) -> torch.Tensor:
     """Computes discounted reward.
 
-    :attr:`reward` and :attr:`sequence_length` can be either Tensors or python
-    arrays. If both are python array (or `None`), the return will be a python
-    array as well. Otherwise tf Tensors are returned.
-
     Args:
-        reward: A Tensor or python array. Can be 1D with shape `[batch_size]`,
+        reward: A Tensor. Can be 1D with shape `[batch_size]`,
             or 2D with shape `[batch_size, max_time]`.
-        sequence_length (optional): A Tensor or python array of shape
-            `[batch_size]`. Time steps beyond the respective sequence lengths
-            will be masked. Required if :attr:`reward` is 1D.
+        sequence_length (optional): A Tensor of shape `[batch_size]`.
+            Time steps beyond the respective sequence lengths will be masked.
+            Required if :attr:`reward` is 1D.
         discount (float): A scalar. The discount factor.
         normalize (bool): Whether to normalize the discounted reward, by
             `(discounted_reward - mean) / std`. Here `mean` and `std` are
             over all time steps and all samples in the batch.
-        dtype (dtype): Type of :attr:`reward`. If `None`, infer from
-            `reward` automatically.
-        tensor_rank (int): The number of dimensions of :attr:`reward`.
-            Default is 1, i.e., :attr:`reward` is a 1D Tensor consisting
-            of a batch dimension. Ignored if :attr:`reward`
-            and :attr:`sequence_length` are python arrays (or `None`).
 
     Returns:
-        A 2D Tensor or python array of the discounted reward.
-
-        If :attr:`reward` and :attr:`sequence_length` are python
-        arrays (or `None`), the returned value is a python array as well.
-
-
-    Example:
-
-        .. code-block:: python
-
-            r = [2., 1.]
-            seq_length = [3, 2]
-            discounted_r = discount_reward(r, seq_length, discount=0.1)
-            # discounted_r == [[2. * 0.1^2, 2. * 0.1, 2.],
-            #                  [1. * 0.1,   1.,       0.]]
-
-            r = [[3., 4., 5.], [6., 7., 0.]]
-            seq_length = [3, 2]
-            discounted_r = discount_reward(r, seq_length, discount=0.1)
-            # discounted_r == [[3. + 4.*0.1 + 5.*0.1^2, 4. + 5.*0.1, 5.],
-            #                  [6. + 7.*0.1,            7.,          0.]]
+        A 2D Tensor of the discounted reward.
     """
-    if isinstance(reward, torch.Tensor) or isinstance(sequence_length,
-                                                      torch.Tensor):
-        if tensor_rank == 1:
-            disc_reward = _discount_reward_tensor_1d(
-                reward, sequence_length, discount, dtype)
-        elif tensor_rank == 2:
-            disc_reward = _discount_reward_tensor_2d(
-                reward, sequence_length, discount, dtype)
-        else:
-            raise ValueError("`tensor_rank` can only be 1 or 2.")
+    if not isinstance(reward, torch.Tensor):
+        reward = torch.tensor(reward)
+    if sequence_length is not None \
+            and not isinstance(sequence_length, torch.Tensor):
+        sequence_length = torch.tensor(sequence_length, dtype=torch.int64)
 
-        if normalize:
-            mu = torch.mean(disc_reward, dim=(0, 1), keepdim=True)
-            var = torch.std(disc_reward, dim=(0, 1), keepdim=True)
-            disc_reward = (disc_reward - mu) / (torch.sqrt(var) + 1e-8)
-
+    tensor_rank = reward.dim()
+    if tensor_rank == 1:
+        disc_reward = _discount_reward_tensor_1d(reward,
+                                                 sequence_length,
+                                                 discount)
+    elif tensor_rank == 2:
+        disc_reward = _discount_reward_tensor_2d(reward,
+                                                 sequence_length,
+                                                 discount)
     else:
-        reward = np.array(reward)
-        tensor_rank = reward.ndim
-        if tensor_rank == 1:
-            disc_reward = _discount_reward_py_1d(
-                reward, sequence_length, discount, dtype)
-        elif tensor_rank == 2:
-            disc_reward = _discount_reward_py_2d(
-                reward, sequence_length, discount, dtype)
-        else:
-            raise ValueError("`reward` can only be 1D or 2D.")
+        raise ValueError("The dimension of reward can only be 1 or 2.")
 
-        if normalize:
-            mu = np.mean(disc_reward)
-            std = np.std(disc_reward)
-            disc_reward = (disc_reward - mu) / (std + 1e-8)
+    if normalize:
+        mu = torch.mean(disc_reward, dim=(0, 1), keepdim=True)
+        var = torch.std(disc_reward, dim=(0, 1), keepdim=True)
+        disc_reward = (disc_reward - mu) / (torch.sqrt(var) + 1e-8)
 
     return disc_reward
 
 
-def _discount_reward_py_1d(reward, sequence_length,
-                           discount=1., dtype=None):
-    raise NotImplementedError
+def _discount_reward_tensor_1d(reward: torch.Tensor,
+                               sequence_length: torch.LongTensor,
+                               discount: float = 1.) -> torch.Tensor:
+    """Computes discounted reward.
 
+    Args:
+        reward: 1D Tensor with shape `[batch_size]`.
+        sequence_length: A Tensor of shape `[batch_size]`.
+        Time steps beyond the respective sequence lengths will be masked.
+        discount (float): A scalar. The discount factor.
 
-def _discount_reward_tensor_1d(reward, sequence_length,
-                               discount=1., dtype=None):
+    Returns:
+        A 2D Tensor of the discounted reward.
+    """
     if sequence_length is None:
         raise ValueError('sequence_length must not be `None` for 1D reward.')
 
+    if not isinstance(sequence_length, torch.Tensor):
+        sequence_length = torch.tensor(sequence_length, dtype=torch.int64)
+
     batch_size = reward.shape[0]
     max_seq_length = torch.max(sequence_length)
-    dtype = dtype or reward.dtype
+    dtype = reward.dtype
 
     if discount == 1.:
         dmat = torch.ones(batch_size, max_seq_length, dtype=dtype)
@@ -142,8 +108,9 @@ def _discount_reward_tensor_1d(reward, sequence_length,
         mask = torch.cat((mask[:, 1:], torch.zeros_like(mask[:, -1:])), dim=1)
         # Make each row = [discount, ..., discount, 1, ..., 1]
         dmat = mask * discount + (1 - mask)
+        dmat = torch.flip(dmat, (1, ))
         dmat = torch.cumprod(dmat, dim=1)
-        dmat = torch.flip(dmat, [1])
+        dmat = torch.flip(dmat, (1, ))
 
     disc_reward = dmat * torch.unsqueeze(reward, -1)
     disc_reward = mask_sequences(disc_reward, sequence_length, dtype=dtype)
@@ -151,22 +118,32 @@ def _discount_reward_tensor_1d(reward, sequence_length,
     return disc_reward
 
 
-def _discount_reward_py_2d(reward, sequence_length=None,
-                           discount=1., dtype=None):
-    raise NotImplementedError
+def _discount_reward_tensor_2d(
+        reward: torch.Tensor,
+        sequence_length: Optional[torch.LongTensor] = None,
+        discount: float = 1.) -> torch.Tensor:
+    """Computes discounted reward.
 
+    Args:
+        reward: 2D Tensor with shape `[batch_size, max_time]`.
+        sequence_length (optional): A Tensor of shape `[batch_size]`.
+            Time steps beyond the respective sequence lengths will be masked.
+        discount (float): A scalar. The discount factor.
 
-def _discount_reward_tensor_2d(reward, sequence_length=None,
-                               discount=1., dtype=None):
+    Returns:
+        A 2D Tensor of the discounted reward.
+    """
+    dtype = reward.dtype
     if sequence_length is not None:
         reward = mask_sequences(reward, sequence_length, dtype=dtype)
 
     if discount == 1.:
+        reward = torch.flip(reward, (1, ))
         disc_reward = torch.cumsum(reward, dim=1)
-        disc_reward = torch.flip(disc_reward, [1])
+        disc_reward = torch.flip(disc_reward, (1, ))
     else:
         # [max_time, batch_size]
-        rev_reward_T = torch.flip(reward, [1]).permute(1, 0)
+        rev_reward_T = torch.flip(reward, (1, )).permute(1, 0)
 
         def func(acc, cur):
             return cur + discount * acc
@@ -178,9 +155,7 @@ def _discount_reward_tensor_2d(reward, sequence_length=None,
             acc = func(acc, cur)
             res.append(acc)
 
-        rev_reward_T_cum = torch.tensor(res)
-        disc_reward = torch.flip(rev_reward_T_cum.permute(1, 0), [1])
+        rev_reward_T_cum = torch.stack(res, dim=0)
+        disc_reward = torch.flip(rev_reward_T_cum.permute(1, 0), (1, ))
 
     return disc_reward
-
-

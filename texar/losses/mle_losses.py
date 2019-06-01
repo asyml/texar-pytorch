@@ -39,7 +39,7 @@ __all__ = [
 def sequence_softmax_cross_entropy(
         labels: torch.Tensor,
         logits: torch.Tensor,
-        sequence_length: torch.LongTensor,
+        sequence_length: Optional[torch.LongTensor],
         average_across_batch: bool = True,
         average_across_timesteps: bool = False,
         sum_over_batch: bool = False,
@@ -117,7 +117,7 @@ def sequence_softmax_cross_entropy(
 def sequence_sparse_softmax_cross_entropy(
         labels: torch.Tensor,
         logits: torch.Tensor,
-        sequence_length: torch.LongTensor,
+        sequence_length: Optional[torch.LongTensor],
         average_across_batch: bool = True,
         average_across_timesteps: bool = False,
         sum_over_batch: bool = False,
@@ -204,7 +204,7 @@ def sequence_sparse_softmax_cross_entropy(
 def sequence_sigmoid_cross_entropy(
         labels: torch.Tensor,
         logits: torch.Tensor,
-        sequence_length: torch.LongTensor,
+        sequence_length: Optional[torch.LongTensor],
         average_across_batch: bool = True,
         average_across_timesteps: bool = False,
         average_across_classes: bool = True,
