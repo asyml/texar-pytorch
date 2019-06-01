@@ -69,7 +69,7 @@ def reverse_sequence(inputs: torch.Tensor,
 
     for i in range(batch_size):
         inputs[i][0:seq_lengths[i]] = torch.flip(inputs[i][0:seq_lengths[i]],
-                                                 [0])
+                                                 (0, ))
     if time_major:
         inputs = inputs.permute(1, 0, 2)
 
