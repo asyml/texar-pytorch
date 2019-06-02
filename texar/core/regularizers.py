@@ -44,8 +44,8 @@ class L1L2(Regularizer):
     """Regularizer for L1 and L2 regularization.
 
     Args:
-        l1: Float; L1 regularization factor.
-        l2: Float; L2 regularization factor.
+        l1: Float or Int; L1 regularization factor.
+        l2: Float or Int; L2 regularization factor.
     """
 
     def __init__(self,
@@ -88,7 +88,7 @@ def l2(l: Union[int, float] =0.01) -> Regularizer:
     """
 
     Args:
-        l: Float
+        l: Float or Int
             L2 regularization factor.
     Returns:
         An L1L2 regularization instance with l2=l
@@ -100,9 +100,9 @@ def l1_l2(l1: Union[int, float] = 0.01,
           l2: Union[int, float] = 0.01) -> Regularizer:  # pylint: disable=redefined-outer-name
     """
     Args:
-        l1: Float
+        l1: Float or Int
             L1 regularization factor.
-        l2: Float
+        l2: Float or Int
             L2 regularization factor.
     Returns:
         An L1L2 regularization instance with above regularization factors
