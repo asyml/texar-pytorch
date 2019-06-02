@@ -17,8 +17,8 @@ Hyperparameter manager
 
 import copy
 import json
-from typing import Any, Dict, ItemsView, Iterator, KeysView, \
-    Optional, Tuple, Union
+from typing import (
+    Any, Dict, ItemsView, Iterator, KeysView, Optional, Tuple, Union)
 
 __all__ = [
     'HParams'
