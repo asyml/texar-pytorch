@@ -42,7 +42,7 @@ class RegularizerTest(unittest.TestCase):
         self.assertEqual(regularizer.get_config().get("l1"), 0)
         self.assertEqual(regularizer.get_config().get("l2"), 0.2)
 
-    def test_l2(self):
+    def test_l1_l2(self):
         """Tests l1_l2."""
         regularizer = l1_l2(self.l1, self.l2)
         self.assertEqual(regularizer.l1, 0.1)

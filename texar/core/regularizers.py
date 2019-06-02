@@ -48,15 +48,16 @@ class L1L2(Regularizer):
         l2: Float or Int; L2 regularization factor.
     """
 
-    def __init__(self,
-                 l1: Union[int, float] = 0.,
-                 l2: Union[int, float] = 0.):  # pylint: disable=redefined-outer-name
+    def __init__(
+            self,
+            l1: Union[int, float] = 0.,
+            l2: Union[int, float] = 0.):  # pylint: disable=redefined-outer-name
         self.l1 = float(l1)
         self.l2 = float(l2)
 
     def __call__(self,
                  x: torch.Tensor) -> torch.Tensor:
-        regularization = 0.
+        regularization = torch.tensor(0.)
         if self.l1:
             regularization += torch.sum(self.l1 * torch.abs(x).float())
         if self.l2:
@@ -97,7 +98,8 @@ def l2(l: Union[int, float] =0.01) -> Regularizer:
 
 
 def l1_l2(l1: Union[int, float] = 0.01,
-          l2: Union[int, float] = 0.01) -> Regularizer:  # pylint: disable=redefined-outer-name
+          l2: Union[int, float] = 0.01) -> \
+        Regularizer:  # pylint: disable=redefined-outer-name
     """
     Args:
         l1: Float or Int
