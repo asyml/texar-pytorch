@@ -41,6 +41,7 @@ class SamplerTest(unittest.TestCase):
             self._unknown_size = unknown_size
             self._supports_random_access = False
             self._fully_cached = False
+            self._parallelize_processing = True
 
         def _prefetch_source(self, index: int) -> Optional[int]:  # type: ignore
             if self._unknown_size:
@@ -284,35 +285,53 @@ class LazinessCachingTest(unittest.TestCase):
 
     def _test_modes_with_workers(self, lazy_mode: str, cache_mode: str,
                                  num_workers: int,
-                                 parallelize_processing=True, **kwargs):
+                                 parallelize_processing: bool = True,
+                                 support_random_access: bool = False,
+                                 shuffle: bool = False,
+                                 **kwargs):
         hparams = {
             'batch_size': self.batch_size,
             'lazy_strategy': lazy_mode,
             'cache_strategy': cache_mode,
             'num_parallel_calls': num_workers,
-            'shuffle': False,
+            'shuffle': shuffle,
+            'shuffle_buffer_size': self.size // 5,
             'parallelize_processing': parallelize_processing,
+            'allow_smaller_final_batch': False,
             **kwargs,
         }
-        source = ZipDataSource(  # type: ignore
-            IterDataSource([[x] * self.seq_len for x in range(self.size)]),
-            SequenceDataSource([' '.join(map(str, range(self.seq_len)))
-                                for _ in range(self.size)]))
+        numbers_data = [[x] * self.seq_len for x in range(self.size)]
+        string_data = [' '.join(map(str, range(self.seq_len)))
+                       for _ in range(self.size)]
+        if not support_random_access:
+            source = ZipDataSource(  # type: ignore
+                IterDataSource(numbers_data),
+                SequenceDataSource(string_data))
+        else:
+            source = ZipDataSource(  # type: ignore
+                SequenceDataSource(numbers_data),
+                SequenceDataSource(string_data))
         data = MockDataBase(source, hparams)  # type: ignore
         iterator = DataIterator(data)
 
-        total_batches = (self.size + self.batch_size - 1) // self.batch_size
+        if data._hparams.allow_smaller_final_batch:
+            total_examples = self.size
+            total_batches = (self.size + self.batch_size - 1) // self.batch_size
+        else:
+            total_examples = self.size // self.batch_size * self.batch_size
+            total_batches = self.size // self.batch_size
 
         def check_batch(idx, batch):
             if idx == total_batches - 1:
-                batch_size = (self.size - 1) % self.batch_size + 1
+                batch_size = (total_examples - 1) % self.batch_size + 1
             else:
                 batch_size = self.batch_size
             self.assertEqual(batch.numbers.shape,
                              (batch_size, self.seq_len))
-            numbers = [idx * self.batch_size + x + 1 for x in range(batch_size)]
-            self.assertTrue(np.all(batch.numbers ==
-                                   np.asarray(numbers)[:, np.newaxis]))
+            if not shuffle:
+                numbers = np.asarray([idx * self.batch_size + x + 1
+                                      for x in range(batch_size)])
+                self.assertTrue(np.all(batch.numbers == numbers[:, np.newaxis]))
 
         # check laziness
         if parallelize_processing:
@@ -320,10 +339,12 @@ class LazinessCachingTest(unittest.TestCase):
                 self.assertEqual(len(data._processed_cache), self.size)
             else:
                 self.assertEqual(len(data._processed_cache), 0)
-                if lazy_mode == 'process':
-                    self.assertEqual(len(data._cached_source._cache), self.size)
-                else:
-                    self.assertEqual(len(data._cached_source._cache), 0)
+                if not support_random_access:
+                    if lazy_mode == 'process':
+                        self.assertEqual(len(data._cached_source._cache),
+                                         self.size)
+                    else:
+                        self.assertEqual(len(data._cached_source._cache), 0)
 
         # first epoch
         cnt = 0
@@ -340,7 +361,7 @@ class LazinessCachingTest(unittest.TestCase):
                 self.assertEqual(len(data._processed_cache), 0)
             else:
                 self.assertEqual(len(data._processed_cache), self.size)
-            if lazy_mode != 'none':
+            if lazy_mode != 'none' and not support_random_access:
                 if cache_mode == 'none':
                     self.assertEqual(len(data._cached_source._cache), 0)
                 elif cache_mode == 'loaded':
@@ -355,11 +376,31 @@ class LazinessCachingTest(unittest.TestCase):
             cnt += 1
         self.assertEqual(cnt, total_batches)
 
+        # check again
+        if parallelize_processing:
+            if cache_mode == 'none':
+                self.assertEqual(len(data._processed_cache), 0)
+            elif cache_mode == 'loaded':
+                self.assertEqual(len(data._processed_cache), 0)
+            else:
+                self.assertEqual(len(data._processed_cache), self.size)
+            if lazy_mode != 'none' and not support_random_access:
+                if cache_mode == 'none':
+                    self.assertEqual(len(data._cached_source._cache), 0)
+                elif cache_mode == 'loaded':
+                    self.assertEqual(len(data._cached_source._cache), self.size)
+                else:
+                    self.assertEqual(len(data._cached_source._cache), 0)
+
     def _test_modes(self, lazy_mode: str, cache_mode: str):
         self._test_modes_with_workers(lazy_mode, cache_mode, self.num_workers)
         self._test_modes_with_workers(lazy_mode, cache_mode, self.num_workers,
                                       parallelize_processing=False)
         self._test_modes_with_workers(lazy_mode, cache_mode, 1)
+        self._test_modes_with_workers(lazy_mode, cache_mode, self.num_workers,
+                                      support_random_access=True)
+        self._test_modes_with_workers(lazy_mode, cache_mode, self.num_workers,
+                                      shuffle=True)
 
     def test_none_processed(self):
         self._test_modes('none', 'processed')

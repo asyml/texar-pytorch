@@ -126,7 +126,36 @@ class RecordDataSource(DataSource[Dict[str, RawExample]]):
         return min(len(source) for source in self._sources.values())
 
 
+class _TruncatedDataSource(DataSource[RawExample]):
+    def __init__(self, data_source: DataSource[RawExample], max_size: int):
+        self._source = data_source
+        self._max_size = max_size
+
+    def __getitem__(self, item) -> RawExample:
+        if item >= self._max_size:
+            raise IndexError(
+                f"Data index ({item}) out of range [0, {self._max_size})")
+        return self._source[item]
+
+    def __iter__(self) -> Iterator[RawExample]:
+        count = 0
+        iterator = iter(self._source)
+        while count < self._max_size:
+            yield next(iterator)
+            count += 1
+
+    def __len__(self) -> int:
+        try:
+            length = min(len(self._source), self._max_size)
+        except TypeError:
+            length = self._max_size
+        return length
+
+
 class _TransformedDataSource(DataSource[Example]):
+    r"""Data source by performing transformations on another data source.
+    """
+
     def __init__(self, data_source: DataSource[RawExample],
                  process_fn: Callable[[RawExample], Example]):
         self._source = data_source
@@ -187,8 +216,8 @@ class _CachedDataSource(DataSource[RawExample]):
 
     def prefetch(self, index: int):
         while self._max_index < index:
-            self._max_index += 1
             example = next(self._iter)
+            self._max_index += 1
             if self._erase_after_access:
                 self._cache[self._max_index] = example
             else:
@@ -199,8 +228,9 @@ class _CachedDataSource(DataSource[RawExample]):
         return self._max_index
 
     def reset(self) -> None:
-        self._iter = iter(self._source)
-        self._max_index = -1
+        if self._erase_after_access:
+            self._iter = iter(self._source)
+            self._max_index = -1
 
 
 class DataBase(Dataset, Generic[RawExample, Example], ABC):
@@ -220,18 +250,36 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         self._lazy_strategy = _LazyStrategy(self._hparams.lazy_strategy)
         self._cache_strategy = _CacheStrategy(self._hparams.cache_strategy)
         if self._lazy_strategy is _LazyStrategy.NONE:
+            if self._cache_strategy is not _CacheStrategy.PROCESSED:
+                warnings.warn(
+                    f"Using '{self._cache_strategy}' cache strategy with "
+                    f"'none' lazy strategy. This will be equivalent to "
+                    f"'processed' cache strategy.")
             self._cache_strategy = _CacheStrategy.PROCESSED
         elif self._lazy_strategy is _LazyStrategy.PROCESS:
             if self._cache_strategy is _CacheStrategy.NONE:
+                warnings.warn(
+                    f"Using 'none' cache strategy with 'process' lazy "
+                    f"strategy. This will be equivalent to 'loaded' cache "
+                    f"strategy.")
                 self._cache_strategy = _CacheStrategy.LOADED
         self._uses_multi_processing = self._hparams.num_parallel_calls > 1
         self._parallelize_processing = self._hparams.parallelize_processing
+
+        self._processed_cache: List[Example] = []
+        self._fully_cached = False
+
+        # If specified maximum dataset size, wrap the data source. This is done
+        # before caching to avoid caching excess elements.
+        if self._hparams.max_dataset_size != -1:
+            self._source = _TruncatedDataSource(self._source,
+                                                self._hparams.max_dataset_size)
 
         # If processing should not be parallelized, combine processing with
         # loading by wrapping the data source. In this case, processed data
         # will be cached.
         if (not self._parallelize_processing and
-                self._lazy_strategy is not _LazyStrategy.NONE and
+                self._lazy_strategy is _LazyStrategy.ALL and
                 self._cache_strategy is not _CacheStrategy.LOADED):
             self._source = _TransformedDataSource(self._source, self._process)
 
@@ -245,10 +293,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             except TypeError:
                 self._supports_random_access = False
                 erase_after_access = (
-                        (self._parallelize_processing and
-                         self._cache_strategy is not _CacheStrategy.LOADED) or
-                        (not self._parallelize_processing and
-                         self._cache_strategy is _CacheStrategy.NONE))
+                        self._cache_strategy is not _CacheStrategy.LOADED)
                 self._cached_source = \
                     _CachedDataSource(self._source, erase_after_access)
                 self._source = self._cached_source
@@ -261,13 +306,30 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 self._cache_strategy is _CacheStrategy.LOADED):
             self._source = _TransformedDataSource(self._source, self._process)
 
-        self._processed_cache: List[Example] = []
-        self._fully_cached = False
+        # Simplify some logic-heavy checks.
+        self.__should_return_processed_examples = (
+                self._lazy_strategy is not _LazyStrategy.NONE and
+                self._cache_strategy is _CacheStrategy.PROCESSED and
+                self._parallelize_processing)
+        self.__should_call_prefetch_source = (
+                self._lazy_strategy is _LazyStrategy.ALL and
+                self._cache_strategy is _CacheStrategy.NONE)
+        self.__should_call_prefetch_processed = (
+                not self._parallelize_processing and
+                self._lazy_strategy is _LazyStrategy.PROCESS and
+                self._cache_strategy is _CacheStrategy.PROCESSED)
+        self.__should_delete_source_in_add_cache = (
+                not self._supports_random_access and
+                self._parallelize_processing and
+                self._uses_multi_processing and
+                self._lazy_strategy is _LazyStrategy.PROCESS and
+                self._cache_strategy is _CacheStrategy.PROCESSED)
+
         # Perform eager loading/processing if required.
         if self._lazy_strategy is _LazyStrategy.NONE:
             # Process entire dataset and cache.
-            for raw_example in self._source:
-                self._processed_cache.append(self._process(raw_example))
+            self._processed_cache = [self._process(raw_example)
+                                     for raw_example in self._source]
             self._dataset_size = len(self._processed_cache)
             self._fully_cached = True
         else:
@@ -275,9 +337,11 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 # Load entire dataset. Note that if data source supports random
                 # access, we assume it is already loaded into memory.
                 if not self._supports_random_access:
-                    self._prefetch_source(None)
+                    self._prefetch_all_source()
 
             if self._cache_strategy is _CacheStrategy.PROCESSED:
+                # Data can be processed in arbitrary order, so they need to be
+                # reordered before storing in the cache list.
                 self._reorder_cache: Dict[int, Example] = {}
 
     @staticmethod
@@ -413,6 +477,9 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 `none`. If `lazy_strategy` is `none`, processing will be
                 performed on a single process regardless of this value.
         """
+        # TODO: Find a way to embed that big table here. Also change the table
+        #   to include different behaviors when `parallelize_processing` is
+        #   `False`.
         return {
             "name": "data",
             "num_epochs": 1,
@@ -431,7 +498,42 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         }
 
     def to(self, device: torch.device):
+        r"""Move the dataset to the specific device. Note that we don't actually
+        move data or do anything here --- we rely on correct implementations of
+        :meth:`texar.data.data._process` and :meth:`texar.data.data._collate` to
+        move data to appropriate devices.
+        """
         self.device = device
+
+    def _prefetch_processed(self, index: int):
+        r"""Performs processing on the main process. This is called in
+        :meth:`texar.data.data.DataBase._prefetch_source` if
+        `parallelize_processing` is `False`."""
+        if len(self._processed_cache) <= index:
+            self._processed_cache.extend(
+                self._process(self._source[x])
+                for x in range(len(self._processed_cache), index + 1))
+            if len(self._processed_cache) == self._dataset_size:
+                self._fully_cached = True
+
+    def _prefetch_all_source(self) -> int:
+        r"""Prefetches all examples from data source. This is only called if
+        `__len__` is called before dataset size can be determined, or when using
+        eager loading.
+        """
+
+        try:
+            max_index = 10 ** 8
+            self._cached_source.prefetch(max_index)
+            warnings.warn(
+                f"The data source contains more than {max_index:.2e} "
+                f"examples. Please check whether it is infinite.")
+            while True:
+                max_index *= 2
+                self._cached_source.prefetch(max_index)
+        except StopIteration:
+            self._dataset_size = self._cached_source.max_index + 1
+            return self._dataset_size
 
     def _prefetch_source(self, index: Optional[int]) -> Optional[int]:
         r"""Prefetches data so `__getitem__` will be available. This method
@@ -447,20 +549,17 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         """
         if not self._supports_random_access:
             try:
-                if index is not None:
-                    self._cached_source.prefetch(index)
-                else:
-                    max_index = 10 ** 8
-                    self._cached_source.prefetch(max_index)
-                    warnings.warn(
-                        f"The data source contains more than {max_index:.2e} "
-                        f"examples. Please check whether it is infinite.")
-                    while True:
-                        max_index *= 2
-                        self._cached_source.prefetch(max_index)
+                self._cached_source.prefetch(index)
             except StopIteration:
-                self._dataset_size = self._cached_source.max_index
-                self._cached_source.reset()
+                self._dataset_size = self._cached_source.max_index + 1
+                # self._cached_source.reset()
+                if self._should_call_prefetch_processed:
+                    self._prefetch_processed(self._dataset_size - 1)
+                return self._dataset_size
+            if self._should_call_prefetch_processed:
+                self._prefetch_processed(index)
+        else:
+            if index >= self._dataset_size:
                 return self._dataset_size
         return None
 
@@ -471,11 +570,24 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 "obtain dataset size, a full traversal must be performed. "
                 "This is often unnecessary and slow, consider redesigning your "
                 "use case.")
-            self._prefetch_source(None)
+            self._prefetch_all_source()
             assert self._dataset_size is not None
         return self._dataset_size
 
     def _process(self, raw_example: RawExample) -> Example:
+        r"""The process routine. Subclasses must implement this method.
+
+        The process routine would take raw examples loaded from the data source
+        as input, and return processed examples. If `parallelize_processing`
+        is `True`, this method **must not** access shared variables that are
+        modified during iterator (e.g., constructing vocabularies on-the-fly).
+
+        Args:
+            raw_example: The raw example loaded from data.
+
+        Returns:
+            The processed example.
+        """
         raise NotImplementedError
 
     def __getitem__(self, index: Union[int, Tuple[int, RawExample]]) -> Example:
@@ -494,26 +606,38 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 return self._process(index[1])
 
     def _add_cached_examples(self, indices: List[int], examples: List[Example]):
-        # In this case, `_CachedDataSource.__getitem__` will be
-        # called on worker processes, so the cache cannot be
-        # deleted. Thus, we move deletion to
-        # `_add_cached_examples`.
-        if (not self._supports_random_access and
-                self._uses_multi_processing and
-                (self._lazy_strategy is _LazyStrategy.PROCESS and
-                 self._cache_strategy is _CacheStrategy.PROCESSED)):
+        r"""Called by :class:`texar.data.data._CacheDataLoaderIter` to cache
+        examples processed in worker processes.
+
+        Args:
+            indices: Indices for each example.
+            examples: The examples processed in worker processes.
+        """
+        if self._should_delete_source_in_add_cache:
+            # In this case, `_CachedDataSource.__getitem__` will be
+            # called on worker processes, so the cache cannot be
+            # deleted. Thus, we move deletion to
+            # `_add_cached_examples`.
             for index in indices:
                 del self._cached_source._cache[index]
         for index, example in zip(indices, examples):
-            self._reorder_cache[index] = example
+            if index == len(self._processed_cache):
+                self._processed_cache.append(example)
+            else:
+                self._reorder_cache[index] = example
+
         while len(self._processed_cache) in self._reorder_cache:
             index = len(self._processed_cache)
             self._processed_cache.append(self._reorder_cache[index])
             del self._reorder_cache[index]
-        if self._dataset_size == len(self._processed_cache):
+        if len(self._processed_cache) == self._dataset_size:
             self._fully_cached = True
 
     def _start_iteration(self) -> None:
+        r"""Called by :class:`texar.data.data.SamplerBase` before a new round
+        of iteration starts. Note that this method will only be called if an
+        unknown-sized iterator is used.
+        """
         if not self._supports_random_access:
             self._cached_source.reset()
 
@@ -588,9 +712,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         return the processed examples.
         """
         return (not self._fully_cached and
-                self._lazy_strategy is not _LazyStrategy.NONE and
-                self._cache_strategy is _CacheStrategy.PROCESSED and
-                self._parallelize_processing)
+                self.__should_return_processed_examples)
 
     @property
     def _should_yield_raw_example(self):
@@ -602,6 +724,21 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
     @property
     def _should_call_prefetch_source(self):
+        r"""Returns `True` if the sampler should call `_prefetch_source`.
+        """
         return (self._dataset_size is None or
-                (self._lazy_strategy is _LazyStrategy.ALL and
-                 self._cache_strategy is _CacheStrategy.NONE))
+                self.__should_call_prefetch_source)
+
+    @property
+    def _should_call_prefetch_processed(self):
+        r"""Returns `True` if `_prefetch_source` should call
+        `_prefetch_processed`.
+        """
+        return self.__should_call_prefetch_processed
+
+    @property
+    def _should_delete_source_in_add_cache(self):
+        r"""Returns `True` if `_add_cached_examples` should delete cached raw
+        examples.
+        """
+        return self.__should_delete_source_in_add_cache

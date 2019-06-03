@@ -20,7 +20,7 @@ from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, \
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import sampler as torch_sampler
-from torch.utils.data.dataloader import _DataLoaderIter
+from torch.utils.data.dataloader import _DataLoaderIter as torch_DataLoaderIter
 
 from texar.data.data.data_base import DataBase
 from texar.data.data.dataset_utils import Batch
@@ -55,14 +55,29 @@ class SamplerBase(torch_sampler.Sampler):
         self.size: Optional[int] = None
 
     def _iterator_given_size(self, size: int) -> Iterator[int]:
+        r"""Return an iterator that generates samples when the dataset size
+        is given.
+
+        Args:
+            size: The dataset size.
+        """
         raise NotImplementedError
 
     def _iterator_unknown_size(self) -> Iterator[int]:
+        r"""Return an iterator that generates samples when the dataset size
+        is unknown. This iterator must also call
+        :meth:`texar.data.data.DataBase._prefetch_source` and check whether
+        the dataset size can be determined, before yielding the index. See
+        example implementations for details.
+        """
         raise NotImplementedError
 
     def __iter__(self) -> Union[Iterator[int], Iterator[Tuple[int, Any]]]:
+        r"""Return an iterator based on the dataset settings.
+        """
         self.size = self._data._dataset_size
-        if self._data._should_call_prefetch_source:
+        if (not self._data._fully_cached or
+                self._data._should_call_prefetch_source):
             self._data._start_iteration()
             # First epoch of lazy loading, calling prefetch, and returning
             # indices and examples.
@@ -72,9 +87,18 @@ class SamplerBase(torch_sampler.Sampler):
             assert self.size is not None
             iterator = self._iterator_given_size(self.size)
 
-        if self._data._should_yield_raw_example:
+        if self._data._should_call_prefetch_processed:
+            # Processing routine is performed in main process. Yield
+            # processed examples instead.
+            map_fn = lambda idx: (idx, self._data._processed_cache[idx])
+        elif self._data._should_yield_raw_example:
             # Return indices and examples for any epoch in this case.
-            return map(lambda idx: (idx, self._data._source[idx]), iterator)
+            map_fn = lambda idx: (idx, self._data._source[idx])
+        else:
+            map_fn = None
+        if map_fn is not None:
+            return map(map_fn, iterator)
+
         return iterator
 
     def __len__(self):
@@ -186,11 +210,39 @@ class BufferShuffleSampler(SamplerBase):
                     if buffer[x] < self.size)
 
 
-class _CacheDataLoaderIter(_DataLoaderIter):
+class _DataLoaderIter(torch_DataLoaderIter):
+    r"""Iterates once over the DataLoader's dataset. This is almost identical
+    to PyTorch :class:`torch.utils.data.dataloader._DataLoaderIter`, except
+    that we check `allow_smaller_final_batch` here. This is because using
+    `drop_last` in :class:`~torch.utils.data.sampler.BatchSampler` would cause
+    the dataset to not load/process/cache certain elements from the final batch,
+    which complicates the already complex logic.
+    """
+    def __init__(self, loader: DataLoader):
+        self._batch_size = loader.batch_size
+        super().__init__(loader)
+
+    def __next__(self):
+        batch = super().__next__()
+        if (batch.batch_size < self._batch_size and
+                not self.dataset.hparams.allow_smaller_final_batch):
+            raise StopIteration
+        return batch
+
+
+class _CacheDataLoaderIter(torch_DataLoaderIter):
+    r"""Iterates once over the DataLoader's dataset. This class is used when
+    examples are processed and returned by worker processes. We need to record
+    the corresponding indices of each batch, call
+    :meth:`texar.data.data.DataBase._add_cached_examples` to cache the processed
+    examples, and return only the :class:`texar.data.data.Batch` instance to
+    the user.
+    """
     dataset: DataBase
 
     def __init__(self, loader: DataLoader):
         self._indices_dict: Dict[int, List[int]] = {}
+        self._batch_size = loader.batch_size
         super().__init__(loader)
 
     def _put_indices(self):
@@ -239,8 +291,12 @@ class _CacheDataLoaderIter(_DataLoaderIter):
                 indices = [index[0] for index in indices]
             examples, batch = batch
             self.dataset._add_cached_examples(indices, examples)
-            return batch
-        return super().__next__()
+        else:
+            batch = super().__next__()
+        if (batch.batch_size < self.dataset.batch_size and
+                not self.dataset.hparams.allow_smaller_final_batch):
+            raise StopIteration
+        return batch
 
 
 class SingleDatasetIterator(DataLoader):
@@ -267,12 +323,11 @@ class SingleDatasetIterator(DataLoader):
             sampler = SequentialSampler(dataset)
 
         num_parallel_calls = dataset.hparams.num_parallel_calls
-        allow_smaller_final_batch = dataset.hparams.allow_smaller_final_batch
         collate_fn = dataset._collate_and_maybe_return
         super().__init__(
             dataset, dataset.batch_size, sampler=sampler, collate_fn=collate_fn,
             num_workers=(0 if num_parallel_calls == 1 else num_parallel_calls),
-            drop_last=(not allow_smaller_final_batch))
+            drop_last=False)
 
     def __iter__(self):
         if self.dataset._should_return_processed_examples:
