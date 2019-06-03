@@ -333,12 +333,6 @@ class TransformerEncoder(EncoderBase):
         else:
             x = self.embed_dropout(input_embedding)
 
-        # Just to keep consistent with BERT, actually makes no difference
-        if self._hparams.use_bert_config:
-            pad_remover = None
-        else:
-            pad_remover = utils.transformer_utils.PadRemover(inputs_padding)
-
         for i in range(self._hparams.num_blocks):
             multihead_attention = self.self_attns[i]
             multihead_attention_normalizer = self.self_attn_layer_norm[i]
@@ -370,18 +364,10 @@ class TransformerEncoder(EncoderBase):
             original_shape = shape_list(y)
 
             y = y.view(-1, self._hparams.dim)
-            if pad_remover:
-                y = torch.unsqueeze(pad_remover.remove(y), dim=0)
-                # [1, batch_size*seq_length, hidden_dim]
 
             layer_output = poswise_network(y)
             sub_output = self.residual_dropout(layer_output)
-            if pad_remover:
-                sub_output = pad_remover.restore(
-                    torch.squeeze(sub_output, dim=0))
-                sub_output = sub_output.view(original_shape)
-            else:
-                sub_output = sub_output.view(original_shape)
+            sub_output = sub_output.view(original_shape)
 
             x = x + sub_output
             if self._hparams.use_bert_config:

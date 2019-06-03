@@ -218,6 +218,8 @@ class MultiheadAttentionEncoder(EncoderBase):
 
         logits = torch.matmul(Q_, K_.transpose(-2, -1))
         if memory_attention_bias is not None:
+            memory_attention_bias = memory_attention_bias.to(
+                device=logits.device)
             logits += memory_attention_bias
         weights = torch.softmax(logits, dim=-1)
         weights = F.dropout(weights, self._hparams.dropout_rate, self.training)

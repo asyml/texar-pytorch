@@ -31,7 +31,6 @@ class Transformer(ModuleBase):
             position_size=config_data.max_decoding_length,
             hparams=config_model.position_embedder_hparams,
         )
-
         encoder = TransformerEncoder(hparams=config_model.encoder)
         # The decoder ties the input word embedding with the output logit layer.
         # As the decoder masks out <PAD>'s embedding, which in effect means
@@ -79,34 +78,46 @@ class Transformer(ModuleBase):
         beam_width: Optional[int] = None,
     ):
 
+        if torch.cuda.is_available():
+            encoder_input = encoder_input.cuda()
+
+        batch_size = encoder_input.size()[0]
+        # (text sequence length excluding padding)
+        encoder_input_length = (encoder_input != 0).int().sum(dim=1)
+
         if is_train_mode:
             self.train()
-            batch_size = encoder_input.size()[0]
-            # (text sequence length excluding padding)
-            encoder_input_length = (encoder_input != 0).int().sum(dim=1)
-            label_lengths = (labels != 0).long().sum(dim=1)
-            is_target = (labels != 0).float()
 
-            # Source word embedding
-            src_word_embeds = self.submodules["src_word_embedder"](
-                encoder_input
-            )
-            src_word_embeds = (
-                src_word_embeds * self.config_model.hidden_dim ** 0.5
-            )
+        else:
+            self.eval()
 
-            # Position embedding (shared b/w source and target)
-            src_seq_len = torch.full(
-                [batch_size], encoder_input.size()[1], dtype=torch.int32
-            )
-            src_pos_embeds = self.submodules["pos_embedder"](
-                sequence_length=src_seq_len
-            )
-            src_input_embedding = src_word_embeds + src_pos_embeds
+        # Source word embedding
+        src_word_embeds = self.submodules["src_word_embedder"](
+            encoder_input
+        )
+        src_word_embeds = (
+            src_word_embeds * self.config_model.hidden_dim ** 0.5
+        )
 
-            encoder_output = self.submodules["encoder"](
-                inputs=src_input_embedding, sequence_length=encoder_input_length
-            )
+        # Position embedding (shared b/w source and target)
+        src_seq_len = torch.full(
+            [batch_size], encoder_input.size()[1], dtype=torch.int32
+        )
+        if torch.cuda.is_available():
+            src_seq_len = src_seq_len.cuda()
+
+        src_pos_embeds = self.submodules["pos_embedder"](
+            sequence_length=src_seq_len
+        )
+        src_input_embedding = src_word_embeds + src_pos_embeds
+
+        encoder_output = self.submodules["encoder"](
+            inputs=src_input_embedding, sequence_length=encoder_input_length
+        )
+
+        if is_train_mode:
+            if torch.cuda.is_available():
+                decoder_input = decoder_input.cuda()
 
             tgt_word_embeds = self.submodules["tgt_word_embedder"](
                 decoder_input
@@ -117,6 +128,8 @@ class Transformer(ModuleBase):
             tgt_seq_len = torch.full(
                 [batch_size], decoder_input.size()[1], dtype=torch.int32
             )
+            if torch.cuda.is_available():
+                tgt_seq_len = tgt_seq_len.cuda()
 
             tgt_pos_embeds = self.submodules["pos_embedder"](
                 sequence_length=tgt_seq_len
@@ -131,44 +144,19 @@ class Transformer(ModuleBase):
                 inputs=tgt_input_embedding,
                 decoding_strategy="train_greedy",
             )
+            label_lengths = (labels != 0).long().sum(dim=1)
+            labels = labels.to(device=outputs.logits.device)
+            label_lengths = label_lengths.to(device=outputs.logits.device)
+            is_target = (labels != 0).float()
             mle_loss = self.smoothed_loss_func(
                 outputs.logits, labels, label_lengths
             )
             mle_loss = (mle_loss * is_target).sum() / is_target.sum()
             return mle_loss
-
         else:
-            self.eval()
-            batch_size = encoder_input.size[0]
-            # (text sequence length excluding padding)
-            encoder_input_length = (1 - (encoder_input == 0).int()).sum(dim=1)
-            decoder_input_length = (1 - (decoder_input == 0).long()).sum(dim=1)
-
-            # labels = torch.placeholder(torch.int64, shape=(None, None))
-            is_target = (labels == 0).float()
-
-            # Source word embedding
-            src_word_embeds = self.subodules["src_word_embedder"](encoder_input)
-            src_word_embeds = (
-                src_word_embeds * self.config_model.hidden_dim ** 0.5
-            )
-
-            # Position embedding (shared b/w source and target)
-
-            src_seq_len = (
-                torch.ones([batch_size], dtype=torch.int32)
-                * encoder_input.size()[1]
-            )
-            src_pos_embeds = self.submodules["pos_embedder"](
-                sequence_length=src_seq_len
-            )
-            src_input_embedding = src_word_embeds + src_pos_embeds
-
-            encoder_output = self.submodules["encoder"](
-                inputs=src_input_embedding, sequence_length=encoder_input_length
-            )
             start_tokens = torch.full([batch_size], self.bos_token_id)
-            # start_tokens = [self.bos_token_id for _ in range(batch_size)]
+            if torch.cuda.is_available():
+                start_tokens = start_tokens.cuda()
 
             def _embedding_fn(x, y):
                 return self.submodules["tgt_word_embedder"](
@@ -234,6 +222,7 @@ class LabelSmoothingLoss(nn.Module):
             target.reshape([-1]),
         )
         model_prob = self.one_hot.repeat(target.size(0), 1)
+        model_prob = model_prob.to(device=target.device)
         model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
         model_prob.masked_fill_((target == self.ignore_index).unsqueeze(1), 0)
 
@@ -241,7 +230,6 @@ class LabelSmoothingLoss(nn.Module):
             output.reshape(ori_shapes[0]),
             model_prob.reshape(ori_shapes[0]),
         )
-
         return sequence_softmax_cross_entropy(
             labels=model_prob, logits=output, sequence_length=label_lengths
         )

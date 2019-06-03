@@ -247,7 +247,8 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         if dim % 2 == 1:
             signal = torch.cat(
                 [signal, signal.new_zeros(signal.size(0), 1)], dim=1)
-        self.signal = signal.reshape(position_size, dim)
+        signal = signal.reshape(position_size, dim)
+        self.register_buffer('signal', signal)
 
     @staticmethod
     def default_hparams():
@@ -306,8 +307,11 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         else:
             inputs = positions
 
-        outputs = F.embedding(inputs, self.signal, **kwargs)
+        if inputs.is_cuda:
+            signal = self.signal.cuda()
 
+        outputs = F.embedding(inputs, signal, **kwargs)
+        print('seq_length is cuda:{}'.format(sequence_length.is_cuda))
         if sequence_length is not None:
             outputs = mask_sequences(outputs, sequence_length)
 

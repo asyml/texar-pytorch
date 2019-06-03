@@ -13,11 +13,6 @@
 # limitations under the License.
 """Transformer model.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
 import pickle
 import random
@@ -91,6 +86,9 @@ def main():
     # You need to do label smoothing outside
 
     model = Transformer(config_model, config_data)
+    if torch.cuda.is_available():
+        model = model.cuda()
+
     best_results = {'score': 0, 'epoch': -1}
 
     opt = torch.optim.Adam(
