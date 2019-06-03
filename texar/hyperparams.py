@@ -33,13 +33,13 @@ class HParams:
     r"""A class that maintains hyperparameters for configuring Texar modules.
     The class has several useful features:
 
-    - **Auto-completion of missing values.** Users can specify only a subset of\
-    hyperparameters they care about. Other hyperparameters will automatically\
-    take the default values. The auto-completion performs **recursively** so \
-    that hyperparameters taking `dict` values will also be auto-completed \
-    **All Texar modules** provide a \
-    :meth:`default_hparams` containing allowed hyperparameters and their \
-    default values. For example
+    - **Auto-completion of missing values.** Users can specify only a subset of
+      hyperparameters they care about. Other hyperparameters will automatically
+      take the default values. The auto-completion performs **recursively** so
+      that hyperparameters taking `dict` values will also be auto-completed
+      **All Texar modules** provide a
+      :meth:`default_hparams` containing allowed hyperparameters and their
+      default values. For example
 
         .. code-block:: python
 
@@ -59,30 +59,30 @@ class HParams:
                 ...
             }
 
-    - **Automatic typecheck.** For most hyperparameters, provided value must\
-    have the same or compatible dtype with the default value. HParams does\
-    necessary typecheck, and raises Error if improper dtype is provided.\
-    Also, hyperparameters not listed in `default_hparams` are not allowed,\
-    except for "kwargs" as detailed below.
+    - **Automatic typecheck.** For most hyperparameters, provided value must
+      have the same or compatible dtype with the default value. HParams does
+      necessary typecheck, and raises Error if improper dtype is provided.
+      Also, hyperparameters not listed in `default_hparams` are not allowed,
+      except for "kwargs" as detailed below.
 
-    - **Flexible dtype for specified hyperparameters.**  Some hyperparameters\
-    may allow different dtypes of values.
+    - **Flexible dtype for specified hyperparameters.**  Some hyperparameters
+      may allow different dtypes of values.
 
-        - Hyperparameters named "type" are not typechecked.\
-        For example, in :func:`~texar.core.get_rnn_cell`, hyperparameter \
-        `"type"` can take value of an RNNCell class, its string name of module \
-        path, or an RNNCell class instance. (String name or module path is \
-        allowd so that users can specify the value in YAML config files.)
+        - Hyperparameters named "type" are not typechecked.
+          For example, in :func:`~texar.core.get_rnn_cell`, hyperparameter
+          `"type"` can take value of an RNNCell class, its string name of module
+          path, or an RNNCell class instance. (String name or module path is
+          allowd so that users can specify the value in YAML config files.)
 
-        - For other hyperparameters, list them\
-        in the "@no_typecheck" field in `default_hparams` to skip typecheck. \
-        For example, in :func:`~texar.core.get_rnn_cell`, hyperparameter \
-        "*_keep_prob" can be set to either a `float` or a `tf.placeholder`.
+        - For other hyperparameters, list them
+          in the "@no_typecheck" field in `default_hparams` to skip typecheck.
+          For example, in :func:`~texar.core.get_rnn_cell`, hyperparameter
+          "*_keep_prob" can be set to either a `float` or a `tf.placeholder`.
 
-    - **Special flexibility of keyword argument hyparameters.** \
-    Hyperparameters named "kwargs" are used as keyword arguments for a class\
-    constructor or a function call. Such hyperparameters take a `dict`, and \
-    users can add arbitrary valid keyword arguments to the dict. For example:
+    - **Special flexibility of keyword argument hyparameters.**
+      Hyperparameters named "kwargs" are used as keyword arguments for a class
+      constructor or a function call. Such hyperparameters take a `dict`, and
+      users can add arbitrary valid keyword arguments to the dict. For example:
 
         .. code-block:: python
 
@@ -101,8 +101,8 @@ class HParams:
             }
             _ = HParams(my_hparams, default_rnn_cell_hparams)
 
-    - **Rich interfaces.** An HParams instance provides rich interfaces for\
-    accessing, updating, or adding hyperparameters.
+    - **Rich interfaces.** An HParams instance provides rich interfaces for
+      accessing, updating, or adding hyperparameters.
 
         .. code-block:: python
 
@@ -137,15 +137,15 @@ class HParams:
             above.
     """
 
-    # - The default hyperparameters in :attr:`"kwargs"` are used (for typecheck\
-    # and complementing missing hyperparameters) only when :attr:`"type"` \
-    # takes default value (i.e., missing in :attr:`hparams` or set to \
-    # the same value with the default). In this case :attr:`kwargs` allows to \
-    # contain new keys not included in :attr:`default_hparams["kwargs"]`.
+    # - The default hyperparameters in :attr:`"kwargs"` are used (for typecheck
+    #   and complementing missing hyperparameters) only when :attr:`"type"`
+    #   takes default value (i.e., missing in :attr:`hparams` or set to
+    #   the same value with the default). In this case :attr:`kwargs` allows to
+    #   contain new keys not included in :attr:`default_hparams["kwargs"]`.
     #
-    # - If :attr:`"type"` is set to an other \
-    # value and :attr:`"kwargs"` is missing in :attr:`hparams`, \
-    # :attr:`"kwargs"` is set to an empty dictionary.
+    # - If :attr:`"type"` is set to an other value and :attr:`"kwargs"` is
+    #   missing in :attr:`hparams`, :attr:`"kwargs"` is set to an empty
+    #   dictionary.
 
     def __init__(self, hparams: Optional[Union['HParams', Dict[str, Any]]],
                  default_hparams: Optional[Dict[str, Any]],
@@ -205,8 +205,8 @@ class HParams:
         # in `hparams`.
         for name, value in default_hparams.items():
             if name not in hparams and isinstance(value, dict):
-                if name == 'kwargs' and 'type' in hparams and \
-                        hparams['type'] != default_hparams['type']:
+                if (name == 'kwargs' and 'type' in hparams and
+                        hparams['type'] != default_hparams['type']):
                     # Set params named "kwargs" to empty dictionary if "type"
                     # takes value other than default.
                     parsed_hparams[name] = HParams({}, {})
@@ -226,8 +226,8 @@ class HParams:
                         "entries undefined in default hyperparameters." % name)
 
             if value is None:
-                parsed_hparams[name] = \
-                    HParams._parse_value(parsed_hparams[name])
+                parsed_hparams[name] = HParams._parse_value(
+                    parsed_hparams[name])
 
             default_value = default_hparams[name]
             if default_value is None:
@@ -236,14 +236,14 @@ class HParams:
 
             # Parse recursively for params of type dictionary.
             if isinstance(value, dict):
-                if name not in no_typecheck_names \
-                        and not isinstance(default_value, dict):
+                if (name not in no_typecheck_names
+                        and not isinstance(default_value, dict)):
                     raise ValueError(
                         "Hyperparameter '%s' must have type %s, got %s" %
                         (name, _type_name(default_value), _type_name(value)))
                 if name == "kwargs":
-                    if "type" in hparams and \
-                            hparams["type"] != default_hparams['type']:
+                    if ("type" in hparams and
+                            hparams["type"] != default_hparams['type']):
                         # Leave "kwargs" as-is if "type" takes value
                         # other than default.
                         parsed_hparams[name] = HParams(value, value)

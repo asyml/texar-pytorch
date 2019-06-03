@@ -128,7 +128,6 @@ def init_gpt2_checkpoint(word_embedder, pos_embedder, decoder, init_checkpoint):
     for name, _ in pos_embedder.named_parameters():
         tensor_names.append(name)
     for name, _ in decoder.named_parameters():
-        print(name)
         tensor_names.append(name)
 
     idx = 0

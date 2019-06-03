@@ -67,6 +67,7 @@ __all__ = [
     'uniquify_str',
     'ceildiv',
     'straight_through',
+    'adjust_learning_rate'
 ]
 
 T = TypeVar('T')  # type argument
@@ -969,7 +970,7 @@ def strip_special_tokens(str_: MaybeSeq[str],
     return s
 
 
-def str_join(tokens: Sequence[str], sep: str = ' ') -> Sequence[str]:
+def str_join(tokens: Sequence[List], sep: str = ' ') -> Sequence[str]:
     r"""Concats :attr:`tokens` along the last dimension with intervening
     occurrences of :attr:`sep`.
 
@@ -1076,7 +1077,7 @@ def ceildiv(a: int, b: int) -> int:
     return -(-a // b)
 
 
-def straight_through(fw_tensor, bw_tensor):
+def straight_through(fw_tensor: torch.Tensor, bw_tensor: torch.Tensor):
     r"""Use a tensor in forward pass while backpropagating gradient to another.
 
     Args:
@@ -1089,3 +1090,13 @@ def straight_through(fw_tensor, bw_tensor):
         direct gradient to bw_tensor.
     """
     raise NotImplementedError
+
+
+def adjust_learning_rate(optimizer: torch.optim.Optimizer, new_lr: float):
+    """
+    :param optimizer: The optimizer to be updated
+    :param new_lr: the new learning rate to be assigned
+    :return: None
+    """
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = new_lr

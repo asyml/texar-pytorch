@@ -22,7 +22,7 @@ from torch import nn
 
 from texar import HParams, ModuleBase
 from texar.core import layers
-from texar.modules import FeedForwardNetwork
+from texar.modules.networks import FeedForwardNetwork
 from texar.modules.decoders import Helper
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
 from texar.modules.decoders.decoder_helpers import EmbeddingHelper
