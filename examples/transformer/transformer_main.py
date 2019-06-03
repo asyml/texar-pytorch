@@ -89,10 +89,17 @@ def main():
     if torch.cuda.is_available():
         model = model.cuda()
 
+
     best_results = {'score': 0, 'epoch': -1}
 
+    print('there are {} parameters in model'.format(len(list(model.parameters()))))
+    for param in model.parameters():
+        assert param.requires_grad
+        assert param.dtype == torch.float32
+    print('success')
+
     opt = torch.optim.Adam(
-        model.parameters(), lr=1e-3, betas=(0.9, 0.997), eps=1e-9
+        model.parameters(), betas=(0.9, 0.997), eps=1e-9
     )
 
     def _eval_epoch(epoch, mode):
@@ -110,7 +117,7 @@ def main():
             x_block = data_utils.source_pad_concat_convert(sources)
             predictions = model(
                 encoder_input=x_block,
-                is_train_model=False,
+                is_train_mode=False,
                 beam_width=beam_width,
             )
             beam_search_ids = predictions["sample_id"][:, :, 0]
@@ -184,17 +191,17 @@ def main():
                 labels=in_arrays[2],
             )
             loss.backward()
-
-            step = model.step_iteration
             lr = utils.get_lr(model.step_iteration, config_model.lr_config)
             adjust_learning_rate(opt, lr)
             opt.step()
-            if step and step % config_data.display_steps == 0:
+            model.step_iteration += 1
+            step = model.step_iteration
+            if step % config_data.display_steps == 0:
                 logger.info('step: %d, loss: %.4f', step, loss)
-                print('step: %d, loss: %.4f' % (step, loss))
-
+                print('lr: {} step: {}, loss: {}'.format(lr, step, loss))
             if step and step % config_data.eval_steps == 0:
                 _eval_epoch(epoch, mode='eval')
+
 
     if args.run_mode == 'train_and_evaluate':
         logger.info('Begin running with train_and_evaluate mode')

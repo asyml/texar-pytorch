@@ -24,7 +24,7 @@ class Transformer(ModuleBase):
         self.pad_token_id, self.bos_token_id = (0, 1)
         self.eos_token_id, self.unk_token_id = (2, 3)
 
-        src_word_embedder = tx.modules.WordEmbedder(
+        word_embedder = tx.modules.WordEmbedder(
             vocab_size=self.vocab_size, hparams=config_model.emb
         )
         pos_embedder = tx.modules.SinusoidsPositionEmbedder(
@@ -32,36 +32,21 @@ class Transformer(ModuleBase):
             hparams=config_model.position_embedder_hparams,
         )
         encoder = TransformerEncoder(hparams=config_model.encoder)
-        # The decoder ties the input word embedding with the output logit layer.
-        # As the decoder masks out <PAD>'s embedding, which in effect means
-        # <PAD> has all-zero embedding, so here we explicitly set <PAD>'s
-        # embedding to all-zero.
-        tgt_embedding = torch.cat(
-            [
-                torch.zeros((1, src_word_embedder.dim), dtype=torch.float),
-                src_word_embedder.embedding[1:, :],
-            ],
-            dim=0,
-        )
-        tgt_word_embedder = tx.modules.WordEmbedder(tgt_embedding)
-        _output_w = torch.transpose(tgt_word_embedder.embedding, 1, 0)
-
         decoder = TransformerDecoder(
             vocab_size=self.vocab_size,
-            output_layer=_output_w,
+            output_layer=word_embedder.embedding,
             hparams=config_model.decoder,
         )
 
         self.smoothed_loss_func = LabelSmoothingLoss(
-            label_smoothing=self.config_model.loss_label_confidence,
+            label_confidence=self.config_model.loss_label_confidence,
             tgt_vocab_size=self.vocab_size,
             ignore_index=0,
         )
 
         self.submodules = nn.ModuleDict(
             {
-                "src_word_embedder": src_word_embedder,
-                "tgt_word_embedder": tgt_word_embedder,
+                "word_embedder": word_embedder,
                 "pos_embedder": pos_embedder,
                 "encoder": encoder,
                 "decoder": decoder,
@@ -92,7 +77,7 @@ class Transformer(ModuleBase):
             self.eval()
 
         # Source word embedding
-        src_word_embeds = self.submodules["src_word_embedder"](
+        src_word_embeds = self.submodules["word_embedder"](
             encoder_input
         )
         src_word_embeds = (
@@ -103,8 +88,7 @@ class Transformer(ModuleBase):
         src_seq_len = torch.full(
             [batch_size], encoder_input.size()[1], dtype=torch.int32
         )
-        if torch.cuda.is_available():
-            src_seq_len = src_seq_len.cuda()
+        src_seq_len = src_seq_len.to(device=encoder_input.device)
 
         src_pos_embeds = self.submodules["pos_embedder"](
             sequence_length=src_seq_len
@@ -119,7 +103,7 @@ class Transformer(ModuleBase):
             if torch.cuda.is_available():
                 decoder_input = decoder_input.cuda()
 
-            tgt_word_embeds = self.submodules["tgt_word_embedder"](
+            tgt_word_embeds = self.submodules["word_embedder"](
                 decoder_input
             )
             tgt_word_embeds = (
@@ -128,8 +112,7 @@ class Transformer(ModuleBase):
             tgt_seq_len = torch.full(
                 [batch_size], decoder_input.size()[1], dtype=torch.int32
             )
-            if torch.cuda.is_available():
-                tgt_seq_len = tgt_seq_len.cuda()
+            tgt_seq_len = tgt_seq_len.to(device=decoder_input.device)
 
             tgt_pos_embeds = self.submodules["pos_embedder"](
                 sequence_length=tgt_seq_len
@@ -144,8 +127,8 @@ class Transformer(ModuleBase):
                 inputs=tgt_input_embedding,
                 decoding_strategy="train_greedy",
             )
-            label_lengths = (labels != 0).long().sum(dim=1)
             labels = labels.to(device=outputs.logits.device)
+            label_lengths = (labels != 0).long().sum(dim=1)
             label_lengths = label_lengths.to(device=outputs.logits.device)
             is_target = (labels != 0).float()
             mle_loss = self.smoothed_loss_func(
@@ -159,7 +142,7 @@ class Transformer(ModuleBase):
                 start_tokens = start_tokens.cuda()
 
             def _embedding_fn(x, y):
-                return self.submodules["tgt_word_embedder"](
+                return self.submodules["word_embedder"](
                     x
                 ) * self.config_model.hidden_dim ** 0.5 + self.submodules[
                     "pos_embedder"
@@ -188,23 +171,25 @@ class LabelSmoothingLoss(nn.Module):
     and p_{prob. computed by model}(w) is minimized.
     """
 
-    def __init__(self, label_smoothing, tgt_vocab_size, ignore_index=0):
+    def __init__(self, label_confidence, tgt_vocab_size, ignore_index=0):
         """
         :param label_smoothing:
         :param tgt_vocab_size:
         :param ignore_index: The index in the vocabulary to ignore
         """
-        assert 0.0 < label_smoothing <= 1.0
         self.ignore_index = ignore_index
         self.tgt_vocab_size = tgt_vocab_size
         super(LabelSmoothingLoss, self).__init__()
 
+        label_smoothing = 1 - label_confidence
+        assert 0.0 < label_smoothing <= 1.0
         smoothing_value = label_smoothing / (tgt_vocab_size - 2)
         one_hot = torch.full((tgt_vocab_size,), smoothing_value)
         one_hot[self.ignore_index] = 0
         self.register_buffer("one_hot", one_hot.unsqueeze(0))
 
-        self.confidence = 1.0 - label_smoothing
+        self.confidence = label_confidence
+        print('confidence:{}'.format(self.confidence))
 
     def forward(
         self,
@@ -213,8 +198,8 @@ class LabelSmoothingLoss(nn.Module):
         label_lengths: torch.LongTensor,
     ) -> torch.Tensor:
         """
-        output (FloatTensor): batch_size x n_classes
-        target (LongTensor): batch_size
+        output (FloatTensor): batch_size x seq_length * n_classes
+        target (LongTensor): batch_size * seq_length
         """
         ori_shapes = (output.size(), target.size())
         output, target = (
@@ -231,5 +216,6 @@ class LabelSmoothingLoss(nn.Module):
             model_prob.reshape(ori_shapes[0]),
         )
         return sequence_softmax_cross_entropy(
-            labels=model_prob, logits=output, sequence_length=label_lengths
+            labels=model_prob, logits=output, sequence_length=label_lengths,
+            average_across_batch=False, sum_over_timesteps=False,
         )

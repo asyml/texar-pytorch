@@ -311,7 +311,6 @@ class SinusoidsPositionEmbedder(EmbedderBase):
             signal = self.signal.cuda()
 
         outputs = F.embedding(inputs, signal, **kwargs)
-        print('seq_length is cuda:{}'.format(sequence_length.is_cuda))
         if sequence_length is not None:
             outputs = mask_sequences(outputs, sequence_length)
 
