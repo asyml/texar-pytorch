@@ -15,12 +15,9 @@
 Various RNN encoders.
 """
 
-import functools
-
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.nn import ModuleList, Module
+from torch.nn import Module, Sequential
 
 from typing import Optional, Tuple, Union, Dict, Any, List
 
@@ -37,7 +34,7 @@ from texar.utils.types import MaybeTuple
 # pylint: disable=too-many-arguments, too-many-locals, invalid-name, no-member
 
 __all__ = [
-    "_forward_single_output_layer",
+    "_forward_output_layers",
     "RNNEncoderBase",
     "UnidirectionalRNNEncoder",
     "BidirectionalRNNEncoder"
@@ -62,7 +59,19 @@ def _default_output_layer_hparams() -> Dict[str, Any]:
 
 
 def _build_dense_output_layer(cell_output_size: int,
-                              hparams: HParams) -> Optional[ModuleList]:
+                              hparams: HParams) -> Optional[Sequential]:
+    """Build the output layers.
+
+    Args:
+        cell_output_size: The output size of the rnn cell.
+        hparams (dict or HParams): Hyperparameters. Missing hyperparamerter
+            will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter sturcture and
+            default values.
+
+    Returns:
+        nn.Sequential of the output layers.
+    """
     nlayers = hparams.num_layers
 
     if nlayers <= 0:
@@ -71,6 +80,8 @@ def _build_dense_output_layer(cell_output_size: int,
     layer_size = _to_list(
         hparams.layer_size, 'output_layer.layer_size', nlayers)
 
+    dropout_layer_ids = _to_list(hparams.dropout_layer_ids)
+
     other_kwargs = hparams.other_dense_kwargs or {}
     if isinstance(other_kwargs, HParams):
         other_kwargs = other_kwargs.todict()
@@ -78,20 +89,16 @@ def _build_dense_output_layer(cell_output_size: int,
         raise ValueError(
             "hparams 'output_layer.other_dense_kwargs' must be a dict.")
 
-    dense_layers = ModuleList()
+    output_layers: List[Module] = []
     for i in range(nlayers):
-        if i == 0:
-            kwargs_i = {"in_features": cell_output_size,
-                        "out_features": layer_size[i]}
-        else:
-            kwargs_i = {"in_features": layer_size[i-1],
-                        "out_features": layer_size[i]}
+        if i in dropout_layer_ids:
+            output_layers.append(nn.Dropout(p=hparams.dropout_rate))
 
-        kwargs_i.update(other_kwargs)
+        dense_layer = nn.Linear(in_features=(cell_output_size if i == 0
+                                             else layer_size[i-1]),
+                                out_features=layer_size[i], **other_kwargs)
 
-        layer_hparams = {"type": nn.Linear, "kwargs": kwargs_i}
-        dense_layer = layers.get_layer(hparams=layer_hparams)
-        # dense_layers.append(layers.get_layer(hparams=layer_hparams))
+        output_layers.append(dense_layer)
 
         if i == nlayers - 1:
             activation = hparams.final_layer_activation
@@ -101,73 +108,22 @@ def _build_dense_output_layer(cell_output_size: int,
         if activation is not None:
             layer_hparams = {"type": activation, "kwargs": {}}
             activation_layer = layers.get_layer(hparams=layer_hparams)
-            #  dense_layers.append(layers.get_layer(hparams=layer_hparams))
-        else:
-            activation_layer = nn.Identity()
+            output_layers.append(activation_layer)
 
-        tmp = ModuleList()
-        tmp.append(dense_layer)
-        tmp.append(activation_layer)
+    if nlayers in dropout_layer_ids:
+        output_layers.append(nn.Dropout(p=hparams.dropout_rate))
 
-        dense_layers.append(tmp)
+    output_layers = nn.Sequential(*output_layers)
 
-    return dense_layers
+    return output_layers
 
 
-def _forward_single_output_layer(inputs: torch.Tensor,
-                                 output_layer: Union[ModuleList, Module]) -> \
-        Tuple[torch.Tensor, int]:
-    """Forwards the input through a single output layer.
-
-    Args:
-        inputs: A Tensor of shape `[batch_size, max_time] + input_size` if
-            :attr:`time_major=False`, or shape
-            `[max_time, batch_size] + input_size` if :attr:`time_major=True`.
-        input_size: An `int` or 1D `int` array.
-        output_layer: A tuple of (Linear Layer, Activation).
-    """
-    if isinstance(output_layer, ModuleList):
-        layer, activation = output_layer
-    else:
-        layer = output_layer
-        activation = None
-    # Feed to the layer
-    output = layer(inputs)
-    if activation is not None:
-        output = activation(output)
-    output_size = output.shape[-1]
-    return output, output_size
-
-
-def _apply_dropout(inputs: torch.Tensor,
-                   time_major: bool,
-                   hparams: Dict,
-                   training: bool) -> torch.Tensor:
-    """Applies dropout to the inputs.
-
-    :attr:`inputs` is a Tensor of shape `[batch_size, max_time, dim]`
-    if :attr:`time_major=False`, or shape `[max_time, batch_size, dim]`
-    if :attr:`time_major=True`.
-    """
-    noise_shape = None
-    # TODO: Implement variational dropout layer
-    if hparams.variational_dropout:  # type: ignore
-        if time_major:
-            raise NotImplementedError
-        else:
-            raise NotImplementedError
-
-    return F.dropout(inputs, p=hparams.dropout_rate,  # type: ignore
-                     training=training)
-
-
-def _forward_output_layers(inputs: torch.Tensor,
-                           input_size: int,
-                           output_layer: Optional[Union[ModuleList, Module]],
-                           time_major: bool,
-                           hparams: Optional[Dict],
-                           mode: bool,
-                           sequence_length: Optional[torch.LongTensor] = None) \
+def _forward_output_layers(
+        inputs: torch.Tensor,
+        output_layer: Optional[Union[Sequential, Module]],
+        time_major: bool,
+        hparams: Optional[Dict],
+        sequence_length: Optional[Union[torch.LongTensor, List[int]]] = None) \
         -> Tuple[torch.Tensor, int]:
     """Forwards inputs through the output layers.
 
@@ -175,69 +131,86 @@ def _forward_output_layers(inputs: torch.Tensor,
         inputs: A Tensor of shape `[batch_size, max_time] + input_size` if
             :attr:`time_major=False`, or shape
             `[max_time, batch_size] + input_size` if :attr:`time_major=True`.
+        output_layer (optional): nn.Sequential or nn.Module of output layers.
+        time_major (bool): The shape format of the :attr:`inputs` and
+            :attr:`outputs` Tensors. If `True`, these tensors are of shape
+            `[max_time, batch_size, input_size]`. If `False` (default),
+            these tensors are of shape `[batch_size, max_time, input_size]`.
+        hparams (dict or HParams, optional): Hyperparameters.
+        sequence_length (optional): A 1D int tensor of shape `[batch_size]`.
+            Sequence lengths of the batch inputs. Used to copy-through state
+            and zero-out outputs when past a batch element's sequence length.
 
     Returns:
         A pair :attr:`(outputs, outputs_size), where
 
-        - :attr:`outputs`: A Tensor of shape \
-          `[batch_size, max_time] + outputs_size`.
+        - :attr:`outputs`: A Tensor of shape
+        `[batch_size, max_time] + outputs_size`.
 
-        - :attr:`outputs_size`: An `int` or 1D `int` array representing the \
-          output size.
+        - :attr:`outputs_size`: An `int` representing the output size.
     """
     if output_layer is None:
-        return inputs, input_size
+        return inputs, inputs.shape[-1]
 
     if hparams is None:
         # output_layer was passed in from the constructor
-        if isinstance(output_layer, ModuleList):
-            raise ValueError('output_layer must not be a ModuleList.')
-        output, output_size = _forward_single_output_layer(inputs, output_layer)
+        if isinstance(output_layer, Sequential):
+            raise ValueError('output_layer must not be a Sequential.')
+        output = output_layer(inputs)
     else:
-        # output_layer was built based on hparams
-        dropout_layer_ids = _to_list(hparams.dropout_layer_ids)  # type: ignore
-        if len(dropout_layer_ids) > 0:
-            training = mode
-        else:
-            training = False
-
-        output = inputs
-        output_size = input_size
-        for i, layer in enumerate(output_layer):
-            if i in dropout_layer_ids:
-                output = _apply_dropout(output, time_major, hparams, training)
-            output, output_size = _forward_single_output_layer(output, layer)
-
-        if len(output_layer) in dropout_layer_ids:
-            output = _apply_dropout(output, time_major, hparams, training)
+        output = output_layer(inputs)
 
     if sequence_length is not None:
         output = mask_sequences(output, sequence_length, time_major=time_major)
 
+    output_size = output.shape[-1]
+
     return output, output_size
 
 
-def _apply_rnn_encoder_output_layer(output_layer: Optional[Union[ModuleList,
+def _apply_rnn_encoder_output_layer(output_layer: Optional[Union[Sequential,
                                                                  Module]],
                                     time_major: bool,
                                     hparams: Optional[Dict],
-                                    mode: bool,
                                     cell_outputs: torch.Tensor,
-                                    cell_output_size: int,
                                     sequence_length: Optional[Union[
                                         torch.LongTensor, List[int]]]) -> \
         Tuple[torch.Tensor, int]:
-    map_func = functools.partial(
-        _forward_output_layers,
-        output_layer=output_layer,
-        time_major=time_major,
-        hparams=hparams,
-        mode=mode,
-        sequence_length=sequence_length)
+    """Forwards rnn encoder output through the output layers.
 
-    output, output_size = map_func(inputs=cell_outputs,
-                                   input_size=cell_output_size)
+    Args:
+        output_layer (optional): nn.Sequential or nn.Module of output layers.
+        time_major (bool): The shape format of the :attr:`inputs` and
+            :attr:`outputs` Tensors. If `True`, these tensors are of shape
+            `[max_time, batch_size, input_size]`. If `False` (default),
+            these tensors are of shape `[batch_size, max_time, input_size]`.
+        hparams (dict or HParams, optional): Hyperparameters. Missing
+            hyperparamerter will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter sturcture and
+            default values.
+        cell_outputs: A Tensor of shape `[batch_size, max_time] + input_size` if
+            :attr:`time_major=False`, or shape
+            `[max_time, batch_size] + input_size` if :attr:`time_major=True`.
+        sequence_length (optional): A 1D int tensor of shape `[batch_size]`.
+                Sequence lengths of the batch inputs. Used to copy-through
+                state and zero-out outputs when past a batch element's sequence
+                length.
 
+    Returns:
+         A pair :attr:`(outputs, outputs_size), where
+
+        - :attr:`outputs`: A Tensor of shape
+        `[batch_size, max_time] + outputs_size`.
+
+        - :attr:`outputs_size`: An `int` representing the output size.
+    """
+
+    output, output_size = _forward_output_layers(inputs=cell_outputs,
+                                                 output_layer=output_layer,
+                                                 time_major=time_major,
+                                                 hparams=hparams,
+                                                 sequence_length=sequence_length
+                                                 )
     return output, output_size
 
 
@@ -330,7 +303,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
                                              self._hparams.rnn_cell)
 
         # Make output layer
-        self._output_layer: Optional[Union[ModuleList, nn.Module]]
+        self._output_layer: Optional[Union[Sequential, nn.Module]]
         if output_layer is not None:
             self._output_layer = output_layer
             self._output_layer_hparams = None
@@ -459,9 +432,9 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
                 :attr:`batch_size` and :attr:`max_time` are exchanged if
                 :attr:`time_major=True` is specified.
             sequence_length (optional): A 1D int tensor of shape `[batch_size]`.
-                Sequence lengths
-                of the batch inputs. Used to copy-through state and zero-out
-                outputs when past a batch element's sequence length.
+                Sequence lengths of the batch inputs. Used to copy-through
+                state and zero-out outputs when past a batch element's sequence
+                length.
             initial_state (optional): Initial state of the RNN.
             time_major (bool): The shape format of the :attr:`inputs` and
                 :attr:`outputs` Tensors. If `True`, these tensors are of shape
@@ -526,9 +499,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
             output_layer=self._output_layer,
             time_major=time_major,
             hparams=self._output_layer_hparams,
-            mode=self.training,
             cell_outputs=cell_outputs,
-            cell_output_size=self._cell.hidden_size,
             sequence_length=sequence_length)
 
         rets = (outputs, state)
@@ -555,7 +526,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
             return self._cell.hidden_size
 
     @property
-    def output_layer(self) -> Optional[Union[ModuleList, Module]]:
+    def output_layer(self) -> Optional[Union[Sequential, Module]]:
         """The output layer.
         """
         return self._output_layer
@@ -629,7 +600,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
 
         # Make output layers
 
-        self.__output_layer_fw: Optional[Union[ModuleList, Module]]
+        self.__output_layer_fw: Optional[Union[Sequential, Module]]
         if output_layer_fw is not None:
             self._output_layer_fw = output_layer_fw
             self._output_layer_hparams_fw = None
@@ -638,7 +609,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 self._cell_fw.hidden_size, self._hparams.output_layer_fw)
             self._output_layer_hparams_fw = self._hparams.output_layer_fw
 
-        self.__output_layer_bw: Optional[Union[ModuleList, Module]]
+        self.__output_layer_bw: Optional[Union[Sequential, Module]]
         if output_layer_bw is not None:
             self._output_layer_bw = output_layer_bw
             self._output_layer_hparams_bw = None
@@ -752,9 +723,9 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 `batch_size` and `max_time` may be exchanged if
                 `time_major=True` is specified.
             sequence_length (optional): A 1D int tensor of shape `[batch_size]`.
-                Sequence lengths
-                of the batch inputs. Used to copy-through state and zero-out
-                outputs when past a batch element's sequence length.
+                Sequence lengths of the batch inputs. Used to copy-through
+                state and zero-out outputs when past a batch element's sequence
+                length.
             initial_state_fw: (optional): Initial state of the RNN.
             initial_state_bw: (optional): Initial state of the RNN.
             time_major (bool): The shape format of the :attr:`inputs` and
@@ -836,18 +807,14 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             output_layer=self._output_layer_fw,
             time_major=time_major,
             hparams=self._output_layer_hparams_fw,
-            mode=self.training,
             cell_outputs=cell_outputs[0],
-            cell_output_size=self._cell_fw.hidden_size,
             sequence_length=sequence_length)
 
         outputs_bw, output_size_bw = _apply_rnn_encoder_output_layer(
             output_layer=self._output_layer_bw,
             time_major=time_major,
             hparams=self._output_layer_hparams_bw,
-            mode=self.training,
             cell_outputs=cell_outputs[1],
-            cell_output_size=self._cell_bw.hidden_size,
             sequence_length=sequence_length)
 
         outputs = (outputs_fw, outputs_bw)
@@ -893,13 +860,13 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             return self._cell_bw.hidden_size
 
     @property
-    def output_layer_fw(self) -> Optional[Union[ModuleList, Module]]:
+    def output_layer_fw(self) -> Optional[Union[Sequential, Module]]:
         """The output layer of the forward RNN.
         """
         return self._output_layer_fw
 
     @property
-    def output_layer_bw(self) -> Optional[Union[ModuleList, Module]]:
+    def output_layer_bw(self) -> Optional[Union[Sequential, Module]]:
         """The output layer of the backward RNN.
         """
         return self._output_layer_bw
