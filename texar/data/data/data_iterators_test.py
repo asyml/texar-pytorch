@@ -283,13 +283,16 @@ class LazinessCachingTest(unittest.TestCase):
         self.num_workers = 3
 
     def _test_modes_with_workers(self, lazy_mode: str, cache_mode: str,
-                                 num_workers: int):
+                                 num_workers: int,
+                                 parallelize_processing=True, **kwargs):
         hparams = {
             'batch_size': self.batch_size,
             'lazy_strategy': lazy_mode,
             'cache_strategy': cache_mode,
             'num_parallel_calls': num_workers,
             'shuffle': False,
+            'parallelize_processing': parallelize_processing,
+            **kwargs,
         }
         source = ZipDataSource(  # type: ignore
             IterDataSource([[x] * self.seq_len for x in range(self.size)]),
@@ -312,14 +315,15 @@ class LazinessCachingTest(unittest.TestCase):
                                    np.asarray(numbers)[:, np.newaxis]))
 
         # check laziness
-        if lazy_mode == 'none':
-            self.assertEqual(len(data._processed_cache), self.size)
-        else:
-            self.assertEqual(len(data._processed_cache), 0)
-            if lazy_mode == 'process':
-                self.assertEqual(len(data._cached_source._cache), self.size)
+        if parallelize_processing:
+            if lazy_mode == 'none':
+                self.assertEqual(len(data._processed_cache), self.size)
             else:
-                self.assertEqual(len(data._cached_source._cache), 0)
+                self.assertEqual(len(data._processed_cache), 0)
+                if lazy_mode == 'process':
+                    self.assertEqual(len(data._cached_source._cache), self.size)
+                else:
+                    self.assertEqual(len(data._cached_source._cache), 0)
 
         # first epoch
         cnt = 0
@@ -329,19 +333,20 @@ class LazinessCachingTest(unittest.TestCase):
         self.assertEqual(cnt, total_batches)
 
         # check cache
-        if cache_mode == 'none':
-            self.assertEqual(len(data._processed_cache), 0)
-        elif cache_mode == 'loaded':
-            self.assertEqual(len(data._processed_cache), 0)
-        else:
-            self.assertEqual(len(data._processed_cache), self.size)
-        if lazy_mode != 'none':
+        if parallelize_processing:
             if cache_mode == 'none':
-                self.assertEqual(len(data._cached_source._cache), 0)
+                self.assertEqual(len(data._processed_cache), 0)
             elif cache_mode == 'loaded':
-                self.assertEqual(len(data._cached_source._cache), self.size)
+                self.assertEqual(len(data._processed_cache), 0)
             else:
-                self.assertEqual(len(data._cached_source._cache), 0)
+                self.assertEqual(len(data._processed_cache), self.size)
+            if lazy_mode != 'none':
+                if cache_mode == 'none':
+                    self.assertEqual(len(data._cached_source._cache), 0)
+                elif cache_mode == 'loaded':
+                    self.assertEqual(len(data._cached_source._cache), self.size)
+                else:
+                    self.assertEqual(len(data._cached_source._cache), 0)
 
         # second epoch
         cnt = 0
@@ -352,6 +357,8 @@ class LazinessCachingTest(unittest.TestCase):
 
     def _test_modes(self, lazy_mode: str, cache_mode: str):
         self._test_modes_with_workers(lazy_mode, cache_mode, self.num_workers)
+        self._test_modes_with_workers(lazy_mode, cache_mode, self.num_workers,
+                                      parallelize_processing=False)
         self._test_modes_with_workers(lazy_mode, cache_mode, 1)
 
     def test_none_processed(self):

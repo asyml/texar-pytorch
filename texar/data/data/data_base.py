@@ -18,8 +18,8 @@ preprocessing operations.
 """
 import warnings
 from abc import ABC
-from typing import Dict, Generic, Iterable, Iterator, List, Optional, \
-    Sequence, Tuple, TypeVar, Union
+from typing import Callable, Dict, Generic, Iterable, Iterator, List, \
+    Optional, Sequence, Tuple, TypeVar, Union
 
 import torch
 from torch.utils.data import Dataset
@@ -126,16 +126,35 @@ class RecordDataSource(DataSource[Dict[str, RawExample]]):
         return min(len(source) for source in self._sources.values())
 
 
-class _CachedDataSource(DataSource[Example]):
+class _TransformedDataSource(DataSource[Example]):
+    def __init__(self, data_source: DataSource[RawExample],
+                 process_fn: Callable[[RawExample], Example]):
+        self._source = data_source
+        self._process = process_fn
+
+    def __getitem__(self, item):
+        return self._process(self._source[item])
+
+    def __iter__(self):
+        return map(self._process, iter(self._source))
+
+    def __len__(self):
+        return len(self._source)
+
+    def __getattr__(self, item):
+        return getattr(self._source, item)
+
+
+class _CachedDataSource(DataSource[RawExample]):
     r"""Wrapper for random access support over a data source that does not
     implement `__getitem__`. This class is only used internally in
     :class:`~texar.data.data.DataBase`, while conforming to user
     `cache_strategy` and `shuffle_buffer_size` settings.
     """
 
-    _cache: Union[Dict[int, Example], List[Example]]
+    _cache: Union[Dict[int, RawExample], List[RawExample]]
 
-    def __init__(self, data_source: DataSource[Example],
+    def __init__(self, data_source: DataSource[RawExample],
                  erase_after_access: bool = True):
         r"""
 
@@ -151,11 +170,11 @@ class _CachedDataSource(DataSource[Example]):
         self._max_index = -1
         self._erase_after_access = erase_after_access
         if erase_after_access:
-            self._cache: Dict[int, Example] = {}
+            self._cache: Dict[int, RawExample] = {}
         else:
-            self._cache: List[Example] = []
+            self._cache: List[RawExample] = []
 
-    def __getitem__(self, index: int) -> Example:
+    def __getitem__(self, index: int) -> RawExample:
         # If specified `index` is not yet prefetched (or has already been
         # accessed), this method may throw `IndexError` or `KeyError`.
         example = self._cache[index]
@@ -163,7 +182,7 @@ class _CachedDataSource(DataSource[Example]):
             del self._cache[index]
         return example
 
-    def __iter__(self) -> Iterator[Example]:
+    def __iter__(self) -> Iterator[RawExample]:
         return iter(self._source)
 
     def prefetch(self, index: int):
@@ -206,6 +225,15 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             if self._cache_strategy is _CacheStrategy.NONE:
                 self._cache_strategy = _CacheStrategy.LOADED
         self._uses_multi_processing = self._hparams.num_parallel_calls > 1
+        self._parallelize_processing = self._hparams.parallelize_processing
+
+        # If processing should not be parallelized, combine processing with
+        # loading by wrapping the data source. In this case, processed data
+        # will be cached.
+        if (not self._parallelize_processing and
+                self._lazy_strategy is not _LazyStrategy.NONE and
+                self._cache_strategy is not _CacheStrategy.LOADED):
+            self._source = _TransformedDataSource(self._source, self._process)
 
         # Check whether data source supports random access, and obtain dataset
         # size if it does.
@@ -217,11 +245,21 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             except TypeError:
                 self._supports_random_access = False
                 erase_after_access = (
-                        self._cache_strategy is not _CacheStrategy.LOADED)
+                        (self._parallelize_processing and
+                         self._cache_strategy is not _CacheStrategy.LOADED) or
+                        (not self._parallelize_processing and
+                         self._cache_strategy is _CacheStrategy.NONE))
                 self._cached_source = \
-                    _CachedDataSource(source, erase_after_access)
+                    _CachedDataSource(self._source, erase_after_access)
                 self._source = self._cached_source
                 self._dataset_size = None
+
+        # If processing should not be parallelized, combine processing with
+        # loading by wrapping the data source. In this case, loaded data
+        # will be cached.
+        if (not self._parallelize_processing and
+                self._cache_strategy is _CacheStrategy.LOADED):
+            self._source = _TransformedDataSource(self._source, self._process)
 
         self._processed_cache: List[Example] = []
         self._fully_cached = False
@@ -343,7 +381,8 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                     - `process`: Perform eager loading and lazy processing.
                     - `all`: Perform lazy loading and processing.
 
-                Defaults to `all`.
+                Defaults to `all`. Note that currently, all eager operations
+                are performed on a single process only.
 
             cache_strategy: str
                 Caching strategy for data examples. Available options are:
@@ -363,6 +402,16 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                         `cache_strategy` are equivalent to `processed`.
                     - When `lazy_strategy` is `process`, `none` is equivalent
                         to `loaded`.
+
+            parallelize_processing: bool
+                Whether to perform parallelized processing of data. Since
+                multi-processing parallelism is utilized, this flag should be
+                `False` if your process routine involves modifying a shared
+                object across examples.
+
+                Note that this only affects cases where `lazy_strategy` is not
+                `none`. If `lazy_strategy` is `none`, processing will be
+                performed on a single process regardless of this value.
         """
         return {
             "name": "data",
@@ -378,6 +427,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             "seed": None,
             "lazy_strategy": 'none',
             "cache_strategy": 'processed',
+            "parallelize_processing": True,
         }
 
     def to(self, device: torch.device):
@@ -432,11 +482,16 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         if isinstance(index, int):
             if self._fully_cached:
                 return self._processed_cache[index]
+            elif not self._parallelize_processing:
+                return self._source[index]
             else:
                 return self._process(self._source[index])
         else:
             # `index` is a tuple of (index, example).
-            return self._process(index[1])
+            if not self._parallelize_processing:
+                return index[1]
+            else:
+                return self._process(index[1])
 
     def _add_cached_examples(self, indices: List[int], examples: List[Example]):
         # In this case, `_CachedDataSource.__getitem__` will be
@@ -534,7 +589,8 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         """
         return (not self._fully_cached and
                 self._lazy_strategy is not _LazyStrategy.NONE and
-                self._cache_strategy is _CacheStrategy.PROCESSED)
+                self._cache_strategy is _CacheStrategy.PROCESSED and
+                self._parallelize_processing)
 
     @property
     def _should_yield_raw_example(self):

@@ -14,11 +14,11 @@
 """
 Base text data class that is inherited by all text data classes.
 """
+import io
 from abc import ABC
-from typing import Iterator, Optional, TypeVar
+from typing import IO, Iterator, Optional, TypeVar
 
 import torch
-
 from texar.data.data.data_base import DataBase, DataSource
 from texar.utils.types import MaybeList
 
@@ -37,9 +37,13 @@ class TextLineDataSource(DataSource[str]):
                  delimiter: Optional[str] = None,
                  max_length: Optional[int] = None):
         if compression_type is not None:
-            raise NotImplementedError
+            compression_type = compression_type.lower()
+            if compression_type not in ['gzip', 'zlib']:
+                raise ValueError(
+                    f"Unsupported compression type: {compression_type}")
         if isinstance(file_paths, str):
             file_paths = [file_paths]
+        self._compression_type = compression_type
         self._file_paths = file_paths
         self._max_length = max_length
         self._delimiter = delimiter
@@ -47,9 +51,42 @@ class TextLineDataSource(DataSource[str]):
             raise ValueError("'max_length' and 'delimiter' should both be"
                              "None or not None")
 
+    class _ZlibWrapper(IO[bytes]):
+        def __init__(self, file: io.BufferedIOBase):
+            import zlib
+            self.file = file
+            self.zlib = zlib.decompressobj()
+            self.buffer = b''
+
+        def read(self, n) -> bytes:
+            if len(self.buffer) > 0:
+                b = self.buffer[:n]
+                self.buffer = self.buffer[n:]
+                return b
+            while True:
+                b = self.zlib.decompress(self.file.read(n))
+                if len(b) > 0:
+                    break
+            if len(b) > n:
+                self.buffer = b[n:]
+                return b[:n]
+
+        def __getattr__(self, item):
+            return getattr(self.file, item)
+
+    def _open_file(self, path: str) -> IO[str]:
+        if self._compression_type == 'zlib':
+            f = io.TextIOWrapper(self._ZlibWrapper(path))
+        elif self._compression_type == 'gzip':
+            import gzip
+            f = gzip.open(path, 'rt')
+        else:
+            f = open(path, 'r')
+        return f
+
     def __iter__(self) -> Iterator[str]:
         for path in self._file_paths:
-            with open(path, 'r') as f:
+            with self._open_file(path) as f:
                 for line in f:
                     line = line.rstrip('\n')
                     if self._max_length is not None:
