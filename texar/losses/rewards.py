@@ -55,7 +55,9 @@ def discount_reward(reward: torch.Tensor,
         reward = torch.tensor(reward)
     if sequence_length is not None \
             and not isinstance(sequence_length, torch.Tensor):
-        sequence_length = torch.tensor(sequence_length, dtype=torch.int64)
+        sequence_length = torch.tensor(sequence_length,
+                                       dtype=torch.int64,
+                                       device=reward.device)
 
     tensor_rank = reward.dim()
     if tensor_rank == 1:
@@ -95,14 +97,17 @@ def _discount_reward_tensor_1d(reward: torch.Tensor,
         raise ValueError('sequence_length must not be `None` for 1D reward.')
 
     if not isinstance(sequence_length, torch.Tensor):
-        sequence_length = torch.tensor(sequence_length, dtype=torch.int64)
+        sequence_length = torch.tensor(sequence_length,
+                                       dtype=torch.int64,
+                                       device=reward.device)
 
     batch_size = reward.shape[0]
     max_seq_length = torch.max(sequence_length)
     dtype: torch.dtype = reward.dtype
 
     if discount == 1.:
-        dmat = torch.ones(batch_size, max_seq_length, dtype=dtype)
+        disc_reward = torch.unsqueeze(reward, -1).expand(batch_size,
+                                                         max_seq_length)
     else:
         mask = sequence_mask(sequence_length, dtype=dtype)
         mask = torch.cat((mask[:, 1:], torch.zeros_like(mask[:, -1:])), dim=1)
@@ -111,8 +116,8 @@ def _discount_reward_tensor_1d(reward: torch.Tensor,
         dmat = torch.flip(dmat, (1, ))
         dmat = torch.cumprod(dmat, dim=1)
         dmat = torch.flip(dmat, (1, ))
+        disc_reward = dmat * torch.unsqueeze(reward, -1)
 
-    disc_reward = dmat * torch.unsqueeze(reward, -1)
     disc_reward = mask_sequences(disc_reward, sequence_length, dtype=dtype)
 
     return disc_reward
@@ -145,14 +150,11 @@ def _discount_reward_tensor_2d(
         # [max_time, batch_size]
         rev_reward_T = torch.flip(reward, (1, )).permute(1, 0)
 
-        def func(acc, cur):
-            return cur + discount * acc
-
         res = []
         acc = torch.zeros_like(reward[:, 1])
         for i in range(rev_reward_T.shape[0]):
             cur = rev_reward_T[i]
-            acc = func(acc, cur)
+            acc = cur + discount * acc
             res.append(acc)
 
         rev_reward_T_cum = torch.stack(res, dim=0)
