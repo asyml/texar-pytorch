@@ -369,50 +369,6 @@ class MonoTextData(TextDataBase[str, List[str]]):
             embedding = Embedding(token_to_id_map, emb_hparams)
         return embedding
 
-    @staticmethod
-    def _make_other_transformations(other_trans_hparams, data_spec):
-        """Creates a list of transformation functions based on the
-        hyperparameters.
-
-        Args:
-            other_trans_hparams (list): A list of transformation functions,
-                names, or full paths.
-            data_spec: An instance of :class:`texar.data._DataSpec` to
-                be passed to transformation functions.
-
-        Returns:
-            A list of transformation functions.
-        """
-        other_trans = []
-        for tran in other_trans_hparams:
-            if not is_callable(tran):
-                tran = utils.get_function(tran, ["texar.custom"])
-            other_trans.append(dsutils.make_partial(tran, data_spec))
-        return other_trans
-
-    def _process_dataset(self, dataset, hparams, data_spec):
-        chained_tran, data_spec = self._make_processor(
-            hparams["dataset"], data_spec,
-            name_prefix=hparams["dataset"]["data_name"])
-        num_parallel_calls = hparams["num_parallel_calls"]
-        dataset = dataset.map(
-            lambda *args: chained_tran(dsutils.maybe_tuple(args)),
-            num_parallel_calls=num_parallel_calls)
-
-        # Truncates data count
-        dataset = dataset.take(hparams["max_dataset_size"])
-
-        return dataset, data_spec
-
-    def _make_bucket_length_fn(self):
-        length_fn = self._hparams.bucket_length_fn
-        if not length_fn:
-            length_fn = lambda x: x[self.length_name]
-        elif not is_callable(length_fn):
-            # pylint: disable=redefined-variable-type
-            length_fn = utils.get_function(length_fn, ["texar.custom"])
-        return length_fn
-
     def _process(self, raw_example: str) -> List[str]:
         # `_process` truncates sentences and appends BOS/EOS tokens.
         words = raw_example.split(self._delimiter)
