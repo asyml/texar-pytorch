@@ -8,6 +8,7 @@ import unittest
 import numpy as np
 
 import texar as tx
+from texar.data.vocabulary import SpecialTokens
 from texar.data import DataIterator
 
 
@@ -43,10 +44,21 @@ class MonoTextDataTest(unittest.TestCase):
             }
         }
 
+        self.upper_cased_text = []
+        for sent in text:
+            upper_cased_tokens = sent.upper().split(" ")
+            upper_cased_tokens.insert(0, SpecialTokens.BOS)
+            upper_cased_tokens.append(SpecialTokens.EOS)
+            self.upper_cased_text.append(upper_cased_tokens)
+
+        max_length = max([len(tokens) for tokens in self.upper_cased_text])
+        self.upper_cased_text = [sent + [''] * (max_length - len(sent)) for sent
+                                 in self.upper_cased_text]
+
     def _run_and_test(self,
                       hparams,
                       test_batch_size=False,
-                      length_inc=None):
+                      test_transform=False):
         # Construct database
         text_data = tx.data.MonoTextData(hparams)
         self.assertEqual(text_data.vocab.size,
@@ -61,12 +73,10 @@ class MonoTextDataTest(unittest.TestCase):
             if test_batch_size:
                 self.assertEqual(len(data_batch['text']), hparams['batch_size'])
 
-            if length_inc:
+            if test_transform:
                 for i in range(len(data_batch['text'])):
-                    text_ = data_batch['text'][i].tolist()
-                    self.assertEqual(
-                        text_.index(b'<EOS>') + 1,
-                        data_batch['length'][i] - length_inc)
+                    text_ = data_batch['text'][i]
+                    self.assertTrue(text_ in self.upper_cased_text)
 
             max_seq_length = text_data.hparams.dataset.max_seq_length
             mode = text_data.hparams.dataset.length_filter_mode
@@ -162,19 +172,16 @@ class MonoTextDataTest(unittest.TestCase):
         hparams.update({"prefetch_buffer_size": 2})
         self._run_and_test(hparams)
 
-    @unittest.skip("After adding transformation logic, check if this works")
     def test_other_transformations(self):
         r"""Tests use of other transformations
         """
 
-        def _transform(x, data_specs):  # pylint: disable=invalid-name
-            x[data_specs.decoder.length_tensor_name] += 1
-            return x
+        upper_func = lambda x: x.upper()
 
         hparams = copy.deepcopy(self._hparams)
         hparams["dataset"].update(
-            {"other_transformations": [_transform, _transform]})
-        self._run_and_test(hparams, length_inc=2)
+            {"other_transformations": [upper_func]})
+        self._run_and_test(hparams, test_transform=True)
 
     def test_list_items(self):
         r"""Tests the item names of the output data.
@@ -217,6 +224,7 @@ class MonoTextDataTest(unittest.TestCase):
         self._run_and_test(hparams)
 
 
+@unittest.skip("Skipping until Variable Utterance is implemented")
 class VarUttMonoTextDataTest(unittest.TestCase):
     r"""Tests variable utterance text data class.
     """

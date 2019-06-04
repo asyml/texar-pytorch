@@ -156,6 +156,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
         # Create vocabulary
         self._bos_token = self._hparams.dataset.bos_token
         self._eos_token = self._hparams.dataset.eos_token
+        self._other_transforms = self._hparams.dataset.other_transformations
         bos = utils.default_str(self._bos_token, SpecialTokens.BOS)
         eos = utils.default_str(self._eos_token, SpecialTokens.EOS)
         self._vocab = Vocab(self._hparams.dataset.vocab_file,
@@ -419,6 +420,12 @@ class MonoTextData(TextDataBase[str, List[str]]):
                 len(words) > self._max_seq_length):
             if self._length_filter_mode is _LengthFilterMode.TRUNC:
                 words = words[:self._max_seq_length]
+
+        # apply the transformations
+        for transform in self._other_transforms:
+            words = map(transform, words)
+        words = list(words)
+
         if self._bos_token != '':
             words.insert(0, self._bos_token)
         if self._eos_token != '':
