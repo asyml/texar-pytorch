@@ -6,7 +6,7 @@ import texar as tx
 random_seed = 1234
 
 # TODO(haoransh): remember to fix this to 5
-beam_width = 1
+# beam_width = 1
 
 length_penalty = 0.6
 hidden_dim = 512

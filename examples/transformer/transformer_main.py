@@ -105,7 +105,7 @@ def main():
             predictions = model(
                 encoder_input=x_block,
                 is_train_mode=False,
-                beam_width=beam_width,
+                beam_width=getattr(config_model, 'beam_width')
             )
             if beam_width == 1:
                 decoded_ids = predictions[0].sample_id

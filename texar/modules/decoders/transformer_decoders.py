@@ -503,7 +503,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
         self._state_max_decoding_length = max_decoding_length
 
-        if beam_width is None:  # Inference-like decoding
+        if beam_width is None or beam_width == 1:  # Inference-like decoding
             # Prepare helper
             if helper is None:
                 kwargs.update(decoding_strategy=decoding_strategy)
