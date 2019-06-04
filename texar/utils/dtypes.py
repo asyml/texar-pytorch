@@ -27,6 +27,7 @@ __all__ = [
     'is_str',
     'is_callable',
     'maybe_hparams_to_dict',
+    'compat_as_text'
 ]
 
 
@@ -87,3 +88,28 @@ def _as_text(bytes_or_text, encoding='utf-8'):
     else:
         raise TypeError(
             f"Expected binary or unicode string, got {bytes_or_text!r}")
+
+
+def compat_as_text(str_):
+    """Converts strings into `unicode` (Python 2) or `str` (Python 3).
+
+    Args:
+        str_: A string or other data types convertible to string, or an
+            `n`-D numpy array or (possibly nested) list of such elements.
+
+    Returns:
+        The converted strings of the same structure/shape as :attr:`str_`.
+    """
+    def _recur_convert(s):
+        if isinstance(s, (list, tuple, np.ndarray)):
+            s_ = [_recur_convert(si) for si in s]
+            return _maybe_list_to_array(s_, s)
+        else:
+            try:
+                return _as_text(s)
+            except TypeError:
+                return _as_text(str(s))
+
+    text = _recur_convert(str_)
+
+    return text
