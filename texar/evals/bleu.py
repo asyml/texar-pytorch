@@ -28,7 +28,7 @@ Smooth BLEU is computed following the method outlined in the paper:
 
 import collections
 import math
-from typing import List, Union, Counter
+from typing import Counter, List, Tuple, Union
 
 from texar.utils.dtypes import compat_as_text
 from texar.utils.types import MaybeList
@@ -43,7 +43,7 @@ __all__ = [
 
 
 def _get_ngrams(segment: str,
-                max_order: int) -> Counter:
+                max_order: int) -> Counter[Tuple[str, ...]]:
     """Extracts all n-grams up to a given maximum order from an input segment.
 
     Args:
@@ -58,7 +58,7 @@ def _get_ngrams(segment: str,
     ngram_counts: collections.Counter = collections.Counter()
     for order in range(1, max_order + 1):
         for i in range(0, len(segment) - order + 1):
-            ngram = tuple(segment[i:i+order])
+            ngram = tuple(segment[i:i + order])
             ngram_counts[ngram] += 1
     return ngram_counts
 
@@ -151,7 +151,8 @@ def corpus_bleu(list_of_references: List[List[MaybeList[str]]],
         reference_length += min(len(r) for r in references)
         hypothesis_length += len(hypothesis)
 
-        merged_ref_ngram_counts: collections.Counter = collections.Counter()
+        merged_ref_ngram_counts: Counter[Tuple[str, ...]] = \
+            collections.Counter()
         for reference in references:
             reference = _maybe_str_to_list(reference)
             if lowercase:
