@@ -92,6 +92,7 @@ def _build_dense_output_layer(cell_output_size: int,
     output_layers: List[Module] = []
     for i in range(nlayers):
         if i in dropout_layer_ids:
+            # TODO: Variational dropout is not implemented.
             output_layers.append(nn.Dropout(p=hparams.dropout_rate))
 
         dense_layer = nn.Linear(in_features=(cell_output_size if i == 0
@@ -120,9 +121,8 @@ def _build_dense_output_layer(cell_output_size: int,
 
 def _forward_output_layers(
         inputs: torch.Tensor,
-        output_layer: Optional[Union[Sequential, Module]],
+        output_layer: Optional[Module],
         time_major: bool,
-        hparams: Optional[Dict],
         sequence_length: Optional[Union[torch.LongTensor, List[int]]] = None) \
         -> Tuple[torch.Tensor, int]:
     """Forwards inputs through the output layers.
@@ -136,7 +136,6 @@ def _forward_output_layers(
             :attr:`outputs` Tensors. If `True`, these tensors are of shape
             `[max_time, batch_size, input_size]`. If `False` (default),
             these tensors are of shape `[batch_size, max_time, input_size]`.
-        hparams (dict or HParams, optional): Hyperparameters.
         sequence_length (optional): A 1D int tensor of shape `[batch_size]`.
             Sequence lengths of the batch inputs. Used to copy-through state
             and zero-out outputs when past a batch element's sequence length.
@@ -152,65 +151,13 @@ def _forward_output_layers(
     if output_layer is None:
         return inputs, inputs.shape[-1]
 
-    if hparams is None:
-        # output_layer was passed in from the constructor
-        if isinstance(output_layer, Sequential):
-            raise ValueError('output_layer must not be a Sequential.')
-        output = output_layer(inputs)
-    else:
-        output = output_layer(inputs)
+    output = output_layer(inputs)
 
     if sequence_length is not None:
         output = mask_sequences(output, sequence_length, time_major=time_major)
 
     output_size = output.shape[-1]
 
-    return output, output_size
-
-
-def _apply_rnn_encoder_output_layer(output_layer: Optional[Union[Sequential,
-                                                                 Module]],
-                                    time_major: bool,
-                                    hparams: Optional[Dict],
-                                    cell_outputs: torch.Tensor,
-                                    sequence_length: Optional[Union[
-                                        torch.LongTensor, List[int]]]) -> \
-        Tuple[torch.Tensor, int]:
-    """Forwards rnn encoder output through the output layers.
-
-    Args:
-        output_layer (optional): nn.Sequential or nn.Module of output layers.
-        time_major (bool): The shape format of the :attr:`inputs` and
-            :attr:`outputs` Tensors. If `True`, these tensors are of shape
-            `[max_time, batch_size, input_size]`. If `False` (default),
-            these tensors are of shape `[batch_size, max_time, input_size]`.
-        hparams (dict or HParams, optional): Hyperparameters. Missing
-            hyperparamerter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
-            default values.
-        cell_outputs: A Tensor of shape `[batch_size, max_time] + input_size` if
-            :attr:`time_major=False`, or shape
-            `[max_time, batch_size] + input_size` if :attr:`time_major=True`.
-        sequence_length (optional): A 1D int tensor of shape `[batch_size]`.
-                Sequence lengths of the batch inputs. Used to copy-through
-                state and zero-out outputs when past a batch element's sequence
-                length.
-
-    Returns:
-         A pair :attr:`(outputs, outputs_size), where
-
-        - :attr:`outputs`: A Tensor of shape
-        `[batch_size, max_time] + outputs_size`.
-
-        - :attr:`outputs_size`: An `int` representing the output size.
-    """
-
-    output, output_size = _forward_output_layers(inputs=cell_outputs,
-                                                 output_layer=output_layer,
-                                                 time_major=time_major,
-                                                 hparams=hparams,
-                                                 sequence_length=sequence_length
-                                                 )
     return output, output_size
 
 
@@ -303,7 +250,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
                                              self._hparams.rnn_cell)
 
         # Make output layer
-        self._output_layer: Optional[Union[Sequential, nn.Module]]
+        self._output_layer: Optional[Module]
         if output_layer is not None:
             self._output_layer = output_layer
             self._output_layer_hparams = None
@@ -495,11 +442,10 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
             initial_state=initial_state,
             time_major=time_major)
 
-        outputs, output_size = _apply_rnn_encoder_output_layer(
+        outputs, output_size = _forward_output_layers(
+            inputs=cell_outputs,
             output_layer=self._output_layer,
             time_major=time_major,
-            hparams=self._output_layer_hparams,
-            cell_outputs=cell_outputs,
             sequence_length=sequence_length)
 
         rets = (outputs, state)
@@ -526,7 +472,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
             return self._cell.hidden_size
 
     @property
-    def output_layer(self) -> Optional[Union[Sequential, Module]]:
+    def output_layer(self) -> Optional[Module]:
         """The output layer.
         """
         return self._output_layer
@@ -600,7 +546,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
 
         # Make output layers
 
-        self.__output_layer_fw: Optional[Union[Sequential, Module]]
+        self.__output_layer_fw: Optional[Module]
         if output_layer_fw is not None:
             self._output_layer_fw = output_layer_fw
             self._output_layer_hparams_fw = None
@@ -609,7 +555,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 self._cell_fw.hidden_size, self._hparams.output_layer_fw)
             self._output_layer_hparams_fw = self._hparams.output_layer_fw
 
-        self.__output_layer_bw: Optional[Union[Sequential, Module]]
+        self.__output_layer_bw: Optional[Module]
         if output_layer_bw is not None:
             self._output_layer_bw = output_layer_bw
             self._output_layer_hparams_bw = None
@@ -803,18 +749,16 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             initial_state_bw=initial_state_bw,
             time_major=time_major)
 
-        outputs_fw, output_size_fw = _apply_rnn_encoder_output_layer(
+        outputs_fw, output_size_fw = _forward_output_layers(
+            inputs=cell_outputs[0],
             output_layer=self._output_layer_fw,
             time_major=time_major,
-            hparams=self._output_layer_hparams_fw,
-            cell_outputs=cell_outputs[0],
             sequence_length=sequence_length)
 
-        outputs_bw, output_size_bw = _apply_rnn_encoder_output_layer(
+        outputs_bw, output_size_bw = _forward_output_layers(
+            inputs=cell_outputs[1],
             output_layer=self._output_layer_bw,
             time_major=time_major,
-            hparams=self._output_layer_hparams_bw,
-            cell_outputs=cell_outputs[1],
             sequence_length=sequence_length)
 
         outputs = (outputs_fw, outputs_bw)
@@ -860,13 +804,13 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             return self._cell_bw.hidden_size
 
     @property
-    def output_layer_fw(self) -> Optional[Union[Sequential, Module]]:
+    def output_layer_fw(self) -> Optional[Module]:
         """The output layer of the forward RNN.
         """
         return self._output_layer_fw
 
     @property
-    def output_layer_bw(self) -> Optional[Union[Sequential, Module]]:
+    def output_layer_bw(self) -> Optional[Module]:
         """The output layer of the backward RNN.
         """
         return self._output_layer_bw
