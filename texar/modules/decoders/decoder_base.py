@@ -282,7 +282,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                     raise ValueError(
                         f"When using '{decoding_strategy}' decoding strategy, "
                         f"'embedding', 'start_tokens', and 'end_token' must not"
-                        f"be `None`.")
+                        f" be `None`.")
                 if decoding_strategy == 'infer_greedy':
                     helper = decoder_helpers.GreedyEmbeddingHelper(
                         embedding, start_tokens, end_token)

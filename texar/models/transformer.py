@@ -137,11 +137,14 @@ class Transformer(ModuleBase):
             mle_loss = (mle_loss * is_target).sum() / is_target.sum()
             return mle_loss
         else:
-            start_tokens = torch.full([batch_size], self.bos_token_id)
+            start_tokens = torch.full([batch_size], self.bos_token_id,
+                                      dtype=torch.int64)
+
             if torch.cuda.is_available():
                 start_tokens = start_tokens.cuda()
 
             def _embedding_fn(x, y):
+                print('step:{}'.format(y))
                 return self.submodules["word_embedder"](
                     x
                 ) * self.config_model.hidden_dim ** 0.5 + self.submodules[

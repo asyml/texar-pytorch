@@ -105,8 +105,7 @@ def main():
             predictions = model(
                 encoder_input=x_block,
                 is_train_mode=False,
-                beam_width=getattr(config_model, 'beam_width')
-            )
+                beam_width=beam_width)
             if beam_width == 1:
                 decoded_ids = predictions[0].sample_id
             else:
@@ -186,6 +185,8 @@ def main():
             opt.step()
             model.step_iteration += 1
             step = model.step_iteration
+            _eval_epoch(epoch, mode='eval')
+            exit()
             if step % config_data.display_steps == 0:
                 logger.info('step: %d, loss: %.4f', step, loss)
                 print('lr: {} step: {}, loss: {}'.format(lr, step, loss))
