@@ -15,7 +15,7 @@
 Utility functions related to tensor shapes.
 """
 
-from typing import List, Optional, Union, Any
+from typing import Any, List, Optional, Union
 
 import numpy as np
 import torch
@@ -29,8 +29,7 @@ __all__ = [
     "get_rank",
     "mask_sequences",
     "flatten",
-    "shape_list",
-    "pad_and_concat"
+    "pad_and_concat",
 ]
 
 
@@ -162,21 +161,6 @@ def flatten(tensor: torch.Tensor, preserve_dims: int,
     return tensor_
 
 
-def shape_list(x: torch.Tensor) -> torch.Size:
-    r"""Returns **static** shape of the input Tensor whenever possible.
-
-    Args:
-        x: A Tensor.
-
-    Returns:
-        - If the rank of :attr:`x` is unknown, returns the dynamic shape: \
-        `tf.shape(x)`
-        - Otherwise, returns a list of dims, each of which is either an `int` \
-        whenever it can be statically determined, or a scalar Tensor otherwise.
-    """
-    return x.size()
-
-
 def pad_and_concat(values: List[torch.Tensor], axis: int,
                    pad_axis: Optional[MaybeList[int]] = None,
                    pad_constant_values: Any = 0) -> torch.Tensor:
@@ -239,4 +223,3 @@ def pad_and_concat(values: List[torch.Tensor], axis: int,
             values[i] = torch.cat((v, padding), dim=pad_dim)
 
     return torch.cat(values, dim=axis)
-

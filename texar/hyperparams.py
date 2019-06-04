@@ -37,9 +37,8 @@ class HParams:
       hyperparameters they care about. Other hyperparameters will automatically
       take the default values. The auto-completion performs **recursively** so
       that hyperparameters taking `dict` values will also be auto-completed
-      **All Texar modules** provide a
-      :meth:`default_hparams` containing allowed hyperparameters and their
-      default values. For example
+      **All Texar modules** provide a :meth:`default_hparams` containing
+      allowed hyperparameters and their default values. For example:
 
         .. code-block:: python
 
@@ -63,23 +62,23 @@ class HParams:
       have the same or compatible dtype with the default value. HParams does
       necessary typecheck, and raises Error if improper dtype is provided.
       Also, hyperparameters not listed in `default_hparams` are not allowed,
-      except for "kwargs" as detailed below.
+      except for `"kwargs"` as detailed below.
 
     - **Flexible dtype for specified hyperparameters.**  Some hyperparameters
       may allow different dtypes of values.
 
-        - Hyperparameters named "type" are not typechecked.
+        - Hyperparameters named `"type"` are not typechecked.
           For example, in :func:`~texar.core.get_rnn_cell`, hyperparameter
           `"type"` can take value of an RNNCell class, its string name of module
           path, or an RNNCell class instance. (String name or module path is
           allowd so that users can specify the value in YAML config files.)
 
         - For other hyperparameters, list them
-          in the "@no_typecheck" field in `default_hparams` to skip typecheck.
+          in the `"@no_typecheck"` field in `default_hparams` to skip typecheck.
           For example, in :func:`~texar.core.get_rnn_cell`, hyperparameter
-          "*_keep_prob" can be set to either a `float` or a `tf.placeholder`.
+          ``"\*_keep_prob"`` can be set to either a `float` or a `tf.placeholder`.
 
-    - **Special flexibility of keyword argument hyparameters.**
+    - **Special flexibility of keyword argument hyperparameters.**
       Hyperparameters named "kwargs" are used as keyword arguments for a class
       constructor or a function call. Such hyperparameters take a `dict`, and
       users can add arbitrary valid keyword arguments to the dict. For example:
@@ -236,8 +235,8 @@ class HParams:
 
             # Parse recursively for params of type dictionary.
             if isinstance(value, dict):
-                if (name not in no_typecheck_names
-                        and not isinstance(default_value, dict)):
+                if (name not in no_typecheck_names and
+                        not isinstance(default_value, dict)):
                     raise ValueError(
                         "Hyperparameter '%s' must have type %s, got %s" %
                         (name, _type_name(default_value), _type_name(value)))

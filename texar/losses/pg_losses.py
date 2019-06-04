@@ -44,7 +44,7 @@ def pg_loss_with_logits(actions: torch.Tensor,
                         sum_over_timesteps: bool = True,
                         sum_over_remaining: bool = True,
                         time_major: bool = False) -> torch.Tensor:
-    """Policy gradient loss with logits. Used for discrete actions.
+    r"""Policy gradient loss with logits. Used for discrete actions.
 
     `pg_loss = reduce( advantages * -log_prob( actions )  )`,
     where `advantages` and `actions` do not back-propagate gradients.
@@ -118,7 +118,7 @@ def pg_loss_with_logits(actions: torch.Tensor,
     """
     actions = actions.detach()
     logits = F.log_softmax(logits, dim=-1)
-    logits = logits.permute([0, -1] + list(range(1, logits.dim()-1)))
+    logits = logits.permute([0, -1] + list(range(1, logits.dim() - 1)))
     neg_log_probs = F.nll_loss(logits, actions, reduction='none')
 
     return pg_loss_with_log_probs(
@@ -148,9 +148,9 @@ def pg_loss_with_log_probs(log_probs: torch.Tensor,
                            sum_over_timesteps: bool = True,
                            sum_over_remaining: bool = True,
                            time_major: bool = False) -> torch.Tensor:
-    """Policy gradient loss with log probs of actions.
+    r"""Policy gradient loss with log probabilities of actions.
 
-    `pg_loss = reduce( advantages * -log_probs )`,
+    `pg_loss = reduce(advantages * -log_probs)`,
     where `advantages` does not back-propagate gradients.
 
     All arguments except :attr:`log_probs` are the same as

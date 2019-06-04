@@ -43,7 +43,7 @@ def mask_and_reduce(sequence: torch.Tensor,
                     sum_over_remaining: bool = True,
                     dtype: Optional[torch.dtype] = None,
                     time_major: bool = False) -> torch.Tensor:
-    """Masks out sequence entries that are beyond the respective sequence
+    r"""Masks out sequence entries that are beyond the respective sequence
     lengths, and reduces (average or sum) away dimensions.
 
     This is a combination of :func:`~texar.utils.shapes.mask_sequences`
@@ -79,6 +79,7 @@ def mask_and_reduce(sequence: torch.Tensor,
         sum_over_remaining (bool): If set, sum the sequence across the remaining
             dimension. Must not set `average_across_remaining` and
             `sum_over_remaining` at the same time.
+        dtype (torch.dtype): The dtype of the returned mask.
         time_major (bool): The shape format of the inputs. If `True`,
             :attr:`sequence` must have shape `[max_time, batch_size, ...]`.
             If `False` (default), `sequence` must have
@@ -130,7 +131,7 @@ def reduce_batch_time(sequence: torch.Tensor,
                       average_across_timesteps: bool = False,
                       sum_over_batch: bool = False,
                       sum_over_timesteps: bool = True) -> torch.Tensor:
-    """Average or sum over the respective dimensions of :attr:`sequence`, which
+    r"""Average or sum over the respective dimensions of :attr:`sequence`, which
     is of shape `[batch_size, max_time, ...]`.
 
     Assumes :attr:`sequence` has been properly masked according to
@@ -170,8 +171,8 @@ def reduce_batch_time(sequence: torch.Tensor,
         if sequence_length is None:
             sequence = torch.mean(sequence, dim=1)
         else:
-            sequence = torch.sum(sequence, dim=1).float() / \
-                       sequence_length.float()
+            sequence = (torch.sum(sequence, dim=1).float() /
+                        sequence_length.float())
 
     if sum_over_batch:
         sequence = torch.sum(sequence, dim=0)
@@ -185,7 +186,7 @@ def reduce_dimensions(tensor: torch.Tensor,
                       average_axes: Optional[MaybeList[int]] = None,
                       sum_axes: Optional[MaybeList[int]] = None,
                       keepdims: Optional[bool] = None) -> torch.Tensor:
-    """Average or sum over dimensions of :attr:`tensor`.
+    r"""Average or sum over dimensions of :attr:`tensor`.
 
     :attr:`average_axes` and :attr:`sum_axes` must be mutually exclusive. That
     is, elements in `average_axes` must not be contained in

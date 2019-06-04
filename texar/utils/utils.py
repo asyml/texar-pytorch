@@ -165,7 +165,7 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
         max_len: scalar integer tensor, size of last dimension of returned
             tensor. Default is the maximum value in `lengths`.
         dtype: the desired data type of returned tensor. Default: if None,
-            returns :class:`torch.ByteTensor`.
+            returns :torch:`ByteTensor`.
         device: the desired device of returned tensor. Default: if None, uses
             the current device for the default tensor type (see
             :meth:`torch.set_default_tensor_type()`). `device` will be the CPU
@@ -313,8 +313,7 @@ def check_or_get_instance(ins_or_class_or_name: Union[Type[T], T, str],
         ins_or_class_or_name: Can be of 3 types:
 
             - A class to instantiate.
-            - A string of the name or full path to a class to \
-              instantiate.
+            - A string of the name or full path to a class to instantiate.
             - The class instance to check types.
 
         kwargs (dict): Keyword arguments for the class constructor. Ignored
@@ -398,8 +397,7 @@ def check_or_get_instance_with_redundant_kwargs(
         ins_or_class_or_name: Can be of 3 types:
 
             - A class to instantiate.
-            - A string of the name or module path to a class to \
-              instantiate.
+            - A string of the name or module path to a class to instantiate.
             - The class instance to check types.
 
         kwargs (dict): Keyword arguments for the class constructor.
@@ -471,8 +469,8 @@ def get_instance_with_redundant_kwargs(
 
 
 def get_function(fn_or_name: Union[str, Callable[[torch.Tensor], torch.Tensor]],
-                 module_paths: Optional[List[str]] = None) -> \
-        Callable[[torch.Tensor], torch.Tensor]:
+                 module_paths: Optional[List[str]] = None) \
+        -> Callable[[torch.Tensor], torch.Tensor]:
     r"""Returns the function of specified name and module.
 
     Args:
@@ -795,8 +793,8 @@ def strip_token(str_: MaybeSeq[str], token: str,
             if token == "":
                 return ' '.join(s.strip().split())
             else:
-                return ' '.join(s.strip().split()). \
-                    replace(' ' + token, '').replace(token + ' ', '')
+                return (' '.join(s.strip().split())
+                        .replace(' ' + token, '').replace(token + ' ', ''))
         else:
             s_ = [_recur_strip(si) for si in s]
             return _maybe_list_to_array(s_, s)

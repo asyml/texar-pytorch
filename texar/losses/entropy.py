@@ -32,7 +32,7 @@ __all__ = [
 
 
 def _get_entropy(logits: torch.Tensor) -> torch.Tensor:
-    """Compute entropy according to the definition.
+    r"""Compute entropy according to the definition.
 
     Args:
         logits: Unscaled log probabilities.
@@ -52,7 +52,7 @@ def entropy_with_logits(logits: torch.Tensor,
                         average_across_remaining: bool = False,
                         sum_over_batch: bool = False,
                         sum_over_remaining: bool = True) -> torch.Tensor:
-    """Shannon entropy given logits.
+    r"""Shannon entropy given logits.
 
     Args:
         logits: Unscaled log probabilities of shape
@@ -134,7 +134,7 @@ def sequence_entropy_with_logits(
         sum_over_timesteps: bool = True,
         sum_over_remaining: bool = True,
         time_major: bool = False) -> torch.Tensor:
-    """Shannon entropy given logits.
+    r"""Shannon entropy given logits.
 
     Args:
         logits: Unscaled log probabilities of shape

@@ -22,6 +22,10 @@ import torch.nn.functional as F
 
 from texar.utils.types import MaybeTuple
 
+__all__ = [
+    'binary_adversarial_losses',
+]
+
 
 __all__ = [
     'binary_adversarial_losses',
@@ -33,7 +37,7 @@ def binary_adversarial_losses(
         fake_data: torch.Tensor,
         discriminator_fn: Callable[[torch.Tensor], MaybeTuple[torch.Tensor]],
         mode: str = "max_real") -> Tuple[torch.Tensor, torch.Tensor]:
-    """Computes adversarial losses of real/fake binary discrimination game.
+    r"""Computes adversarial losses of real/fake binary discrimination game.
 
     .. role:: python(code)
        :language: python
@@ -52,11 +56,11 @@ def binary_adversarial_losses(
             a tuple where the logits are the first element.
         mode (str): Mode of the generator loss. Either "max_real" or "min_fake".
 
-            - **"max_real"** (default): minimizing the generator loss is to\
-            maximize the probability of fake data being classified as real.
+            - **"max_real"** (default): minimizing the generator loss is to
+              maximize the probability of fake data being classified as real.
 
-            - **"min_fake"**: minimizing the generator loss is to minimize the\
-            probability of fake data being classified as fake.
+            - **"min_fake"**: minimizing the generator loss is to minimize the
+              probability of fake data being classified as fake.
 
     Returns:
         A tuple `(generator_loss, discriminator_loss)` each of which is

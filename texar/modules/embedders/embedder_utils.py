@@ -16,18 +16,18 @@
 
 import torch
 
+import texar.core.layers as layers
 from texar.hyperparams import HParams
-from texar.core import layers
 
 __all__ = [
     "default_embedding_hparams",
     "get_embedding",
-    "soft_embedding_lookup"
+    "soft_embedding_lookup",
 ]
 
 
 def default_embedding_hparams():
-    """Returns a `dict` of hyperparameters and default values of a embedder.
+    r"""Returns a `dict` of hyperparameters and default values of a embedder.
 
      See :meth:`~texar.modules.WordEmbedder.default_hparams` for details.
 
@@ -68,12 +68,12 @@ def default_embedding_hparams():
                 initializing function;
                 The function can be
 
-                - Built-in initializing function defined in \
-                  `torch.nn.init`, e.g., `xavier_uniform <function>` \
+                - Built-in initializing function defined in
+                  `torch.nn.init`, e.g., `xavier_uniform <function>`
                   or in :mod:`torch`, e.g., `rand <function>`.
                 - User-defined initializing function in :mod:`texar.custom`.
-                - External initializing function or initializer instance.\
-                  Must provide the full path, e.g.,\
+                - External initializing function or initializer instance.
+                  Must provide the full path, e.g.,
                   :attr:`"my_module.MyInitializer"`, or the instance.
 
             "kwargs" : dict
@@ -90,14 +90,14 @@ def default_embedding_hparams():
         "dropout_strategy" : str
             The dropout strategy. Can be one of the following
 
-            - 'element': The regular strategy that drops individual elements \
+            - 'element': The regular strategy that drops individual elements
               in the embedding vectors.
-            - 'item': Drops individual items (e.g., words) entirely. E.g., for \
-              the word sequence 'the simpler the better', the strategy can \
+            - 'item': Drops individual items (e.g., words) entirely. E.g., for
+              the word sequence 'the simpler the better', the strategy can
               yield '_ simpler the better', where the first `the` is dropped.
-            - 'item_type': Drops item types (e.g., word types). E.g., for the \
-              above sequence, the strategy can yield '_ simpler _ better', \
-              where the word type 'the' is dropped. The dropout will never \
+            - 'item_type': Drops item types (e.g., word types). E.g., for the
+              above sequence, the strategy can yield '_ simpler _ better',
+              where the word type 'the' is dropped. The dropout will never
               yield '_ simpler the better' as in the 'item' strategy.
 
     """
@@ -114,7 +114,7 @@ def default_embedding_hparams():
 def get_embedding(num_embeds=None,
                   init_value=None,
                   hparams=None):
-    """Creates embedding variable if not exists.
+    r"""Creates embedding variable if not exists.
 
     Args:
         hparams (dict or HParams, optional): Embedding hyperparameters. Missing
@@ -161,7 +161,7 @@ def get_embedding(num_embeds=None,
 
 
 def soft_embedding_lookup(embedding, soft_ids):
-    """Transforms soft ids (e.g., probability distribution over ids) into
+    r"""Transforms soft ids (e.g., probability distribution over ids) into
     embeddings, by mixing the embedding vectors with the soft weights.
 
     Args:

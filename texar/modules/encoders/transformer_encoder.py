@@ -22,15 +22,14 @@ from torch import nn
 
 from texar.core import layers
 from texar.modules.encoders.encoder_base import EncoderBase
-from texar.modules.encoders.multihead_attention import (
-    MultiheadAttentionEncoder)
+from texar.modules.encoders.multihead_attention import MultiheadAttentionEncoder
 from texar.modules.networks.networks import FeedForwardNetwork
 from texar.utils import transformer_attentions as attn
-from texar.utils.shapes import shape_list
 from texar.utils.utils import sequence_mask
 
 # pylint: disable=too-many-locals, invalid-name
 # pylint: disable=arguments-differ, too-many-branches, too-many-statements
+
 
 __all__ = [
     "default_transformer_poswise_net_hparams",
@@ -249,12 +248,12 @@ class TransformerEncoder(EncoderBase):
             If `True`, apply the Transformer Encoder architecture used in BERT
             `(Devlin et al.)` and the default setting of Tensorflow.
             The differences lie in:
-                1. The attention bias for padding tokens: \
-                   The standard arch uses `-1e8` for nagative attention mask. \
+                1. The attention bias for padding tokens:
+                   The standard arch uses `-1e8` for nagative attention mask.
                    BERT uses `-1e4` instead.
-                2. The residual connections between internal tensors: \
-                   In BERT, a residual layer connects the tensors *after* \
-                   layer normalization. In the standard arch, the tensors are \
+                2. The residual connections between internal tensors:
+                   In BERT, a residual layer connects the tensors *after*
+                   layer normalization. In the standard arch, the tensors are
                    connected *before* layer normalization.
 
         "embedding_dropout" : float
@@ -371,7 +370,7 @@ class TransformerEncoder(EncoderBase):
             else:
                 y = poswise_normalizer(x)
 
-            original_shape = shape_list(y)
+            original_shape = y.size()
 
             y = y.view(-1, self._hparams.dim)
 

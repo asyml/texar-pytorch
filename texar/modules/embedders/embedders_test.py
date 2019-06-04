@@ -6,12 +6,13 @@ Unit tests for embedders.
 # pylint: disable=no-member
 
 import unittest
-import torch
+
 import numpy as np
+import torch
 
 from texar.modules.embedders.embedders import WordEmbedder
-from texar.modules.embedders.position_embedders import \
-    PositionEmbedder, SinusoidsPositionEmbedder
+from texar.modules.embedders.position_embedders import (
+    PositionEmbedder, SinusoidsPositionEmbedder)
 
 
 class EmbedderTest(unittest.TestCase):

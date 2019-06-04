@@ -16,23 +16,23 @@ Various classifier classes.
 """
 # pylint: disable=not-context-manager, too-many-arguments, too-many-locals
 
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import torch
 from torch import nn
 
-from typing import Optional, List, Dict, Tuple, Union, Any
-
+import texar.utils.utils as utils
+from texar.hyperparams import HParams
 from texar.modules.classifiers.classifier_base import ClassifierBase
 from texar.modules.encoders.conv_encoders import Conv1DEncoder
-from texar.utils import utils
-from texar.hyperparams import HParams
 
 __all__ = [
-    "Conv1DClassifier"
+    "Conv1DClassifier",
 ]
 
 
 class Conv1DClassifier(ClassifierBase):
-    """Simple Conv-1D classifier.
+    r"""Simple Conv-1D classifier.
     This is a combination of the
     :class:`~texar.modules.Conv1DEncoder` with a classification layer.
 
@@ -88,7 +88,7 @@ class Conv1DClassifier(ClassifierBase):
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
-        """Returns a dictionary of hyperparameters with default values.
+        r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
 
@@ -115,12 +115,12 @@ class Conv1DClassifier(ClassifierBase):
             "num_classes" : int
                 Number of classes:
 
-                - If **`> 0`**, an additional :tf_main:`Dense <layers/Dense>` \
-                layer is appended to the encoder to compute the logits over \
-                classes.
-                - If **`<= 0`**, no dense layer is appended. The number of \
-                classes is assumed to be equal to "out_features" of the final
-                dense layer size of the encoder.
+                - If **`> 0`**, an additional :tf_main:`Dense <layers/Dense>`
+                  layer is appended to the encoder to compute the logits over
+                  classes.
+                - If **`<= 0`**, no dense layer is appended. The number of
+                  classes is assumed to be equal to "out_features" of the final
+                  dense layer size of the encoder.
 
             "logit_layer_kwargs" : dict
                 Keyword arguments for the logit Dense layer constructor,
@@ -146,7 +146,7 @@ class Conv1DClassifier(ClassifierBase):
                 sequence_length: Union[torch.LongTensor, List[int]] = None,
                 dtype: Optional[torch.dtype] = None) \
             -> Tuple[torch.Tensor, torch.Tensor]:
-        """Feeds the inputs through the network and makes classification.
+        r"""Feeds the inputs through the network and makes classification.
 
         The arguments are the same as in :class:`~texar.modules.Conv1DEncoder`.
 
@@ -167,13 +167,13 @@ class Conv1DClassifier(ClassifierBase):
         Returns:
             A tuple `(logits, pred)`, where
 
-            - **`logits`** is a Tensor of shape `[batch_size, num_classes]`\
-            for `num_classes` >1, and `[batch_size]` for `num_classes` =1 \
-            (i.e., binary classification).
-            - **`pred`** is the prediction, a Tensor of shape `[batch_size]` \
-            and type `tf.int64`. For binary classification, the standard \
-            sigmoid function is used for prediction, and the class labels are \
-            `{0, 1}`.
+            - **`logits`** is a Tensor of shape `[batch_size, num_classes]`
+              for `num_classes` >1, and `[batch_size]` for `num_classes` =1
+              (i.e., binary classification).
+            - **`pred`** is the prediction, a Tensor of shape `[batch_size]`
+              and type `tf.int64`. For binary classification, the standard
+              sigmoid function is used for prediction, and the class labels are
+              `{0, 1}`.
         """
         logits = self._encoder(input, sequence_length=sequence_length,
                                dtype=dtype)
@@ -194,18 +194,18 @@ class Conv1DClassifier(ClassifierBase):
 
     @property
     def num_classes(self) -> int:
-        """The number of classes.
+        r"""The number of classes.
         """
         return self._num_classes
 
     @property
     def encoder(self) -> nn.Module:
-        """The classifier neural network.
+        r"""The classifier neural network.
         """
         return self._encoder
 
     def has_layer(self, layer_name) -> bool:
-        """Returns `True` if the network with the name exists. Returns `False`
+        r"""Returns `True` if the network with the name exists. Returns `False`
         otherwise.
 
         Args:
@@ -214,7 +214,7 @@ class Conv1DClassifier(ClassifierBase):
         return self._encoder.has_layer(layer_name)
 
     def layer_by_name(self, layer_name) -> Optional[nn.Module]:
-        """Returns the layer with the name. Returns 'None' if the layer name
+        r"""Returns the layer with the name. Returns 'None' if the layer name
         does not exist.
 
         Args:
@@ -224,19 +224,18 @@ class Conv1DClassifier(ClassifierBase):
 
     @property
     def layers_by_name(self) -> Dict[str, nn.Module]:
-        """A dictionary mapping layer names to the layers.
+        r"""A dictionary mapping layer names to the layers.
         """
         return self._encoder.layers_by_name
 
     @property
     def layers(self) -> nn.ModuleList:
-        """A list of the layers.
+        r"""A list of the layers.
         """
         return self._encoder.layers
 
     @property
     def layer_names(self) -> List[str]:
-        """A list of uniquified layer names.
+        r"""A list of uniquified layer names.
         """
         return self._encoder.layer_names
-

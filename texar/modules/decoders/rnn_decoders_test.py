@@ -9,14 +9,14 @@ import unittest
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-from torch import nn
 
 from texar.hyperparams import HParams
-from texar.modules import get_helper
+from texar.modules.decoders.decoder_helpers import get_helper
 from texar.modules.decoders.rnn_decoders import (
-    BasicRNNDecoder, BasicRNNDecoderOutput, AttentionRNNDecoder,
-    AttentionRNNDecoderOutput)
+    AttentionRNNDecoder, AttentionRNNDecoderOutput, BasicRNNDecoder,
+    BasicRNNDecoderOutput)
 
 
 class BasicRNNDecoderTest(unittest.TestCase):

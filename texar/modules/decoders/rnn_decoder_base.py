@@ -24,7 +24,8 @@ from typing import Optional, Tuple, TypeVar
 import torch
 from torch import nn
 
-from texar.core import RNNCellBase, layers
+from texar.core import layers
+from texar.core.cell_wrappers import RNNCellBase
 from texar.hyperparams import HParams
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
@@ -110,19 +111,17 @@ class RNNDecoderBase(DecoderBase[State, Output]):
                 Used when `decoding_strategy` is set to "train_greedy", or
                 when `hparams`-configured helper is used.
 
-                - If :attr:`embedding` is `None`, `inputs` is directly \
-                fed to the decoder. E.g., in `"train_greedy"` strategy, \
-                `inputs` must be a 3D Tensor of shape \
-                `[batch_size, max_time, emb_dim]` (or \
-                `[max_time, batch_size, emb_dim]` if `input_time_major`==True).
-                - If `embedding` is given, `inputs` is used as index \
-                to look up embeddings and feed in the decoder. \
-                E.g., if `embedding` is an instance of \
-                :class:`~texar.modules.WordEmbedder`, \
-                then :attr:`inputs` is usually a 2D int Tensor \
-                `[batch_size, max_time]` (or \
-                `[max_time, batch_size]` if `input_time_major`==True) \
-                containing the token indexes.
+                - If :attr:`embedding` is `None`, `inputs` is directly fed to
+                  the decoder. E.g., in `"train_greedy"` strategy, `inputs` must
+                  be a 3D Tensor of shape `[batch_size, max_time, emb_dim]` (or
+                  `[max_time, batch_size, emb_dim]` if
+                  `input_time_major`==True).
+                - If `embedding` is given, `inputs` is used as index to look up
+                  embeddings and feed in the decoder. E.g., if `embedding` is an
+                  instance of :class:`~texar.modules.WordEmbedder`, then
+                  :attr:`inputs` is usually a 2D int Tensor
+                  `[batch_size, max_time]` (or `[max_time, batch_size]` if
+                  `input_time_major`==True) containing the token indexes.
             sequence_length (optional): A 1D int Tensor containing the
                 sequence length of :attr:`inputs`.
                 Used when `decoding_strategy="train_greedy"` or
@@ -154,11 +153,11 @@ class RNNDecoderBase(DecoderBase[State, Output]):
         Returns:
             `(outputs, final_state, sequence_lengths)`, where
 
-            - **`outputs`**: an object containing the decoder output on all \
-            time steps.
+            - **`outputs`**: an object containing the decoder output on all
+              time steps.
             - **`final_state`**: is the cell state of the final time step.
-            - **`sequence_lengths`**: is an int Tensor of shape `[batch_size]` \
-            containing the length of each sample.
+            - **`sequence_lengths`**: is an int Tensor of shape `[batch_size]`
+              containing the length of each sample.
         """
         # TODO: Add faster code path for teacher-forcing training.
 
@@ -213,7 +212,8 @@ class RNNDecoderBase(DecoderBase[State, Output]):
 
     @property
     def cell(self):
-        r"""The RNN cell."""
+        r"""The RNN cell.
+        """
         return self._cell
 
     def zero_state(self, batch_size):
@@ -231,5 +231,6 @@ class RNNDecoderBase(DecoderBase[State, Output]):
 
     @property
     def output_layer(self):
-        r"""The output layer."""
+        r"""The output layer.
+        """
         return self._output_layer

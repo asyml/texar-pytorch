@@ -18,14 +18,13 @@ Various neural networks and related utilities.
 from texar.modules.networks.network_base import FeedForwardNetworkBase
 from texar.modules.networks.network_base import _build_layers
 
-
 __all__ = [
     "FeedForwardNetwork",
 ]
 
 
 class FeedForwardNetwork(FeedForwardNetworkBase):
-    """Feed-forward neural network that consists of a sequence of layers.
+    r"""Feed-forward neural network that consists of a sequence of layers.
 
     Args:
         layers (list, optional): A list of :tf_main:`Layer <layers/Layer>`
@@ -63,7 +62,7 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of hyperparameters with default values.
+        r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
 

@@ -20,8 +20,8 @@ import torch
 
 from texar.core.layers import get_pooling_layer_hparams
 from texar.hyperparams import HParams
-from texar.modules.networks.network_base import FeedForwardNetworkBase
-from texar.modules.networks.network_base import _build_layers
+from texar.modules.networks.network_base import (
+    FeedForwardNetworkBase, _build_layers)
 from texar.utils.shapes import mask_sequences
 from texar.utils.utils import uniquify_str
 
@@ -32,7 +32,7 @@ __all__ = [
 
 
 def _to_list(value: Union[List, Tuple, int], name=None, list_length=None):
-    """Converts hparam value into a list.
+    r"""Converts hparam value into a list.
 
     If :attr:`list_length` is given,
     then the canonicalized :attr:`value` must be of
@@ -51,12 +51,12 @@ def _to_list(value: Union[List, Tuple, int], name=None, list_length=None):
 
 
 class Conv1DNetwork(FeedForwardNetworkBase):
-    """Simple Conv-1D network which consists of a sequence of conv layers
+    r"""Simple Conv-1D network which consists of a sequence of conv layers
     followed with a sequence of dense layers.
 
     Args:
         hparams (dict, optional): Hyperparameters. Missing
-            hyperparamerter will be set to default values. See
+            hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
@@ -104,7 +104,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of hyperparameters with default values.
+        r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
 
@@ -154,17 +154,16 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             "kernel_size" : int or list
                 Lengths of 1D convolution windows.
 
-                - If "num_conv_layers" == 1, this can be a list of arbitrary \
-                number\
-                of `int` denoting different sized conv windows. The number of \
-                filters of each size is specified by "filters". For example,\
-                the default values will create 3 sets of filters, each of which\
-                has kernel size of 3, 4, and 5, respectively, and has filter\
-                number 128.
-                - If "num_conv_layers" > 1, this must be a list of length \
-                "num_conv_layers". Each element can be an `int` or a list \
-                of arbitrary number of `int` denoting the kernel size of \
-                respective layer.
+                - If "num_conv_layers" == 1, this can be a list of arbitrary
+                  number of `int` denoting different sized conv windows. The
+                  number of filters of each size is specified by "filters". For
+                  example, the default values will create 3 sets of filters,
+                  each of which has kernel size of 3, 4, and 5, respectively,
+                  and has filter number 128.
+                - If "num_conv_layers" > 1, this must be a list of length
+                  "num_conv_layers". Each element can be an `int` or a list
+                  of arbitrary number of `int` denoting the kernel size of
+                  respective layer.
 
             "conv_activation": str or callable
                 Activation applied to the output of the convolutional
@@ -329,7 +328,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         return pool_hparams
 
     def _build_conv1d_hparams(self, in_channels, pool_hparams):
-        """Creates the hparams for each of the conv layers usable for
+        r"""Creates the hparams for each of the conv layers usable for
         :func:`texar.core.layers.get_layer`.
         """
         nconv = self._hparams.num_conv_layers
@@ -368,7 +367,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             hparams_i = []
             names = []
             for ks_ij in kernel_size[i]:
-                name = uniquify_str("conv_%d" % (i+1), names)
+                name = uniquify_str("conv_%d" % (i + 1), names)
                 names.append(name)
                 conv_kwargs_ij = {
                     "in_channels": in_channels[i],
@@ -394,14 +393,15 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 mrg_kwargs_layers = []
                 for hparams_ij in hparams_i:
                     if self._hparams.conv_activation:
-                        seq_kwargs_j = \
-                            {"layers": [
+                        seq_kwargs_j = {
+                            "layers": [
                                 hparams_ij,
                                 _activation_hparams(
                                     self._hparams.conv_activation,
                                     self._hparams.conv_activation_kwargs),
                                 pool_hparams[i]
-                            ]}
+                            ]
+                        }
                     else:
                         seq_kwargs_j = {"layers": [hparams_ij, pool_hparams[i]]}
                     mrg_kwargs_layers.append(
@@ -448,8 +448,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 sequential_layer = {"type": "Sequential", "kwargs": layers}
                 dense_hparams.append(sequential_layer)
 
-            elif i == ndense - 1 and \
-                    self._hparams.final_dense_activation is not None:
+            elif (i == ndense - 1 and
+                  self._hparams.final_dense_activation is not None):
                 layers = {
                     "layers": [dense_hparams_i,
                                _activation_hparams(
@@ -486,6 +486,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         def _dropout_hparams():
             return {"type": "Dropout",
                     "kwargs": {"p": self._hparams.dropout_rate}}
+
         dropout_conv = _to_list(self._hparams.dropout_conv)
 
         layers_hparams = []
@@ -506,19 +507,19 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 input: torch.Tensor,
                 sequence_length: Union[torch.LongTensor, List[int]] = None,
                 dtype: Optional[torch.dtype] = None) -> torch.Tensor:
-        """Feeds forward inputs through the network layers and returns outputs.
+        r"""Feeds forward inputs through the network layers and returns outputs.
 
-            Args:
-                input: The inputs to the network, which is a 3D tensor.
-                sequence_length (optional): An int tensor of shape
-                    `[batch_size]` or a python array containing the length of
-                    each element in :attr:`inputs`. If given, time steps beyond
-                    the length will first be masked out before feeding to the
-                    layers.
-                dtype (optional): Type of the inputs. If not provided,
-                    infers from inputs automatically.
-            Returns:
-                The output of the final layer.
+        Args:
+            input: The inputs to the network, which is a 3D tensor.
+            sequence_length (optional): An int tensor of shape
+                `[batch_size]` or a python array containing the length of
+                each element in :attr:`inputs`. If given, time steps beyond
+                the length will first be masked out before feeding to the
+                layers.
+            dtype (optional): Type of the inputs. If not provided,
+                infers from inputs automatically.
+        Returns:
+            The output of the final layer.
         """
         if sequence_length is not None:
             input = mask_sequences(input, sequence_length,

@@ -59,7 +59,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Texar'
-copyright = u'2018, Texar'
+copyright = u'2019, Texar'
 author = u'Texar'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -91,7 +91,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
-#default_role = None
+# default_role = 'any'
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 #add_function_parentheses = True
@@ -321,12 +321,18 @@ intersphinx_mapping = {
     'numpy': ('http://docs.scipy.org/docs/numpy/', None),
 }
 
-extlinks = {'torch_main': (
-                'https://pytorch.org/docs/stable/_modules/torch/%s',
-                None),
-            'torch_docs': (
+extlinks = {'torch_docs': (
                 'https://pytorch.org/docs/stable/%s',
                 None),
+            'torch': (
+                'https://pytorch.org/docs/stable/torch.html#torch.%s',
+                'torch.'),
+            'torch_nn': (
+                'https://pytorch.org/docs/stable/nn.html#torch.nn.%s',
+                'torch.nn.'),
+            'torch_tensor': (
+                'https://pytorch.org/docs/stable/tensors.html#torch.Tensor.%s',
+                'torch.Tensor.'),
             'gym': (
                 'https://gym.openai.com/docs/%s',
                 None),

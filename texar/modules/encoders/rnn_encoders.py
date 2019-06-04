@@ -15,11 +15,10 @@
 Various RNN encoders.
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar, Union
 
 import torch
 import torch.nn as nn
-from torch.nn import Module, Sequential
 
 from texar.core import RNNCellBase, layers
 from texar.core.cell_wrappers import LSTMCell
@@ -28,7 +27,6 @@ from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.networks.conv_networks import _to_list
 from texar.utils.rnn import bidirectional_dynamic_rnn, dynamic_rnn
 from texar.utils.shapes import mask_sequences
-from texar.utils.types import MaybeTuple
 
 # pylint: disable=too-many-arguments, too-many-locals, invalid-name, no-member
 
@@ -39,7 +37,7 @@ __all__ = [
     "BidirectionalRNNEncoder",
 ]
 
-State = torch.Tensor
+State = TypeVar('State')
 
 
 def _default_output_layer_hparams() -> Dict[str, Any]:
@@ -58,8 +56,8 @@ def _default_output_layer_hparams() -> Dict[str, Any]:
 
 
 def _build_dense_output_layer(cell_output_size: int,
-                              hparams: HParams) -> Optional[Sequential]:
-    """Build the output layers.
+                              hparams: HParams) -> Optional[nn.Sequential]:
+    r"""Build the output layers.
 
     Args:
         cell_output_size: The output size of the rnn cell.
@@ -88,14 +86,14 @@ def _build_dense_output_layer(cell_output_size: int,
         raise ValueError(
             "hparams 'output_layer.other_dense_kwargs' must be a dict.")
 
-    output_layers: List[Module] = []
+    output_layers: List[nn.Module] = []
     for i in range(nlayers):
         if i in dropout_layer_ids:
             # TODO: Variational dropout is not implemented.
             output_layers.append(nn.Dropout(p=hparams.dropout_rate))
 
         dense_layer = nn.Linear(in_features=(cell_output_size if i == 0
-                                             else layer_size[i-1]),
+                                             else layer_size[i - 1]),
                                 out_features=layer_size[i], **other_kwargs)
 
         output_layers.append(dense_layer)
@@ -120,11 +118,11 @@ def _build_dense_output_layer(cell_output_size: int,
 
 def _forward_output_layers(
         inputs: torch.Tensor,
-        output_layer: Optional[Module],
+        output_layer: Optional[nn.Module],
         time_major: bool,
         sequence_length: Optional[Union[torch.LongTensor, List[int]]] = None) \
         -> Tuple[torch.Tensor, int]:
-    """Forwards inputs through the output layers.
+    r"""Forwards inputs through the output layers.
 
     Args:
         inputs: A Tensor of shape `[batch_size, max_time] + input_size` if
@@ -160,8 +158,8 @@ def _forward_output_layers(
     return output, output_size
 
 
-class RNNEncoderBase(EncoderBase):
-    """Base class for all RNN encoder classes to inherit.
+class RNNEncoderBase(EncoderBase, Generic[State]):
+    r"""Base class for all RNN encoder classes to inherit.
 
     Args:
         hparams (dict or HParams, optional): Hyperparameters. Missing
@@ -175,7 +173,7 @@ class RNNEncoderBase(EncoderBase):
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of hyperparameters with default values.
+        r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
 
@@ -188,7 +186,7 @@ class RNNEncoderBase(EncoderBase):
         }
 
     def forward(self, inputs, *args, **kwargs):
-        """Encodes the inputs.
+        r"""Encodes the inputs.
 
         Args:
             inputs: Inputs to the encoder.
@@ -201,8 +199,8 @@ class RNNEncoderBase(EncoderBase):
         raise NotImplementedError
 
 
-class UnidirectionalRNNEncoder(RNNEncoderBase):
-    """One directional RNN encoder.
+class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
+    r"""One directional RNN encoder.
 
     Args:
         cell: (RNNCell, optional) If not specified,
@@ -233,11 +231,12 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
     .. document private functions
     .. automethod:: _build
     """
+    _cell: RNNCellBase[State]
 
     def __init__(self,
                  input_size: int,
                  cell: Optional[RNNCellBase[State]] = None,
-                 output_layer: Optional[Module] = None,
+                 output_layer: Optional[nn.Module] = None,
                  hparams: Optional[HParams] = None):
         super().__init__(hparams)
 
@@ -249,7 +248,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
                                              self._hparams.rnn_cell)
 
         # Make output layer
-        self._output_layer: Optional[Module]
+        self._output_layer: Optional[nn.Module]
         if output_layer is not None:
             self._output_layer = output_layer
             self._output_layer_hparams = None
@@ -260,7 +259,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
-        """Returns a dictionary of hyperparameters with default values.
+        r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
 
@@ -366,11 +365,11 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
                 inputs: torch.Tensor,
                 sequence_length: Optional[Union[torch.LongTensor,
                                                 List[int]]] = None,
-                initial_state: Optional[MaybeTuple[torch.Tensor]] = None,
+                initial_state: Optional[State] = None,
                 time_major: bool = False,
                 return_cell_output: bool = False,
                 return_output_size: bool = False):
-        """Encodes the inputs.
+        r"""Encodes the inputs.
 
         Args:
             inputs: A 3D Tensor of shape `[batch_size, max_time, dim]`.
@@ -392,46 +391,42 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
                 output (i.e., the results after output layers).
 
         Returns:
-            - By default (both `return_cell_output` and \
-            `return_output_size` are False), returns a pair \
-            :attr:`(outputs, final_state)`
+            - By default (both `return_cell_output` and `return_output_size`
+              are False), returns a pair :attr:`(outputs, final_state)`
 
-                - :attr:`outputs`: The RNN output tensor by the output layer \
-                (if exists) or the RNN cell (otherwise). The tensor is of \
-                shape `[batch_size, max_time, output_size]` if \
-                `time_major` is False, or \
-                `[max_time, batch_size, output_size]` if \
-                `time_major` is True. \
-                If RNN cell output is a (nested) tuple of Tensors, then the \
-                :attr:`outputs` will be a (nested) tuple having the same \
-                nest structure as the cell output.
+                - :attr:`outputs`: The RNN output tensor by the output layer
+                  (if exists) or the RNN cell (otherwise). The tensor is of
+                  shape `[batch_size, max_time, output_size]` if `time_major`
+                  is `False`, or `[max_time, batch_size, output_size]` if
+                  `time_major` is `True`.
+                  If RNN cell output is a (nested) tuple of Tensors, then the
+                  :attr:`outputs` will be a (nested) tuple having the same
+                  nest structure as the cell output.
 
-                - :attr:`final_state`: The final state of the RNN, which is a \
-                Tensor of shape `[batch_size] + cell.state_size` or \
-                a (nested) tuple of Tensors if `cell.state_size` is a (nested)\
-                tuple.
+                - :attr:`final_state`: The final state of the RNN, which is a
+                  Tensor of shape `[batch_size] + cell.state_size` or
+                  a (nested) tuple of Tensors if `cell.state_size` is a (nested)
+                  tuple.
 
-            - If `return_cell_output` is True, returns a triple \
-            :attr:`(outputs, final_state, cell_outputs)`
+            - If `return_cell_output` is True, returns a triple
+              :attr:`(outputs, final_state, cell_outputs)`
 
-                - :attr:`cell_outputs`: The outputs by the RNN cell prior to \
-                the \
-                output layer, having the same structure with :attr:`outputs` \
-                except for the `output_dim`.
+                - :attr:`cell_outputs`: The outputs by the RNN cell prior to the
+                  output layer, having the same structure with :attr:`outputs`
+                  except for the `output_dim`.
 
-            - If `return_output_size` is `True`, returns a tuple \
-            :attr:`(outputs, final_state, output_size)`
+            - If `return_output_size` is `True`, returns a tuple
+              :attr:`(outputs, final_state, output_size)`
 
-                - :attr:`output_size`: A (possibly nested tuple of) int \
-                representing the size of :attr:`outputs`. If a single int or \
-                an int array, then `outputs` has shape \
-                `[batch/time, time/batch] + output_size`. If \
-                a (nested) tuple, then `output_size` has the same \
-                structure as with `outputs`.
+                - :attr:`output_size`: A (possibly nested tuple of) int
+                  representing the size of :attr:`outputs`. If a single int or
+                  an int array, then `outputs` has shape
+                  `[batch/time, time/batch] + output_size`. If
+                  a (nested) tuple, then `output_size` has the same
+                  structure as with `outputs`.
 
-            - If both `return_cell_output` and \
-            `return_output_size` are True, returns \
-            :attr:`(outputs, final_state, cell_outputs, output_size)`.
+            - If both `return_cell_output` and `return_output_size` are `True`,
+              returns :attr:`(outputs, final_state, cell_outputs, output_size)`.
         """
 
         cell_outputs, state = dynamic_rnn(
@@ -449,36 +444,36 @@ class UnidirectionalRNNEncoder(RNNEncoderBase):
 
         rets = (outputs, state)
         if return_cell_output:
-            rets += (cell_outputs, )  # type: ignore
+            rets += (cell_outputs,)  # type: ignore
         if return_output_size:
-            rets += (output_size, )  # type: ignore
+            rets += (output_size,)  # type: ignore
         return rets
 
     @property
     def cell(self) -> RNNCellBase[State]:
-        """The RNN cell.
+        r"""The RNN cell.
         """
         return self._cell
 
     @property
     def state_size(self) -> int:
-        """The state size of encoder cell.
+        r"""The state size of encoder cell.
         Same as :attr:`encoder.cell.state_size`.
         """
         if isinstance(self._cell, LSTMCell):
-            return 2 * self._cell.hidden_size
+            return 2 * self._cell.hidden_size  # type: ignore
         else:
             return self._cell.hidden_size
 
     @property
-    def output_layer(self) -> Optional[Module]:
-        """The output layer.
+    def output_layer(self) -> Optional[nn.Module]:
+        r"""The output layer.
         """
         return self._output_layer
 
 
 class BidirectionalRNNEncoder(RNNEncoderBase):
-    """Bidirectional forward-backward RNN encoder.
+    r"""Bidirectional forward-backward RNN encoder.
 
     Args:
         cell_fw (RNNCell, optional): The forward RNN cell. If not given,
@@ -522,8 +517,8 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                  input_size: int,
                  cell_fw: Optional[RNNCellBase[State]] = None,
                  cell_bw: Optional[RNNCellBase[State]] = None,
-                 output_layer_fw: Optional[Module] = None,
-                 output_layer_bw: Optional[Module] = None,
+                 output_layer_fw: Optional[nn.Module] = None,
+                 output_layer_bw: Optional[nn.Module] = None,
                  hparams: Optional[HParams] = None):
         super().__init__(hparams)
 
@@ -545,7 +540,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
 
         # Make output layers
 
-        self.__output_layer_fw: Optional[Module]
+        self.__output_layer_fw: Optional[nn.Module]
         if output_layer_fw is not None:
             self._output_layer_fw = output_layer_fw
             self._output_layer_hparams_fw = None
@@ -554,7 +549,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 self._cell_fw.hidden_size, self._hparams.output_layer_fw)
             self._output_layer_hparams_fw = self._hparams.output_layer_fw
 
-        self.__output_layer_bw: Optional[Module]
+        self.__output_layer_bw: Optional[nn.Module]
         if output_layer_bw is not None:
             self._output_layer_bw = output_layer_bw
             self._output_layer_hparams_bw = None
@@ -569,7 +564,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
-        """Returns a dictionary of hyperparameters with default values.
+        r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
 
@@ -655,12 +650,12 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 inputs: torch.Tensor,
                 sequence_length: Optional[Union[torch.LongTensor,
                                                 List[int]]] = None,
-                initial_state_fw: Optional[MaybeTuple[torch.Tensor]] = None,
-                initial_state_bw: Optional[MaybeTuple[torch.Tensor]] = None,
+                initial_state_fw: Optional[State] = None,
+                initial_state_bw: Optional[State] = None,
                 time_major: bool = False,
                 return_cell_output: bool = False,
                 return_output_size: bool = False):
-        """Encodes the inputs.
+        r"""Encodes the inputs.
 
         Args:
             inputs: A 3D Tensor of shape `[batch_size, max_time, dim]`.
@@ -689,54 +684,48 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 RNN cell. This is the results after the output layer.
 
         Returns:
-            - By default (both `return_cell_output` and `return_output_size` \
-            are False), returns a pair :attr:`(outputs, final_state)`
+            - By default (both `return_cell_output` and `return_output_size`
+              are False), returns a pair :attr:`(outputs, final_state)`
 
-                - :attr:`outputs`: A tuple `(outputs_fw, outputs_bw)` \
-                containing \
-                the forward and the backward RNN outputs, each of which is of \
-                shape `[batch_size, max_time, output_dim]` if \
-                `time_major` is False, or \
-                `[max_time, batch_size, output_dim]` if \
-                `time_major` is True. \
-                If RNN cell output is a (nested) tuple of Tensors, then \
-                `outputs_fw` and `outputs_bw` will be a (nested) tuple having \
-                the same structure as the cell output.
+                - :attr:`outputs`: A tuple `(outputs_fw, outputs_bw)` containing
+                  the forward and the backward RNN outputs, each of which is of
+                  shape `[batch_size, max_time, output_dim]` if `time_major` is
+                  False, or `[max_time, batch_size, output_dim]` if `time_major`
+                  is True.
+                  If RNN cell output is a (nested) tuple of Tensors, then
+                  `outputs_fw` and `outputs_bw` will be a (nested) tuple having
+                  the same structure as the cell output.
 
-                - :attr:`final_state`: A tuple \
-                `(final_state_fw, final_state_bw)` \
-                containing the final states of the forward and backward \
-                RNNs, each of which is a \
-                Tensor of shape `[batch_size] + cell.state_size`, or \
-                a (nested) tuple of Tensors if `cell.state_size` is a (nested)\
-                tuple.
+                - :attr:`final_state`: A tuple
+                  `(final_state_fw, final_state_bw)` containing the final states
+                  of the forward and backward RNNs, each of which is a Tensor of
+                  shape `[batch_size] + cell.state_size`, or a (nested) tuple of
+                  Tensors if `cell.state_size` is a (nested) tuple.
 
-            - If `return_cell_output` is True, returns a triple \
-            :attr:`(outputs, final_state, cell_outputs)` where
+            - If `return_cell_output` is True, returns a triple
+              :attr:`(outputs, final_state, cell_outputs)` where
 
-                - :attr:`cell_outputs`: A tuple \
-                `(cell_outputs_fw, cell_outputs_bw)` containting the outputs \
-                by the forward and backward RNN cells prior to the \
-                output layers, having the same structure with :attr:`outputs` \
-                except for the `output_dim`.
+                - :attr:`cell_outputs`: A tuple
+                  `(cell_outputs_fw, cell_outputs_bw)` containing the outputs
+                  by the forward and backward RNN cells prior to the output
+                  layers, having the same structure with :attr:`outputs` except
+                  for the `output_dim`.
 
-            - If `return_output_size` is True, returns a tuple \
-            :attr:`(outputs, final_state, output_size)` where
+            - If `return_output_size` is True, returns a tuple
+              :attr:`(outputs, final_state, output_size)` where
 
-                - :attr:`output_size`: A tupple \
-                `(output_size_fw, output_size_bw)` containing the size of \
-                `outputs_fw` and `outputs_bw`, respectively. \
-                Take `*_fw` for example, \
-                `output_size_fw` is a (possibly nested tuple of) int. \
-                If a single int or an int array, then `outputs_fw` has shape \
-                `[batch/time, time/batch] + output_size_fw`. If \
-                a (nested) tuple, then `output_size_fw` has the same \
-                structure as with `outputs_fw`. The same applies to  \
-                `output_size_bw`.
+                - :attr:`output_size`: A tuple
+                  `(output_size_fw, output_size_bw)` containing the size of
+                  `outputs_fw` and `outputs_bw`, respectively.
+                  Take `*_fw` for example, `output_size_fw` is a (possibly
+                  nested tuple of) int. If a single int or an int array, then
+                  `outputs_fw` has shape
+                  `[batch/time, time/batch] + output_size_fw`. If a (nested)
+                  tuple, then `output_size_fw` has the same structure as
+                  `outputs_fw`. The same applies to `output_size_bw`.
 
-            - If both `return_cell_output` and \
-            `return_output_size` are True, returns \
-            :attr:`(outputs, final_state, cell_outputs, output_size)`.
+            - If both `return_cell_output` and `return_output_size` are True,
+              returns :attr:`(outputs, final_state, cell_outputs, output_size)`.
         """
 
         cell_outputs, states = bidirectional_dynamic_rnn(
@@ -765,51 +754,51 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
 
         returns = (outputs, states)
         if return_cell_output:
-            returns += (cell_outputs, )  # type: ignore
+            returns += (cell_outputs,)  # type: ignore
         if return_output_size:
             returns += (output_size,)  # type: ignore
         return returns
 
     @property
     def cell_fw(self) -> RNNCellBase[State]:
-        """The forward RNN cell.
+        r"""The forward RNN cell.
         """
         return self._cell_fw
 
     @property
     def cell_bw(self) -> RNNCellBase[State]:
-        """The backward RNN cell.
+        r"""The backward RNN cell.
         """
         return self._cell_bw
 
     @property
     def state_size_fw(self) -> int:
-        """The state size of the forward encoder cell.
+        r"""The state size of the forward encoder cell.
         Same as :attr:`encoder.cell_fw.state_size`.
         """
         if isinstance(self._cell_fw, LSTMCell):
-            return 2 * self._cell_fw.hidden_size
+            return 2 * self._cell_fw.hidden_size  # type: ignore
         else:
             return self._cell_fw.hidden_size
 
     @property
     def state_size_bw(self) -> int:
-        """The state size of the backward encoder cell.
+        r"""The state size of the backward encoder cell.
         Same as :attr:`encoder.cell_bw.state_size`.
         """
         if isinstance(self._cell_bw, LSTMCell):
-            return 2 * self._cell_bw.hidden_size
+            return 2 * self._cell_bw.hidden_size  # type: ignore
         else:
             return self._cell_bw.hidden_size
 
     @property
-    def output_layer_fw(self) -> Optional[Module]:
-        """The output layer of the forward RNN.
+    def output_layer_fw(self) -> Optional[nn.Module]:
+        r"""The output layer of the forward RNN.
         """
         return self._output_layer_fw
 
     @property
-    def output_layer_bw(self) -> Optional[Module]:
-        """The output layer of the backward RNN.
+    def output_layer_bw(self) -> Optional[nn.Module]:
+        r"""The output layer of the backward RNN.
         """
         return self._output_layer_bw

@@ -4,8 +4,8 @@ Unit tests for various layers.
 import unittest
 
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
 import texar as tx
 from texar.core import layers
@@ -14,6 +14,7 @@ from texar.core import layers
 class GetActivationFnTest(unittest.TestCase):
     """Tests :func:`texar.core.layers.get_activation_fn`.
     """
+
     def test_get_activation_fn(self):
         """Tests.
         """
@@ -40,6 +41,7 @@ class GetActivationFnTest(unittest.TestCase):
 class GetLayerTest(unittest.TestCase):
     """Tests layer creator.
     """
+
     def test_get_layer(self):
         """Tests :func:`texar.core.layers.get_layer`.
         """
@@ -88,6 +90,7 @@ class GetLayerTest(unittest.TestCase):
 class ReducePoolingLayerTest(unittest.TestCase):
     """Tests reduce pooling layer.
     """
+
     def setUp(self):
         unittest.TestCase.setUp(self)
 
@@ -143,4 +146,3 @@ class MergeLayerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

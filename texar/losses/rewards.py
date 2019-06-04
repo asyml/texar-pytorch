@@ -35,7 +35,7 @@ def discount_reward(reward: torch.Tensor,
                     sequence_length: Optional[torch.LongTensor] = None,
                     discount: float = 1.,
                     normalize: bool = False) -> torch.Tensor:
-    """Computes discounted reward.
+    r"""Computes discounted reward.
 
     Args:
         reward: A Tensor. Can be 1D with shape `[batch_size]`,
@@ -53,8 +53,8 @@ def discount_reward(reward: torch.Tensor,
     """
     if not isinstance(reward, torch.Tensor):
         reward = torch.tensor(reward)
-    if sequence_length is not None \
-            and not isinstance(sequence_length, torch.Tensor):
+    if (sequence_length is not None
+            and not isinstance(sequence_length, torch.Tensor)):
         sequence_length = torch.tensor(sequence_length,
                                        dtype=torch.int64,
                                        device=reward.device)
@@ -82,7 +82,7 @@ def discount_reward(reward: torch.Tensor,
 def _discount_reward_tensor_1d(reward: torch.Tensor,
                                sequence_length: torch.LongTensor,
                                discount: float = 1.) -> torch.Tensor:
-    """Computes discounted reward.
+    r"""Computes discounted reward.
 
     Args:
         reward: 1D Tensor with shape `[batch_size]`.
@@ -113,9 +113,9 @@ def _discount_reward_tensor_1d(reward: torch.Tensor,
         mask = torch.cat((mask[:, 1:], torch.zeros_like(mask[:, -1:])), dim=1)
         # Make each row = [discount, ..., discount, 1, ..., 1]
         dmat = mask * discount + (1 - mask)
-        dmat = torch.flip(dmat, (1, ))
+        dmat = torch.flip(dmat, (1,))
         dmat = torch.cumprod(dmat, dim=1)
-        dmat = torch.flip(dmat, (1, ))
+        dmat = torch.flip(dmat, (1,))
         disc_reward = dmat * torch.unsqueeze(reward, -1)
 
     disc_reward = mask_sequences(disc_reward, sequence_length, dtype=dtype)
@@ -127,7 +127,7 @@ def _discount_reward_tensor_2d(
         reward: torch.Tensor,
         sequence_length: Optional[torch.LongTensor] = None,
         discount: float = 1.) -> torch.Tensor:
-    """Computes discounted reward.
+    r"""Computes discounted reward.
 
     Args:
         reward: 2D Tensor with shape `[batch_size, max_time]`.
@@ -143,12 +143,12 @@ def _discount_reward_tensor_2d(
         reward = mask_sequences(reward, sequence_length, dtype=dtype)
 
     if discount == 1.:
-        reward = torch.flip(reward, (1, ))
+        reward = torch.flip(reward, (1,))
         disc_reward = torch.cumsum(reward, dim=1)
-        disc_reward = torch.flip(disc_reward, (1, ))
+        disc_reward = torch.flip(disc_reward, (1,))
     else:
         # [max_time, batch_size]
-        rev_reward_T = torch.flip(reward, (1, )).permute(1, 0)
+        rev_reward_T = torch.flip(reward, (1,)).permute(1, 0)
 
         res = []
         acc = torch.zeros_like(reward[:, 1])
@@ -158,6 +158,6 @@ def _discount_reward_tensor_2d(
             res.append(acc)
 
         rev_reward_T_cum = torch.stack(res, dim=0)
-        disc_reward = torch.flip(rev_reward_T_cum.permute(1, 0), (1, ))
+        disc_reward = torch.flip(rev_reward_T_cum.permute(1, 0), (1,))
 
     return disc_reward

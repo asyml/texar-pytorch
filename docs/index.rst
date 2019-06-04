@@ -34,5 +34,4 @@ API
    code/evals.rst
    code/models.rst
    code/run.rst
-   code/context.rst
    code/utils.rst

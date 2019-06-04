@@ -17,6 +17,12 @@ Type annotation helpers.
 
 from typing import Dict, List, Sequence, Tuple, TypeVar, Union
 
+__all__ = [
+    'MaybeTuple',
+    'MaybeList',
+    'MaybeSeq',
+]
+
 T = TypeVar('T')  # pylint: disable=invalid-name
 MaybeTuple = Union[T, Tuple[T, ...]]
 MaybeList = Union[T, List[T]]

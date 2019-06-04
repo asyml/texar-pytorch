@@ -15,7 +15,6 @@
 Various convolutional network encoders.
 """
 
-
 from typing import Dict, Optional, Any
 
 from texar.modules.encoders.encoder_base import EncoderBase
@@ -27,7 +26,7 @@ __all__ = [
 
 
 class Conv1DEncoder(Conv1DNetwork, EncoderBase):  # type: ignore
-    """Simple Conv-1D encoder which consists of a sequence of conv layers
+    r"""Simple Conv-1D encoder which consists of a sequence of conv layers
     followed with a sequence of dense layers.
 
     Wraps :class:`~texar.modules.Conv1DNetwork` to be a subclass of
@@ -43,7 +42,7 @@ class Conv1DEncoder(Conv1DNetwork, EncoderBase):  # type: ignore
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
-        """Returns a dictionary of hyperparameters with default values.
+        r"""Returns a dictionary of hyperparameters with default values.
 
         The same as :meth:`~texar.modules.Conv1DNetwork.default_hparams`
         of :class:`~texar.modules.Conv1DNetwork`, except that the default name

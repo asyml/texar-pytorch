@@ -16,6 +16,7 @@ Modules of Texar library module.
 """
 
 # pylint: disable=wildcard-import
+from texar.modules.classifiers import *
 from texar.modules.decoders import *
 from texar.modules.embedders import *  # type: ignore  # same name submodule
 from texar.modules.encoders import *

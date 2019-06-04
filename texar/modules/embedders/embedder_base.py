@@ -18,18 +18,19 @@ The base embedder class.
 import torch
 from torch.nn.parameter import Parameter
 
+import texar.modules.embedders.embedder_utils as embedder_utils
 from texar.module_base import ModuleBase
-from texar.modules.embedders import embedder_utils
 
 # pylint: disable=invalid-name
 
 __all__ = [
     "EmbedderBase",
+    "EmbeddingDropout",
 ]
 
 
 class EmbedderBase(ModuleBase):
-    """The base embedder class that all embedder classes inherit.
+    r"""The base embedder class that all embedder classes inherit.
 
     Args:
         num_embeds (int, optional): The number of embedding elements, e.g.,
@@ -76,7 +77,7 @@ class EmbedderBase(ModuleBase):
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of hyperparameters with default values.
+        r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
 
@@ -94,21 +95,18 @@ class EmbedderBase(ModuleBase):
 
     @property
     def num_embeds(self):
-        """The number of embedding elements.
+        r"""The number of embedding elements.
         """
         return self._num_embeds
 
 
 class EmbeddingDropout(ModuleBase):
-    """The dropout layer that used for the embedding.
+    r"""The dropout layer that used for the embedding.
 
     Args:
         rate (float, required): The dropout rate applied to the embedding.
             E.g., if rate is 0.1, 10% of the embedding will be dropped out.
             Set to 0 to disable dropout.
-
-        noise_shape (list, optional): The shape of the noise mask which
-            can specified the dropout dimensions for the embedding.
 
         hparams (dict or HParams, optional): Embedder hyperparameters. Missing
             hyperparamerter will be set to default values. See
@@ -122,6 +120,16 @@ class EmbeddingDropout(ModuleBase):
 
     # pylint: disable=W0221
     def forward(self, input_tensor=None, noise_shape=None):
+        r"""Apply dropout on the tensor.
+
+        Args:
+            input_tensor: The tensor to apply dropout on.
+            noise_shape (list, optional): The shape of the noise mask which
+                specifies the dropout dimensions for the embedding.
+
+        Returns:
+            The tensor after applying dropout.
+        """
         if not self.training or self._rate == 0.0:
             return input_tensor
         if noise_shape is None:

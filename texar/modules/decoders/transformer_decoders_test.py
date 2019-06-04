@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 
 import texar
-from texar.modules import GreedyEmbeddingHelper, decoder_helpers
+import texar.modules.decoders.decoder_helpers as decoder_helpers
 from texar.modules.decoders.transformer_decoders import TransformerDecoder
 from texar.modules.decoders.transformer_decoders import TransformerDecoderOutput
 
@@ -188,7 +188,7 @@ class TransformerDecoderTest(unittest.TestCase):
             vocab_size=self._vocab_size,
             output_layer=self._output_layer)
         decoder.eval()
-        helper = GreedyEmbeddingHelper(
+        helper = decoder_helpers.GreedyEmbeddingHelper(
             self._embedding, self._start_tokens, self._end_token)
         outputs, length = decoder(
             memory=self._memory,

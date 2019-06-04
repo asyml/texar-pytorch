@@ -28,7 +28,7 @@ from texar.modules.encoders.multihead_attention import (
     Cache, MultiheadAttentionEncoder)
 from texar.modules.encoders.transformer_encoder import (
     default_transformer_poswise_net_hparams)
-from texar.modules.networks import FeedForwardNetwork
+from texar.modules.networks.networks import FeedForwardNetwork
 # from texar.utils import beam_search
 from texar.utils import transformer_attentions as attn
 from texar.utils.shapes import mask_sequences
@@ -66,7 +66,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         output_layer (optional): An output layer that transforms cell output
             to logits. This can be:
 
-            - A callable layer, e.g., an instance of :class:`torch.nn.Module`.
+            - A callable layer, e.g., an instance of :torch_nn:`Module`.
             - A tensor. A :class:`~torch.nn.Linear` layer will be created using
               the tensor as weights. The bias of the dense layer is determined
               by `hparams.output_layer_bias`. This can be used to tie the output
@@ -292,7 +292,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
     def _input_ids_to_outputs(self, input_ids: torch.LongTensor, step: int,
                               cache: Cache) -> Tuple[torch.Tensor, Cache]:
-        """The function is called in beam-search decoding.
+        r"""The function is called in beam-search decoding.
 
         `inputs` should be of shape `[batch_size]`.
 
@@ -444,27 +444,27 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
         Returns:
 
-            - For **"train_greedy"** decoding, returns an instance of \
-            :class:`~texar.modules.TransformerDecoderOutput` which contains\
-            `sample_id` and `logits`.
+            - For **"train_greedy"** decoding, returns an instance of
+              :class:`~texar.modules.TransformerDecoderOutput` which contains
+              `sample_id` and `logits`.
 
-            - For **"infer_greedy"** and **"infer_sample"** decoding or\
-            decoding with :attr:`helper`, returns\
-            a tuple `(outputs, sequence_lengths)`, where `outputs` is an \
-            instance of :class:`~texar.modules.TransformerDecoderOutput` as\
-            in "train_greedy", and `sequence_lengths` is a Tensor of shape\
-            `[batch_size]` containing the length of each sample.
+            - For **"infer_greedy"** and **"infer_sample"** decoding or
+              decoding with :attr:`helper`, returns
+              a tuple `(outputs, sequence_lengths)`, where `outputs` is an
+              instance of :class:`~texar.modules.TransformerDecoderOutput` as
+              in "train_greedy", and `sequence_lengths` is a Tensor of shape
+              `[batch_size]` containing the length of each sample.
 
-            - For **beam search** decoding, returns a `dict` containing keys\
-            "sample_id" and "log_prob".
+            - For **beam search** decoding, returns a `dict` containing keys
+              "sample_id" and "log_prob".
 
-                - **"sample_id"** is an int Tensor of shape \
-                `[batch_size, max_time, beam_width]` containing generated\
-                token indexes. `sample_id[:,:,0]` is the highest-probable \
-                sample.
-                - **"log_prob"** is a float Tensor of shape \
-                `[batch_size, beam_width]` containing the log probability \
-                of each sequence sample.
+                - **"sample_id"** is an int Tensor of shape
+                  `[batch_size, max_time, beam_width]` containing generated
+                  token indexes. `sample_id[:,:,0]` is the highest-probable
+                  sample.
+                - **"log_prob"** is a float Tensor of shape
+                  `[batch_size, beam_width]` containing the log probability
+                  of each sequence sample.
         """
 
         if memory is not None:

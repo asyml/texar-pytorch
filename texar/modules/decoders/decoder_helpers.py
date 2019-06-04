@@ -26,7 +26,8 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical, Gumbel
 
-from texar.utils import get_args, utils
+import texar.utils.utils as utils
+from texar.utils.utils import get_args
 
 __all__ = [
     '_convert_embedding',

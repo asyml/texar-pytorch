@@ -231,41 +231,6 @@ Meta
 .. autofunction:: texar.utils.get_instance_kwargs
 
 
-Mode
-====
-
-:hidden:`switch_dropout`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.switch_dropout
-
-:hidden:`maybe_global_mode`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.maybe_global_mode
-
-:hidden:`is_train_mode`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_train_mode
-
-:hidden:`is_eval_mode`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_eval_mode
-
-:hidden:`is_predict_mode`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_predict_mode
-
-:hidden:`is_train_mode_py`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_train_mode_py
-
-:hidden:`is_eval_mode_py`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_eval_mode_py
-
-:hidden:`is_predict_mode_py`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_predict_mode_py
-
 Misc
 ====
 

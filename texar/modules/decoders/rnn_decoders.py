@@ -23,10 +23,9 @@ from typing import Callable, NamedTuple, Optional, Tuple, TypeVar, Union
 import torch
 from torch import nn
 
-from texar.core import RNNCellBase
-from texar.core.attention_mechanism import *
-from texar.core.cell_wrappers import AttentionWrapper
-from texar.core.cell_wrappers import HiddenState
+from texar.core.attention_mechanism import (
+    AttentionMechanism, AttentionWrapperState)
+from texar.core.cell_wrappers import AttentionWrapper, HiddenState, RNNCellBase
 from texar.hyperparams import HParams
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_helpers import Helper
@@ -359,7 +358,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
 
     @staticmethod
     def default_hparams():
-        r"""Returns a dictionary of hyperparameters with default values:
+        r"""Returns a dictionary of hyperparameters with default values.
         Common hyperparameters are the same as in
         :class:`~texar.modules.BasicRNNDecoder`.
         :meth:`~texar.modules.BasicRNNDecoder.default_hparams`.

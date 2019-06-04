@@ -2,10 +2,10 @@
 """
 Unit tests for conv encoders.
 """
+import unittest
+
 import torch
 from torch import nn
-
-import unittest
 
 from texar.modules.classifiers.conv_classifiers import Conv1DClassifier
 

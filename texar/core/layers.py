@@ -79,13 +79,11 @@ def default_rnn_cell_hparams():
     "type" : str or cell class or cell instance
         The RNN cell type. This can be
 
-        - The string name or full module path of a cell class. If class \
-        name is provided, the class must be in module \
-        :mod:`torch.nn.modules.rnn`, \
-        :mod:`texar.core.cell_wrappers`, or :mod:`texar.custom`.
+        - The string name or full module path of a cell class. If class name is
+          provided, the class must be in module :torch_nn:`modules.rnn`,
+          :mod:`texar.core.cell_wrappers`, or :mod:`texar.custom`.
         - A cell class.
-        - An instance of a cell class. This is not valid if \
-        "num_layers" > 1.
+        - An instance of a cell class. This is not valid if "num_layers" > 1.
 
         For example
 
@@ -105,10 +103,12 @@ def default_rnn_cell_hparams():
 
         Ignored if "type" is a cell instance.
 
-        ..note:: It is unnecessary to specify "input_size" within "kwargs".
+        .. note::
+            It is unnecessary to specify "input_size" within "kwargs".
             This value will be automatically filled based on layer index.
 
-        ..note:: Although PyTorch uses "hidden_size" to denote the hidden layer
+        .. note::
+            Although PyTorch uses "hidden_size" to denote the hidden layer
             size, we follow TensorFlow conventions and use "num_units".
 
     "num_layers" : int
@@ -152,7 +152,7 @@ def default_rnn_cell_hparams():
 
 
 def default_regularizer_hparams():
-    """Returns the hyperparameters and their default values of a variable
+    r"""Returns the hyperparameters and their default values of a variable
     regularizer:
 
     .. code-block:: python
@@ -274,7 +274,7 @@ def identity(inputs: torch.Tensor):
 
 
 def get_regularizer(hparams=None):
-    """Returns a variable regularizer instance.
+    r"""Returns a variable regularizer instance.
 
     See :func:`~texar.core.default_regularizer_hparams` for all
     hyperparameters and default values.
@@ -311,8 +311,7 @@ def get_regularizer(hparams=None):
         raise ValueError("The regularizer must be an instance of "
                          "texar.core.regularizers.Regularizer.")
 
-    if isinstance(rgl, L1L2) and \
-            rgl.l1 == 0. and rgl.l2 == 0.:
+    if isinstance(rgl, L1L2) and rgl.l1 == 0. and rgl.l2 == 0.:
         return None
 
     return rgl
@@ -339,7 +338,7 @@ def get_initializer(hparams: Optional[HParams] = None) \
 
             The "type" field can be a function name or module path. If name is
             provided, it be must be from one the following modules:
-            :torch_docs:`torch.nn.init <nn.html#torch-nn-init>` and
+            :torch_docs:`torch.nn.init <nn.html\#torch-nn-init>` and
             :mod:`texar.custom`.
 
             Besides, the "type" field can also be an initialization function
@@ -366,9 +365,10 @@ def get_initializer(hparams: Optional[HParams] = None) \
 def get_activation_fn(fn_name: Optional[Union[str,
                                               Callable[[torch.Tensor],
                                                        torch.Tensor]]] = None,
-                      kwargs: Union[HParams, Dict, None] = None) -> \
-        Optional[Callable[[torch.Tensor], torch.Tensor]]:
-    """Returns an activation function `fn` with the signature `output = fn(input)`.
+                      kwargs: Union[HParams, Dict, None] = None) \
+        -> Optional[Callable[[torch.Tensor], torch.Tensor]]:
+    r"""Returns an activation function `fn` with the signature
+    `output = fn(input)`.
 
     If the function specified by :attr:`fn_name` has more than one arguments
     without default values, then all these arguments except the input feature
@@ -382,9 +382,9 @@ def get_activation_fn(fn_name: Optional[Union[str,
             module path. The function can be:
 
             - Built-in function defined in
-            :torch_docs:`torch.nn.functional<nn.html#torch-nn-functional>`
+              :torch_docs:`torch.nn.functional<nn.html#torch-nn-functional>`
             - User-defined activation functions in module :mod:`texar.custom`.
-            - External activation functions. Must provide the full module path,\
+            - External activation functions. Must provide the full module path,
               e.g., "my_module.my_activation_fn".
 
         kwargs (optional): A `dict` or instance of :class:`~texar.HParams`
@@ -407,6 +407,7 @@ def get_activation_fn(fn_name: Optional[Union[str,
 
         def _partial_fn(features):
             return activation_fn_(features, **kwargs)
+
         activation_fn = _partial_fn
 
     return activation_fn
@@ -415,7 +416,7 @@ def get_activation_fn(fn_name: Optional[Union[str,
 def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
     r"""Makes a layer instance.
 
-    The layer must be an instance of :torch_docs:`torch.nn.Module <nn.html>`.
+    The layer must be an instance of :torch_nn:`Module`.
 
     Args:
         hparams (dict or HParams): Hyperparameters of the layer, with
@@ -436,10 +437,9 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
             "type" : str or layer class or layer instance
                 The layer type. This can be
 
-                - The string name or full module path of a layer class. If \
-                the class name is provided, the class must be in module \
-                :torch_docs:`torch.nn.Module <nn.html>`, :mod:`texar.core`, \
-                or :mod:`texar.custom`.
+                - The string name or full module path of a layer class. If
+                  the class name is provided, the class must be in module
+                  :torch_nn:`Module`, :mod:`texar.core`, or :mod:`texar.custom`.
                 - A layer class.
                 - An instance of a layer class.
 
@@ -447,26 +447,24 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
 
                 .. code-block:: python
 
-                    "type": "Conv1D" # class name
-                    "type": "texar.core.MaxReducePooling1D" # module path
-                    "type": "my_module.MyLayer" # module path
-                    "type": torch.nn.Module.Linear # class
+                    "type": "Conv1D"                 ..no         # class name
+                    "type": "texar.core.MaxReducePooling1D"   # module path
+                    "type": "my_module.MyLayer"               # module path
+                    "type": torch.nn.Module.Linear            # class
                     "type": Conv1D(filters=10, kernel_size=2) # cell instance
-                    "type": MyLayer(...) # cell instance
+                    "type": MyLayer(...)                      # cell instance
 
             "kwargs" : dict
                 A dictionary of keyword arguments for constructor of the
                 layer class. Ignored if :attr:`"type"` is a layer instance.
 
-                - Arguments named "activation" can be a callable, \
-                or a `str` of \
-                the name or module path to the activation function.
-                - Arguments named "\*_regularizer" and "\*_initializer" \
-                can be a class instance, or a `dict` of \
-                hyperparameters of \
-                respective regularizers and initializers. See
-                - Arguments named "\*_constraint" can be a callable, or a \
-                `str` of the name or full path to the constraint function.
+                - Arguments named "activation" can be a callable, or a `str` of
+                  the name or module path to the activation function.
+                - Arguments named "\*_regularizer" and "\*_initializer" can be a
+                  class instance, or a `dict` of hyperparameters of respective
+                  regularizers and initializers. See
+                - Arguments named "\*_constraint" can be a callable, or a `str`
+                  of the name or full path to the constraint function.
 
     Returns:
         A layer instance. If hparams["type"] is a layer instance, returns it
@@ -487,12 +485,12 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
         layer_modules = ["torch.nn", "texar.core", "texar.custom"]
         layer_class = utils.check_or_get_class(layer_type, layer_modules)
         if isinstance(hparams, dict):
-            if layer_class.__name__ == "Linear" and \
-                    "in_features" not in hparams["kwargs"]:
+            if (layer_class.__name__ == "Linear" and
+                    "in_features" not in hparams["kwargs"]):
                 raise ValueError("\"in_features\" should be specified for "
                                  "\"torch.nn.{}\"".format(layer_class.__name__))
-            elif layer_class.__name__ in ["Conv1d", "Conv2d", "Conv3d"] and \
-                    "in_channels" not in hparams["kwargs"]:
+            elif (layer_class.__name__ in ["Conv1d", "Conv2d", "Conv3d"] and
+                  "in_channels" not in hparams["kwargs"]):
                 raise ValueError("\"in_channels\" should be specified for "
                                  "\"torch.nn.{}\"".format(layer_class.__name__))
             default_kwargs = _layer_class_to_default_kwargs_map.get(layer_class,
@@ -501,7 +499,7 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
             hparams = HParams(hparams, default_hparams)
 
         # this case needs to be handled separately because
-        # :torch_docs:`torch.nn.Sequential <nn.html#torch.nn.Sequential>`
+        # :torch_nn:`Sequential`
         # does not accept kwargs
         if layer_type == "Sequential":
             names: List[str] = []
@@ -523,10 +521,11 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
 
 
 class _ReducePool1d(nn.Module):
-    """Pooling layer for arbitrary reduce functions for 1D inputs.
+    r"""Pooling layer for arbitrary reduce functions for 1D inputs.
 
     This class is for code reuse, rather than an exposed API.
     """
+
     def __init__(self, reduce_function):
         super(_ReducePool1d, self).__init__()
         self._reduce_function = reduce_function
@@ -543,21 +542,23 @@ class _ReducePool1d(nn.Module):
 
 
 class MaxReducePool1d(_ReducePool1d):
-    """A subclass of :torch_docs:`torch.nn.Module <nn.html#module>`.
+    """A subclass of :torch_nn:`Module`.
     Max Pool layer for 1D inputs. The same as
     :torch.nn.Module:`MaxPool1d <nn.html#maxpool1d>` except that the pooling
     dimension is entirely reduced (i.e., `pool_size=input_length`).
     """
+
     def __init__(self):
         super(MaxReducePool1d, self).__init__(torch.max)
 
 
 class AvgReducePool1d(_ReducePool1d):
-    """A subclass of :torch_docs:`torch.nn.Module <nn.html#module>`.
+    r"""A subclass of :torch_nn:`Module`.
     Avg Pool layer for 1D inputs. The same as
     :torch.nn.Module:`AvgPool1d <nn.html#avgpool1d>` except that the pooling
     dimension is entirely reduced (i.e., `pool_size=input_length`).
     """
+
     def __init__(self):
         super(AvgReducePool1d, self).__init__(torch.mean)
 
@@ -570,9 +571,9 @@ _POOLING_TO_REDUCE = {
 }
 
 
-def get_pooling_layer_hparams(hparams: Union[HParams, Dict[str, Any]]) -> \
-        Dict[str, Any]:
-    """Creates pooling layer hparams `dict` usable for :func:`get_layer`.
+def get_pooling_layer_hparams(hparams: Union[HParams, Dict[str, Any]]) \
+        -> Dict[str, Any]:
+    r"""Creates pooling layer hparams `dict` usable for :func:`get_layer`.
 
     If the :attr:`hparams` sets `'pool_size'` to `None`, the layer will be
     changed to the respective reduce-pooling layer. For example,
@@ -596,7 +597,7 @@ def get_pooling_layer_hparams(hparams: Union[HParams, Dict[str, Any]]) -> \
 
 
 class MergeLayer(nn.Module):
-    """A subclass of :torch_docs:`torch.nn.Module <nn.html#module>`.
+    r"""A subclass of :torch_nn:`Module`.
     A layer that consists of multiple layers in parallel. Input is fed to
     each of the parallel layers, and the outputs are merged with a
     specified mode.
@@ -611,36 +612,35 @@ class MergeLayer(nn.Module):
             inputs directly.
         mode (str): Mode of the merge op. This can be:
 
-            - :attr:`'concat'`: Concatenates layer outputs along one dim. \
-              Tensors must have the same shape except for the dimension \
+            - :attr:`'concat'`: Concatenates layer outputs along one dim.
+              Tensors must have the same shape except for the dimension
               specified in `dim`, which can have different sizes.
             - :attr:`'elemwise_sum'`: Outputs element-wise sum.
             - :attr:`'elemwise_mul'`: Outputs element-wise product.
-            - :attr:`'sum'`: Computes the sum of layer outputs along the \
-              dimension given by `dim`. E.g., given `dim=1`, \
-              two tensors of shape `[a, b]` and `[a, c]` respectively \
+            - :attr:`'sum'`: Computes the sum of layer outputs along the
+              dimension given by `dim`. E.g., given `dim=1`,
+              two tensors of shape `[a, b]` and `[a, c]` respectively
               will result in a merged tensor of shape `[a]`.
-            - :attr:`'mean'`: Computes the mean of layer outputs along the \
+            - :attr:`'mean'`: Computes the mean of layer outputs along the
               dimension given in `dim`.
-            - :attr:`'prod'`: Computes the product of layer outputs along the \
+            - :attr:`'prod'`: Computes the product of layer outputs along the
               dimension given in `dim`.
-            - :attr:`'max'`: Computes the maximum of layer outputs along the \
+            - :attr:`'max'`: Computes the maximum of layer outputs along the
               dimension given in `dim`.
-            - :attr:`'min'`: Computes the minimum of layer outputs along the \
+            - :attr:`'min'`: Computes the minimum of layer outputs along the
               dimension given in `dim`.
-            - :attr:`'and'`: Computes the `logical and` of layer outputs along \
+            - :attr:`'and'`: Computes the `logical and` of layer outputs along
               the dimension given in `dim`.
-            - :attr:`'or'`: Computes the `logical or` of layer outputs along \
+            - :attr:`'or'`: Computes the `logical or` of layer outputs along
               the dimension given in `dim`.
-            - :attr:`'logsumexp'`: Computes \
+            - :attr:`'logsumexp'`: Computes
               log(sum(exp(elements across the dimension of layer outputs)))
         dim (int): The dim to use in merging. Ignored in modes
             :attr:`'elemwise_sum'` and :attr:`'elemwise_mul'`.
-        trainable (bool): Whether the layer should be trained.
-        name (str, optional): Name of the layer.
     """
+
     def __init__(self, layers: Optional[List[nn.Module]] = None,
-                 mode: str ='concat', dim: int = 2):
+                 mode: str = 'concat', dim: int = 2):
         super(MergeLayer, self).__init__()
         self._mode = mode
         self._dim = dim
@@ -687,7 +687,7 @@ class MergeLayer(nn.Module):
             outputs = torch.prod(_concat, dim=self._dim)
         elif self._mode == 'max':
             _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs,_ = torch.max(_concat, dim=self._dim)  # type: ignore
+            outputs, _ = torch.max(_concat, dim=self._dim)  # type: ignore
         elif self._mode == 'min':
             _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
             outputs, _ = torch.min(_concat, dim=self._dim)  # type: ignore
@@ -707,14 +707,14 @@ class MergeLayer(nn.Module):
 
     @property
     def layers(self) -> Optional[List[nn.Module]]:
-        """The list of parallel layers.
+        r"""The list of parallel layers.
         """
         return self._layers
 
 
-# since pytorch does not have a Flatten layer, we provide a custom class
 class Flatten(nn.Module):
-    """Flatten layer to flatten a tensor after convolution."""
+    r"""Flatten layer to flatten a tensor after convolution."""
+
     def __init__(self):
         super(Flatten, self).__init__()
 
@@ -723,7 +723,8 @@ class Flatten(nn.Module):
 
 
 class Identity(nn.Module):
-    """Identity activation layer."""
+    r"""Identity activation layer."""
+
     def __init__(self):
         super(Identity, self).__init__()
 
@@ -847,4 +848,3 @@ _layer_class_to_default_kwargs_map = {
     nn.AvgPool2d: default_avg_pool2d_kwargs(),
     nn.AvgPool3d: default_avg_pool3d_kwargs(),
 }
-

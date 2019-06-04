@@ -24,12 +24,12 @@ __all__ = [
     'L1L2',
     'l1',
     'l2',
-    'l1_l2'
+    'l1_l2',
 ]
 
 
-class Regularizer(object):
-    """Regularizer base class.
+class Regularizer:
+    r"""Regularizer base class.
     """
 
     def __call__(self, x):
@@ -39,9 +39,14 @@ class Regularizer(object):
     def from_config(cls, config):
         return cls(**config)
 
+    def get_config(self) -> Dict[str, float]:
+        r"""Return a Dict with config for the current regularizer instance.
+        """
+        raise NotImplementedError
+
 
 class L1L2(Regularizer):
-    """Regularizer for L1 and L2 regularization.
+    r"""Regularizer for L1 and L2 regularization.
 
     Args:
         l1: Float or Int; L1 regularization factor.
@@ -55,26 +60,22 @@ class L1L2(Regularizer):
         self.l1 = float(l1)
         self.l2 = float(l2)
 
-    def __call__(self,
-                 x: torch.Tensor) -> torch.Tensor:
+    def __call__(self, x: torch.Tensor) -> torch.Tensor:
         regularization = torch.tensor(0.)
         if self.l1:
             regularization += torch.sum(self.l1 * torch.abs(x).float())
         if self.l2:
-            regularization += torch.sum(self.l2 * (x**2).float())
+            regularization += torch.sum(self.l2 * (x ** 2).float())
         return regularization
 
     def get_config(self) -> Dict[str, float]:
-        """
-        Returns:
-            Dict with config for the current regularizer instance
-        """
         return {'l1': float(self.l1), 'l2': float(self.l2)}
 
 
 # Aliases.
 def l1(l: Union[int, float] = 0.01) -> Regularizer:
-    """
+    r"""
+    Construct an L1 regularizer.
 
     Args:
         l: Float or Int
@@ -85,8 +86,9 @@ def l1(l: Union[int, float] = 0.01) -> Regularizer:
     return L1L2(l1=l)
 
 
-def l2(l: Union[int, float] =0.01) -> Regularizer:
-    """
+def l2(l: Union[int, float] = 0.01) -> Regularizer:
+    r"""
+    Construct an L2 regularizer.
 
     Args:
         l: Float or Int
@@ -97,10 +99,11 @@ def l2(l: Union[int, float] =0.01) -> Regularizer:
     return L1L2(l2=l)
 
 
-def l1_l2(l1: Union[int, float] = 0.01,
-          l2: Union[int, float] = 0.01) -> \
-        Regularizer:  # pylint: disable=redefined-outer-name
-    """
+def l1_l2(l1: Union[int, float] = 0.01,  # pylint: disable=redefined-outer-name
+          l2: Union[int, float] = 0.01) -> Regularizer:
+    r"""
+    Construct a regularizer with both L1 and L2 components.
+
     Args:
         l1: Float or Int
             L1 regularization factor.
