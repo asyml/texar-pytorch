@@ -69,7 +69,7 @@ def sentence_bleu_moses(references: List[MaybeList[str]],
         references: A list of reference for the hypothesis.
             Each reference can be either a string, or a list of string tokens.
             List can also be numpy array.
-        hypotheses: A hypothesis sentence.
+        hypothesis: A hypothesis sentence.
             The hypothesis can be either a string, or a list of string tokens.
             List can also be numpy array.
         lowercase (bool): If `True`, pass the "-lc" flag to the multi-bleu
@@ -99,7 +99,7 @@ def corpus_bleu_moses(list_of_references: List[List[MaybeList[str]]],
             Each reference can be either a string, or a list of string tokens.
             List can also be numpy array.
         hypotheses: A list of hypothesis sentences.
-            Each hyperthsis can be either a string, or a list of string tokens.
+            Each hypothesis can be either a string, or a list of string tokens.
             List can also be numpy array.
         lowercase (bool): If `True`, pass the "-lc" flag to the multi-bleu
             script.
@@ -123,9 +123,9 @@ def corpus_bleu_moses(list_of_references: List[List[MaybeList[str]]],
     multi_bleu_path = os.path.abspath(
         os.path.join(cur_dir, "..", "..", "bin", "utils", "multi-bleu.perl"))
 
-    # Create a temporary folder containing hyperthesis and reference files
+    # Create a temporary folder containing hypothesis and reference files
     result_path = tempfile.mkdtemp()
-    # Create hyperthesis file
+    # Create hypothesis file
     hfile_path = os.path.join(result_path, 'hyp')
     hyps = [_maybe_list_to_str(h) for h in hypotheses]
     with open(hfile_path, 'w', encoding='utf-8') as hfile:

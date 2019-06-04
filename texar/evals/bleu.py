@@ -22,15 +22,15 @@ This module provides a Python implementation of BLEU and smoothed BLEU.
 Smooth BLEU is computed following the method outlined in the paper:
 
     (Lin et al. 2004) ORANGE: a method for evaluating automatic evaluation
-    metrics for maching translation.
+    metrics for machine translation.
     Chin-Yew Lin, Franz Josef Och. COLING 2004.
 """
 
 import collections
 import math
-from typing import List, Union
+from typing import List, Union, Counter
 
-from texar.utils.dtypes import is_str, compat_as_text
+from texar.utils.dtypes import compat_as_text
 from texar.utils.types import MaybeList
 
 # pylint: disable=invalid-name, too-many-branches, too-many-locals
@@ -43,7 +43,7 @@ __all__ = [
 
 
 def _get_ngrams(segment: str,
-                max_order: int) -> collections.Counter:
+                max_order: int) -> Counter:
     """Extracts all n-grams up to a given maximum order from an input segment.
 
     Args:
@@ -64,9 +64,9 @@ def _get_ngrams(segment: str,
 
 
 def _maybe_str_to_list(list_or_str: Union[str, List[str]]) -> List[str]:
-    if is_str(list_or_str):
-        return list_or_str.split()  # type: ignore
-    return list_or_str  # type: ignore
+    if isinstance(list_or_str, str):
+        return list_or_str.split()
+    return list_or_str
 
 
 def _lowercase(str_list: List[str]) -> List[str]:
@@ -86,7 +86,7 @@ def sentence_bleu(references: List[MaybeList[str]],
             Each reference can be either a list of string tokens, or a string
             containing tokenized tokens separated with whitespaces.
             List can also be numpy array.
-        hypotheses: A hypothesis sentence.
+        hypothesis: A hypothesis sentence.
             Each hypothesis can be either a list of string tokens, or a
             string containing tokenized tokens separated with whitespaces.
             List can also be numpy array.
@@ -145,11 +145,11 @@ def corpus_bleu(list_of_references: List[List[MaybeList[str]]],
     matches_by_order = [0] * max_order
     possible_matches_by_order = [0] * max_order
     reference_length = 0
-    hyperthsis_length = 0
+    hypothesis_length = 0
 
-    for (references, hyperthsis) in zip(list_of_references, hypotheses):
+    for (references, hypothesis) in zip(list_of_references, hypotheses):
         reference_length += min(len(r) for r in references)
-        hyperthsis_length += len(hyperthsis)
+        hypothesis_length += len(hypothesis)
 
         merged_ref_ngram_counts: collections.Counter = collections.Counter()
         for reference in references:
@@ -158,16 +158,16 @@ def corpus_bleu(list_of_references: List[List[MaybeList[str]]],
                 reference = _lowercase(reference)
             merged_ref_ngram_counts |= _get_ngrams(reference, max_order)
 
-        hyperthsis = _maybe_str_to_list(hyperthsis)
+        hypothesis = _maybe_str_to_list(hypothesis)
         if lowercase:
-            hyperthsis = _lowercase(hyperthsis)
-        hyperthsis_ngram_counts = _get_ngrams(hyperthsis, max_order)
+            hypothesis = _lowercase(hypothesis)
+        hypothesis_ngram_counts = _get_ngrams(hypothesis, max_order)
 
-        overlap = hyperthsis_ngram_counts & merged_ref_ngram_counts
+        overlap = hypothesis_ngram_counts & merged_ref_ngram_counts
         for ngram in overlap:
             matches_by_order[len(ngram) - 1] += overlap[ngram]
         for order in range(1, max_order + 1):
-            possible_matches = len(hyperthsis) - order + 1
+            possible_matches = len(hypothesis) - order + 1
             if possible_matches > 0:
                 possible_matches_by_order[order - 1] += possible_matches
 
@@ -189,7 +189,7 @@ def corpus_bleu(list_of_references: List[List[MaybeList[str]]],
     else:
         geo_mean = 0
 
-    ratio = float(hyperthsis_length) / reference_length
+    ratio = float(hypothesis_length) / reference_length
 
     if ratio > 1.0:
         bp = 1.
