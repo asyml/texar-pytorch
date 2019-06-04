@@ -2178,7 +2178,7 @@ def mean(input: Tensor, dim: builtins.int, keepdim: bool, *, dtype: _dtype, out:
 
 
 @overload
-def mean(input: Tensor, dim: builtins.int, keepdim: bool = False, *, out: Optional[Tensor] = None) -> Tensor: ...
+def mean(input: Tensor, dim: MaybeTuple[builtins.int], keepdim: bool = False, *, out: Optional[Tensor] = None) -> Tensor: ...
 
 
 @overload
@@ -2656,7 +2656,7 @@ def std(input: Tensor, unbiased: bool = True) -> Tensor: ...
 
 
 @overload
-def std(input: Tensor, dim: builtins.int, unbiased: bool = True, keepdim: bool = False, *,
+def std(input: Tensor, dim: MaybeTuple[builtins.int], unbiased: bool = True, keepdim: bool = False, *,
         out: Optional[Tensor] = None) -> Tensor: ...
 
 

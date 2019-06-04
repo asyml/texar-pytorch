@@ -32,6 +32,14 @@ __all__ = [
 
 
 def _get_entropy(logits: torch.Tensor) -> torch.Tensor:
+    """Compute entropy according to the definition.
+
+    Args:
+        logits: Unscaled log probabilities.
+
+    Return:
+        A tensor containing the shannon in the last dimension.
+    """
     probs = F.softmax(logits, -1) + 1e-8
     entropy = - probs * torch.log(probs)
     entropy = torch.sum(entropy, -1)

@@ -50,14 +50,14 @@ def mask_and_reduce(sequence: torch.Tensor,
     and :func:`~texar.losses.losses_utils.reduce_batch_time`.
 
     Args:
-        sequence: A Tensor of sequence values.
-            If `time_major=False` (default), this must be a Tensor of shape
+        sequence: A tensor of sequence values.
+            If `time_major=False` (default), this must be a tensor of shape
             `[batch_size, max_time, d_2, ..., d_rank]`, where the rank of
-            the Tensor is specified with :attr:`rank`.
+            the tensor is specified with :attr:`rank`.
             The batch and time dimensions are exchanged if `time_major` is True.
-        sequence_length: A Tensor of shape `[batch_size]`. Time steps beyond
+        sequence_length: A tensor of shape `[batch_size]`. Time steps beyond
             the respective sequence lengths will be made zero. If `None`,
-            not masking is performed.
+            no masking is performed.
         rank (int): The rank of :attr:`sequence`. Must be >= 2. Default is 2,
             i.e., `sequence` is a 2D Tensor consisting of batch and time
             dimensions.
@@ -70,24 +70,22 @@ def mask_and_reduce(sequence: torch.Tensor,
         average_across_remaining (bool): If set, average the sequence across the
             remaining dimensions. Must not set `average_across_remaining`'
             and `sum_over_remaining` at the same time.
-        sum_over_timesteps (bool): If set, sum the loss across the
-            time dimension. Must not set `average_across_timesteps`
-            and `sum_over_timesteps` at the same time.
-        sum_over_batch (bool): If set, sum the loss across the
-            batch dimension. Must not set `average_across_batch`
-            and `sum_over_batch` at the same time.
-        sum_over_remaining (bool): If set, sum the loss across the
-            remaining dimension. Must not set `average_across_remaining`
-            and `sum_over_remaining` at the same time.
+        sum_over_timesteps (bool): If set, sum the sequence across the time
+            dimension. Must not set `average_across_timesteps` and
+            `sum_over_timesteps` at the same time.
+        sum_over_batch (bool): If set, sum the sequence across the batch
+            dimension. Must not set `average_across_batch` and `sum_over_batch`
+            at the same time.
+        sum_over_remaining (bool): If set, sum the sequence across the remaining
+            dimension. Must not set `average_across_remaining` and
+            `sum_over_remaining` at the same time.
         time_major (bool): The shape format of the inputs. If `True`,
             :attr:`sequence` must have shape `[max_time, batch_size, ...]`.
             If `False` (default), `sequence` must have
             shape `[batch_size, max_time, ...]`.
-        dtype (dtype): Type of :attr:`sequence`. If `None`, infer from
-            :attr:`sequence` automatically.
 
-    Returns
-        A Tensor containing the masked and reduced sequence.
+    Returns:
+        A tensor containing the masked and reduced sequence.
     """
     if rank < 2:
         raise ValueError('`rank` must be >= 2.')
@@ -100,7 +98,6 @@ def mask_and_reduce(sequence: torch.Tensor,
                                   sequence_length,
                                   dtype=dtype,
                                   time_major=False)
-
     if rank > 2:
         if average_across_remaining and sum_over_remaining:
             raise ValueError("Only one of `average_across_remaining` and "
@@ -138,6 +135,27 @@ def reduce_batch_time(sequence: torch.Tensor,
 
     Assumes :attr:`sequence` has been properly masked according to
     :attr:`sequence_length`.
+
+    Args:
+        sequence: A tensor to reduce.
+        sequence_length: A tensor of shape `[batch_size]`. Time steps beyond
+            the respective sequence lengths will be made zero. If `None`,
+            no masking is performed.
+        average_across_batch (bool): If set, average the sequence across the
+            batch dimension. Must not set `average_across_batch`'
+            and `sum_over_batch` at the same time.
+        average_across_timesteps (bool): If set, average the sequence across
+            the time dimension. Must not set `average_across_timesteps`
+            and `sum_over_timesteps` at the same time.
+        sum_over_batch (bool): If set, sum the sequence across the
+            batch dimension. Must not set `average_across_batch`
+            and `sum_over_batch` at the same time.
+        sum_over_timesteps (bool): If set, sum the sequence across the
+            time dimension. Must not set `average_across_timesteps`
+            and `sum_over_timesteps` at the same time.
+
+    Returns:
+        A tensor with dimension reduction.
     """
     if average_across_timesteps and sum_over_timesteps:
         raise ValueError("Only one of `average_across_timesteps` and "
@@ -181,6 +199,9 @@ def reduce_dimensions(tensor: torch.Tensor,
             dimensions to reduce by taking sum.
         keepdims (optional): If `True`, retains reduced dimensions with
             length 1.
+
+    Returns:
+        A tensor with dimension reduction.
     """
     reduced_axes = set()
     if average_axes is not None:
