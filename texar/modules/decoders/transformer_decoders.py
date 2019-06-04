@@ -15,24 +15,23 @@
 Transformer decoder.
 """
 
-from typing import Dict, List, NamedTuple, Optional, Tuple, Union
+from typing import Dict, NamedTuple, Optional, Tuple, Union
 
 import torch
 from torch import nn
 
-from texar import HParams, ModuleBase
+from texar import HParams
 from texar.core import layers
-from texar.modules.networks import FeedForwardNetwork
 from texar.modules.decoders import Helper
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
 from texar.modules.decoders.decoder_helpers import EmbeddingHelper
-from texar.modules.embedders import EmbedderBase
-from texar.modules.encoders.multihead_attention import \
-    Cache, MultiheadAttentionEncoder
-from texar.modules.encoders.transformer_encoder import \
-    default_transformer_poswise_net_hparams
+from texar.modules.encoders.multihead_attention import (
+    Cache, MultiheadAttentionEncoder)
+from texar.modules.encoders.transformer_encoder import (
+    default_transformer_poswise_net_hparams)
+from texar.modules.networks import FeedForwardNetwork
 # from texar.utils import beam_search
-from texar.utils import get_instance, transformer_attentions as attn
+from texar.utils import transformer_attentions as attn
 from texar.utils.shapes import mask_sequences
 from texar.utils.utils import sequence_mask
 
@@ -112,19 +111,9 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         self.end_dec_attn_layer_norm = nn.ModuleList()
         self.poswise_networks = nn.ModuleList()
         self.poswise_layer_norm = nn.ModuleList()
-
-        if self._hparams.initializer:
-            # TODO: This might be different to what TensorFlow does
-            initialize = layers.get_initializer(self._hparams.initializer)
         for i in range(self._hparams.num_blocks):
             attn_module = MultiheadAttentionEncoder(
                 self._input_size, self._hparams.multihead_attention)
-            for param in attn_module.parameters():
-                 # print('before initialize:{}'.format(param))
-                 if len(param.size()) == 2:
-                     initialize(param)
-                 # print('after initialize:{}'.format(param))
-                 # print('attn params:{}'.format(param.shape))
             if self._hparams.dim != attn_module.output_size:
                 raise ValueError("The output dimension of "
                                  "MultiheadEncoder should be equal "
@@ -134,12 +123,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
             attn_module = MultiheadAttentionEncoder(
                 self._input_size, self._hparams.multihead_attention)
-            for param in attn_module.parameters():
-                 # print('before initialize:{}'.format(param))
-                 if len(param.size()) == 2:
-                     initialize(param)
-                 # print('after initialize:{}'.format(param))
-                 # print('attn params:{}'.format(param.shape))
             if self._hparams.dim != attn_module.output_size:
                 raise ValueError("The output dimension of "
                                  "MultiheadEncoder should be equal "
@@ -149,12 +132,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
             poswise_network = FeedForwardNetwork(
                 hparams=self._hparams.poswise_feedforward)
-            for param in poswise_network.parameters():
-                 # print('before initialize:{}'.format(param))
-                 if len(param.size()) == 2:
-                     initialize(param)
-                 # print('after initialize:{}'.format(param))
-                 # print('attn params:{}'.format(param.shape))
             if (poswise_network._hparams.layers[-1]['kwargs']['out_features']
                     != self._hparams.dim):
                 raise ValueError("The output dimension of "
@@ -166,6 +143,15 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         self.final_layer_norm = nn.LayerNorm(self._input_size)
         self.embed_dropout = nn.Dropout(self._hparams.embedding_dropout)
         self.residual_dropout = nn.Dropout(self._hparams.residual_dropout)
+
+        if self._hparams.initializer:
+            # TODO: This might be different to what TensorFlow does
+            initialize = layers.get_initializer(self._hparams.initializer)
+            assert initialize is not None
+            # Do not re-initialize LayerNorm modules.
+            for name, param in self.named_parameters():
+                if name.split(".")[-1] == "weight" and "layer_norm" not in name:
+                    initialize(param)
 
     @staticmethod
     def default_hparams():
@@ -531,8 +517,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 beam_search_decoding=False, batch_size=helper.batch_size)
             if context is not None:
                 assert self._state_context is not None
-                pad_length = \
-                    max_decoding_length - self._state_context.size(1)
+                pad_length = max_decoding_length - self._state_context.size(1)
                 if pad_length > 0:
                     self._state_context = torch.cat((
                         self._state_context,

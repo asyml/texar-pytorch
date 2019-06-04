@@ -19,7 +19,6 @@ from typing import Optional, Dict
 
 import torch
 from texar import HParams
-from texar import utils
 from texar.core import layers
 from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.encoders.multihead_attention import \
@@ -156,23 +155,11 @@ class TransformerEncoder(EncoderBase):
         self.poswise_layer_norm = nn.ModuleList()
         self.output_layer_norm = nn.ModuleList()
 
-        if self._hparams.initializer:
-            # TODO: This might be different to what TensorFlow does
-            initialize = layers.get_initializer(self._hparams.initializer)
-
         for _ in range(self._hparams.num_blocks):
             mh_attn = MultiheadAttentionEncoder(
                 self._input_size, self._hparams.multihead_attention)
-            for param in mh_attn.parameters():
-                # print('before initialize:{}'.format(param))
-                if len(param.size()) == 2:
-                    initialize(param)
-                # print('after initialize:{}'.format(param))
-                # print('attn params:{}'.format(param.shape))
-
             self.self_attns.append(mh_attn)
 
-            # don't need to re-initialze the LayerNorm
             self.self_attn_layer_norm.append(nn.LayerNorm(self._input_size))
             if self._hparams.dim != mh_attn.hparams.output_dim:
                 raise ValueError(
@@ -182,10 +169,6 @@ class TransformerEncoder(EncoderBase):
 
             pw_net = FeedForwardNetwork(
                 hparams=self._hparams['poswise_feedforward'])
-            for param in pw_net.parameters():
-                # print('before initialize:{}'.format(param))
-                if len(param.size()) == 2:
-                    initialize(param)
 
             final_dim = pw_net.hparams.layers[-1]['kwargs']['out_features']
             if self._hparams.dim != final_dim:
@@ -201,10 +184,19 @@ class TransformerEncoder(EncoderBase):
 
         self.embed_dropout = nn.Dropout(p=self._hparams.embedding_dropout)
         self.residual_dropout = nn.Dropout(p=self._hparams.residual_dropout)
+
         if self._hparams.use_bert_config:
             self.input_normalizer = nn.LayerNorm(self._input_size)
         else:
             self.final_layer_normalizer = nn.LayerNorm(self._input_size)
+
+        if self._hparams.initializer:
+            initialize = layers.get_initializer(self._hparams.initializer)
+            assert initialize is not None
+            # don't need to re-initialze the LayerNorm
+            for name, param in self.named_parameters():
+                if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:
+                    initialize(param)
 
     @staticmethod
     def default_hparams():

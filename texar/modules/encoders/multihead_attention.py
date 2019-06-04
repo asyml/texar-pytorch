@@ -79,12 +79,14 @@ class MultiheadAttentionEncoder(EncoderBase):
                                  self._hparams.output_dim, bias=use_bias)
 
         if self._hparams.initializer:
-            # pylint: disable=fixme
-            # TODO: This might be different to what TensorFlow does
+            # TODO(haoransh): we may define kernel_initializer and bias
+            #  initializer seperately
             initialize = layers.get_initializer(self._hparams.initializer)
             assert initialize is not None
-            for param in self.parameters():
-                initialize(param)
+            for name, param in self.named_parameters():
+                if name.split('.')[-1] == 'weight':
+                    print('name:{}'.format(name))
+                    initialize(param)
 
     @staticmethod
     def default_hparams():

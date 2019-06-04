@@ -100,6 +100,7 @@ def source_pad_concat_convert(x_seqs, eos_id=2, bos_id=1):
     x_block = np.pad(x_block, ((0, 0), (0, 1)), "constant", constant_values=0)
     for i_batch, seq in enumerate(x_seqs):
         x_block[i_batch, len(seq)] = eos_id
+    x_block = torch.LongTensor(x_block)
     return x_block
 
 

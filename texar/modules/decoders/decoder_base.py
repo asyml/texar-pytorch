@@ -60,10 +60,7 @@ def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
     elif torch.is_tensor(layer):
         vocab_size = layer.size(1)
         output_layer = nn.Linear(layer.size(1), layer.size(0), bias)
-        print('output layer initialized shape:{}'.format(output_layer.weight.size()))
-        print('passed in layer shape:{}'.format(layer.size()))
         if not isinstance(layer, nn.Parameter):
-            print('passed in is not a parameter!')
             layer = nn.Parameter(layer, requires_grad=True)
         output_layer.weight = layer
     elif layer is identity:

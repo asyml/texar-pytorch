@@ -309,6 +309,8 @@ class SinusoidsPositionEmbedder(EmbedderBase):
 
         if inputs.is_cuda:
             signal = self.signal.cuda()
+        else:
+            signal = self.signal
 
         outputs = F.embedding(inputs, signal, **kwargs)
         if sequence_length is not None:
