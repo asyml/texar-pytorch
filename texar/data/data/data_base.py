@@ -33,6 +33,7 @@ __all__ = [
     "SequenceDataSource",
     "IterDataSource",
     "ZipDataSource",
+    "FilterDataSource",
     "RecordDataSource",
     "DataBase",
 ]
@@ -104,6 +105,21 @@ class ZipDataSource(DataSource[Tuple[RawExample, ...]]):
 
     def __len__(self) -> int:
         return min(len(source) for source in self._sources)
+
+
+class FilterDataSource(DataSource[Tuple[RawExample, ...]]):
+    r"""Data source for filtering raw example with user specified filter
+    """
+
+    def __init__(self, source: DataSource[RawExample],
+                 filter_fn: Optional[Callable[[RawExample], bool]] = None):
+        self._source = source
+        self._filter_fn = filter_fn
+
+    def __iter__(self) -> Iterator[Tuple[RawExample, ...]]:
+        for sentence in self._source:
+            if self._filter_fn(sentence):
+                yield sentence
 
 
 class RecordDataSource(DataSource[Dict[str, RawExample]]):

@@ -16,7 +16,7 @@ Mono text data class that define data reading, parsing, batching, and other
 preprocessing operations.
 """
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Iterator, Union, Any
 
 import torch
 
@@ -35,7 +35,7 @@ __all__ = [
 ]
 
 
-class _LengthFilterMode(Enum):  # pylint: disable=no-init, too-few-public-methods
+class _LengthFilterMode(Enum):
     r"""Options of length filter mode.
     """
     TRUNC = "truncate"
@@ -80,43 +80,20 @@ class MonoTextData(TextDataBase[str, List[str]]):
     whose element is a python `dict` including three fields:
 
         - "text":
-            A string Tensor of shape `[batch_size, max_time]` containing
-            the **raw** text toknes. `max_time` is the length of the longest
-            sequence in the batch.
-            Short sequences in the batch are padded with **empty string**.
-            BOS and EOS tokens are added as per
-            :attr:`hparams`. Out-of-vocabulary tokens are **NOT** replaced
-            with UNK.
+            A list of [batch_size] elements each containing a list of **raw**
+            text tokens of the sequences. Short sequences in the batch are
+            padded with **empty string**. By default only EOS token is appended
+            to each sequence. Out-of-vocabulary tokens are **NOT** replaced with
+             UNK.
         - "text_ids":
-            An `int64` Tensor of shape `[batch_size, max_time]`
-            containing the token indexes.
+            A list of [batch_size] elements each containing a list of token
+            indexes of source sequences in the batch
         - "length":
-            An `int` Tensor of shape `[batch_size]` containing the
-            length of each sequence in the batch (including BOS and
-            EOS if added).
-
-    If :attr:`'variable_utterance'` is set to `True` in :attr:`hparams`, the
-    resulting dataset has elements with four fields:
-
-        - "text":
-            A string Tensor of shape
-            `[batch_size, max_utterance, max_time]`, where *max_utterance* is
-            either the maximum number of utterances in each elements of the
-            batch, or :attr:`max_utterance_cnt` as specified in :attr:`hparams`.
-        - "text_ids":
-            An `int64` Tensor of shape
-            `[batch_size, max_utterance, max_time]` containing the token
-            indexes.
-        - "length":
-            An `int` Tensor of shape `[batch_size, max_utterance]`
-            containing the length of each sequence in the batch.
-        - "utterance_cnt":
-            An `int` Tensor of shape `[batch_size]` containing
-            the number of utterances of each element in the batch.
+            A list of [batch_size] elements of ints containing the length of
+            each source sequence in the batch (including BOS and EOS if added).
 
     The above field names can be accessed through :attr:`text_name`,
-    :attr:`text_id_name`, :attr:`length_name`, and
-    :attr:`utterance_cnt_name`, respectively.
+    :attr:`text_id_name`, :attr:`length_name`.
 
     Example:
 
@@ -128,15 +105,13 @@ class MonoTextData(TextDataBase[str, List[str]]):
             }
             data = MonoTextData(hparams)
             iterator = DataIterator(data)
-            batch = iterator.get_next()
-
-            iterator.switch_to_dataset(sess) # initializes the dataset
-            batch_ = sess.run(batch)
-            # batch_ == {
-            #    'text': [['<BOS>', 'example', 'sequence', '<EOS>']],
-            #    'text_ids': [[1, 5, 10, 2]],
-            #    'length': [4]
-            # }
+            for batch in iterator:
+                # batch contains the following
+                # batch_ == {
+                #    'text': [['<BOS>', 'example', 'sequence', '<EOS>']],
+                #    'text_ids': [[1, 5, 10, 2]],
+                #    'length': [4]
+                # }
     """
 
     _delimiter: str
@@ -374,14 +349,14 @@ class MonoTextData(TextDataBase[str, List[str]]):
             if self._length_filter_mode is _LengthFilterMode.TRUNC:
                 words = words[:self._max_seq_length]
 
-        # Apply the "other transformations".
-        for transform in self._other_transforms:
-            words = transform(words)
-
         if self._bos_token != '':
             words.insert(0, self._bos_token)
         if self._eos_token != '':
             words.append(self._eos_token)
+
+        # Apply the "other transformations".
+        for transform in self._other_transforms:
+            words = transform(words)
 
         return words
 
@@ -390,8 +365,8 @@ class MonoTextData(TextDataBase[str, List[str]]):
         # `_collate` takes care of padding and numericalization.
 
         # If `pad_length` is `None`, pad to the longest sentence in the batch.
-        ids = [self._vocab.map_tokens_to_ids_py(sent) for sent in examples]
-        text_ids, lengths = padded_batch(ids, self._pad_length,
+        text_ids = [self._vocab.map_tokens_to_ids_py(sent) for sent in examples]
+        text_ids, lengths = padded_batch(text_ids, self._pad_length,
                                          pad_value=self._vocab.pad_token_id)
         # Also pad the examples
         pad_length = self._pad_length or max(lengths)
@@ -424,8 +399,34 @@ class MonoTextData(TextDataBase[str, List[str]]):
         """
         return self._vocab
 
+    def text_name(self):
+        r"""The name for the text field"""
+        if self.hparams.dataset["data_name"]:
+            name = "{}_text".format(self.hparams.dataset["data_name"])
+        else:
+            name = "text"
+        return name
+
     @property
-    def embedding_init_value(self) -> Optional[torch.Tensor]:
+    def text_id_name(self):
+        r"""The name for text ids"""
+        if self.hparams.dataset["data_name"]:
+            name = "{}_text_ids".format(self.hparams.dataset["data_name"])
+        else:
+            name = "text_ids"
+        return name
+
+    @property
+    def length_name(self):
+        r"""The name for text length"""
+        if self.hparams.dataset["data_name"]:
+            name = "{}_length".format(self.hparams.dataset["data_name"])
+        else:
+            name = "length"
+        return name
+
+    @property
+    def embedding_init_value(self):
         r"""The `Tensor` containing the embedding value loaded from file.
         `None` if embedding is not specified.
         """
