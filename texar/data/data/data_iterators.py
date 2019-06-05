@@ -95,7 +95,7 @@ class SamplerBase(torch_sampler.Sampler):
             # Return indices and examples for any epoch in this case.
             map_fn = lambda idx: (idx, self._data._source[idx])
         else:
-            map_fn = None
+            map_fn = None  # type: ignore
         if map_fn is not None:
             return map(map_fn, iterator)
 

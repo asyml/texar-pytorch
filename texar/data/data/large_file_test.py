@@ -75,7 +75,8 @@ class LargeFileTest(unittest.TestCase):
         self.source = TextLineDataSource(
             '../../Downloads/en-es.bicleaner07.txt.gz',
             compression_type='gzip')
-        self.source.__iter__ = wrap_progress(self.source.__iter__)
+        self.source.__iter__ = wrap_progress(  # type: ignore
+            self.source.__iter__)
         self.num_workers = 3
         self.batch_size = 64
 

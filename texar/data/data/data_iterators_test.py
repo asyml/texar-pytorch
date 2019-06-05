@@ -4,17 +4,16 @@ Unit tests for data iterator related operations.
 import copy
 import tempfile
 import unittest
-from typing import List, Optional, Tuple, no_type_check
+from typing import List, Tuple, no_type_check
 
 import numpy as np
-import torch
 
-from texar.data.data.data_base import DataBase, IterDataSource, \
-    SequenceDataSource, ZipDataSource
-from texar.data.data.data_iterators import BufferShuffleSampler, DataIterator, \
-    TrainTestDataIterator
+import torch
+from texar.data.data.data_base import (
+    DataBase, DataSource, IterDataSource, SequenceDataSource, ZipDataSource)
+from texar.data.data.data_iterators import (
+    BufferShuffleSampler, DataIterator, TrainTestDataIterator)
 from texar.data.data.dataset_utils import Batch
-from texar.data.data.dataset_utils import _CacheStrategy, _LazyStrategy
 from texar.data.data.mono_text_data import MonoTextData
 
 
@@ -23,39 +22,29 @@ class SamplerTest(unittest.TestCase):
     """
 
     class MockDataBase(DataBase):
-        class MockSource:
-            def __getitem__(self, item):
-                return item
-
-            def reset(self):
-                pass
-
         def __init__(self, size: int, lazy_strategy: str,
                      cache_strategy: str, unknown_size: bool = False):
-            self._source = self.MockSource()  # type: ignore
-            self._cached_source = self._source
-            self.size = size
-            self._lazy_strategy = _LazyStrategy(lazy_strategy)
-            self._cache_strategy = _CacheStrategy(cache_strategy)
-            self._dataset_size = size if not unknown_size else None
-            self._unknown_size = unknown_size
-            self._supports_random_access = False
-            self._fully_cached = False
-            self._parallelize_processing = True
+            data = list(range(size))
+            source: DataSource[int]
+            if unknown_size:
+                source = IterDataSource(data)
+            else:
+                source = SequenceDataSource(data)
+            hparams = {
+                'lazy_strategy': lazy_strategy,
+                'cache_strategy': cache_strategy,
+            }
+            super().__init__(source, hparams)
 
-        def _prefetch_source(self, index: int) -> Optional[int]:  # type: ignore
-            if self._unknown_size:
-                if index >= self.size:
-                    self._dataset_size = self.size
-                    return self._dataset_size
-            return None
+        def _process(self, raw_example):
+            return raw_example
 
     def setUp(self) -> None:
         self.size = 10
         self.buffer_size = 5
 
     @no_type_check
-    def _test_data(self, data: MockDataBase,
+    def _test_data(self, data: DataBase,
                    returns_data: bool = False,
                    always_returns_data: bool = False):
         sampler = BufferShuffleSampler(data, self.buffer_size)
@@ -308,7 +297,7 @@ class LazinessCachingTest(unittest.TestCase):
                 IterDataSource(numbers_data),
                 SequenceDataSource(string_data))
         else:
-            source = ZipDataSource(  # type: ignore
+            source = ZipDataSource(
                 SequenceDataSource(numbers_data),
                 SequenceDataSource(string_data))
         data = MockDataBase(source, hparams)  # type: ignore

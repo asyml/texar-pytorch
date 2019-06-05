@@ -168,7 +168,7 @@ class _TruncatedDataSource(DataSource[RawExample]):
         return length
 
 
-class _TransformedDataSource(DataSource[Example]):
+class _TransformedDataSource(DataSource[Example], Generic[RawExample, Example]):
     r"""Data source by performing transformations on another data source.
     """
 
@@ -288,16 +288,18 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         # If specified maximum dataset size, wrap the data source. This is done
         # before caching to avoid caching excess elements.
         if self._hparams.max_dataset_size != -1:
-            self._source = _TruncatedDataSource(self._source,
-                                                self._hparams.max_dataset_size)
+            self._source = _TruncatedDataSource[RawExample](
+                self._source, self._hparams.max_dataset_size)
 
         # If processing should not be parallelized, combine processing with
-        # loading by wrapping the data source. In this case, processed data
+        # loading by wrapping the data source. In this case, **processed** data
         # will be cached.
         if (not self._parallelize_processing and
                 self._lazy_strategy is _LazyStrategy.ALL and
                 self._cache_strategy is not _CacheStrategy.LOADED):
-            self._source = _TransformedDataSource(self._source, self._process)
+            self._transformed_source = _TransformedDataSource[
+                RawExample, Example](self._source, self._process)
+            self._source = self._transformed_source  # type: ignore
 
         # Check whether data source supports random access, and obtain dataset
         # size if it does.
@@ -310,17 +312,19 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 self._supports_random_access = False
                 erase_after_access = (
                         self._cache_strategy is not _CacheStrategy.LOADED)
-                self._cached_source = \
-                    _CachedDataSource(self._source, erase_after_access)
+                self._cached_source = _CachedDataSource[RawExample](
+                    self._source, erase_after_access)
                 self._source = self._cached_source
                 self._dataset_size = None
 
         # If processing should not be parallelized, combine processing with
-        # loading by wrapping the data source. In this case, loaded data
+        # loading by wrapping the data source. In this case, **loaded** data
         # will be cached.
         if (not self._parallelize_processing and
                 self._cache_strategy is _CacheStrategy.LOADED):
-            self._source = _TransformedDataSource(self._source, self._process)
+            self._transformed_source = _TransformedDataSource[
+                RawExample, Example](self._source, self._process)
+            self._source = self._transformed_source  # type: ignore
 
         # Simplify some logic-heavy checks.
         self.__should_return_processed_examples = (
@@ -555,17 +559,17 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             self._dataset_size = self._cached_source.max_index + 1
             return self._dataset_size
 
-    def _prefetch_source(self, index: Optional[int]) -> Optional[int]:
+    def _prefetch_source(self, index: int) -> Optional[int]:
         r"""Prefetches data so `__getitem__` will be available. This method
         should only be called in the main process, because data sources are not
         guaranteed to be thread-safe.
 
         Args:
-            index: Prefetch data up to this index. If `None`, prefetch all data.
+            index: Prefetch data up to this index.
 
         Returns:
-            If `index` is `None`, or `index` is greater than dataset size,
-            returns the inferred dataset size. Otherwise, returns `None`.
+            If `index` is greater than dataset size, returns the inferred
+            dataset size. Otherwise, returns `None`.
         """
         if not self._supports_random_access:
             try:
@@ -579,7 +583,8 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             if self._should_call_prefetch_processed:
                 self._prefetch_processed(index)
         else:
-            if index >= self._dataset_size:
+            # Dataset size must be known.
+            if index >= self._dataset_size:  # type: ignore
                 return self._dataset_size
         return None
 
@@ -615,13 +620,13 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             if self._fully_cached:
                 return self._processed_cache[index]
             elif not self._parallelize_processing:
-                return self._source[index]
+                return self._transformed_source[index]
             else:
                 return self._process(self._source[index])
         else:
             # `index` is a tuple of (index, example).
             if not self._parallelize_processing:
-                return index[1]
+                return index[1]  # type: ignore
             else:
                 return self._process(index[1])
 
