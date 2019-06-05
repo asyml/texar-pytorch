@@ -150,7 +150,8 @@ class TransformerEncoder(EncoderBase):
         EncoderBase.__init__(self, hparams)
         self._input_size = self._hparams.dim
         self.self_attns = nn.ModuleList()
-        self.self_attn_layer_norm = nn.ModuleList()
+        if not self._hparams.use_bert_config:
+            self.self_attn_layer_norm = nn.ModuleList()
         self.poswise_networks = nn.ModuleList()
         self.poswise_layer_norm = nn.ModuleList()
         self.output_layer_norm = nn.ModuleList()
@@ -159,11 +160,11 @@ class TransformerEncoder(EncoderBase):
             mh_attn = MultiheadAttentionEncoder(
                 self._input_size, self._hparams.multihead_attention)
             self.self_attns.append(mh_attn)
-
-            self.self_attn_layer_norm.append(nn.LayerNorm(self._input_size))
+            if not self._hparams.use_bert_config:
+                self.self_attn_layer_norm.append(nn.LayerNorm(self._input_size))
             if self._hparams.dim != mh_attn.hparams.output_dim:
                 raise ValueError(
-                    'The "dim" in the hparams of '
+                    'The "dim" in the hpa   rams of '
                     '"multihead_attention" should be equal to the '
                     '"dim" of TransformerEncoder')
 

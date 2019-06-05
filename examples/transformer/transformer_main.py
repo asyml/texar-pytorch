@@ -190,6 +190,7 @@ def main():
             lr = utils.get_lr(model.step_iteration, config_model.lr_config)
             adjust_learning_rate(opt, lr)
             opt.step()
+
             model.step_iteration += 1
             step = model.step_iteration
             if step % config_data.display_steps == 0:

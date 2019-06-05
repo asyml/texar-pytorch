@@ -121,8 +121,8 @@ def init_gpt2_checkpoint(word_embedder, pos_embedder, decoder, init_checkpoint):
         array = tf.train.load_variable(tf_path, name)
         names.append(name)
         arrays.append(array.squeeze())
-    tensor_names = []
 
+    tensor_names = []
     for name, _ in word_embedder.named_parameters():
         tensor_names.append(name)
     for name, _ in pos_embedder.named_parameters():

@@ -148,7 +148,7 @@ def run_model():
         res = word_embedder(x) + pos_embedder(y)
         return res
 
-    output_layer = word_embedder.embedding.transpose(1, 0)
+    output_layer = word_embedder.embedding
     decoder = TransformerDecoder(
         vocab_size=gpt2_config.vocab_size,
         output_layer=output_layer,
@@ -161,6 +161,7 @@ def run_model():
             pos_embedder,
             decoder,
             args.checkpoint)
+
     elif args.pretrain_checkpoint:
         model_utils.init_gpt2_checkpoint(
             word_embedder,

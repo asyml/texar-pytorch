@@ -17,3 +17,4 @@ Modules of Texar library module.
 
 # pylint: disable=wildcard-import
 from texar.models.transformer import *
+from texar.models.bert import *
