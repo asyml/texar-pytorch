@@ -101,7 +101,6 @@ def main():
         raise ValueError('Unknown config_format_bert.')
 
     bert_hparams = BertClassifier.default_hparams()
-    print('ori_bert hparams:{}'.format(bert_hparams))
     for key in bert_config.keys():
         bert_hparams[key] = bert_config[key]
     for key in config_downstream.keys():
@@ -109,7 +108,6 @@ def main():
 
     pprint.pprint(bert_hparams)
     model = BertClassifier(hparams=bert_hparams)
-    print(model.hparams)
 
     init_checkpoint = os.path.join(bert_pretrain_dir, 'bert_model.ckpt')
     model_utils.init_bert_checkpoint(model, init_checkpoint)
@@ -245,7 +243,7 @@ def main():
             _train_epoch()
         states = {
             'model': model.state_dict(),
-            'optimizer': model.state_dict()
+            'optimizer': opt.state_dict()
         }
         torch.save(states, os.path.join(args.output_dir + '/model.ckpt'))
 
