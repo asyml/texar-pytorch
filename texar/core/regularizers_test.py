@@ -54,3 +54,7 @@ class RegularizerTest(unittest.TestCase):
 
         self.assertEqual(regularizer.get_config().get("l1"), 0.1)
         self.assertEqual(regularizer.get_config().get("l2"), 0.2)
+
+
+if __name__ == "__main__":
+    unittest.main()
