@@ -14,23 +14,21 @@
 """
 Paired text data that consists of source text and target text.
 """
-import numpy as np
-from typing import Optional, List, Tuple, Union
+from typing import List, Optional, Tuple
 
+import numpy as np
 import torch
 
-from texar.hyperparams import HParams
-from texar.utils import utils
+import texar.utils.utils as utils
+from texar.data.data.data_base import (
+    DataSource, FilterDataSource, ZipDataSource)
 from texar.data.data.dataset_utils import Batch, padded_batch
-from texar.data.data.mono_text_data import _default_mono_text_dataset_hparams
+from texar.data.data.mono_text_data import (
+    MonoTextData, _LengthFilterMode, _default_mono_text_dataset_hparams)
 from texar.data.data.text_data_base import TextDataBase, TextLineDataSource
-from texar.data.data.data_base import ZipDataSource, FilterDataSource
-from texar.data.data.mono_text_data import MonoTextData
-from texar.data.data.mono_text_data import _LengthFilterMode
-from texar.data.data_utils import count_file_lines
-from texar.data.vocabulary import Vocab, SpecialTokens
 from texar.data.embedding import Embedding
-
+from texar.data.vocabulary import SpecialTokens, Vocab
+from texar.hyperparams import HParams
 
 __all__ = [
     "_default_paired_text_dataset_hparams",
@@ -61,7 +59,8 @@ def _default_paired_text_dataset_hparams():
     }
 
 
-class PairedTextData(TextDataBase):
+class PairedTextData(TextDataBase[Tuple[str, str],
+                                  Tuple[List[str], List[str]]]):
     r"""Text data processor that reads parallel source and target text.
     This can be used in, e.g., seq2seq models.
 
@@ -122,6 +121,7 @@ class PairedTextData(TextDataBase):
                 # }
 
     """
+
     def __init__(self, hparams, device: Optional[torch.device] = None):
         self._hparams = HParams(hparams, self.default_hparams())
 
@@ -203,13 +203,13 @@ class PairedTextData(TextDataBase):
                                              compression_type=
                                              tgt_hparams.compression_type)
 
-        data_source: Union[ZipDataSource, FilterDataSource] = \
-            ZipDataSource(src_data_source, tgt_data_source)
+        data_source: DataSource[Tuple[str, str]]
+        data_source = ZipDataSource(  # type: ignore
+            src_data_source, tgt_data_source)
         if (self._src_length_filter_mode is _LengthFilterMode.DISCARD and
-                self._src_max_seq_length is not None) or \
-            (self._tgt_length_filter_mode is _LengthFilterMode.DISCARD and
-             self._tgt_length_filter_mode is not None):
-
+            self._src_max_seq_length is not None) or \
+                (self._tgt_length_filter_mode is _LengthFilterMode.DISCARD and
+                 self._tgt_length_filter_mode is not None):
             max_source_length = self._src_max_seq_length if \
                 self._src_max_seq_length is not None else np.inf
             max_tgt_length = self._tgt_max_seq_length if \
@@ -458,18 +458,6 @@ class PairedTextData(TextDataBase):
         r"""The dataset.
         """
         return self._source
-
-    def dataset_size(self):
-        r"""Returns the number of data instances in the dataset.
-
-        Note that this is the total data count in the raw files, before any
-        filtering and truncation.
-        """
-        if not self._dataset_size:
-            # pylint: disable=attribute-defined-outside-init
-            self._dataset_size = count_file_lines(
-                self._hparams.source_dataset.files)
-        return self._dataset_size
 
     @property
     def vocab(self):

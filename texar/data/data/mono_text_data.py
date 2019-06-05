@@ -16,7 +16,7 @@ Mono text data class that define data reading, parsing, batching, and other
 preprocessing operations.
 """
 from enum import Enum
-from typing import List, Optional, Iterator, Union, Any
+from typing import List, Optional
 
 import torch
 
