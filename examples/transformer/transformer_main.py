@@ -90,6 +90,7 @@ def main():
     )
 
     def _eval_epoch(epoch, mode):
+        torch.cuda.empty_cache()
         if mode == 'eval':
             eval_data = dev_data
         elif mode == 'test':
@@ -101,20 +102,21 @@ def main():
         bsize = config_data.test_batch_size
         for i in range(0, len(eval_data), bsize):
             sources, targets = zip(*eval_data[i:i + bsize])
-            x_block = data_utils.source_pad_concat_convert(sources)
-            predictions = model(
-                encoder_input=x_block,
-                is_train_mode=False,
-                beam_width=beam_width)
-            if beam_width == 1:
-                decoded_ids = predictions[0].sample_id
-            else:
-                decoded_ids = predictions["sample_id"][:, :, 0]
+            with torch.no_grad():
+                x_block = data_utils.source_pad_concat_convert(sources)
+                predictions = model(
+                    encoder_input=x_block,
+                    is_train_mode=False,
+                    beam_width=beam_width)
+                if beam_width == 1:
+                    decoded_ids = predictions[0].sample_id
+                else:
+                    decoded_ids = predictions["sample_id"][:, :, 0]
 
-            hypotheses.extend(h.tolist() for h in decoded_ids)
-            references.extend(r.tolist() for r in targets)
-            hypotheses = utils.list_strip_eos(hypotheses, eos_token_id)
-            references = utils.list_strip_eos(references, eos_token_id)
+                hypotheses.extend(h.tolist() for h in decoded_ids)
+                references.extend(r.tolist() for r in targets)
+                hypotheses = utils.list_strip_eos(hypotheses, eos_token_id)
+                references = utils.list_strip_eos(references, eos_token_id)
 
         if mode == 'eval':
             # Writes results to files to evaluate BLEU
@@ -122,10 +124,14 @@ def main():
             # text tokens) and serves only as a surrogate metric to monitor
             # the training process
             fname = os.path.join(args.model_dir, 'tmp.eval')
-            hypotheses = tx.utils.str_join(hypotheses)
-            references = tx.utils.str_join(references)
+            hwords, rwords = [], []
+            for hyp, ref in zip(hypotheses, references):
+                hwords.append([str(y) for y in hyp])
+                rwords.append([str(y) for y in ref])
+            hwords = tx.utils.str_join(hwords)
+            rwords = tx.utils.str_join(rwords)
             hyp_fn, ref_fn = tx.utils.write_paired_text(
-                hypotheses, references, fname, mode='s')
+                hwords, rwords, fname, mode='s')
             eval_bleu = bleu_wrapper(ref_fn, hyp_fn, case_sensitive=True)
             eval_bleu = 100. * eval_bleu
             logger.info('epoch: %d, eval_bleu %.4f', epoch, eval_bleu)
@@ -141,7 +147,7 @@ def main():
 
                 states = {
                     'model': model.state_dict(),
-                    'optimizer': model.state_dict()
+                    'optimizer': opt.state_dict()
                 }
                 torch.save(states, model_path)
 
@@ -171,6 +177,7 @@ def main():
             random_shuffler=data.iterator.RandomShuffler())
 
         for _, train_batch in enumerate(train_iter):
+            torch.cuda.empty_cache()
             opt.zero_grad()
             in_arrays = data_utils.seq2seq_pad_concat_convert(train_batch)
             loss = model(
@@ -185,8 +192,6 @@ def main():
             opt.step()
             model.step_iteration += 1
             step = model.step_iteration
-            _eval_epoch(epoch, mode='eval')
-            exit()
             if step % config_data.display_steps == 0:
                 logger.info('step: %d, loss: %.4f', step, loss)
                 print('lr: {} step: {}, loss: {}'.format(lr, step, loss))
@@ -212,7 +217,6 @@ def main():
         logger.info('Restore latest checkpoint in %s' % model_path)
         ckpt = torch.load(model_path)
         model.load_state_dict(ckpt['model'])
-        opt.load_state_dict(ckpt['optimizer'])
         _eval_epoch(0, mode='test')
 
     else:

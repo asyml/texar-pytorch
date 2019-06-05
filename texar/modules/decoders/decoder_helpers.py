@@ -296,7 +296,8 @@ class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
                 self._start_tokens)
         elif self._embedding_args_cnt == 2:
             # Position index is 0 in the beginning
-            times = self._start_tokens.new_zeros(self._batch_size)
+            times = self._start_tokens.new_zeros(self._batch_size,
+                    dtype=self._start_tokens.dtype)
             self._start_inputs = self._embedding_fn(  # type: ignore
                 self._start_tokens, times)
         else:
