@@ -1,5 +1,45 @@
 from enum import Enum
-from typing import Any, Dict, ItemsView, KeysView, Optional, ValuesView
+from typing import Any, Dict, ItemsView, KeysView, List, Optional, Tuple, Union, ValuesView
+
+import numpy as np
+
+__all__ = [
+    'padded_batch',
+    'Batch',
+    'FieldBatch',
+    '_LazyStrategy',
+    '_CacheStrategy',
+]
+
+
+def padded_batch(examples: Union[List[np.ndarray], List[List[int]]],
+                 pad_length: Optional[int] = None, pad_value: int = 0) \
+        -> Tuple[np.ndarray, List[int]]:
+    r"""Pad a batch of integer lists (or numpy arrays) to the same length, and
+    stack them together.
+
+    Args:
+        examples (list of lists): The list of examples.
+        pad_length (int, optional): The desired length after padding. If
+            ``None``, use the maximum length of lists in the batch. Defaults to
+            ``None``. Note that if ``pad_length`` is not ``None`` and the
+            maximum length of lists is greater than ``pad_length``, then all
+            lists are padded to the maximum length instead.
+        pad_value (int, optional): The value to fill in the padded positions.
+            Defaults to 0.
+
+    Returns:
+        A tuple of two elements, with the first being the padded batch, and the
+        second being the original lengths of each list.
+    """
+    lengths = [len(sent) for sent in examples]
+    pad_length = pad_length or max(lengths)
+
+    padded = np.full((len(examples), pad_length), pad_value, dtype=np.long)
+    for b_idx, sent in enumerate(examples):
+        length = lengths[b_idx]
+        padded[b_idx, :length] = sent[:length]
+    return padded, lengths
 
 
 class Batch:

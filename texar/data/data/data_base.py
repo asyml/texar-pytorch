@@ -480,6 +480,10 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         # TODO: Find a way to embed that big table here. Also change the table
         #   to include different behaviors when `parallelize_processing` is
         #   `False`.
+        # TODO: Sharding not yet supported.
+        # TODO: `seed` is not yet applied.
+        # TODO: `prefetch_buffer_size` will not be supported, but could remain
+        #   for compatibility.
         return {
             "name": "data",
             "num_epochs": 1,

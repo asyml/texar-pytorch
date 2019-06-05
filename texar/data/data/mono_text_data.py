@@ -18,17 +18,14 @@ preprocessing operations.
 from enum import Enum
 from typing import List, Optional
 
-import numpy as np
 import torch
 
-from texar.data.data import dataset_utils as dsutils
-from texar.data.data.dataset_utils import Batch
+from texar.data.data.dataset_utils import Batch, padded_batch
 from texar.data.data.text_data_base import TextDataBase, TextLineDataSource
 from texar.data.embedding import Embedding
 from texar.data.vocabulary import SpecialTokens, Vocab
 from texar.hyperparams import HParams
 from texar.utils import utils
-from texar.utils.dtypes import is_callable
 
 # pylint: disable=invalid-name, arguments-differ, protected-access, no-member
 
@@ -361,7 +358,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
 
     @staticmethod
     def make_embedding(emb_hparams, token_to_id_map):
-        """Optionally loads embedding from file (if provided), and returns
+        r"""Optionally loads embedding from file (if provided), and returns
         an instance of :class:`texar.data.Embedding`.
         """
         embedding = None
@@ -377,10 +374,9 @@ class MonoTextData(TextDataBase[str, List[str]]):
             if self._length_filter_mode is _LengthFilterMode.TRUNC:
                 words = words[:self._max_seq_length]
 
-        # apply the transformations
+        # Apply the "other transformations".
         for transform in self._other_transforms:
-            words = map(transform, words)
-        words = list(words)
+            words = transform(words)
 
         if self._bos_token != '':
             words.insert(0, self._bos_token)
@@ -394,7 +390,10 @@ class MonoTextData(TextDataBase[str, List[str]]):
         # `_collate` takes care of padding and numericalization.
 
         # If `pad_length` is `None`, pad to the longest sentence in the batch.
-        lengths = [len(sent) for sent in examples]
+        ids = [self._vocab.map_tokens_to_ids_py(sent) for sent in examples]
+        text_ids, lengths = padded_batch(ids, self._pad_length,
+                                         pad_value=self._vocab.pad_token_id)
+        # Also pad the examples
         pad_length = self._pad_length or max(lengths)
         examples = [
             sent + [''] * (pad_length - len(sent))
@@ -402,17 +401,10 @@ class MonoTextData(TextDataBase[str, List[str]]):
             for sent in examples
         ]
 
-        # If `_should_pad` is `False`, sentences must be of the same length
-        # or the following code will raise exceptions.
-        ids = np.zeros((len(examples), len(examples[0])), dtype=np.long)
-        for b_idx, sent in enumerate(examples):
-            length = lengths[b_idx]
-            ids[b_idx, :length] = \
-                self._vocab.map_tokens_to_ids_py(sent[:length])
-        ids = torch.from_numpy(ids).to(device=self.device)
+        text_ids = torch.from_numpy(text_ids).to(device=self.device)
         lengths = torch.tensor(lengths, dtype=torch.long, device=self.device)
         return Batch(len(examples), text=examples,
-                     text_ids=ids, length=lengths)
+                     text_ids=text_ids, length=lengths)
 
     def list_items(self) -> List[str]:
         r"""Returns the list of item names that the data can produce.
@@ -421,19 +413,19 @@ class MonoTextData(TextDataBase[str, List[str]]):
             A list of strings.
         """
         items = ['text', 'text_ids', 'length']
-        data_name = self._hparams['dataset']['data_name']
+        data_name = self._hparams.dataset.data_name
         if data_name is not None:
             items = [data_name + '_' + item for item in items]
         return items
 
     @property
-    def vocab(self):
+    def vocab(self) -> Vocab:
         r"""The vocabulary, an instance of :class:`~texar.data.Vocab`.
         """
         return self._vocab
 
     @property
-    def embedding_init_value(self):
+    def embedding_init_value(self) -> Optional[torch.Tensor]:
         r"""The `Tensor` containing the embedding value loaded from file.
         `None` if embedding is not specified.
         """

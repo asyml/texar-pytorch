@@ -176,7 +176,7 @@ class MonoTextDataTest(unittest.TestCase):
         r"""Tests use of other transformations
         """
 
-        upper_func = lambda x: x.upper()
+        upper_func = lambda x: [w.upper() for w in x]
 
         hparams = copy.deepcopy(self._hparams)
         hparams["dataset"].update(
