@@ -32,6 +32,8 @@ setuptools.setup(
     ],
     extras_require={
         'torch': ['torch==1.0.1'],
+        'examples': [],
+        'extras': ['Pillow>=3.0'],
     },
     package_data={
         "texar": [

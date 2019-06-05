@@ -56,19 +56,22 @@ def get_numpy_dtype(dtype: Union[str, type]):
                    int, np.int32, torch.int32}:
         return np.int32
     elif dtype in {'int64', 'tf.int64', 'torch.int64',
-                   np.int64, torch.int64}:
+                   np.int64, np.int_, torch.int64}:
         return np.int64
     elif dtype in {'int16', 'tf.int16', 'torch.int16',
                    np.int16, torch.int16}:
         return np.int16
     elif dtype in {'bool', 'tf.bool', 'torch.uint8',
-                   bool, np.bool_, torch.uint8}:
-        return np.bool
+                   bool, np.bool, np.bool_, torch.uint8}:
+        return np.bool_
     elif dtype in {'string', 'str', 'tf.string',
-                   str, np.str}:
-        return np.str
+                   str, np.str, np.str_}:
+        return np.str_
+    elif dtype in {'bytes', 'np.bytes',
+                   bytes, np.bytes_}:
+        return np.bytes_
     raise ValueError(
-        f"Unsupported conversion from type {dtype!s} to tf dtype")
+        f"Unsupported conversion from type {dtype!s} to NumPy dtype")
 
 
 def is_callable(x):

@@ -21,11 +21,13 @@ import sys
 import tarfile
 import urllib.request
 import zipfile
+from typing import List, Optional, overload, Union, Dict, Tuple
 
 import numpy as np
 import requests
 
-from texar.utils import utils_io
+import texar.utils.utils_io as utils_io
+from texar.utils.types import MaybeList, MaybeTuple
 
 # pylint: disable=invalid-name, too-many-branches
 
@@ -37,6 +39,17 @@ __all__ = [
 ]
 
 Py3 = sys.version_info[0] == 3
+
+
+@overload
+def maybe_download(urls: List[str], path: str,
+                   filenames: Optional[List[str]] = None,
+                   extract: bool = False) -> List[str]: ...
+
+
+@overload
+def maybe_download(urls: str, path: str, filenames: Optional[str] = None,
+                   extract: bool = False) -> str: ...
 
 
 def maybe_download(urls, path, filenames=None, extract=False):
@@ -56,7 +69,10 @@ def maybe_download(urls, path, filenames=None, extract=False):
     utils_io.maybe_create_dir(path)
 
     if not isinstance(urls, (list, tuple)):
+        is_list = False
         urls = [urls]
+    else:
+        is_list = True
     if filenames is not None:
         if not isinstance(filenames, (list, tuple)):
             filenames = [filenames]
@@ -97,12 +113,13 @@ def maybe_download(urls, path, filenames=None, extract=False):
                 else:
                     logging.info("Unknown compression type. Only .tar.gz"
                                  ".tar.bz2, .tar, and .zip are supported")
-
+    if not is_list:
+        return result[0]
     return result
 
 
-def _download(url, filename, path):
-    def _progress(count, block_size, total_size):
+def _download(url: str, filename: str, path: str) -> str:
+    def _progress_hook(count, block_size, total_size):
         percent = float(count * block_size) / float(total_size) * 100.
         # pylint: disable=cell-var-from-loop
         sys.stdout.write('\r>> Downloading %s %.1f%%' %
@@ -110,7 +127,7 @@ def _download(url, filename, path):
         sys.stdout.flush()
 
     filepath = os.path.join(path, filename)
-    filepath, _ = urllib.request.urlretrieve(url, filepath, _progress)
+    filepath, _ = urllib.request.urlretrieve(url, filepath, _progress_hook)
     print()
     statinfo = os.stat(filepath)
     print('Successfully downloaded {} {} bytes.'.format(
@@ -119,16 +136,17 @@ def _download(url, filename, path):
     return filepath
 
 
-def _extract_google_drive_file_id(url):
+def _extract_google_drive_file_id(url: str) -> str:
     # id is between `/d/` and '/'
-    url_suffix = url[url.find('/d/')+3:]
+    url_suffix = url[url.find('/d/') + 3:]
     file_id = url_suffix[:url_suffix.find('/')]
     return file_id
 
 
-def _download_from_google_drive(url, filename, path):
+def _download_from_google_drive(url: str, filename: str, path: str) -> str:
     """Adapted from `https://github.com/saurabhshri/gdrive-downloader`
     """
+
     def _get_confirm_token(response):
         for key, value in response.cookies.items():
             if key.startswith('download_warning'):
@@ -158,7 +176,7 @@ def _download_from_google_drive(url, filename, path):
     return filepath
 
 
-def read_words(filename, newline_token=None):
+def read_words(filename: str, newline_token: Optional[str] = None) -> List[str]:
     """Reads word from a file.
 
     Args:
@@ -184,8 +202,11 @@ def read_words(filename, newline_token=None):
                 return f.read().replace("\n", newline_token).split()
 
 
-def make_vocab(filenames, max_vocab_size=-1, newline_token=None,
-               return_type="list", return_count=False):
+def make_vocab(filenames: MaybeList[str], max_vocab_size: int = -1,
+               newline_token: Optional[str] = None,
+               return_type: str = "list", return_count: bool = False) \
+        -> Union[Union[List[str], Tuple[List[str], List[int]]],
+                 MaybeTuple[Dict[str, int]]]:
     """Builds vocab of the files.
 
     Args:
@@ -206,17 +227,18 @@ def make_vocab(filenames, max_vocab_size=-1, newline_token=None,
             is a mapping from words to their frequency.
 
     Returns:
-        - If :attr:`return_count` is False, returns a list or dict containing \
-        the vocabulary words.
+        - If :attr:`return_count` is False, returns a list or dict containing
+          the vocabulary words.
 
-        - If :attr:`return_count` if True, returns a pair of list or dict \
-        `(a, b)`, where `a` is a list or dict containing the vocabulary \
-        words, `b` is a list of dict containing the word counts.
+        - If :attr:`return_count` if True, returns a pair of list or dict
+          `(a, b)`, where `a` is a list or dict containing the vocabulary
+          words, `b` is a list or dict containing the word counts.
     """
+
     if not isinstance(filenames, (list, tuple)):
         filenames = [filenames]
 
-    words = []
+    words: List[str] = []
     for fn in filenames:
         words += read_words(fn, newline_token=newline_token)
 
@@ -224,9 +246,11 @@ def make_vocab(filenames, max_vocab_size=-1, newline_token=None,
     count_pairs = sorted(counter.items(), key=lambda x: (-x[1], x[0]))
 
     words, counts = list(zip(*count_pairs))
+    words: List[str]
+    counts: List[int]
     if max_vocab_size >= 0:
         words = words[:max_vocab_size]
-        counts = counts[:max_vocab_size]
+    counts = counts[:max_vocab_size]
 
     if return_type == "list":
         if not return_count:
@@ -244,9 +268,10 @@ def make_vocab(filenames, max_vocab_size=-1, newline_token=None,
         raise ValueError("Unknown return_type: {}".format(return_type))
 
 
-def count_file_lines(filenames):
+def count_file_lines(filenames: MaybeList[str]) -> int:
     """Counts the number of lines in the file(s).
     """
+
     def _count_lines(fn):
         with open(fn, "rb") as f:
             i = -1
@@ -256,6 +281,5 @@ def count_file_lines(filenames):
 
     if not isinstance(filenames, (list, tuple)):
         filenames = [filenames]
-    num_lines = np.sum([_count_lines(fn) for fn in filenames])
+    num_lines = np.sum([_count_lines(fn) for fn in filenames]).item()
     return num_lines
-

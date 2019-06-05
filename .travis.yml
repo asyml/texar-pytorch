@@ -8,7 +8,7 @@ python:
 
 install:
   - pip install --upgrade pip
-  - pip install --progress-bar off -r requirements.txt
+  - pip install --progress-bar off .[torch,extras]
   - pip install flake8
   - pip install mypy
   - pip install pytest

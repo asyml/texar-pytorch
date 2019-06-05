@@ -172,7 +172,7 @@ def _create_image_transform(height: Optional[int], width: Optional[int],
     def transform(raw_bytes):
         image = PIL.Image.open(io.BytesIO(raw_bytes))
         if size is not None:
-            image = image.resize(image, size, interpolation)
+            image = image.resize(size, interpolation)
 
         # Convert to torch Tensor. Adapted from
         # torchvision.transform.functional.to_tensor.
@@ -198,6 +198,35 @@ def _create_image_transform(height: Optional[int], width: Optional[int],
 class FeatureDescription(NamedTuple):
     dtype: np.dtype
     shape: Optional[Tuple[int, ...]]
+
+
+def _convert_feature_hparams(feature_types: Union[Dict[str, Any], HParams]) \
+        -> Dict[str, FeatureDescription]:
+    features = {}
+    for key, value in feature_types.items():
+        if len(value) == 3:
+            if isinstance(value[-1], int):
+                shape = (value[-1],)
+            else:
+                shape = tuple(value[-1])  # type: ignore
+        else:
+            shape = tuple()  # type: ignore
+        dtype = get_numpy_dtype(value[0])
+        if len(value) < 2 or value[1] == 'FixedLenFeature':
+            features[key] = FeatureDescription(dtype, shape)
+        elif value[1] == 'FixedLenSequenceFeature':
+            if shape[0] is not None:
+                raise ValueError("'FixedLenSequenceFeature should have "
+                                 "None as first dimension in shape.")
+            features[key] = FeatureDescription(dtype, shape)
+        elif value[1] == 'VarLenFeature':
+            features[key] = FeatureDescription(dtype, None)
+        else:
+            raise ValueError(
+                f"Unsupported feature type '{value[1]}' for key '{key}', "
+                f"only 'FixedLenFeature', 'FixedLenSequenceFeature', and "
+                f"'VarLenFeature' are supported as of now.")
+    return features
 
 
 class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
@@ -293,29 +322,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
         self._hparams = HParams(hparams, self.default_hparams())
 
         feature_types = self._hparams.dataset.feature_original_types
-        self._features = {}
-        for key, value in feature_types.items():
-            shape = tuple()
-            if len(value) == 3:
-                if isinstance(value[-1], int):
-                    shape = (value[-1],)
-                else:
-                    shape = tuple(value[-1])
-            dtype = get_numpy_dtype(value[0])
-            if len(value) < 2 or value[1] == 'FixedLenFeature':
-                self._features[key] = FeatureDescription(dtype, shape)
-            elif value[1] == 'FixedLenSequenceFeature':
-                if shape[0] is not None:
-                    raise ValueError("'FixedLenSequenceFeature should have "
-                                     "None as first dimension in shape.")
-                self._features[key] = FeatureDescription(dtype, shape)
-            elif value[1] == 'VarLenFeature':
-                self._features[key] = FeatureDescription(dtype, None)
-            else:
-                raise ValueError(
-                    f"Unsupported feature type '{value[1]}' for key '{key}', "
-                    f"only 'FixedLenFeature', 'FixedLenSequenceFeature', and "
-                    f"'VarLenFeature' are supported as of now.")
+        self._features = _convert_feature_hparams(feature_types)
 
         convert_types = self._hparams.dataset.feature_convert_types
         self._convert_types = {key: get_numpy_dtype(value)
@@ -338,6 +345,34 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
         data_source = PickleDataSource(self._hparams.dataset.files)
 
         super().__init__(data_source, hparams)
+
+    class _RecordWriter(io.BytesIO):
+        def __init__(self, file_path: str,
+                     features: Dict[str, FeatureDescription]):
+            super().__init__()
+            self._file_path = file_path
+            self._features = features
+            self._file_handle = open(self._file_path, 'wb')
+
+        def close(self) -> None:
+            self._file_handle.close()
+
+        def write(self, example: Dict[str, Any]):  # type: ignore
+            converted = {}
+            for key, descriptor in self._features.items():
+                value = example[key]
+                if descriptor.shape is not None:
+                    # FixedLenFeature, convert into NumPy array.
+                    value = np.asarray(value, dtype=descriptor.dtype)
+                converted[key] = value
+            pickle.dump(converted, self._file_handle)
+
+    @classmethod
+    def writer(cls, file_path: str,
+               feature_original_types: Dict[str, Tuple[Any, ...]]) \
+            -> _RecordWriter:
+        feature_types = _convert_feature_hparams(feature_original_types)
+        return cls._RecordWriter(file_path, feature_types)
 
     @staticmethod
     def default_hparams():
@@ -498,7 +533,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
     def _process(self, raw_example: Dict[str, Any]) -> Dict[str, Any]:
         example = raw_example
         for key, dtype in self._convert_types.items():
-            example[key] = example[key].to(dtype=dtype)
+            example[key] = np.asarray(example[key]).astype(dtype=dtype)
         for key, transform in self._image_transforms.items():
             example[key] = transform(example[key])
         for transform in self._other_transforms:
@@ -512,8 +547,8 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
             if descriptor.shape is not None:
                 # FixedLenFeature, do not pad.
                 # NumPy functions work on PyTorch tensors too.
-                if descriptor.shape[0] is None:
-                    values = padded_batch(values)
+                if len(descriptor.shape) > 0 and descriptor.shape[0] is None:
+                    values, _ = padded_batch(values)
                 else:
                     values = np.stack(values, axis=0)
             else:
