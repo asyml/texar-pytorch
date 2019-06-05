@@ -15,11 +15,13 @@
 Various optimization related utilities.
 """
 
-from typing import Dict, Any, List, Optional, Union, Callable
+from typing import Dict, Any, List, Optional, Union, Callable, Tuple
+
+import functools
 
 import torch
 from torch.optim.optimizer import Optimizer
-from  torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import _LRScheduler
 
 from texar.hyperparams import HParams
 from texar.utils import utils
@@ -29,6 +31,8 @@ from texar.utils import utils
 __all__ = [
     "default_optimization_hparams",
     "get_optimizer",
+    "get_scheduler",
+    "get_grad_clip_fn",
     "get_train_op"
 ]
 
@@ -206,26 +210,25 @@ def get_optimizer(
     return optimizer
 
 
-def get_train_op(optimizer: Optimizer,
-                 hparams: Optional[Union[HParams, Dict[str, Any]]] = None) -> \
-        Callable[[torch.Tensor], None]:
-    """Creates a training op..
+def get_scheduler(optimizer: Optimizer,
+                  hparams: Optional[Union[HParams, Dict[str, Any]]] = None) -> \
+        Optional[_LRScheduler]:
+    """Creates a scheduler instance.
 
         Args:
-            loss: A scalar Tensor representing the loss to minimize.
-            optimizer: A torch.optim.Optimizer instance to optimize the loss.
+            optimizer: A torch.optim.Optimizer instance.
             hparams (dict or HParams, optional): hyperparameters. Missing
                 hyperparameters are set to default values automatically. See
                 :func:`~texar.core.default_optimization_hparams` for
                 all hyperparameters and default values.
 
         Returns:
-            train_op: the operator used for variables optimization.
+            A torch.optim.lr_scheduler._LRScheduler instance.
     """
-    hparams = HParams(hparams, default_optimization_hparams())
+    if hparams is None or isinstance(hparams, dict):
+        hparams = HParams(hparams, default_optimization_hparams())
 
     hparams_scheduler = hparams["learning_rate_decay"]
-    hparams_grad_clip = hparams["gradient_clip"]
 
     scheduler_type = hparams_scheduler["type"]
     if scheduler_type == "" or scheduler_type is None:
@@ -249,6 +252,28 @@ def get_train_op(optimizer: Optimizer,
         scheduler_kwargs.update({"optimizer": optimizer})
         scheduler = scheduler_class(**scheduler_kwargs)  # type: ignore
 
+    return scheduler
+
+
+def get_grad_clip_fn(hparams: Optional[Union[HParams,
+                                             Dict[str, Any]]] = None) -> \
+        Optional[Callable[[torch.Tensor], Optional[torch.Tensor]]]:
+    """Create a clip_grad function.
+
+        Args:
+            hparams (dict or HParams, optional): hyperparameters. Missing
+                hyperparameters are set to default values automatically. See
+                :func:`~texar.core.default_optimization_hparams` for
+                all hyperparameters and default values.
+
+        Returns:
+            A torch grad clip function.
+    """
+    if hparams is None or isinstance(hparams, dict):
+        hparams = HParams(hparams, default_optimization_hparams())
+
+    hparams_grad_clip = hparams["gradient_clip"]
+
     grad_clip_type = hparams_grad_clip["type"]
     if grad_clip_type == "" or grad_clip_type is None:
         grad_clip_fn = None
@@ -257,9 +282,32 @@ def get_train_op(optimizer: Optimizer,
                              'texar.custom']
         grad_clip_fn = utils.get_function(grad_clip_type, grad_clip_modules)
         grad_clip_fn_kwargs = hparams_grad_clip["kwargs"].todict()
+        grad_clip_fn = functools.partial(grad_clip_fn, **grad_clip_fn_kwargs)
+
+    return grad_clip_fn
+
+
+def get_train_op(optimizer: Optimizer,
+                 hparams: Optional[Union[HParams, Dict[str, Any]]] = None) -> \
+        Callable[[], None]:
+    """Creates a training op..
+
+        Args:
+            optimizer: A torch.optim.Optimizer instance to optimize the loss.
+            hparams (dict or HParams, optional): hyperparameters. Missing
+                hyperparameters are set to default values automatically. See
+                :func:`~texar.core.default_optimization_hparams` for
+                all hyperparameters and default values.
+
+        Returns:
+            train_op: the operator used for variables optimization.
+    """
+    hparams = HParams(hparams, default_optimization_hparams())
+
+    scheduler = get_scheduler(optimizer, hparams)
+    grad_clip_fn = get_grad_clip_fn(hparams)
 
     params_list = []
-
     for param_group in optimizer.param_groups:  # type: ignore
         params = param_group["params"]
         if isinstance(params, torch.Tensor):
@@ -267,14 +315,13 @@ def get_train_op(optimizer: Optimizer,
         else:
             params_list += params
 
-    def _train_op(loss):
-        optimizer.zero_grad()
-        loss.backward()
+    def _train_op():
         if grad_clip_fn is not None:
-            grad_clip_fn(parameters=params_list, **grad_clip_fn_kwargs)
+            grad_clip_fn(parameters=params_list)
         optimizer.step()
         # TODO: Ideally, scheduler should be used in the epoch level.
         if scheduler is not None:
             scheduler.step()
+        optimizer.zero_grad()
 
     return _train_op
