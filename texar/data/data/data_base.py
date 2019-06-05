@@ -107,16 +107,18 @@ class ZipDataSource(DataSource[Tuple[RawExample, ...]]):
         return min(len(source) for source in self._sources)
 
 
-class FilterDataSource(DataSource[Tuple[RawExample, ...]]):
-    r"""Data source for filtering raw example with user specified filter
+class FilterDataSource(DataSource[RawExample]):
+    r"""Data source for filtering raw example with user-specified filter
+    function. Only those examples for which the filter functions returns
+    ``True`` are returned.
     """
 
     def __init__(self, source: DataSource[RawExample],
-                 filter_fn: Optional[Callable[[RawExample], bool]] = None):
+                 filter_fn: Callable[[RawExample], bool]):
         self._source = source
         self._filter_fn = filter_fn
 
-    def __iter__(self) -> Iterator[Tuple[RawExample, ...]]:
+    def __iter__(self) -> Iterator[RawExample]:
         for sentence in self._source:
             if self._filter_fn(sentence):
                 yield sentence
