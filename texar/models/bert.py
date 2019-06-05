@@ -1,7 +1,3 @@
-import math
-from typing import Callable
-import pickle
-
 # Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,18 +41,9 @@ class BertClassifier(ClassifierBase):
     :class:`~texar.modules.BertEncoder`.
 
     Args:
-        pretrained_model_name (optional): a str with the name
-            of a pre-trained model to load selected in the list of:
-            `bert-base-uncased`, `bert-large-uncased`, `bert-base-cased`,
-            `bert-large-cased`, `bert-base-multilingual-uncased`,
-            `bert-base-multilingual-cased`, `bert-base-chinese`.
-            If `None`, will use the model name in :attr:`hparams`.
-        cache_dir (optional): the path to a folder in which the
-            pre-trained models will be cached. If `None` (default),
-            a default directory will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture
+            `default_hparams` for the hyper-parameter structure
             and default values.
 
     .. document private functions
@@ -84,7 +71,8 @@ class BertClassifier(ClassifierBase):
 
         # The BERT encoder (a TransformerEncoder)
         self.encoder = tx.modules.TransformerEncoder(
-            hparams=self._hparams.encoder)
+            hparams=self._hparams.encoder
+        )
 
         self.pooler = nn.ModuleList(
             [
@@ -105,10 +93,13 @@ class BertClassifier(ClassifierBase):
                 )
             else:
                 logit_kwargs = logit_kwargs.todict()
-            logit_kwargs.update({
-                "in_features": self._hparams.hidden_size,
-                "out_features": self._num_classes,
-                "bias": True})
+            logit_kwargs.update(
+                {
+                    "in_features": self._hparams.hidden_size,
+                    "out_features": self._num_classes,
+                    "bias": True,
+                }
+            )
 
             self.logits_layer = nn.Linear(**logit_kwargs)
 
@@ -120,8 +111,7 @@ class BertClassifier(ClassifierBase):
 
         .. code-block:: python
             {
-                # (1) Same hyperparameters as in BertEncoder
-                ...
+                # (1) Different modules for sentence encoder
                 # (2) Additional hyperparameters
                 "num_classes": 2,
                 "logit_layer_kwargs": None,
@@ -132,13 +122,13 @@ class BertClassifier(ClassifierBase):
             }
 
         Here:
+        1. Three parts of embedders. Two for word level tokens, segment IDs
+        where each has the same hyperparameters as in
+        :class:`~texar.modules.embedders.WordEmbedder`. The third is position
+        embedder which is used for
+        :class:`~texar.modules.embedders.PositionEmbedder`
 
-        1. Same hyperparameters as in
-        :class:`~texar.modules.BertEncoder`.
-        See the :meth:`~texar.modules.BertEncoder.default_hparams`.
-        An instance of BertEncoder is created for feature extraction.
-
-        2. Additional hyperparameters:
+        2. Additional hyperparameters for downstream tasks:
 
             "num_classes" : int
                 Number of classes:
@@ -180,9 +170,15 @@ class BertClassifier(ClassifierBase):
         hparams = {
             "embed": {"dim": _default_input_dim, "name": "word_embeddings"},
             "vocab_size": 30522,
-            "segment_embed": {"dim": _default_input_dim, "name": "token_type_embeddings"},
+            "segment_embed": {
+                "dim": _default_input_dim,
+                "name": "token_type_embeddings",
+            },
             "type_vocab_size": 2,
-            "position_embed": {"dim": _default_input_dim, "name": "position_embeddings"},
+            "position_embed": {
+                "dim": _default_input_dim,
+                "name": "position_embeddings",
+            },
             "position_size": 512,
             "encoder": {
                 "dim": _default_input_dim,
@@ -205,18 +201,16 @@ class BertClassifier(ClassifierBase):
                                 "in_features": _default_input_dim,
                                 "out_features": _default_input_dim * 4,
                                 "bias": True,
-                            }
+                            },
                         },
-                        {
-                            "type": "GELU",
-                        },
+                        {"type": "GELU"},
                         {
                             "type": "Linear",
                             "kwargs": {
                                 "in_features": _default_input_dim * 4,
                                 "out_features": _default_input_dim,
                                 "bias": True,
-                            }
+                            },
                         },
                     ]
                 },
@@ -235,8 +229,14 @@ class BertClassifier(ClassifierBase):
 
         return hparams
 
-    def forward(self, inputs, sequence_length=None, segment_ids=None,
-                labels=None, **kwargs):
+    def forward(
+        self,
+        inputs,
+        sequence_length=None,
+        segment_ids=None,
+        labels=None,
+        **kwargs
+    ):
         """Feeds the inputs through the network and makes classification.
 
         The arguments are the same as in
@@ -278,10 +278,10 @@ class BertClassifier(ClassifierBase):
 
         word_embeds = self.word_embedder(inputs)
         segment_embeds = self.segment_embedder(segment_ids)
-        seq_length = torch.full((inputs.size()[0]), inputs.size()[1],
-                                dtype=torch.int32)
-        pos_embeds = self.position_embedder(
-            sequence_length=seq_length)
+        seq_length = torch.full(
+            (inputs.size()[0]), inputs.size()[1], dtype=torch.int32
+        )
+        pos_embeds = self.position_embedder(sequence_length=seq_length)
         input_embeds = word_embeds + segment_embeds + pos_embeds
         enc_output = self.encoder(input_embeds, sequence_length)
         pooled_output = self.pooler(enc_output)
@@ -297,7 +297,7 @@ class BertClassifier(ClassifierBase):
         else:
             raise ValueError("Unknown classification strategy: {}".format(stra))
 
-        if getattr(self, 'logit_layer', None):
+        if getattr(self, "logit_layer", None):
             logits = self.logit_layer(logits_input)
         else:
             logits = logits_input

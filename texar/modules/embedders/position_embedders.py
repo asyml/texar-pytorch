@@ -16,7 +16,7 @@ Various position embedders.
 """
 
 import math
-from typing import Optional
+from typing import Optional, Dict
 
 import torch
 import torch.nn.functional as F
@@ -225,7 +225,8 @@ class SinusoidsPositionEmbedder(EmbedderBase):
     .. automethod:: _build
     """
 
-    def __init__(self, position_size: int, hparams: Optional[HParams] = None):
+    def __init__(self, position_size: int, hparams: Optional[HParams,
+                                                             Dict] = None):
         super().__init__(hparams=hparams)
         self._num_embeds = position_size
         self._dim = self._hparams.dim

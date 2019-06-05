@@ -258,7 +258,7 @@ class _BaseAttentionMechanism(AttentionMechanism):
           (`alignments_size` is the values' `max_time`).
         """
         max_time = self._alignments_size
-        return self._keys.new_zeros(batch_size, max_time)
+        return self._keys.new_zeros((batch_size, max_time))
 
     def initial_state(self,
                       batch_size: int) -> torch.Tensor:

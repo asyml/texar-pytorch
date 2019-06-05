@@ -132,8 +132,6 @@ def run_model():
     proc = processor.get_encoder(args.pretrain_model_dir)
     end_token = proc.encoder['<|endoftext|>']
 
-    start_tokens = torch.empty([batch_size]).fill_(end_token)
-    start_tokens = start_tokens
     # Build the GPT-2 model
     word_embedder = WordEmbedder(
         vocab_size=gpt2_config.vocab_size,
@@ -182,7 +180,8 @@ def run_model():
                 raw_text = input("Model input >>> ")
 
             context_tokens = proc.encode(raw_text)
-            context = torch.tensor([context_tokens for _ in range(batch_size)])
+            context = torch.tensor([context_tokens for _ in range(
+                batch_size)])
             context_length = torch.tensor(
                 [len(context_tokens) for _ in range(batch_size)])
 
@@ -214,7 +213,7 @@ def run_model():
             print("=" * 80)
     else:
         # Generate samples from scratch
-        start_tokens = torch.empty([batch_size]).fill_(end_token).int()
+        start_tokens = torch.full([batch_size], end_token, dtype=torch.int64)
         helper = tx.modules.TopKSampleEmbeddingHelper(
             embedding=_embedding_fn,
             start_tokens=start_tokens,

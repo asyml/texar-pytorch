@@ -50,7 +50,8 @@ NextInputTuple = Tuple[torch.ByteTensor, torch.Tensor]
 
 Embedding = Union[
     torch.Tensor,  # embedding weights
-    Callable[[torch.LongTensor], torch.Tensor],  # indices -> embeddings
+    Callable[[torch.LongTensor], torch.Tensor],  # indices -> embeddings,
+    Callable[[List[torch.LongTensor]], torch.Tensor],
 ]
 # indices, position -> embeddings
 EmbeddingWithPos = Callable[[torch.LongTensor, torch.LongTensor], torch.Tensor]
