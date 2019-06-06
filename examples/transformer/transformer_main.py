@@ -180,6 +180,8 @@ def main():
             torch.cuda.empty_cache()
             opt.zero_grad()
             in_arrays = data_utils.seq2seq_pad_concat_convert(train_batch)
+            if torch.cuda.is_available():
+                in_arrays = [tensor.cuda() for tensor in in_arrays]
             loss = model(
                 encoder_input=in_arrays[0],
                 is_train_mode=True,

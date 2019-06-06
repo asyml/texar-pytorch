@@ -46,7 +46,19 @@ def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
                        vocab_size: Optional[int],
                        output_size: int,
                        bias: bool) -> Tuple[nn.Module, Optional[int]]:
-    r"""Makes a decoder output layer.
+    r"""Construct the output layer for decoders. Based on the input, multiple
+    types of output layers could be constructed:
+
+    - If ``layer`` is a :torch_nn:`Module`, then the layer is returned as is.
+    - If ``layer`` is ``None``, then a :torch_nn:`Linear` layer is constructed
+      with ``output_size`` and ``vocab_size`` as input and output dimensions.
+    - If ``layer`` is a :torch:`Tensor`, then a :torch_nn:`Linear` layer is
+      constructed with the provided tensor as parameters. Note that this tensor
+      should have transposed shape, i.e. shape of ``[vocab_size, output_size]``.
+      Also, if the provided tensor is not an instance of :torch_nn:`Parameter`,
+      it will **not** accumulate gradients.
+    - If ``layer`` is :method:`texar.core.identity`, identity function is used
+      as the output layer.
     """
     if isinstance(layer, nn.Module):
         output_layer = layer
@@ -58,10 +70,10 @@ def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
                 "wanted.")
         output_layer = nn.Linear(output_size, vocab_size, bias)
     elif torch.is_tensor(layer):
-        vocab_size = layer.size(1)
-        output_layer = nn.Linear(layer.size(1), layer.size(0), bias)
+        vocab_size = layer.size(0)
+        output_layer = nn.Linear(layer.size(1), vocab_size, bias)
         if not isinstance(layer, nn.Parameter):
-            layer = nn.Parameter(layer, requires_grad=True)
+            layer = nn.Parameter(layer, requires_grad=False)
         output_layer.weight = layer
     elif layer is identity:
         output_layer = identity  # type: ignore
@@ -281,8 +293,8 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                         end_token is None):
                     raise ValueError(
                         f"When using '{decoding_strategy}' decoding strategy, "
-                        f"'embedding', 'start_tokens', and 'end_token' must not"
-                        f" be `None`.")
+                        f"'embedding', 'start_tokens', and 'end_token' must "
+                        f"not be `None`.")
                 if decoding_strategy == 'infer_greedy':
                     helper = decoder_helpers.GreedyEmbeddingHelper(
                         embedding, start_tokens, end_token)

@@ -47,7 +47,7 @@ class Transformer(ModuleBase):
 
         self.step_iteration = 0
 
-    def forward(
+    def forward(  # type: ignore
         self,
         encoder_input,
         is_train_mode: Optional[bool],
@@ -55,9 +55,6 @@ class Transformer(ModuleBase):
         labels: Optional[torch.Tensor] = None,
         beam_width: Optional[int] = None,
     ):
-
-        if torch.cuda.is_available():
-            encoder_input = encoder_input.cuda()
 
         batch_size = encoder_input.size()[0]
         # (text sequence length excluding padding)
@@ -79,7 +76,7 @@ class Transformer(ModuleBase):
 
         # Position embedding (shared b/w source and target)
         src_seq_len = torch.full(
-            [batch_size], encoder_input.size()[1], dtype=torch.int32
+            (batch_size,), encoder_input.size()[1], dtype=torch.int32
         )
         src_seq_len = src_seq_len.to(device=encoder_input.device)
 
@@ -93,8 +90,8 @@ class Transformer(ModuleBase):
         )
 
         if is_train_mode:
-            if torch.cuda.is_available():
-                decoder_input = decoder_input.cuda()
+            assert decoder_input is not None
+            assert labels is not None
 
             tgt_word_embeds = self.word_embedder(
                 decoder_input
@@ -103,7 +100,7 @@ class Transformer(ModuleBase):
                 tgt_word_embeds * self.config_model.hidden_dim ** 0.5
             )
             tgt_seq_len = torch.full(
-                [batch_size], decoder_input.size()[1], dtype=torch.int32
+                (batch_size,), decoder_input.size()[1], dtype=torch.int32
             )
             tgt_seq_len = tgt_seq_len.to(device=decoder_input.device)
 
@@ -130,8 +127,8 @@ class Transformer(ModuleBase):
             mle_loss = (mle_loss * is_target).sum() / is_target.sum()
             return mle_loss
         else:
-            start_tokens = torch.full([batch_size], self.bos_token_id,
-                                      dtype=torch.int32)
+            start_tokens = encoder_input.new_full(
+                (batch_size,), self.bos_token_id, dtype=torch.int32)
 
             if torch.cuda.is_available():
                 start_tokens = start_tokens.cuda()
@@ -182,7 +179,7 @@ class LabelSmoothingLoss(nn.Module):
         self.register_buffer("one_hot", one_hot.unsqueeze(0))
         self.confidence = label_confidence
 
-    def forward(
+    def forward(  # type: ignore
         self,
         output: torch.Tensor,
         target: torch.Tensor,
@@ -194,19 +191,15 @@ class LabelSmoothingLoss(nn.Module):
         label_lengths(torch.LongTensor): specify the length of the labels
         """
         ori_shapes = (output.size(), target.size())
-        output, target = (
-            output.reshape([-1, self.tgt_vocab_size]),
-            target.reshape([-1]),
-        )
+        output = output.view(-1, self.tgt_vocab_size)
+        target = target.view(-1)
         model_prob = self.one_hot.repeat(target.size(0), 1)
         model_prob = model_prob.to(device=target.device)
         model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
         model_prob.masked_fill_((target == self.ignore_index).unsqueeze(1), 0)
 
-        output, model_prob = (
-            output.reshape(ori_shapes[0]),
-            model_prob.reshape(ori_shapes[0]),
-        )
+        output = output.view(ori_shapes[0])
+        model_prob = model_prob.view(ori_shapes[0])
 
         return sequence_softmax_cross_entropy(
             labels=model_prob, logits=output, sequence_length=label_lengths,

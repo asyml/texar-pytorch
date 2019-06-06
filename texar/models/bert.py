@@ -287,7 +287,7 @@ class BertClassifier(ClassifierBase):
         else:
             logits = logits_input
 
-        num_classes = self._hparams.num_classes
+        num_classes = self._num_classes
         is_binary = num_classes == 1
         is_binary = is_binary or (num_classes <= 0 and logits.shape[-1] == 1)
 
@@ -300,15 +300,19 @@ class BertClassifier(ClassifierBase):
         else:
             if is_binary:
                 preds = (logits > 0).long()
-                logits = torch.reshape(logits, [-1])
+                logits = torch.flatten(logits)
             else:
                 preds = torch.argmax(logits, dim=-1)
-            preds = torch.reshape(preds, [-1])
+            preds = torch.flatten(preds)
 
         if labels is not None:
-            loss = F.cross_entropy(
-                logits.view(-1, self._num_classes), labels.view(-1),
-                reduction='mean')
+            if is_binary:
+                loss = F.binary_cross_entropy(
+                    logits.view(-1), labels.view(-1), reduction='mean')
+            else:
+                loss = F.cross_entropy(
+                    logits.view(-1, self._num_classes), labels.view(-1),
+                    reduction='mean')
         else:
             loss = None
 

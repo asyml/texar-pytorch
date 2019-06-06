@@ -327,6 +327,8 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
         convert_types = self._hparams.dataset.feature_convert_types
         self._convert_types = {key: get_numpy_dtype(value)
                                for key, value in convert_types.items()}
+        for key, dtype in self._convert_types.items():
+            self._features[key] = self._features[key]._replace(dtype=dtype)
 
         image_options = self._hparams.dataset.image_options
         if isinstance(image_options, HParams):
@@ -533,7 +535,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
     def _process(self, raw_example: Dict[str, Any]) -> Dict[str, Any]:
         example = raw_example
         for key, dtype in self._convert_types.items():
-            example[key] = np.asarray(example[key]).astype(dtype=dtype)
+            example[key] = np.asarray(example[key], dtype=dtype)
         for key, transform in self._image_transforms.items():
             example[key] = transform(example[key])
         for transform in self._other_transforms:
@@ -551,7 +553,8 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
                     values, _ = padded_batch(values)
                 else:
                     values = np.stack(values, axis=0)
-                if not torch.is_tensor(values):
+                if (not torch.is_tensor(values) and
+                        descriptor.dtype not in [np.str_, np.bytes_]):
                     values = torch.from_numpy(values)
             else:
                 # VarLenFeature, just put everything in a Python list.

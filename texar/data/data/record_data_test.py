@@ -9,6 +9,7 @@ import tempfile
 import unittest
 
 import numpy as np
+import torch
 
 import texar as tx
 
@@ -134,10 +135,17 @@ class RecordDataTest(unittest.TestCase):
             for key, item in self._feature_convert_types.items():
                 dtype = tx.utils.dtypes.get_numpy_dtype(item)
                 value = data_batch[key][0]
-                if dtype is np.str:
+                if dtype is np.str_:
+                    self.assertTrue(isinstance(value, str))
+                elif dtype is np.bytes_:
                     self.assertTrue(isinstance(value, bytes))
                 else:
-                    dtype_matched = np.issubdtype(value.dtype, dtype)
+                    if isinstance(value, torch.Tensor):
+                        value_dtype = tx.utils.dtypes.get_numpy_dtype(
+                            value.dtype)
+                    else:
+                        value_dtype = value.dtype
+                    dtype_matched = np.issubdtype(value_dtype, dtype)
                     self.assertTrue(dtype_matched)
 
             # Check image decoding and resize
