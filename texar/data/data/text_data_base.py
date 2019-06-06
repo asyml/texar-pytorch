@@ -163,7 +163,7 @@ class TextLineDataSource(DataSource[str]):
                     yield line.rstrip('\n')
 
 
-class TextDataBase(DataBase[RawExample, Example], ABC):  # noqa:E501 pylint: disable=too-few-public-methods
+class TextDataBase(DataBase[RawExample, Example], ABC):  # noqa: E501 pylint: disable=too-few-public-methods
     """Base class inherited by all text data classes.
     """
 

@@ -7,7 +7,6 @@ from typing import List, Optional, Tuple
 import gc
 import numpy as np
 import torch
-from tqdm import tqdm
 
 from texar.data.data.data_base import DataBase, DataSource
 from texar.data.data.data_iterators import DataIterator
@@ -62,6 +61,7 @@ class ParallelData(DataBase[RawExample, Example]):
 
 
 def wrap_progress(func):
+    from tqdm import tqdm
     return lambda: tqdm(func(), leave=False)
 
 
@@ -82,6 +82,7 @@ class LargeFileTest(unittest.TestCase):
 
     def _test_modes_with_workers(self, lazy_mode: str, cache_mode: str,
                                  num_workers: int):
+        from tqdm import tqdm
         gc.collect()
         mem = get_process_memory()
         with work_in_progress(f"Data loading with lazy mode '{lazy_mode}' "

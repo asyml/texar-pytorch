@@ -370,7 +370,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
     @classmethod
     def writer(cls, file_path: str,
                feature_original_types: Dict[str, Tuple[Any, ...]]) \
-            -> _RecordWriter:
+            -> _RecordWriter:  # noqa: F821
         feature_types = _convert_feature_hparams(feature_original_types)
         return cls._RecordWriter(file_path, feature_types)
 
