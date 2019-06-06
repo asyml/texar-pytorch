@@ -112,8 +112,29 @@ def main():
                           config_data.max_train_epoch)
     num_warmup_steps = int(num_train_steps * config_data.warmup_proportion)
 
-    optim = torch.optim.Adam(model.parameters(), lr=static_lr,
-                             betas=(0.9, 0.999), eps=1e-6, weight_decay=1e-2)
+    vars_with_decay = []
+    vars_without_decay = []
+    for name, param in model.named_parameters():
+        print('name:{} param:{}'.format(name, param.size()))
+        if 'layer_norm' in name or name.endswith('bias'):
+            vars_without_decay.append(param)
+        else:
+            vars_with_decay.append(param)
+
+    opt_params = [
+        {
+            'params': vars_with_decay,
+            'weight_decay': 1e-2,
+        },
+        {
+            'params': vars_without_decay,
+            'weight_decay': 0,
+        }
+    ]
+
+    optim = torch.optim.Adam(opt_params, lr=static_lr,
+                             betas=(0.9, 0.999), eps=1e-6)
+
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optim, functools.partial(
             model_utils.get_lr_multiplier, total_steps=num_train_steps,
