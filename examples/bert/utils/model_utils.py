@@ -74,33 +74,20 @@ def transform_bert_to_texar_config(input_json):
     return configs
 
 
-def get_lr(global_step: int, num_train_steps, num_warmup_steps, static_lr,
-           end_learning_rate=1e-4):
+def get_lr_multiplier(step: int, total_steps: int, warmup_steps: int) -> float:
+    r"""Calculate the learning rate multiplier given current step and the number
+    of warm-up steps. The learning rate schedule follows a linear warm-up and
+    linear decay.
     """
-    Calculate the learinng rate given global step and warmup steps.
-    The learinng rate is following a linear warmup and linear decay.
-    """
-    _lr = static_lr
-    global_step = min(global_step, num_warmup_steps)
+    step = min(step, total_steps)
 
-    decayed_learning_rate = (_lr - end_learning_rate) *\
-        (1 - global_step / num_train_steps) ** 1.0 + end_learning_rate
+    multiplier = (1 - (step - warmup_steps) / (total_steps - warmup_steps))
 
-    if num_warmup_steps:
-        global_steps_int = tf.cast(global_step, tf.int32)
-        warmup_steps_int = tf.constant(num_warmup_steps, dtype=tf.int32)
+    if warmup_steps > 0 and step < warmup_steps:
+        warmup_percent_done = step / warmup_steps
+        multiplier = warmup_percent_done
 
-        global_steps_float = float(global_step)
-        warmup_steps_float = float(warmup_steps_int)
-
-        warmup_percent_done = global_steps_float / warmup_steps_float
-        warmup_learning_rate = static_lr * warmup_percent_done
-
-        is_warmup = float(global_steps_int < warmup_steps_int)
-        learning_rate = ((1.0 - is_warmup) * decayed_learning_rate
-                         + is_warmup * warmup_learning_rate)
-
-    return learning_rate
+    return multiplier
 
 
 def init_bert_checkpoint(model, init_checkpoint):

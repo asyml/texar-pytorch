@@ -16,12 +16,11 @@ model.
 """
 
 import argparse
+import functools
 import importlib
 import logging
 import os
 import pprint
-
-from tqdm import tqdm
 
 import torch
 from torch.nn.utils.clip_grad import clip_grad_norm_
@@ -29,7 +28,6 @@ from torch.nn.utils.clip_grad import clip_grad_norm_
 import texar as tx
 import utils.model_utils as model_utils
 from texar.models import BertClassifier
-from texar.utils.utils import adjust_learning_rate
 
 parser = argparse.ArgumentParser()
 
@@ -114,8 +112,12 @@ def main():
                           config_data.max_train_epoch)
     num_warmup_steps = int(num_train_steps * config_data.warmup_proportion)
 
-    opt = torch.optim.Adam(model.parameters(), betas=(0.9, 0.999),
-                           eps=1e-6, weight_decay=1e-2)
+    optim = torch.optim.Adam(model.parameters(), lr=static_lr,
+                             betas=(0.9, 0.999), eps=1e-6, weight_decay=1e-2)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optim, functools.partial(
+            model_utils.get_lr_multiplier, total_steps=num_train_steps,
+            warmup_steps=num_warmup_steps))
 
     train_dataset = tx.data.RecordData(hparams=config_data.train_hparam)
     eval_dataset = tx.data.RecordData(hparams=config_data.eval_hparam)
@@ -138,9 +140,6 @@ def main():
             labels = batch["label_ids"]
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
-            model.iteration_step += 1
-            step = model.iteration_step
-
             logits, preds, loss = model(
                 inputs=input_ids,
                 sequence_length=input_length,
@@ -150,15 +149,13 @@ def main():
 
             loss.backward()
             clip_grad_norm_(model.parameters(), max_norm=1.0)
-            # By default, we use warmup and linear decay for learinng rate
-            lr = model_utils.get_lr(
-                step, num_train_steps, num_warmup_steps, static_lr
-            )
-            adjust_learning_rate(opt, lr)
+            optim.step()
+            scheduler.step()
+            step = scheduler.last_epoch
 
             dis_steps = config_data.display_steps
             if dis_steps > 0 and step % dis_steps == 0:
-                logging.info("step:%d; loss:%f;" % (step, loss))
+                logging.info(f"step: {step}; loss: {loss};")
 
             eval_steps = config_data.eval_steps
             if eval_steps > 0 and step % eval_steps == 0:
@@ -206,7 +203,7 @@ def main():
         iterator.switch_to_dataset("test")
 
         _all_preds = []
-        for batch in tqdm(iterator):
+        for batch in iterator:
             input_ids = batch["input_ids"]
             segment_ids = batch["segment_ids"]
 
@@ -226,14 +223,16 @@ def main():
     if args.checkpoint:
         ckpt = torch.load(args.checkpoint)
         model.load_state_dict(ckpt['model'])
-        opt.load_state_dict(ckpt['optimizer'])
+        optim.load_state_dict(ckpt['optimizer'])
+        scheduler.load_state_dict(ckpt['scheduler'])
 
     if args.do_train:
         for i in range(config_data.max_train_epoch):
             _train_epoch()
         states = {
             'model': model.state_dict(),
-            'optimizer': opt.state_dict()
+            'optimizer': optim.state_dict(),
+            'scheduler': scheduler.state_dict(),
         }
         torch.save(states, os.path.join(args.output_dir + '/model.ckpt'))
 
