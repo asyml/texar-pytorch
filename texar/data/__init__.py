@@ -17,3 +17,4 @@ Modules of texar library data.
 from texar.data.data import *
 from texar.data.data_utils import *
 from texar.data.embedding import *
+from texar.data.vocabulary import *

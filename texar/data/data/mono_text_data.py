@@ -67,6 +67,7 @@ def _default_mono_text_dataset_hparams():
     }
 
 
+# todo(avinash): Add variable utterance logic
 class MonoTextData(TextDataBase[str, List[str]]):
     r"""Text data processor that reads single set of text files. This can be
     used for, e.g., language models, auto-encoders, etc.
