@@ -65,7 +65,6 @@ __all__ = [
     'uniquify_str',
     'ceildiv',
     'straight_through',
-    'adjust_learning_rate'
 ]
 
 T = TypeVar('T')  # type argument
@@ -178,7 +177,7 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
     Raises:
         ValueError: if `maxlen` is not a scalar.
     """
-    if not torch.is_tensor(lengths):
+    if not isinstance(lengths, torch.Tensor):
         lengths = torch.tensor(lengths, device=device)
     elif device is None:
         device = lengths.device
@@ -805,7 +804,7 @@ def strip_token(str_: MaybeSeq[str], token: str,
     s = str_
 
     if is_token_list:
-        s = str_join(s)
+        s = str_join(s)  # type: ignore
 
     strp_str = _recur_strip(s)
 
@@ -849,7 +848,7 @@ def strip_eos(str_: MaybeSeq[str], eos_token: str = '<EOS>',
     s = str_
 
     if is_token_list:
-        s = str_join(s)
+        s = str_join(s)  # type: ignore
 
     strp_str = _recur_strip(s)
 
@@ -898,7 +897,7 @@ def strip_bos(str_: MaybeSeq[str], bos_token: str = '<BOS>',
     s = str_
 
     if is_token_list:
-        s = str_join(s)
+        s = str_join(s)  # type: ignore
 
     strp_str = _recur_strip(s)
 
@@ -956,7 +955,7 @@ def strip_special_tokens(str_: MaybeSeq[str],
     s = str_
 
     if is_token_list:
-        s = str_join(s)
+        s = str_join(s)  # type: ignore
 
     if strip_eos is not None and strip_eos is not False:
         s = _strip_eos_(s, strip_eos, is_token_list=False)
@@ -1093,13 +1092,3 @@ def straight_through(fw_tensor: torch.Tensor, bw_tensor: torch.Tensor):
         direct gradient to bw_tensor.
     """
     raise NotImplementedError
-
-
-def adjust_learning_rate(optimizer: torch.optim.Optimizer, new_lr: float):
-    """
-    :param optimizer: The optimizer to be updated
-    :param new_lr: the new learning rate to be assigned
-    :return: None
-    """
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = new_lr

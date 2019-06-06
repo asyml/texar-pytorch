@@ -22,9 +22,8 @@ from torch import nn
 
 from texar import HParams
 from texar.core import layers
-from texar.modules.decoders import Helper
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
-from texar.modules.decoders.decoder_helpers import EmbeddingHelper
+from texar.modules.decoders.decoder_helpers import EmbeddingHelper, Helper
 from texar.modules.encoders.multihead_attention import (
     Cache, MultiheadAttentionEncoder)
 from texar.modules.encoders.transformer_encoder import (
@@ -69,14 +68,16 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
             - A callable layer, e.g., an instance of :class:`torch.nn.Module`.
             - A tensor. A :class:`~torch.nn.Linear` layer will be created using
-            the tensor as weights. The bias of the dense layer is determined by
-            `hparams.output_layer_bias`. This can be used to tie the output
-            layer with the input embedding matrix, as proposed in
-            https://arxiv.org/pdf/1608.05859.pdf
+              the tensor as weights. The bias of the dense layer is determined
+              by `hparams.output_layer_bias`. This can be used to tie the output
+              layer with the input embedding matrix, as proposed in
+              <https://arxiv.org/pdf/1608.05859.pdf>. Note that the shape of the
+              tensor should the same as the embedding matrix, i.e.
+              ``[vocab_size, embed_dim]``.
             - `None`. A dense layer will be created based on attr:`vocab_size`
-            and `hparams.output_layer_bias`.
+              and `hparams.output_layer_bias`.
             - If no output layer is needed at the end, set
-            `(vocab_size=None, output_layer=texar.core.identity)`.
+              `(vocab_size=None, output_layer=texar.core.identity)`.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter sturcture and

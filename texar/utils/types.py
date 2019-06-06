@@ -15,9 +15,10 @@
 Type annotation helpers.
 """
 
-from typing import List, Sequence, Tuple, TypeVar, Union
+from typing import Dict, List, Sequence, Tuple, TypeVar, Union
 
 T = TypeVar('T')  # pylint: disable=invalid-name
 MaybeTuple = Union[T, Tuple[T, ...]]
 MaybeList = Union[T, List[T]]
 MaybeSeq = Union[T, Sequence[T]]
+MaybeDict = Union[T, Dict[str, T]]

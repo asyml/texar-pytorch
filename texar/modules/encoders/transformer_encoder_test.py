@@ -47,7 +47,7 @@ class TransformerEncoderTest(unittest.TestCase):
         # -output: 2 layer norm vars
         # 2 input layer norm vars
         _ = encoder(inputs=inputs, sequence_length=sequence_length)
-        self.assertEqual(len(encoder.trainable_variables), 86)
+        self.assertEqual(len(encoder.trainable_variables), 74)
 
     def test_encode(self):
         r"""Tests encoding.

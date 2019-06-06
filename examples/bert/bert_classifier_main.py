@@ -20,14 +20,14 @@ import functools
 import importlib
 import logging
 import os
-import pprint
 
 import torch
 
 import texar as tx
 import utils.model_utils as model_utils
-from texar.models import BertClassifier
 from texar.custom.optimizers import BertAdam
+from texar.models import BertClassifier
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument(

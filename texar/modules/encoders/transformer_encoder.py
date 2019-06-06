@@ -145,7 +145,7 @@ class TransformerEncoder(EncoderBase):
     .. automethod:: _build
     """
 
-    def __init__(self, hparams: Optional[HParams] = None):
+    def __init__(self, hparams=None):
         # pylint: disable=too-many-instance-attributes
         EncoderBase.__init__(self, hparams)
         self._input_size = self._hparams.dim
@@ -157,10 +157,10 @@ class TransformerEncoder(EncoderBase):
         self.output_layer_norm = nn.ModuleList()
 
         if self._hparams.use_bert_config:
-            # in tensorflow, eps for LayerNorm is 1e-12 by default
+            # In TensorFlow, eps for LayerNorm is 1e-12 by default.
             eps = 1e-12
         else:
-            # in pytorch, eps for LayerNorm is 1e-6 by default
+            # In PyTorch, eps for LayerNorm is 1e-6 by default.
             eps = 1e-6
 
         for _ in range(self._hparams.num_blocks):
@@ -168,10 +168,11 @@ class TransformerEncoder(EncoderBase):
                 self._input_size, self._hparams.multihead_attention)
             self.self_attns.append(mh_attn)
             if not self._hparams.use_bert_config:
-                self.self_attn_layer_norm.append(nn.LayerNorm(self._input_size), eps)
+                self.self_attn_layer_norm.append(
+                    nn.LayerNorm(self._input_size, eps=eps))
             if self._hparams.dim != mh_attn.hparams.output_dim:
                 raise ValueError(
-                    'The "dim" in the hpa   rams of '
+                    'The "dim" in the hparams of '
                     '"multihead_attention" should be equal to the '
                     '"dim" of TransformerEncoder')
 
@@ -186,22 +187,25 @@ class TransformerEncoder(EncoderBase):
                     'to the "dim" of TransformerEncoder.')
 
             self.poswise_networks.append(pw_net)
-            self.poswise_layer_norm.append(nn.LayerNorm(self._input_size, eps))
+            self.poswise_layer_norm.append(
+                nn.LayerNorm(self._input_size, eps=eps))
             if self._hparams.use_bert_config:
-                self.output_layer_norm.append(nn.LayerNorm(self._input_size, eps))
+                self.output_layer_norm.append(
+                    nn.LayerNorm(self._input_size, eps=eps))
 
         self.embed_dropout = nn.Dropout(p=self._hparams.embedding_dropout)
         self.residual_dropout = nn.Dropout(p=self._hparams.residual_dropout)
 
         if self._hparams.use_bert_config:
-            self.input_normalizer = nn.LayerNorm(self._input_size, eps)
+            self.input_normalizer = nn.LayerNorm(self._input_size, eps=eps)
         else:
-            self.final_layer_normalizer = nn.LayerNorm(self._input_size, eps)
+            self.final_layer_normalizer = nn.LayerNorm(
+                self._input_size, eps=eps)
 
         if self._hparams.initializer:
             initialize = layers.get_initializer(self._hparams.initializer)
             assert initialize is not None
-            # don't need to re-initialze the LayerNorm
+            # Do not re-initialize LayerNorm modules.
             for name, param in self.named_parameters():
                 if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:
                     initialize(param)

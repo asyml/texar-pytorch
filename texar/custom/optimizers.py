@@ -1,32 +1,67 @@
+from collections import Iterable
+from typing import Callable, List, Optional, Tuple, Union, Dict
+
 import torch
-from torch.optim import Optimizer
+from mypy_extensions import TypedDict
+from torch import nn
 from torch.nn.utils import clip_grad_norm_
+from torch.optim.optimizer import Optimizer
+
+from texar.utils.types import MaybeDict
+
+
+class BertAdamParamDict(TypedDict):
+    params: List[nn.Parameter]
+    lr: float
+    betas: Tuple[float, float]
+    eps: float
+    weight_decay: float
+    max_grad_norm: float
+
+
+class StateDict(TypedDict):
+    next_m: torch.Tensor
+    next_v: torch.Tensor
+
 
 class BertAdam(Optimizer):
     """Implements BERT version of Adam algorithm with weight decay fix.
-    Params:
-        lr: learning rate
-        betas: Adams b1 and b2. Default: 0.9 and 0.999
-        eps: Adams epsilon. Default: 1e-8
-        weight_decay: weight_decay for parameters
-        max_grad_norm: Maximum norm for the gradients (-1 means no clipping). Default: 1.0
+
+    Args:
+        params (iterable): iterable of parameters to optimize or dicts defining
+            parameter groups
+        lr (float, optional): learning rate (default: 1e-3)
+        betas (Tuple[float, float], optional): coefficients used for computing
+            running averages of gradient and its square (default: (0.9, 0.999))
+        eps (float, optional): term added to the denominator to improve
+            numerical stability (default: 1e-8)
+        weight_decay (float, optional): weight decay (L2 penalty) (default: 0)
+        max_grad_norm: Maximum norm for the gradients (-1 means no clipping).
+            Default: 1.0
     """
-    def __init__(self, params, lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, max_grad_norm=1.0, **kwargs):
+
+    param_groups: List[BertAdamParamDict]
+    state: Dict[nn.Parameter, StateDict]
+
+    def __init__(self, params: Union[MaybeDict[Iterable[nn.Parameter]]],
+                 lr: float = 0.001, betas: Tuple[float, float] = (0.9, 0.999),
+                 eps: float = 1e-08, weight_decay: float = 0,
+                 max_grad_norm: float = 1.0):
 
         if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
+            raise ValueError(f"Invalid learning rate: {lr}")
         if not 0.0 <= eps:
-            raise ValueError("Invalid epsilon value: {}".format(eps))
+            raise ValueError(f"Invalid epsilon value: {eps}")
         if not 0.0 <= betas[0] < 1.0:
-            raise ValueError("Invalid beta parameter at index 0: {}".format(betas[0]))
+            raise ValueError(f"Invalid beta parameter at index 0: {betas[0]}")
         if not 0.0 <= betas[1] < 1.0:
-            raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
+            raise ValueError(f"Invalid beta parameter at index 1: {betas[1]}")
 
         defaults = dict(lr=lr, betas=betas, eps=eps,
                         weight_decay=weight_decay, max_grad_norm=max_grad_norm)
-        super(BertAdam, self).__init__(params, defaults)
+        super().__init__(params, defaults)  # type: ignore
 
-    def step(self, closure=None):
+    def step(self, closure: Optional[Callable[[], float]] = None):
         """Performs a single optimization step.
         Arguments:
             closure (callable, optional): A closure that reevaluates the model
@@ -42,7 +77,9 @@ class BertAdam(Optimizer):
                     continue
                 grad = p.grad.data
                 if grad.is_sparse:
-                    raise RuntimeError('Adam does not support sparse gradients, please consider SparseAdam instead')
+                    raise RuntimeError(
+                        "Adam does not support sparse gradients, please "
+                        "consider SparseAdam instead")
 
                 state = self.state[p]
                 # State initialization
@@ -65,13 +102,15 @@ class BertAdam(Optimizer):
                 next_v.mul_(beta2).addcmul_(1 - beta2, grad, grad)
                 update = next_m / (next_v.sqrt() + group['eps'])
 
-                # Just adding the square of the weights to the loss function is *not*
-                # the correct way of using L2 regularization/weight decay with Adam,
-                # since that will interact with the m and v parameters in strange ways.
+                # Just adding the square of the weights to the loss function is
+                # *not* # the correct way of using L2 regularization or weight
+                # decay with Adam, since that will interact with the m and v
+                # parameters in strange ways.
                 #
-                # Instead we want to decay the weights in a manner that doesn't interact
-                # with the m/v parameters. This is equivalent to adding the square
-                # of the weights to the loss with plain (non-momentum) SGD.
+                # Instead we want to decay the weights in a manner that doesn't
+                # interact with the m/v parameters. This is equivalent to adding
+                # the square of the weights to the loss with plain
+                # (non-momentum) SGD.
                 if group['weight_decay'] > 0.0:
                     update += group['weight_decay'] * p.data
 
@@ -79,7 +118,6 @@ class BertAdam(Optimizer):
                 update_with_lr = lr * update
                 p.data.add_(-update_with_lr)
 
-                # step_size = lr_scheduled * math.sqrt(bias_correction2) / bias_correction1
                 # No bias correction
                 # bias_correction1 = 1 - beta1 ** state['step']
                 # bias_correction2 = 1 - beta2 ** state['step']
