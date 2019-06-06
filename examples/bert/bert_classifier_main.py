@@ -98,11 +98,11 @@ def main():
     for key in config_downstream.keys():
         bert_hparams[key] = config_downstream[key]
 
-    pprint.pprint(bert_hparams)
     model = BertClassifier(hparams=bert_hparams)
-
     init_checkpoint = os.path.join(bert_pretrain_dir, 'bert_model.ckpt')
     model_utils.init_bert_checkpoint(model, init_checkpoint)
+    if torch.cuda.is_available():
+        model = model.cuda()
     print(f"Pretrained model loaded from {init_checkpoint}")
 
     # Builds learning rate decay scheduler
@@ -138,6 +138,12 @@ def main():
             input_ids = batch["input_ids"]
             segment_ids = batch["segment_ids"]
             labels = batch["label_ids"]
+
+            if torch.cuda.is_available():
+                input_ids = input_ids.cuda()
+                segment_ids = segment_ids.cuda()
+                labels = labels.cuda()
+
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
             logits, preds, loss = model(
@@ -166,7 +172,7 @@ def main():
         """Evaluates on the dev set.
         """
         iterator.switch_to_dataset("eval")
-
+        model.eval()
         cum_acc = 0.0
         cum_loss = 0.0
         nsamples = 0
@@ -174,6 +180,11 @@ def main():
             input_ids = batch["input_ids"]
             segment_ids = batch["segment_ids"]
             labels = batch["label_ids"]
+
+            if torch.cuda.is_available():
+                input_ids = input_ids.cuda()
+                segment_ids = segment_ids.cuda()
+                labels = labels.cuda()
 
             batch_size = input_ids.size()[0]
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
@@ -201,11 +212,14 @@ def main():
         """Does predictions on the test set.
         """
         iterator.switch_to_dataset("test")
-
+        model.eval()
         _all_preds = []
         for batch in iterator:
             input_ids = batch["input_ids"]
             segment_ids = batch["segment_ids"]
+            if torch.cuda.is_available():
+                input_ids = input_ids.cuda()
+                segment_ids = segment_ids.cuda()
 
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 

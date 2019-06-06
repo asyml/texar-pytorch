@@ -260,11 +260,11 @@ class BertClassifier(ClassifierBase):
                   ``[batch_size, max_time, num_classes]`` and ``pred`` is of
                   shape ``[batch_size, max_time]``.
         """
-
         word_embeds = self.word_embedder(inputs)
         segment_embeds = self.segment_embedder(segment_ids)
         seq_length = torch.full(
             (inputs.size()[0],), inputs.size()[1], dtype=torch.int32)
+        seq_length = seq_length.to(device=inputs.device)
         pos_embeds = self.position_embedder(sequence_length=seq_length)
         input_embeds = word_embeds + segment_embeds + pos_embeds
         enc_output = self.encoder(input_embeds, sequence_length)
