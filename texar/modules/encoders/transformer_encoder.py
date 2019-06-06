@@ -337,15 +337,13 @@ class TransformerEncoder(EncoderBase):
             x = self.embed_dropout(input_embedding)
 
         for i in range(self._hparams.num_blocks):
-            multihead_attention = self.self_attns[i]
-            multihead_attention_normalizer = self.self_attn_layer_norm[i]
             # trivial difference between BERT and original Transformer
             if self._hparams.use_bert_config:
                 _queries_input = x
             else:
-                _queries_input = multihead_attention_normalizer(x)
+                _queries_input = self.self_attn_layer_norm[i](x)
 
-            attention_output = multihead_attention(
+            attention_output = self.self_attns[i](
                 queries=_queries_input,
                 memory=_queries_input,
                 memory_attention_bias=encoder_self_attention_bias,

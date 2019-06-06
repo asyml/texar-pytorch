@@ -15,27 +15,27 @@
 model.
 """
 
-import os
-import importlib
-import pprint
-import texar as tx
-import logging
 import argparse
-import torch
-from  torch.nn.utils.clip_grad import clip_grad_norm_
+import importlib
+import logging
+import os
+import pprint
 
+from tqdm import tqdm
+
+import torch
+from torch.nn.utils.clip_grad import clip_grad_norm_
+
+import texar as tx
+import utils.model_utils as model_utils
 from texar.models import BertClassifier
 from texar.utils.utils import adjust_learning_rate
-from utils import model_utils
 
-# pylint: disable=invalid-name, too-many-locals, too-many-statements
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-    "--config_downstream",
-    default="config_classifier",
-    help="Configuration of the downstream part of the model",
-)
+    "--config_downstream", default="config_classifier",
+    help="Configuration of the downstream part of the model")
 parser.add_argument(
     "--config_format_bert", default="json",
     help="The configuration format. Set to 'json' if the BERT config file "
@@ -45,36 +45,32 @@ parser.add_argument(
     "--config_bert_pretrain", default='uncased_L-12_H-768_A-12',
     help="The architecture of pre-trained BERT model to use.")
 parser.add_argument(
-    "--config_data", default="config_data", help="The dataset config."
-)
+    "--config_data", default="config_data", help="The dataset config.")
 parser.add_argument(
-    "--output_dir",
-    default="output/",
-    help="The output directory where the model checkpoints " "will be written.",
-)
+    "--output_dir", default="output/",
+    help="The output directory where the model checkpoints will be written.")
 parser.add_argument(
-    "--checkpoint",
-    type=str,
-    default=None,
-    help="Path to a model chceckpoint (including bert "
-    "modules) to restore from.",
-)
+    "--checkpoint", type=str, default=None,
+    help="Path to a model checkpoint (including bert modules) to restore from.")
 parser.add_argument(
-    "--do_train", action="store_true", help="Whether to run training."
-)
+    "--do_train", action="store_true", help="Whether to run training.")
 parser.add_argument(
-    "--do_test",
-    action="store_true",
-    help="Whether to run test on the test set.",
-)
+    "--do_eval", action="store_true",
+    help="Whether to run eval on the dev set.")
+parser.add_argument(
+    "--do_test", action="store_true",
+    help="Whether to run test on the test set.")
 
 args = parser.parse_args()
 
 config_data = importlib.import_module(args.config_data)
 
 config_downstream = importlib.import_module(args.config_downstream)
-config_downstream = {k: v for k, v in config_downstream.__dict__.items() if not
-k.startswith('__')}
+config_downstream = {
+    k: v for k, v in config_downstream.__dict__.items()
+    if not k.startswith('__')}
+
+logging.root.setLevel(logging.INFO)
 
 
 def main():
@@ -88,15 +84,13 @@ def main():
     num_train_data = config_data.num_train_data
 
     # Builds BERT
-    bert_pretrain_dir = ('bert_pretrained_models'
-                         '/%s') % args.config_bert_pretrain
+    bert_pretrain_dir = f'bert_pretrained_models/{args.config_bert_pretrain}'
     if args.config_format_bert == "json":
         bert_config = model_utils.transform_bert_to_texar_config(
             os.path.join(bert_pretrain_dir, 'bert_config.json'))
     elif args.config_format_bert == 'texar':
         bert_config = importlib.import_module(
-            ('bert_config_lib.'
-             'config_model_%s') % args.config_bert_pretrain)
+            f'bert_config_lib.config_model_{args.config_bert_pretrain}')
     else:
         raise ValueError('Unknown config_format_bert.')
 
@@ -111,26 +105,23 @@ def main():
 
     init_checkpoint = os.path.join(bert_pretrain_dir, 'bert_model.ckpt')
     model_utils.init_bert_checkpoint(model, init_checkpoint)
+    print(f"Pretrained model loaded from {init_checkpoint}")
 
     # Builds learning rate decay scheduler
     static_lr = 2e-5
 
-    num_train_steps = int(
-        num_train_data
-        / config_data.train_batch_size
-        * config_data.max_train_epoch
-    )
+    num_train_steps = int(num_train_data / config_data.train_batch_size *
+                          config_data.max_train_epoch)
     num_warmup_steps = int(num_train_steps * config_data.warmup_proportion)
 
-    opt = torch.optim.Adam(
-        model.parameters(), betas=(0.9, 0.999), eps=1e-6, weight_decay=1e-2
-    )
+    opt = torch.optim.Adam(model.parameters(), betas=(0.9, 0.999),
+                           eps=1e-6, weight_decay=1e-2)
 
-    train_dataset = tx.data.TFRecordData(hparams=config_data.train_hparam)
-    eval_dataset = tx.data.TFRecordData(hparams=config_data.eval_hparam)
-    test_dataset = tx.data.TFRecordData(hparams=config_data.test_hparam)
+    train_dataset = tx.data.RecordData(hparams=config_data.train_hparam)
+    eval_dataset = tx.data.RecordData(hparams=config_data.eval_hparam)
+    test_dataset = tx.data.RecordData(hparams=config_data.test_hparam)
 
-    iterator = tx.data.FeedableDataIterator(
+    iterator = tx.data.DataIterator(
         {"train": train_dataset, "eval": eval_dataset, "test": test_dataset}
     )
 
@@ -138,10 +129,10 @@ def main():
         """Trains on the training set, and evaluates on the dev set
         periodically.
         """
-        iterator.restart_dataset("train")
+        iterator.switch_to_dataset("train")
 
         model.train()
-        for _, batch in enumerate(iterator):
+        for batch in iterator:
             input_ids = batch["input_ids"]
             segment_ids = batch["segment_ids"]
             labels = batch["label_ids"]
@@ -173,15 +164,16 @@ def main():
             if eval_steps > 0 and step % eval_steps == 0:
                 _eval_epoch()
 
+    @torch.no_grad()
     def _eval_epoch():
         """Evaluates on the dev set.
         """
-        iterator.restart_dataset("eval")
+        iterator.switch_to_dataset("eval")
 
         cum_acc = 0.0
         cum_loss = 0.0
         nsamples = 0
-        for _, batch in enumerate(iterator):
+        for batch in iterator:
             input_ids = batch["input_ids"]
             segment_ids = batch["segment_ids"]
             labels = batch["label_ids"]
@@ -207,16 +199,16 @@ def main():
             )
         )
 
+    @torch.no_grad()
     def _test_epoch():
         """Does predictions on the test set.
         """
-        iterator.restart_dataset("test")
+        iterator.switch_to_dataset("test")
 
         _all_preds = []
-        for _, batch in enumerate(iterator):
+        for batch in tqdm(iterator):
             input_ids = batch["input_ids"]
             segment_ids = batch["segment_ids"]
-            labels = batch["label_ids"]
 
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
@@ -235,8 +227,6 @@ def main():
         ckpt = torch.load(args.checkpoint)
         model.load_state_dict(ckpt['model'])
         opt.load_state_dict(ckpt['optimizer'])
-
-    iterator.initialize_dataset()
 
     if args.do_train:
         for i in range(config_data.max_train_epoch):

@@ -14,14 +14,15 @@
 """
 BERT classifiers.
 """
-
-import texar as tx
-from texar.modules.classifiers.classifier_base import ClassifierBase
-from texar.hyperparams import HParams
+from typing import Optional, Tuple
 
 import torch
+import torch.nn.functional as F
 from torch import nn
-from torch.nn import functional as F
+
+import texar as tx
+from texar.hyperparams import HParams
+from texar.modules.classifiers.classifier_base import ClassifierBase
 
 # pylint: disable=too-many-arguments, invalid-name, no-member,
 # pylint: disable=too-many-branches, too-many-locals, too-many-statements
@@ -54,32 +55,25 @@ class BertClassifier(ClassifierBase):
 
         ClassifierBase.__init__(self, hparams)
         self.word_embedder = tx.modules.WordEmbedder(
-            vocab_size=self._hparams.vocab_size, hparams=self._hparams.embed
-        )
+            vocab_size=self._hparams.vocab_size, hparams=self._hparams.embed)
 
         # Segment embedding for each type of tokens
         self.segment_embedder = tx.modules.WordEmbedder(
             vocab_size=self._hparams.type_vocab_size,
-            hparams=self._hparams.segment_embed,
-        )
+            hparams=self._hparams.segment_embed)
 
         # Position embedding
         self.position_embedder = tx.modules.PositionEmbedder(
             position_size=self._hparams.position_size,
-            hparams=self._hparams.position_embed,
-        )
+            hparams=self._hparams.position_embed)
 
         # The BERT encoder (a TransformerEncoder)
         self.encoder = tx.modules.TransformerEncoder(
-            hparams=self._hparams.encoder
-        )
+            hparams=self._hparams.encoder)
 
-        self.pooler = nn.ModuleList(
-            [
-                nn.Linear(self._hparams.hidden_size, self._hparams.hidden_size),
-                nn.Dropout(self._hparams.dropout),
-            ]
-        )
+        self.pooler = nn.Sequential(
+            nn.Linear(self._hparams.hidden_size, self._hparams.hidden_size),
+            nn.Dropout(self._hparams.dropout))
 
         self._num_classes = self._hparams.num_classes
 
@@ -88,20 +82,15 @@ class BertClassifier(ClassifierBase):
             if logit_kwargs is None:
                 logit_kwargs = {}
             elif not isinstance(logit_kwargs, HParams):
-                raise ValueError(
-                    "hparams['logit_layer_kwargs'] must be a dict."
-                )
+                raise ValueError("hparams['logit_layer_kwargs'] "
+                                 "must be a dict.")
             else:
                 logit_kwargs = logit_kwargs.todict()
-            logit_kwargs.update(
-                {
-                    "in_features": self._hparams.hidden_size,
-                    "out_features": self._num_classes,
-                    "bias": True,
-                }
-            )
 
-            self.logits_layer = nn.Linear(**logit_kwargs)
+            self.logits_layer = nn.Linear(
+                self._hparams.hidden_size, self._num_classes, **logit_kwargs)
+        else:
+            self.logits_layer = None
 
         self.step_iteration = 0
 
@@ -133,12 +122,11 @@ class BertClassifier(ClassifierBase):
             "num_classes" : int
                 Number of classes:
 
-                - If **`> 0`**, an additional :tf_main:`Dense <layers/Dense>` \
-                layer is appended to the encoder to compute the logits over \
-                classes.
-                - If **`<= 0`**, no dense layer is appended. The number of \
-                classes is assumed to be the final dense layer size of the \
-                encoder.
+                - If **`> 0`**, an additional :torch_nn:`Linear` layer is
+                  appended to the encoder to compute the logits over classes.
+                - If **`<= 0`**, no dense layer is appended. The number of
+                  classes is assumed to be the final dense layer size of the
+                  encoder.
 
             "logit_layer_kwargs" : dict
                 Keyword arguments for the logit Dense layer constructor,
@@ -147,13 +135,13 @@ class BertClassifier(ClassifierBase):
 
             "clas_strategy" : str
                 The classification strategy, one of:
-                - **"cls_time"**: Sequence-level classification based on the \
-                output of the first time step (which is the "CLS" token). \
-                Each sequence has a class.
-                - **"all_time"**: Sequence-level classification based on \
-                the output of all time steps. Each sequence has a class.
-                - **"time_wise"**: Step-wise classfication, i.e., make \
-                classification for each time step based on its output.
+                - **"cls_time"**: Sequence-level classification based on the
+                  output of the first time step (which is the "CLS" token).
+                  Each sequence has a class.
+                - **"all_time"**: Sequence-level classification based on
+                  the output of all time steps. Each sequence has a class.
+                - **"time_wise"**: Step-wise classification, i.e., make
+                  classification for each time step based on its output.
 
             "max_seq_length" : int, optional
                 Maximum possible length of input sequences. Required if
@@ -229,76 +217,73 @@ class BertClassifier(ClassifierBase):
 
         return hparams
 
-    def forward(
-        self,
-        inputs,
-        sequence_length=None,
-        segment_ids=None,
-        labels=None,
-        **kwargs
-    ):
+    def forward(self, inputs: torch.Tensor,
+                sequence_length: Optional[torch.LongTensor] = None,
+                segment_ids: Optional[torch.LongTensor] = None,
+                labels: Optional[torch.LongTensor] = None) \
+            -> Tuple[torch.Tensor, torch.LongTensor, Optional[torch.Tensor]]:
         """Feeds the inputs through the network and makes classification.
 
         The arguments are the same as in
         :class:`~texar.modules.BertEncoder`.
 
         Args:
-            inputs: A 2D Tensor of shape `[batch_size, max_time]`,
+            inputs: A 2D Tensor of shape ``[batch_size, max_time]``,
                 containing the token ids of tokens in input sequences.
-            sequence_length (optional): A 1D Tensor of shape `[batch_size]`.
+            sequence_length (optional): A 1D Tensor of shape ``[batch_size]``.
                 Input tokens beyond respective sequence lengths are masked
                 out automatically.
             segment_ids (optional): A 2D Tensor of shape
-                `[batch_size, max_time]`, containing the segment ids
-                of tokens in input sequences. If `None` (default), a tensor
+                ``[batch_size, max_time]``, containing the segment ids
+                of tokens in input sequences. If ``None`` (default), a tensor
                 with all elements set to zero is used.
             labels (optional): Used in training
-            **kwargs: Keyword arguments.
 
         Returns:
-            A tuple `(logits, pred)`, containing the logits over classes and
-            the predictions, respectively.
+            A tuple ``(logits, pred, loss)``, containing the logits over
+            classes, the predictions, and the final loss, respectively. If
+            ``labels`` is ``None``, then the returned loss is also ``None``.
 
-            - If "clas_strategy"=="cls_time" or "all_time"
+            - If ``"clas_strategy"`` is ``"cls_time"`` or ``"all_time"``:
 
-                - If "num_classes"==1, `logits` and `pred` are of both \
-                shape `[batch_size]`
-                - If "num_classes">1, `logits` is of shape \
-                `[batch_size, num_classes]` and `pred` is of shape \
-                `[batch_size]`.
+                - If ``"num_classes"``==1, ``logits`` and ``pred`` are both of
+                  shape ``[batch_size]``.
+                - If ``"num_classes"``>1, `logits` is of shape
+                  ``[batch_size, num_classes]`` and ``pred`` is of shape
+                  `[batch_size]`.
 
-            - If "clas_strategy"=="time_wise",
+            - If ``"clas_strategy"`` is ``"time_wise"``:
 
-                - If "num_classes"==1, `logits` and `pred` are of both \
-                shape `[batch_size, max_time]`
-                - If "num_classes">1, `logits` is of shape \
-                `[batch_size, max_time, num_classes]` and `pred` is of shape \
-                `[batch_size, max_time]`.
+                - If ``"num_classes"``==1, ``logits`` and ``pred`` are both of
+                  shape ``[batch_size, max_time]``.
+                - If ``"num_classes"``>1, ``logits`` is of shape
+                  ``[batch_size, max_time, num_classes]`` and ``pred`` is of
+                  shape ``[batch_size, max_time]``.
         """
 
         word_embeds = self.word_embedder(inputs)
         segment_embeds = self.segment_embedder(segment_ids)
         seq_length = torch.full(
-            (inputs.size()[0]), inputs.size()[1], dtype=torch.int32
-        )
+            (inputs.size()[0],), inputs.size()[1], dtype=torch.int32)
         pos_embeds = self.position_embedder(sequence_length=seq_length)
         input_embeds = word_embeds + segment_embeds + pos_embeds
         enc_output = self.encoder(input_embeds, sequence_length)
-        pooled_output = self.pooler(enc_output)
 
         # Compute logits
-        stra = self._hparams.clas_strategy
-        if stra == "time_wise":
+        strategy = self._hparams.clas_strategy
+        if strategy == "time_wise":
             logits_input = enc_output
-        elif stra == "cls_time":
+        elif strategy == "cls_time":
+            first_token_tensor = enc_output[:, 0:1, :].squeeze()
+            pooled_output = self.pooler(first_token_tensor)
             logits_input = pooled_output
-        elif stra == "all_time":
+        elif strategy == "all_time":
             raise NotImplementedError
         else:
-            raise ValueError("Unknown classification strategy: {}".format(stra))
+            raise ValueError(f"Unknown classification strategy: {strategy}")
 
-        if getattr(self, "logit_layer", None):
-            logits = self.logit_layer(logits_input)
+        if self.logits_layer is not None:
+            logits = self.logits_layer(logits_input)
         else:
             logits = logits_input
 
@@ -306,22 +291,24 @@ class BertClassifier(ClassifierBase):
         is_binary = num_classes == 1
         is_binary = is_binary or (num_classes <= 0 and logits.shape[-1] == 1)
 
-        if stra == "time_wise":
+        if strategy == "time_wise":
             if is_binary:
                 logits = torch.squeeze(logits, -1)
-                preds = (logits > 0).int()
+                preds = (logits > 0).long()
             else:
                 preds = torch.argmax(logits, dim=-1)
         else:
             if is_binary:
-                preds = (logits > 0).int()
+                preds = (logits > 0).long()
                 logits = torch.reshape(logits, [-1])
             else:
                 preds = torch.argmax(logits, dim=-1)
             preds = torch.reshape(preds, [-1])
 
         if labels is not None:
-            loss = torch.sum(-labels * F.log_softmax(logits, -1), -1).mean()
+            loss = F.cross_entropy(
+                logits.view(-1, self._num_classes), labels.view(-1),
+                reduction='mean')
         else:
             loss = None
 

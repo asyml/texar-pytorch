@@ -2,10 +2,7 @@
 Model utility functions
 """
 import json
-import collections
-import re
-import sys
-import random
+
 import tensorflow as tf
 import torch
 
@@ -193,11 +190,10 @@ def init_bert_checkpoint(model, init_checkpoint):
                 pointer.data = torch.from_numpy(array_t)
                 idx += 1
         else:
-            # here name is the tensorflow variable name
+            # here name is the TensorFlow variable name
             name_tmp = name.split("/")
             # e.g. layer_
             layer_no = name_tmp[2][6:]
-            print('layer_no:{}'.format(layer_no))
             name_tmp = "/".join(name_tmp[3:])
             if name_tmp in layer_tensor_map:
                 v_name = layer_tensor_map[name_tmp].format(layer_no)
@@ -211,15 +207,13 @@ def init_bert_checkpoint(model, init_checkpoint):
                 assert pointer.shape == array_t.shape
                 pointer.data = torch.from_numpy(array_t)
             else:
-                print("Name error", name)
-                raise Exception
+                raise NameError(f"Variable with name '{name}' not found")
             idx += 1
-    print('initialized {} variables'.format(idx))
 
 
 def name_to_variable(model, name):
     """
-    Find the corresponding varible give the specified name
+    Find the corresponding variable given the specified name
     :param model:
     :param name:
     :return:

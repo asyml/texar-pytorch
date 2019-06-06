@@ -102,7 +102,9 @@ class SamplerBase(torch_sampler.Sampler):
         return iterator
 
     def __len__(self):
-        return self.size
+        if self.size is not None:
+            return self.size
+        raise AttributeError("Dataset size cannot be determined at this point")
 
 
 class SequentialSampler(SamplerBase):

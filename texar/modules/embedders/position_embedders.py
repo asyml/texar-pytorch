@@ -225,8 +225,7 @@ class SinusoidsPositionEmbedder(EmbedderBase):
     .. automethod:: _build
     """
 
-    def __init__(self, position_size: int, hparams: Optional[HParams,
-                                                             Dict] = None):
+    def __init__(self, position_size: int, hparams=None):
         super().__init__(hparams=hparams)
         self._num_embeds = position_size
         self._dim = self._hparams.dim

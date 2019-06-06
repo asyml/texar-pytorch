@@ -48,4 +48,3 @@ encoder = {
 }
 
 output_size = 768  # The output dimension of BERT
-
