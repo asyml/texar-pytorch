@@ -551,6 +551,8 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
                     values, _ = padded_batch(values)
                 else:
                     values = np.stack(values, axis=0)
+                if not torch.is_tensor(values):
+                    values = torch.from_numpy(values)
             else:
                 # VarLenFeature, just put everything in a Python list.
                 pass

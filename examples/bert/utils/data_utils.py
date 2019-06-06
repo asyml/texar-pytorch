@@ -2,7 +2,6 @@
 This is the Data Loading Pipeline for Sentence Classifier Task from
 https://github.com/google-research/bert/blob/master/run_classifier.py
 """
-# coding=utf-8
 # Copyright 2018 The Google AI Language Team Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,15 +16,16 @@ https://github.com/google-research/bert/blob/master/run_classifier.py
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import csv
 import collections
-import sys
-sys.path.append(os.path.dirname(__file__))
-import tokenization
-import tensorflow as tf
+import csv
+import logging
+import os
 
-class InputExample():
+import texar as tx
+import utils.tokenization as tokenization
+
+
+class InputExample:
     """A single training/test example for simple sequence classification."""
 
     def __init__(self, guid, text_a, text_b=None, label=None):
@@ -45,7 +45,7 @@ class InputExample():
         self.label = label
 
 
-class InputFeatures():
+class InputFeatures:
     """A single set of features of data."""
 
     def __init__(self, input_ids, input_mask, segment_ids, label_id):
@@ -77,12 +77,13 @@ class DataProcessor(object):
     @classmethod
     def _read_tsv(cls, input_file, quotechar=None):
         """Reads a tab separated value file."""
-        with tf.gfile.Open(input_file, "r") as f:
+        with open(input_file, "r") as f:
             reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
             lines = []
             for line in reader:
                 lines.append(line)
         return lines
+
 
 class SSTProcessor(DataProcessor):
     """Processor for the MRPC data set (GLUE version)."""
@@ -128,10 +129,11 @@ class SSTProcessor(DataProcessor):
                 text_a = tokenization.convert_to_unicode(line[1])
                 # Single sentence classification, text_b doesn't exist
                 text_b = None
-                label = '0' # arbitrary set as 0
+                label = '0'  # arbitrary set as 0
                 examples.append(InputExample(guid=guid, text_a=text_a,
                                              text_b=text_b, label=label))
         return examples
+
 
 class XnliProcessor(DataProcessor):
     """Processor for the XNLI data set."""
@@ -143,12 +145,12 @@ class XnliProcessor(DataProcessor):
         """See base class."""
         lines = self._read_tsv(
             os.path.join(data_dir, "multinli",
-                         "multinli.train.%s.tsv" % self.language))
+                         f"multinli.train.{self.language}.tsv"))
         examples = []
         for (i, line) in enumerate(lines):
             if i == 0:
                 continue
-            guid = "train-%d" % (i)
+            guid = f"train-{i}"
             text_a = tokenization.convert_to_unicode(line[0])
             text_b = tokenization.convert_to_unicode(line[1])
             label = tokenization.convert_to_unicode(line[2])
@@ -165,7 +167,7 @@ class XnliProcessor(DataProcessor):
         for (i, line) in enumerate(lines):
             if i == 0:
                 continue
-            guid = "dev-%d" % (i)
+            guid = f"dev-{i}"
             language = tokenization.convert_to_unicode(line[0])
             if language != tokenization.convert_to_unicode(self.language):
                 continue
@@ -179,6 +181,7 @@ class XnliProcessor(DataProcessor):
     def get_labels(self):
         """See base class."""
         return ["contradiction", "entailment", "neutral"]
+
 
 class MnliProcessor(DataProcessor):
     """Processor for the MultiNLI data set (GLUE version)."""
@@ -210,8 +213,7 @@ class MnliProcessor(DataProcessor):
         for (i, line) in enumerate(lines):
             if i == 0:
                 continue
-            guid = "%s-%s" % (set_type,
-                              tokenization.convert_to_unicode(line[0]))
+            guid = f"{set_type}-{tokenization.convert_to_unicode(line[0])}"
             text_a = tokenization.convert_to_unicode(line[8])
             text_b = tokenization.convert_to_unicode(line[9])
             if set_type == "test":
@@ -221,6 +223,7 @@ class MnliProcessor(DataProcessor):
             examples.append(InputExample(guid=guid, text_a=text_a,
                                          text_b=text_b, label=label))
         return examples
+
 
 class MrpcProcessor(DataProcessor):
     """Processor for the MRPC data set (GLUE version)."""
@@ -253,7 +256,7 @@ class MrpcProcessor(DataProcessor):
         for (i, line) in enumerate(lines):
             if i == 0:
                 continue
-            guid = "%s-%s" % (set_type, i)
+            guid = f"{set_type}-{i}"
             text_a = tokenization.convert_to_unicode(line[3])
             text_b = tokenization.convert_to_unicode(line[4])
             if set_type == "test":
@@ -263,6 +266,7 @@ class MrpcProcessor(DataProcessor):
             examples.append(InputExample(guid=guid, text_a=text_a,
                                          text_b=text_b, label=label))
         return examples
+
 
 class ColaProcessor(DataProcessor):
     """Processor for the CoLA data set (GLUE version)."""
@@ -296,7 +300,7 @@ class ColaProcessor(DataProcessor):
             # Only the test set has a header
             if set_type == "test" and i == 0:
                 continue
-            guid = "%s-%s" % (set_type, i)
+            guid = f"{set_type}-{i}"
             if set_type == "test":
                 text_a = tokenization.convert_to_unicode(line[1])
                 label = "0"
@@ -385,17 +389,15 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
 
     # here we disable the verbose printing of the data
     if ex_index < 0:
-        tf.logging.info("*** Example ***")
-        tf.logging.info("guid: %s" % (example.guid))
-        tf.logging.info("tokens: %s" % " ".join(
+        logging.info("*** Example ***")
+        logging.info(f"guid: {example.guid}")
+        logging.info("tokens: " + " ".join(
             [tokenization.printable_text(x) for x in tokens]))
-        tf.logging.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-        tf.logging.info("input_ids length: %d" % len(input_ids))
-        tf.logging.info("input_mask: %s" %\
-            " ".join([str(x) for x in input_mask]))
-        tf.logging.info("segment_ids: %s" %\
-            " ".join([str(x) for x in segment_ids]))
-        tf.logging.info("label: %s (id = %d)" % (example.label, label_id))
+        logging.info("input_ids: " + " ".join([str(x) for x in input_ids]))
+        logging.info(f"input_ids length: {len(input_ids)}")
+        logging.info("input_mask: " + " ".join([str(x) for x in input_mask]))
+        logging.info("segment_ids: " + " ".join([str(x) for x in segment_ids]))
+        logging.info(f"label: {example.label} (id = {label_id})")
 
     feature = InputFeatures(input_ids=input_ids,
                             input_mask=input_mask,
@@ -405,29 +407,24 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
 
 
 def file_based_convert_examples_to_features(
-        examples, label_list, max_seq_length, tokenizer, output_file):
+        examples, label_list, max_seq_length, tokenizer, output_file,
+        feature_original_types):
     """Convert a set of `InputExample`s to a TFRecord file."""
 
-    writer = tf.python_io.TFRecordWriter(output_file)
+    with tx.data.RecordData.writer(
+            output_file, feature_original_types) as writer:
+        for (ex_index, example) in enumerate(examples):
+            feature = convert_single_example(ex_index, example, label_list,
+                                             max_seq_length, tokenizer)
 
-    for (ex_index, example) in enumerate(examples):
+            features = {
+                "input_ids": feature.input_ids,
+                "input_mask": feature.input_mask,
+                "segment_ids": feature.segment_ids,
+                "label_ids": [feature.label_id]
+            }
+            writer.write(features)
 
-        feature = convert_single_example(ex_index, example, label_list,
-                                         max_seq_length, tokenizer)
-
-        def create_int_feature(values):
-            return tf.train.Feature(
-                int64_list=tf.train.Int64List(value=list(values)))
-
-        features = collections.OrderedDict()
-        features["input_ids"] = create_int_feature(feature.input_ids)
-        features["input_mask"] = create_int_feature(feature.input_mask)
-        features["segment_ids"] = create_int_feature(feature.segment_ids)
-        features["label_ids"] = create_int_feature([feature.label_id])
-
-        tf_example = tf.train.Example(
-            features=tf.train.Features(feature=features))
-        writer.write(tf_example.SerializeToString())
 
 def _truncate_seq_pair(tokens_a, tokens_b, max_length):
     """Truncates a sequence pair in place to the maximum length."""
@@ -447,11 +444,12 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
             tokens_b.pop()
 
 
-def prepare_TFRecord_data(processor, tokenizer,
-                          data_dir, max_seq_length, output_dir):
+def prepare_record_data(processor, tokenizer,
+                        data_dir, max_seq_length, output_dir,
+                        feature_original_types):
     """
     Args:
-        processor: Data Preprocessor, which must have get_lables,
+        processor: Data Preprocessor, which must have get_labels,
             get_train/dev/test/examples methods defined.
         tokenizer: The Sentence Tokenizer. Generally should be
             SentencePiece Model.
@@ -467,16 +465,16 @@ def prepare_TFRecord_data(processor, tokenizer,
     train_file = os.path.join(output_dir, "train.tf_record")
     file_based_convert_examples_to_features(
         train_examples, label_list, max_seq_length,
-        tokenizer, train_file)
+        tokenizer, train_file, feature_original_types)
 
     eval_examples = processor.get_dev_examples(data_dir)
     eval_file = os.path.join(output_dir, "eval.tf_record")
     file_based_convert_examples_to_features(
         eval_examples, label_list,
-        max_seq_length, tokenizer, eval_file)
+        max_seq_length, tokenizer, eval_file, feature_original_types)
 
     test_examples = processor.get_test_examples(data_dir)
     test_file = os.path.join(output_dir, "predict.tf_record")
     file_based_convert_examples_to_features(
         test_examples, label_list,
-        max_seq_length, tokenizer, test_file)
+        max_seq_length, tokenizer, test_file, feature_original_types)
