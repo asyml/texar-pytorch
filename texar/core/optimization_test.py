@@ -10,7 +10,7 @@ from texar.core.optimization import *
 
 
 class OptimizationTest(unittest.TestCase):
-    """Test optimization.
+    r"""Test optimization.
     """
 
     def setUp(self):
@@ -27,7 +27,7 @@ class OptimizationTest(unittest.TestCase):
         self.loss_fn = torch.nn.MSELoss(reduction='sum')
 
     def test_get_optimizer(self):
-        """Tests get_optimizer.
+        r"""Tests get_optimizer.
         """
         default_optimizer = get_optimizer(params=[torch.tensor(1)],
                                           hparams=None)
@@ -87,7 +87,7 @@ class OptimizationTest(unittest.TestCase):
         self.assertIsInstance(sgd_optimizer, torch.optim.SGD)
 
     def test_get_scheduler(self):
-        """Tests get_scheduler.
+        r"""Tests get_scheduler.
         """
         optimizer = get_optimizer(params=[torch.tensor(1)], hparams=None)
 
@@ -142,7 +142,7 @@ class OptimizationTest(unittest.TestCase):
         self.assertIsInstance(scheduler, torch.optim.lr_scheduler.ExponentialLR)
 
     def test_get_grad_clip_fn(self):
-        """Tests get_grad_clip_fn.
+        r"""Tests get_grad_clip_fn.
         """
         default_grad_clip_fn = get_grad_clip_fn(hparams=None)
         self.assertEqual(default_grad_clip_fn, None)
@@ -196,7 +196,7 @@ class OptimizationTest(unittest.TestCase):
             raise ValueError("grad_clip_fn is not callable")
 
     def test_get_train_op(self):
-        """Tests get_train_op.
+        r"""Tests get_train_op.
         """
         hparams = {
             "optimizer": {

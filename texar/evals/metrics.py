@@ -27,7 +27,7 @@ __all__ = [
 
 def accuracy(labels: torch.Tensor,
              preds: torch.Tensor) -> torch.Tensor:
-    """Calculates the accuracy of predictions.
+    r"""Calculates the accuracy of predictions.
 
     Args:
         labels: The ground truth values. A Tensor of the same shape of
@@ -44,7 +44,7 @@ def accuracy(labels: torch.Tensor,
 def binary_clas_accuracy(pos_preds: Optional[torch.Tensor] = None,
                          neg_preds: Optional[torch.Tensor] = None) -> \
         Optional[torch.Tensor]:
-    """Calculates the accuracy of binary predictions.
+    r"""Calculates the accuracy of binary predictions.
 
     Args:
         pos_preds (optional): A Tensor of any shape containing the

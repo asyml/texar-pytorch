@@ -44,7 +44,7 @@ __all__ = [
 
 def _get_ngrams(segment: str,
                 max_order: int) -> Counter[Tuple[str, ...]]:
-    """Extracts all n-grams up to a given maximum order from an input segment.
+    r"""Extracts all n-grams up to a given maximum order from an input segment.
 
     Args:
         segment: text segment from which n-grams will be extracted.
@@ -79,7 +79,7 @@ def sentence_bleu(references: List[MaybeList[str]],
                   lowercase: bool = False,
                   smooth: bool = False,
                   return_all: bool = False) -> MaybeList[float]:
-    """Calculates BLEU score of a hypothesis sentence.
+    r"""Calculates BLEU score of a hypothesis sentence.
 
     Args:
         references: A list of reference for the hypothesis.
@@ -116,7 +116,7 @@ def corpus_bleu(list_of_references: List[List[MaybeList[str]]],
                 lowercase: bool = False,
                 smooth: bool = False,
                 return_all: bool = True) -> MaybeList[float]:
-    """Computes corpus-level BLEU score.
+    r"""Computes corpus-level BLEU score.
 
     Args:
         list_of_references: A list of lists of references for each hypothesis.

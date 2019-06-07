@@ -61,7 +61,7 @@ def sentence_bleu_moses(references: List[MaybeList[str]],
                         hypothesis: MaybeList[str],
                         lowercase: bool = False,
                         return_all: bool = False) -> MaybeList[float]:
-    """Calculates BLEU score of a hypothesis sentence using the
+    r"""Calculates BLEU score of a hypothesis sentence using the
     **MOSES multi-bleu.perl** script.
 
     Args:
@@ -90,7 +90,7 @@ def corpus_bleu_moses(list_of_references: List[List[MaybeList[str]]],
                       hypotheses: List[MaybeList[str]],
                       lowercase: bool = False,
                       return_all: bool = False) -> MaybeList[float]:
-    """Calculates corpus-level BLEU score using the
+    r"""Calculates corpus-level BLEU score using the
     **MOSES multi-bleu.perl** script.
 
     Args:

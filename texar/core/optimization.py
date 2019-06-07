@@ -38,7 +38,7 @@ __all__ = [
 
 
 def default_optimization_hparams() -> Dict[str, Any]:
-    """Returns a `dict` of default hyperparameters of training op
+    r"""Returns a `dict` of default hyperparameters of training op
     and their default values
 
     .. role:: python(code)
@@ -169,7 +169,7 @@ def get_optimizer(
         params: Union[List[torch.Tensor], List[Dict[str, List[torch.Tensor]]]],
         hparams: Optional[Union[HParams, Dict[str, Any]]] = None) -> \
         Optimizer:
-    """Creates a optimizer instance.
+    r"""Creates a optimizer instance.
 
         Args:
             params: an iterable of :class:`torch.Tensor` s or
@@ -213,7 +213,7 @@ def get_optimizer(
 def get_scheduler(optimizer: Optimizer,
                   hparams: Optional[Union[HParams, Dict[str, Any]]] = None) -> \
         Optional[_LRScheduler]:
-    """Creates a scheduler instance.
+    r"""Creates a scheduler instance.
 
         Args:
             optimizer: A torch.optim.Optimizer instance.
@@ -258,7 +258,7 @@ def get_scheduler(optimizer: Optimizer,
 def get_grad_clip_fn(hparams: Optional[Union[HParams,
                                              Dict[str, Any]]] = None) -> \
         Optional[Callable[[torch.Tensor], Optional[torch.Tensor]]]:
-    """Create a clip_grad function.
+    r"""Create a clip_grad function.
 
         Args:
             hparams (dict or HParams, optional): hyperparameters. Missing
@@ -290,7 +290,7 @@ def get_grad_clip_fn(hparams: Optional[Union[HParams,
 def get_train_op(optimizer: Optimizer,
                  hparams: Optional[Union[HParams, Dict[str, Any]]] = None) -> \
         Callable[[], None]:
-    """Creates a training op..
+    r"""Creates a training op..
 
         Args:
             optimizer: A torch.optim.Optimizer instance to optimize the loss.
