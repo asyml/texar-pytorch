@@ -16,9 +16,10 @@ Cells
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.core.get_rnn_cell
 
-:hidden:`get_rnn_cell_trainable_variables`
+:hidden:`wrap_builtin_cell`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.core.get_rnn_cell_trainable_variables
+.. autofunction:: texar.core.wrap_builtin_cell
+
 
 Layers
 ======
@@ -46,18 +47,14 @@ Layers
 .. autoclass:: texar.core.MergeLayer
     :members:
 
-:hidden:`SequentialLayer`
+:hidden:`Flatten`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.core.SequentialLayer
+.. autoclass:: texar.core.Flatten
     :members:
 
 :hidden:`default_regularizer_hparams`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.core.default_regularizer_hparams
-
-:hidden:`get_regularizer`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.core.get_regularizer
 
 :hidden:`get_initializer`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -93,7 +90,7 @@ Optimization
 
 :hidden:`get_optimizer_fn`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.core.get_optimizer_fn
+.. autofunction:: texar.core.get_scheduler
 
 :hidden:`get_optimizer`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

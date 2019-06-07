@@ -54,7 +54,6 @@ class Conv1DClassifier(ClassifierBase):
             # pred   == Tensor of shape [64]
 
     .. document private functions
-    .. automethod:: _build
     """
 
     def __init__(self, in_channels: int, in_features: Optional[int] = None,

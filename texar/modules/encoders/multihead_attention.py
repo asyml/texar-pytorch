@@ -61,7 +61,6 @@ class MultiheadAttentionEncoder(EncoderBase):
             default values.
 
     .. document private functions
-    .. automethod:: _build
     """
 
     def __init__(self, input_size: int, hparams: Optional[HParams] = None):
@@ -92,6 +91,7 @@ class MultiheadAttentionEncoder(EncoderBase):
         r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
+
             {
                 "initializer": None,
                 'num_heads': 8,

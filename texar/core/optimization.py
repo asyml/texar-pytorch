@@ -72,11 +72,10 @@ def default_optimization_hparams() -> Dict[str, Any]:
 
         - **"type"** specifies the optimizer class. This can be
 
-            - The string name or full module path of an optimizer class. \
-            If the class name is provided, the class must be in module \
-            :tf_main:`tf.train <train>`, \
-            :tf_main:`tf.contrib.opt <contrib/opt>` or :mod:`texar.custom` \
-            , :mod:`texar.core.optimization`
+            - The string name or full module path of an optimizer class.
+              If the class name is provided, the class must be in module
+              :torch_docs:`torch.optim <optim.html>` or :mod:`texar.custom`,
+              :mod:`texar.core.optimization`
             - An optimizer class.
             - An instance of an optimizer class.
 
@@ -91,9 +90,9 @@ def default_optimization_hparams() -> Dict[str, Any]:
                 "type": GradientDescentOptimizer(learning_rate=0.1) # instance
                 "type": MyOptimizer(...) # instance
 
-        - **"kwargs"** is a `dict` specifying keyword arguments for creating \
-        the optimizer class instance, with :python:`opt_class(**kwargs)`. \
-        Ignored if "type" is a class instance.
+        - **"kwargs"** is a `dict` specifying keyword arguments for creating
+          the optimizer class instance, with :python:`opt_class(**kwargs)`.
+          Ignored if `"type"` is a class instance.
 
     "learning_rate_decay" : dict
         Hyperparameters of learning rate decay function. The learning rate
@@ -102,13 +101,13 @@ def default_optimization_hparams() -> Dict[str, Any]:
 
         The decay function is specified in "type" and "kwargs".
 
-            - "type" can be a decay function or its name or module path. If \
-            function name is provided, it must be from module \
-            :tf_main:`tf.train <train>` or :mod:`texar.custom`, \
-            :mod:`texar.core.optimization`.
+            - `"type"` can be a decay function or its name or module path. If
+              function name is provided, it must be from module
+              :torch_docs:`torch.optim <optim.html>` or :mod:`texar.custom`,
+              :mod:`texar.core.optimization`.
 
-            - "kwargs" is a `dict` of keyword arguments for the function \
-            excluding arguments named "global_step" and "learning_rate".
+            - `"kwargs"` is a `dict` of keyword arguments for the function
+              excluding arguments named `"global_step"` and `"learning_rate"`.
 
         The function is called with
         :python:`lr = decay_fn(learning_rate=lr, global_step=offset_step,
@@ -131,9 +130,8 @@ def default_optimization_hparams() -> Dict[str, Any]:
         function must be from module :tf_main:`tf < >` or :mod:`texar.custom`,
         :mod:`texar.core.optimization`.
 
-
-        "kwargs" specifies keyword arguments to the function, except arguments
-        named "t" or "t_list".
+        `"kwargs"` specifies keyword arguments to the function, except arguments
+        named `"t"` or `"t_list"`.
 
         The function is called with
         :python:`clipped_grads(, _) = clip_fn(t_list=grads, **kwargs)`

@@ -29,16 +29,32 @@ Frequent Use
 .. autofunction:: texar.utils.straight_through
 
 
+IO
+===
+
+:hidden:`write_paired_text`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.write_paired_text
+
+:hidden:`load_config`
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.load_config
+
+:hidden:`maybe_create_dir`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.maybe_create_dir
+
+:hidden:`get_files`
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.get_files
+
+
 DType
 =====
 
-:hidden:`is_callable`
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_callable
-
-:hidden:`is_str`
-~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_str
+:hidden:`get_numpy_dtype`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.get_numpy_dtype
 
 :hidden:`maybe_hparams_to_dict`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -63,14 +79,6 @@ Shape
 :hidden:`get_batch_size`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.get_batch_size
-
-:hidden:`get_rank`
-~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.get_rank
-
-:hidden:`shape_list`
-~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.shape_list
 
 :hidden:`flatten`
 ~~~~~~~~~~~~~~~~~~~~~~

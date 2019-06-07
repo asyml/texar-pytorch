@@ -71,7 +71,7 @@ def _convert_embedding(embedding):
     it is returned as is.
 
     Args:
-        embedding (torch.Tensor or callable): the embedding to convert.
+        embedding (:torch:`Tensor` or callable): the embedding to convert.
 
     Returns:
         An instance of Embedder or nn.Embedding.
@@ -90,15 +90,19 @@ IDType = TypeVar('IDType', bound=torch.Tensor)
 
 class Helper(Generic[IDType], ABC):
     r"""Interface for implementing sampling in seq2seq decoders.
+    Helper instances are used by :class:`~texar.DecoderBase`.
 
-    Helper instances are used by `BasicDecoder`.
+    Please refer to the documentation for the TensorFlow counterpart
+    `tf.contrib.seq2seq.Helper <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/Helper>`_.
     """
 
     @property
     def sample_ids_shape(self) -> torch.Size:
-        r"""Shape of tensor returned by `sample`, excluding the batch dimension.
+        r"""Shape of tensor returned by :meth:`sample`, excluding the batch
+        dimension.
 
-        Returns a :class:`torch.Size`.
+        Returns:
+            An instance of :class:`torch.Size`.
         """
         raise NotImplementedError("sample_ids_shape has not been implemented")
 
@@ -111,24 +115,39 @@ class Helper(Generic[IDType], ABC):
             inputs: A (structure of) input tensors.
             sequence_length: An int32 vector tensor.
 
-        Returns `(initial_finished, initial_inputs)`.
+        Returns:
+            ``(initial_finished, initial_inputs)``.
         """
         raise NotImplementedError
 
     def sample(self, time: int, outputs: torch.Tensor) -> IDType:
-        r"""Returns `sample_ids`."""
+        r"""Returns ``sample_ids``.
+        """
         raise NotImplementedError
 
     def next_inputs(self, time: int, outputs: torch.Tensor,
                     sample_ids: IDType) -> NextInputTuple:
-        r"""Returns `(finished, next_inputs, next_state)`."""
+        r"""Returns ``(finished, next_inputs, next_state)``.
+        """
         raise NotImplementedError
 
 
 class TrainingHelper(Helper[torch.LongTensor]):
-    r"""A helper for use during training.  Only reads inputs.
+    r"""A helper for use during training. Only reads inputs.
 
-    Returned sample_ids are the argmax of the RNN output logits.
+    Returned ``sample_ids`` are the argmax of the RNN output logits.
+
+    Please refer to the documentation for the TensorFlow counterpart
+    `tf.contrib.seq2seq.TrainingHelper <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/TrainingHelper>`_.
+
+    Args:
+        embedding (optional): The ``params`` argument of
+            :torch_nn:`functional.embedding` (e.g., the embedding Tensor);
+            or a callable that takes a vector of integer indexes and returns
+            respective embedding (e.g., an instance of subclass of
+            :class:`~texar.modules.EmbedderBase`).
+        time_major (bool):  Whether the tensors in ``inputs`` are time major.
+            If ``False`` (default), they are assumed to be batch major.
     """
     _embedding: Optional[Embedding]
 
@@ -139,21 +158,6 @@ class TrainingHelper(Helper[torch.LongTensor]):
 
     def __init__(self, embedding: Optional[Embedding] = None,
                  time_major: bool = False):
-        r"""Initializer.
-
-        Args:
-            embedding (optional): The `params` argument of
-                :tf_main:`tf.nn.embedding_lookup
-                <nn/embedding_lookup>` (e.g., the embedding Tensor); or a
-                callable that takes a vector of integer indexes and returns
-                respective embedding (e.g., an instance of subclass of
-                :class:`~texar.modules.EmbedderBase`).
-            time_major: Python bool.  Whether the tensors in `inputs` are time
-                major. If `False` (default), they are assumed to be batch major.
-
-        Raises:
-            ValueError: if `sequence_length` is not a 1D tensor.
-        """
         if embedding is not None:
             self._embedding = _convert_embedding(embedding)
         else:
@@ -202,7 +206,6 @@ class TrainingHelper(Helper[torch.LongTensor]):
 
     def next_inputs(self, time: int, outputs: torch.Tensor,
                     sample_ids: torch.LongTensor) -> NextInputTuple:
-        r"""next_inputs_fn for TrainingHelper."""
         next_time = time + 1
         finished = (next_time >= self._sequence_length)
         all_finished = torch.all(finished).item()
@@ -217,22 +220,22 @@ class EmbeddingHelper(Helper[IDType], ABC):
 
     Uses output logits for sampling, and passes the result through an embedding
     layer to get the next input.
+
+    Args:
+        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+            representing the start tokens for each sequence in batch.
+        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+            token that marks end of decoding.
+
+    Raises:
+        ValueError: if :attr:`start_tokens` is not a 1D tensor or
+            :attr:`end_token` is not a scalar.
     """
 
     _start_inputs: torch.Tensor
 
     def __init__(self, start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor]):
-        r"""Initializer.
-
-        Args:
-            start_tokens: 1D LongTensor shaped `[batch_size]`, the start tokens.
-            end_token: `int32` scalar, the token that marks end of decoding.
-
-        Raises:
-            ValueError: if `start_tokens` is not a 1D tensor or `end_token` is
-                not a scalar.
-        """
         if start_tokens.dim() != 1:
             raise ValueError("start_tokens must be a vector")
         if not isinstance(end_token, int) and end_token.dim() != 0:
@@ -263,30 +266,30 @@ class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
     Based on :class:`~texar.modules.EmbeddingHelper`, this class returns samples
     that are vocabulary indices, and use the corresponding embeddings as the
     next input. This class also supports callables as embeddings.
+
+    Args:
+        embedding: A callable or the ``params`` argument for
+            :torch_nn:`functional.embedding`.
+            If a callable, it can take a vector tensor of ``ids`` (argmax
+            ids), or take two arguments (``ids``, ``times``), where ``ids``
+            is a vector of argmax ids, and ``times`` is a vector of current
+            time steps (i.e., position ids). The latter case can be used
+            when attr:`embedding` is a combination of word embedding and
+            position embedding.
+            The returned tensor will be passed to the decoder input.
+        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+            representing the start tokens for each sequence in batch.
+        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+            token that marks end of decoding.
+
+    Raises:
+        ValueError: if :attr:`start_tokens` is not a 1D tensor or
+            :attr:`end_token` is not a scalar.
     """
 
     def __init__(self, embedding: Union[Embedding, EmbeddingWithPos],
                  start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor]):
-        r"""Initializer
-
-        Args:
-            embedding: A callable or the `params` argument for
-                `embedding_lookup`.
-                If a callable, it can take a vector tensor of `ids` (argmax
-                ids), or take two arguments (`ids`, `times`), where `ids` is a
-                vector of argmax ids, and `times` is a vector of current time
-                steps (i.e., position ids). The latter case can be used when
-                attr:`embedding` is a combination of word embedding and position
-                embedding.
-                The returned tensor will be passed to the decoder input.
-            start_tokens: 1D LongTensor shaped `[batch_size]`, the start tokens.
-            end_token: `int32` scalar, the token that marks end of decoding.
-
-        Raises:
-            ValueError: if `start_tokens` is not a 1D tensor or `end_token` is
-                not a scalar.
-        """
         super().__init__(start_tokens, end_token)
 
         self._embedding_fn = _convert_embedding(embedding)
@@ -310,7 +313,6 @@ class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
 
     def next_inputs(self, time: int, outputs: torch.Tensor,
                     sample_ids: torch.LongTensor) -> NextInputTuple:
-        r"""next_inputs_fn for GreedyEmbeddingHelper."""
         del outputs  # unused by next_inputs_fn
         finished = (sample_ids == self._end_token)
         all_finished = torch.all(finished).item()
@@ -332,28 +334,37 @@ class GreedyEmbeddingHelper(SingleEmbeddingHelper):
     result through an embedding layer to get the next input.
 
     Note that for greedy decoding, Texar's decoders provide a simpler
-    interface by specifying `decoding_strategy='infer_greedy'` when calling a
+    interface by specifying ``decoding_strategy='infer_greedy'`` when calling a
     decoder (see, e.g.,,
-    :meth:`RNN decoder <texar.modules.RNNDecoderBase._build>`). In this case,
-    use of GreedyEmbeddingHelper is not necessary.
+    :meth:`RNN decoder <texar.modules.RNNDecoderBase.forward>`). In this case,
+    use of :class:`GreedyEmbeddingHelper` is not necessary.
+
+    Please refer to the documentation for the TensorFlow counterpart
+    `tf.contrib.seq2seq.GreedyEmbeddingHelper <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/GreedyEmbeddingHelper>`_.
+
+    Args:
+        embedding: A callable or the ``params`` argument for
+            :torch_nn:`functional.embedding`.
+            If a callable, it can take a vector tensor of ``ids`` (argmax
+            ids), or take two arguments (``ids``, ``times``), where ``ids``
+            is a vector of argmax ids, and ``times`` is a vector of current
+            time steps (i.e., position ids). The latter case can be used
+            when attr:`embedding` is a combination of word embedding and
+            position embedding.
+            The returned tensor will be passed to the decoder input.
+        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+            representing the start tokens for each sequence in batch.
+        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+            token that marks end of decoding.
+
+    Raises:
+        ValueError: if :attr:`start_tokens` is not a 1D tensor or
+            :attr:`end_token` is not a scalar.
     """
 
     def __init__(self, embedding: Union[Embedding, EmbeddingWithPos],
                  start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor]):
-        r"""Initializer.
-
-        Args:
-            embedding: A callable that takes a vector tensor of `ids` (argmax
-                ids), or the `params` argument for `embedding_lookup`. The
-                returned tensor will be passed to the decoder input.
-            start_tokens: 1D LongTensor shaped `[batch_size]`, the start tokens.
-            end_token: `int32` scalar, the token that marks end of decoding.
-
-        Raises:
-            ValueError: if `start_tokens` is not a 1D tensor or `end_token` is
-                not a scalar.
-        """
         super().__init__(embedding, start_tokens, end_token)
 
     def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
@@ -372,35 +383,43 @@ class SampleEmbeddingHelper(SingleEmbeddingHelper):
 
     Uses sampling (from a distribution) instead of argmax and passes the
     result through an embedding layer to get the next input.
+
+    Please refer to the documentation for the TensorFlow counterpart
+    `tf.contrib.seq2seq.SampleEmbeddingHelper <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/SampleEmbeddingHelper>`_.
+
+    Args:
+        embedding: A callable or the ``params`` argument for
+            :torch_nn:`functional.embedding`.
+            If a callable, it can take a vector tensor of ``ids`` (argmax
+            ids), or take two arguments (``ids``, ``times``), where ``ids``
+            is a vector of argmax ids, and ``times`` is a vector of current
+            time steps (i.e., position ids). The latter case can be used
+            when attr:`embedding` is a combination of word embedding and
+            position embedding.
+            The returned tensor will be passed to the decoder input.
+        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+            representing the start tokens for each sequence in batch.
+        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+            token that marks end of decoding.
+        softmax_temperature (float, optional): Value to divide the logits by
+            before computing the softmax. Larger values (above 1.0) result
+            in more random samples, while smaller values push the sampling
+            distribution towards the argmax. Must be strictly greater than
+            0. Defaults to 1.0.
+
+    Raises:
+        ValueError: if :attr:`start_tokens` is not a 1D tensor or
+            :attr:`end_token` is not a scalar.
     """
 
     def __init__(self, embedding: Union[Embedding, EmbeddingWithPos],
                  start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor],
                  softmax_temperature: Optional[float] = None):
-        r"""Initializer.
-
-        Args:
-            embedding: A callable that takes a vector tensor of `ids` (argmax
-                ids), or the `params` argument for `embedding_lookup`. The
-                returned tensor will be passed to the decoder input.
-            start_tokens: 1D LongTensor shaped `[batch_size]`, the start tokens.
-            end_token: `int32` scalar, the token that marks end of decoding.
-            softmax_temperature: (Optional) `float32` scalar, value to divide
-                the logits by before computing the softmax. Larger values (above
-                1.0) result in more random samples, while smaller values push
-                the sampling distribution towards the argmax. Must be strictly
-                greater than 0.  Defaults to 1.0.
-
-        Raises:
-            ValueError: if `start_tokens` is not a 1D tensor or `end_token` is
-                not a scalar.
-        """
         super().__init__(embedding, start_tokens, end_token)
         self._softmax_temperature = softmax_temperature
 
     def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
-        r"""sample for SampleEmbeddingHelper."""
         del time  # unused by sample_fn
         # Outputs are logits, we sample instead of argmax (greedy).
         if not torch.is_tensor(outputs):
@@ -435,37 +454,40 @@ def _top_k_logits(logits: torch.Tensor, k: int) -> torch.Tensor:
 class TopKSampleEmbeddingHelper(SingleEmbeddingHelper):
     r"""A helper for use during inference.
 
-    Samples from `top_k` most likely candidates from a vocab distribution,
+    Samples from ``top_k`` most likely candidates from a vocab distribution,
     and passes the result through an embedding layer to get the next input.
+
+    Args:
+        embedding: A callable or the ``params`` argument for
+            :torch_nn:`functional.embedding`.
+            If a callable, it can take a vector tensor of ``ids`` (argmax
+            ids), or take two arguments (``ids``, ``times``), where ``ids``
+            is a vector of argmax ids, and ``times`` is a vector of current
+            time steps (i.e., position ids). The latter case can be used
+            when attr:`embedding` is a combination of word embedding and
+            position embedding.
+            The returned tensor will be passed to the decoder input.
+        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+            representing the start tokens for each sequence in batch.
+        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+            token that marks end of decoding.
+        top_k (int, optional): Number of top candidates to sample from. Must
+            be `>=0`. If set to 0, samples from all candidates (i.e.,
+            regular random sample decoding). Defaults to 10.
+        softmax_temperature (float, optional): Value to divide the logits by
+            before computing the softmax. Larger values (above 1.0) result
+            in more random samples, while smaller values push the sampling
+            distribution towards the argmax. Must be strictly greater than
+            0. Defaults to 1.0.
+
+    Raises:
+        ValueError: if :attr:`start_tokens` is not a 1D tensor or
+            :attr:`end_token` is not a scalar.
     """
 
     def __init__(self, embedding: Embedding, start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor], top_k: int = 10,
                  softmax_temperature: Optional[float] = None):
-        r"""Initializer.
-
-        Args:
-            embedding: A callable that takes a vector tensor of `ids`
-                (argmax ids), or the `params` argument for
-                :tf_main:`tf.nn.embedding_lookup <nn/embedding_lookup>`, or an
-                instance of subclass of :class:`texar.modules.EmbedderBase`.
-                The returned tensor will be passed to the decoder input.
-            start_tokens: `int32` vector shaped `[batch_size]`, the start
-                tokens.
-            end_token: `int32` scalar, the token that marks end of decoding.
-            top_k: `int32` scalar tensor. Number of top candidates to sample
-                from. Must be `>=0`. If set to 0, samples from all candidates
-                (i.e., regular random sample decoding).
-            softmax_temperature (optional): `float32` scalar, value to
-                divide the logits by before computing the softmax. Larger values
-                (above 1.0) result in more random samples, while smaller values
-                push the sampling distribution towards the argmax. Must be
-                strictly greater than 0. Defaults to 1.0.
-
-        Raises:
-            ValueError: if `start_tokens` is not a 1D tensor or `end_token` is
-                not a scalar.
-        """
         super().__init__(embedding, start_tokens, end_token)
         # if top_k > self._embedding.num_embeddings:
         #     raise ValueError("'top_k' should not be greater than "
@@ -474,7 +496,6 @@ class TopKSampleEmbeddingHelper(SingleEmbeddingHelper):
         self._softmax_temperature = softmax_temperature
 
     def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
-        r"""sample for SampleEmbeddingHelper."""
         del time  # unused by sample_fn
         # Outputs are logits, we sample from the top-k candidates
         if not torch.is_tensor(outputs):
@@ -501,30 +522,37 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
     get the next input (i.e., a mixed word embedding).
 
     A subclass of :class:`~texar.modules.Helper`. Used as a helper to
-    :class:`~texar.modules.RNNDecoderBase` :meth:`_build` in inference mode.
+    :class:`~texar.modules.RNNDecoderBase` in inference mode.
+
+    Args:
+        embedding: A callable or the ``params`` argument for
+            :torch_nn:`functional.embedding`.
+            If a callable, it can take a vector tensor of ``ids`` (argmax
+            ids), or take two arguments (``ids``, ``times``), where ``ids``
+            is a vector of argmax ids, and ``times`` is a vector of current
+            time steps (i.e., position ids). The latter case can be used
+            when attr:`embedding` is a combination of word embedding and
+            position embedding.
+            The returned tensor will be passed to the decoder input.
+        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+            representing the start tokens for each sequence in batch.
+        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+            token that marks end of decoding.
+        tau: A float scalar tensor, the softmax temperature.
+        stop_gradient (bool): Whether to stop the gradient backpropagation
+            when feeding softmax vector to the next step.
+        use_finish (bool): Whether to stop decoding once :attr:`end_token`
+            is generated. If ``False``, decoding will continue until
+            :attr:`max_decoding_length` of the decoder is reached.
+
+    Raises:
+        ValueError: if :attr:`start_tokens` is not a 1D tensor or
+            :attr:`end_token` is not a scalar.
     """
 
     def __init__(self, embedding: torch.Tensor, start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor], tau: float,
                  stop_gradient: bool = False, use_finish: bool = True):
-        r"""Initializer
-
-        Args:
-            embedding: An embedding argument (:attr:`params`) for
-                :tf_main:`tf.nn.embedding_lookup <nn/embedding_lookup>`, or an
-                instance of subclass of :class:`texar.modules.EmbedderBase`.
-                Note that other callables are not acceptable here.
-            start_tokens: An int tensor shaped `[batch_size]`. The
-                start tokens.
-            end_token: An int scalar tensor. The token that marks end of
-                decoding.
-            tau: A float scalar tensor, the softmax temperature.
-            stop_gradient (bool): Whether to stop the gradient backpropagation
-                when feeding softmax vector to the next step.
-            use_finish (bool): Whether to stop decoding once `end_token` is
-                generated. If `False`, decoding will continue until
-                `max_decoding_length` of the decoder is reached.
-        """
         super().__init__(start_tokens, end_token)
 
         self._embedding = embedding
@@ -541,8 +569,8 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
         return torch.Size([self._num_embeddings])
 
     def sample(self, time: int, outputs: torch.Tensor) -> torch.Tensor:
-        r"""Returns `sample_id` which is softmax distributions over vocabulary
-        with temperature `tau`. Shape = `[batch_size, vocab_size]`
+        r"""Returns ``sample_id`` which is softmax distributions over vocabulary
+        with temperature :attr:`tau`. Shape = ``[batch_size, vocab_size]``.
         """
         del time
         sample_ids = torch.softmax(outputs / self._tau, dim=-1)
@@ -550,7 +578,6 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
 
     def next_inputs(self, time: int, outputs: torch.Tensor,
                     sample_ids: torch.LongTensor) -> NextInputTuple:
-        r"""next_inputs_fn for SoftmaxEmbeddingHelper."""
         del time, outputs  # unused by next_inputs_fn
         if self._use_finish:
             hard_ids = torch.argmax(sample_ids, dim=-1)
@@ -565,46 +592,53 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
 
 
 class GumbelSoftmaxEmbeddingHelper(SoftmaxEmbeddingHelper):
-    r"""A helper that feeds gumbel softmax sample to the next step.
+    r"""A helper that feeds Gumbel softmax sample to the next step.
 
-    Uses the gumbel softmax vector to pass through word embeddings to
+    Uses the Gumbel softmax vector to pass through word embeddings to
     get the next input (i.e., a mixed word embedding).
 
     A subclass of :class:`~texar.modules.Helper`. Used as a helper to
-    :class:`~texar.modules.RNNDecoderBase` :meth:`_build` in inference mode.
+    :class:`~texar.modules.RNNDecoderBase` in inference mode.
 
     Same as :class:`~texar.modules.SoftmaxEmbeddingHelper` except that here
     Gumbel softmax (instead of softmax) is used.
+
+    Args:
+        embedding: A callable or the ``params`` argument for
+            :torch_nn:`functional.embedding`.
+            If a callable, it can take a vector tensor of ``ids`` (argmax
+            ids), or take two arguments (``ids``, ``times``), where ``ids``
+            is a vector of argmax ids, and ``times`` is a vector of current
+            time steps (i.e., position ids). The latter case can be used
+            when attr:`embedding` is a combination of word embedding and
+            position embedding.
+            The returned tensor will be passed to the decoder input.
+        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+            representing the start tokens for each sequence in batch.
+        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+            token that marks end of decoding.
+        tau: A float scalar tensor, the softmax temperature.
+        straight_through (bool): Whether to use straight through gradient
+            between time steps. If ``True``, a single token with highest
+            probability (i.e., greedy sample) is fed to the next step and
+            gradient is computed using straight through. If ``False``
+            (default), the soft Gumbel-softmax distribution is fed to the
+            next step.
+        stop_gradient (bool): Whether to stop the gradient backpropagation
+            when feeding softmax vector to the next step.
+        use_finish (bool): Whether to stop decoding once :attr:`end_token`
+            is generated. If ``False``, decoding will continue until
+            :attr:`max_decoding_length` of the decoder is reached.
+
+    Raises:
+        ValueError: if :attr:`start_tokens` is not a 1D tensor or
+            :attr:`end_token` is not a scalar.
     """
 
     def __init__(self, embedding: torch.Tensor, start_tokens: torch.LongTensor,
                  end_token: Union[int, torch.LongTensor], tau: float,
                  straight_through: bool = False,
                  stop_gradient: bool = False, use_finish: bool = True):
-        r"""Initializer
-
-        Args:
-            embedding: An embedding argument (:attr:`params`) for
-                :tf_main:`tf.nn.embedding_lookup <nn/embedding_lookup>`, or an
-                instance of subclass of :class:`texar.modules.EmbedderBase`.
-                Note that other callables are not acceptable here.
-            start_tokens: An int tensor shaped `[batch_size]`. The
-                start tokens.
-            end_token: An int scalar tensor. The token that marks end of
-                decoding.
-            tau: A float scalar tensor, the softmax temperature.
-            straight_through (bool): Whether to use straight through gradient
-                between time steps. If `True`, a single token with highest
-                probability (i.e., greedy sample) is fed to the next step and
-                gradient is computed using straight through. If `False`
-                (default), the soft gumbel-softmax distribution is fed to the
-                next step.
-            stop_gradient (bool): Whether to stop the gradient backpropagation
-                when feeding softmax vector to the next step.
-            use_finish (bool): Whether to stop decoding once `end_token` is
-                generated. If `False`, decoding will continue until
-                `max_decoding_length` of the decoder is reached.
-        """
         super().__init__(embedding, start_tokens, end_token, tau,
                          stop_gradient, use_finish)
         self._straight_through = straight_through
@@ -612,10 +646,11 @@ class GumbelSoftmaxEmbeddingHelper(SoftmaxEmbeddingHelper):
         self._gumbel = Gumbel(loc=torch.tensor(0.0), scale=torch.tensor(1.0))
 
     def sample(self, time: int, outputs: torch.Tensor) -> torch.Tensor:
-        r"""Returns `sample_id` of shape `[batch_size, vocab_size]`. If
-        `straight_through` is False, this is gumbel softmax distributions over
-        vocabulary with temperature `tau`. If `straight_through` is True,
-        this is one-hot vectors of the greedy samples.
+        r"""Returns ``sample_id`` of shape ``[batch_size, vocab_size]``. If
+        :attr:`straight_through` is ``False``, this contains the Gumbel softmax
+        distributions over vocabulary with temperature :attr:`tau`. If
+        :attr:`straight_through` is ``True``, this contains one-hot vectors of
+        the greedy samples.
         """
         gumbel_samples = self._gumbel.sample(outputs.size()).to(
             device=outputs.device, dtype=outputs.dtype)
@@ -696,17 +731,22 @@ def get_helper(helper_type: Union[Type[T], T, str],
     r"""Creates a Helper instance.
 
     Args:
-        helper_type: A :tf_main:`Helper <contrib/seq2seq/Helper>` class, its
+        helper_type: A :class:`~texar.modules.Helper` class, its
             name or module path, or a class instance. If a class instance
             is given, it is returned directly.
-        embedding (optional): A callable that takes a vector tensor of
-            indexes (e.g., an instance of subclass of
-            :class:`~texar.modules.EmbedderBase`), or the `params` argument
-            for `embedding_lookup` (e.g., the embedding Tensor).
-        start_tokens (optional): A int Tensor of shape `[batch_size]`,
-            the start tokens.
-        end_token (optional): A int 0D Tensor, the token that marks end
-            of decoding.
+        embedding: A callable or the ``params`` argument for
+            :torch_nn:`functional.embedding`.
+            If a callable, it can take a vector tensor of ``ids`` (argmax
+            ids), or take two arguments (``ids``, ``times``), where ``ids``
+            is a vector of argmax ids, and ``times`` is a vector of current
+            time steps (i.e., position ids). The latter case can be used
+            when attr:`embedding` is a combination of word embedding and
+            position embedding.
+            The returned tensor will be passed to the decoder input.
+        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+            representing the start tokens for each sequence in batch.
+        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+            token that marks end of decoding.
         **kwargs: Additional keyword arguments for constructing the helper.
 
     Returns:

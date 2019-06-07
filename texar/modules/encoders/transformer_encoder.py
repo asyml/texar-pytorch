@@ -47,6 +47,7 @@ def default_transformer_poswise_net_hparams(input_dim: int,
     This is a 2-layer dense network with dropout in-between.
 
     .. code-block:: python
+
         {
             "layers": [
                 {
@@ -82,7 +83,8 @@ def default_transformer_poswise_net_hparams(input_dim: int,
         }
 
     Args:
-        output_dim (int): The size of output dense layer.
+        input_dim (int): The size of dense layer input.
+        output_dim (int): The size of dense layer output.
     """
     return {
         "layers": [
@@ -214,6 +216,7 @@ class TransformerEncoder(EncoderBase):
         r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
+
             {
                 "num_blocks": 6,
                 "dim": 512,
@@ -248,13 +251,15 @@ class TransformerEncoder(EncoderBase):
             If `True`, apply the Transformer Encoder architecture used in BERT
             `(Devlin et al.)` and the default setting of Tensorflow.
             The differences lie in:
-                1. The attention bias for padding tokens:
-                   The standard arch uses `-1e8` for nagative attention mask.
-                   BERT uses `-1e4` instead.
-                2. The residual connections between internal tensors:
-                   In BERT, a residual layer connects the tensors *after*
-                   layer normalization. In the standard arch, the tensors are
-                   connected *before* layer normalization.
+
+            1. The standard arch restricts the word embedding of PAD token to
+               all zero. The BERT arch does not.
+            2. The attention bias for padding tokens: Standard architectures use
+               ``-1e8`` for negative attention mask. BERT uses ``-1e4`` instead.
+            3. The residual connections between internal tensors:
+               In BERT, a residual layer connects the tensors *after* layer
+               normalization. In standard architectures, the tensors are
+               connected *before* layer normalization.
 
         "embedding_dropout" : float
             Dropout rate of the input embedding.

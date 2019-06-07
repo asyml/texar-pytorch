@@ -165,8 +165,8 @@ def default_regularizer_hparams():
             }
         }
 
-    The default value corresponds to :tf_main:`L1L2 <keras/regularizers/L1L2>`
-    and, with `(l1=0, l2=0)`, disables regularization.
+    The default value corresponds to :class:`~texar.core.regularizers.L1L2`
+    and, with ``(l1=0, l2=0)``, disables regularization.
     """
     return {
         "type": "L1L2",
@@ -194,8 +194,6 @@ def get_rnn_cell(input_size, hparams=None):
     Raises:
         ValueError: If hparams["num_layers"]>1 and hparams["type"] is a class
             instance.
-        ValueError: The cell is not an
-            :tf_main:`RNNCell <contrib/rnn/RNNCell>` instance.
     """
     if hparams is None or isinstance(hparams, dict):
         hparams = HParams(hparams, default_rnn_cell_hparams())
@@ -462,7 +460,7 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
                   the name or module path to the activation function.
                 - Arguments named "\*_regularizer" and "\*_initializer" can be a
                   class instance, or a `dict` of hyperparameters of respective
-                  regularizers and initializers. See
+                  regulari«zers and initializers. See
                 - Arguments named "\*_constraint" can be a callable, or a `str`
                   of the name or full path to the constraint function.
 
@@ -471,9 +469,9 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
         directly.
 
     Raises:
-        ValueError: If :attr:`hparams` is `None`.
+        ValueError: If :attr:`hparams` is ``None``.
         ValueError: If the resulting layer is not an instance of
-            :torch_docs:`tf.nn.Module <nn.html>`.
+            :torch_nn:`Module`.
     """
     if hparams is None:
         raise ValueError("`hparams` must not be `None`.")

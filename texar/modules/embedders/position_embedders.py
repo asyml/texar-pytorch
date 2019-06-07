@@ -220,7 +220,6 @@ class SinusoidsPositionEmbedder(EmbedderBase):
             sequence length.
 
     .. document private functions
-    .. automethod:: _build
     """
 
     def __init__(self, position_size: int, hparams=None):

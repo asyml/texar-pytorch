@@ -37,8 +37,8 @@ def get_numpy_dtype(dtype: Union[str, type]):
     r"""Returns equivalent NumPy dtype.
 
     Args:
-        dtype: A str, python numeric or string type, numpy data type, or
-            tf dtype.
+        dtype: A str, Python numeric or string type, NumPy data type, or
+            PyTorch dtype.
 
     Returns:
         The corresponding NumPy dtype.

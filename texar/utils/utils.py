@@ -150,14 +150,14 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
     Examples:
 
     ```python
-    tf.sequence_mask([1, 3, 2], 5)  # [[True, False, False, False, False],
-                                    #  [True, True, True, False, False],
-                                    #  [True, True, False, False, False]]
+    sequence_mask([1, 3, 2], 5)  # [[True, False, False, False, False],
+                                 #  [True,  True,  True, False, False],
+                                 #  [True,  True, False, False, False]]
 
-    tf.sequence_mask([[1, 3],[2,0]])  # [[[True, False, False],
-                                      #   [True, True, True]],
-                                      #  [[True, True, False],
-                                      #   [False, False, False]]]
+    sequence_mask([[1, 3],[2,0]])  # [[[ True, False, False],
+                                   #   [ True,  True,  True]],
+                                   #  [[ True,  True, False],
+                                   #   [False, False, False]]]
     ```
 
     Args:
@@ -168,7 +168,7 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
             returns :torch:`ByteTensor`.
         device: the desired device of returned tensor. Default: if None, uses
             the current device for the default tensor type (see
-            :meth:`torch.set_default_tensor_type()`). `device` will be the CPU
+            :meth:`torch.set_default_tensor_type()`). :attr:`device` will be CPU
             for CPU tensor types and the current CUDA device for CUDA tensor
             types.
     Returns:
