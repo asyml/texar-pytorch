@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of Texar library decoders.
+Modules of Texar library module.
 """
 
-from texar.modules.decoders.decoder_helpers import *
-from texar.modules.decoders.rnn_decoder_base import *
-from texar.modules.decoders.rnn_decoders import *
-from texar.modules.decoders.transformer_decoders import *
+# pylint: disable=wildcard-import
+from texar.models.transformer import *
+from texar.models.bert import *

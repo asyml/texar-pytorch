@@ -24,3 +24,5 @@ from texar import losses
 from texar import evals
 from texar.hyperparams import *
 from texar.module_base import *
+from texar import modules
+from texar import evals

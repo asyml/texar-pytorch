@@ -24,6 +24,7 @@ __all__ = [
     "WordEmbedder"
 ]
 
+
 class WordEmbedder(EmbedderBase):
     """Simple word embedder that maps indexes into embeddings. The indexes
     can be soft (e.g., distributions over vocabulary).

@@ -139,7 +139,8 @@ def get_embedding(num_embeds=None,
     if hparams is None or isinstance(hparams, dict):
         hparams = HParams(hparams, default_embedding_hparams())
     if init_value is None:
-        initializer = layers.get_initializer(hparams["initializer"])
+        initializer = layers.get_initializer(
+            getattr(hparams, "initializer", None))
         # TODO Shibiao: add regularizer
         dim = hparams["dim"]
         if not isinstance(hparams["dim"], (list, tuple)):

@@ -16,7 +16,7 @@ Various position embedders.
 """
 
 import math
-from typing import Optional
+from typing import Optional, Dict
 
 import torch
 import torch.nn.functional as F
@@ -225,7 +225,8 @@ class SinusoidsPositionEmbedder(EmbedderBase):
     .. automethod:: _build
     """
 
-    def __init__(self, position_size: int, hparams: Optional[HParams] = None):
+    def __init__(self, position_size: int, hparams: Optional[HParams,
+                                                             Dict] = None):
         super().__init__(hparams=hparams)
         self._num_embeds = position_size
         self._dim = self._hparams.dim
@@ -247,7 +248,8 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         if dim % 2 == 1:
             signal = torch.cat(
                 [signal, signal.new_zeros(signal.size(0), 1)], dim=1)
-        self.signal = signal.reshape(position_size, dim)
+        signal = signal.reshape(position_size, dim)
+        self.register_buffer('signal', signal)
 
     @staticmethod
     def default_hparams():
@@ -306,8 +308,12 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         else:
             inputs = positions
 
-        outputs = F.embedding(inputs, self.signal, **kwargs)
+        if inputs.is_cuda:
+            signal = self.signal.cuda()
+        else:
+            signal = self.signal
 
+        outputs = F.embedding(inputs, signal, **kwargs)
         if sequence_length is not None:
             outputs = mask_sequences(outputs, sequence_length)
 

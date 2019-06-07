@@ -59,10 +59,9 @@ def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
         output_layer = nn.Linear(output_size, vocab_size, bias)
     elif torch.is_tensor(layer):
         vocab_size = layer.size(1)
-        output_layer = nn.Linear(layer.size(0), vocab_size, bias)
-        layer = layer.t().contiguous()
+        output_layer = nn.Linear(layer.size(1), layer.size(0), bias)
         if not isinstance(layer, nn.Parameter):
-            layer = nn.Parameter(layer, requires_grad=False)
+            layer = nn.Parameter(layer, requires_grad=True)
         output_layer.weight = layer
     elif layer is identity:
         output_layer = identity  # type: ignore
@@ -283,7 +282,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                     raise ValueError(
                         f"When using '{decoding_strategy}' decoding strategy, "
                         f"'embedding', 'start_tokens', and 'end_token' must not"
-                        f"be `None`.")
+                        f" be `None`.")
                 if decoding_strategy == 'infer_greedy':
                     helper = decoder_helpers.GreedyEmbeddingHelper(
                         embedding, start_tokens, end_token)
