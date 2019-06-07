@@ -28,6 +28,7 @@ def transform_gpt2_to_texar_config(input_json_path):
     configs["decoder"] = {
         "dim": hidden_dim,
         "num_blocks": config_gpt["n_layer"],
+        "use_gpt_config": True,
         "embedding_dropout": 0,
         "residual_dropout": 0,
         "multihead_attention": {
@@ -55,7 +56,7 @@ def transform_gpt2_to_texar_config(input_json_path):
                     }
                 },
                 {
-                    "type": "GELU",
+                    "type": "GPTGELU",
                     "kwargs": {}
                 },
                 {
@@ -73,7 +74,7 @@ def transform_gpt2_to_texar_config(input_json_path):
     return HParams(configs, default_hparams=None)
 
 
-def init_gpt2_checkpoint(word_embedder, pos_embedder, decoder, init_checkpoint):
+def init_gpt2_checkpoint(model, init_checkpoint):
     """
     Initializes GPT-2 model parameters from a checkpoint
     Args:
@@ -121,14 +122,13 @@ def init_gpt2_checkpoint(word_embedder, pos_embedder, decoder, init_checkpoint):
         array = tf.train.load_variable(tf_path, name)
         names.append(name)
         arrays.append(array.squeeze())
-    tensor_names = []
 
-    for name, _ in word_embedder.named_parameters():
+    tensor_names = []
+    for name, _ in model.word_embedder.named_parameters():
         tensor_names.append(name)
-    for name, _ in pos_embedder.named_parameters():
+    for name, _ in model.pos_embedder.named_parameters():
         tensor_names.append(name)
-    for name, _ in decoder.named_parameters():
-        print(name)
+    for name, _ in model.decoder.named_parameters():
         tensor_names.append(name)
 
     idx = 0
@@ -143,20 +143,20 @@ def init_gpt2_checkpoint(word_embedder, pos_embedder, decoder, init_checkpoint):
             v_name = global_tensor_map[name]
 
             if name == "model/wte":
-                pointer = word_embedder._embedding
+                pointer = model.word_embedder._embedding
                 assert pointer.shape == array.shape
                 pointer.data = torch.from_numpy(array)
 
                 output_pointer = name_to_variable(
-                    decoder, "_output_layer.weight")
+                    model.decoder, "_output_layer.weight")
                 assert output_pointer.shape == array.shape
                 output_pointer.data = torch.from_numpy(array)
             elif name == "model/wpe":
-                pointer = pos_embedder._embedding
+                pointer = model.pos_embedder._embedding
                 assert pointer.shape == array.shape
                 pointer.data = torch.from_numpy(array)
             else:
-                pointer = name_to_variable(decoder, v_name)
+                pointer = name_to_variable(model.decoder, v_name)
                 assert pointer.shape == array.shape
                 pointer.data = torch.from_numpy(array)
 
@@ -166,12 +166,12 @@ def init_gpt2_checkpoint(word_embedder, pos_embedder, decoder, init_checkpoint):
             name = "/".join(name_tmp[2:])
             if name in layer_tensor_map:
                 v_name = layer_tensor_map[name].format(layer_no)
-                pointer = name_to_variable(decoder, v_name)
+                pointer = name_to_variable(model.decoder, v_name)
                 assert pointer.shape == array.shape
                 pointer.data = torch.from_numpy(array)
             elif name in layer_transpose_map:
                 v_name = layer_transpose_map[name].format(layer_no)
-                pointer = name_to_variable(decoder, v_name)
+                pointer = name_to_variable(model.decoder, v_name)
                 array_t = np.transpose(array)
                 assert pointer.shape == array_t.shape
                 pointer.data = torch.from_numpy(array_t)
@@ -183,11 +183,11 @@ def init_gpt2_checkpoint(word_embedder, pos_embedder, decoder, init_checkpoint):
                 V_w = np.transpose(array[:, 2 * index_d:])
 
                 q_weight = name_to_variable(
-                    decoder, "self_attns.{}.Q_dense.weight".format(layer_no))
+                    model.decoder, f"self_attns.{layer_no}.Q_dense.weight")
                 k_weight = name_to_variable(
-                    decoder, "self_attns.{}.K_dense.weight".format(layer_no))
+                    model.decoder, f"self_attns.{layer_no}.K_dense.weight")
                 v_weight = name_to_variable(
-                    decoder, "self_attns.{}.V_dense.weight".format(layer_no))
+                    model.decoder, f"self_attns.{layer_no}.V_dense.weight")
 
                 assert q_weight.shape == Q_w.shape
                 assert k_weight.shape == K_w.shape
@@ -203,11 +203,11 @@ def init_gpt2_checkpoint(word_embedder, pos_embedder, decoder, init_checkpoint):
                 K_b = array[d // 3: 2 * d // 3]
                 V_b = array[2 * d // 3:]
                 q_bias = name_to_variable(
-                    decoder, "self_attns.{}.Q_dense.bias".format(layer_no))
+                    model.decoder, f"self_attns.{layer_no}.Q_dense.bias")
                 k_bias = name_to_variable(
-                    decoder, "self_attns.{}.K_dense.bias".format(layer_no))
+                    model.decoder, f"self_attns.{layer_no}.K_dense.bias")
                 v_bias = name_to_variable(
-                    decoder, "self_attns.{}.V_dense.bias".format(layer_no))
+                    model.decoder, f"self_attns.{layer_no}.V_dense.bias")
 
                 assert q_bias.shape == Q_b.shape
                 assert k_bias.shape == K_b.shape

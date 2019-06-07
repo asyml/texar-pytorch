@@ -38,7 +38,7 @@ from texar.utils.types import MaybeList
 
 __all__ = [
     "sentence_bleu",
-    "corpus_bleu"
+    "corpus_bleu",
 ]
 
 

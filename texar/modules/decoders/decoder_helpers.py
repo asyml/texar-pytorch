@@ -19,8 +19,8 @@ Various helper classes and utilities for RNN decoders.
 # pylint: disable=missing-docstring  # does not support generic classes
 
 from abc import ABC
-from typing import Callable, Generic, Optional, Tuple, Type, TypeVar, \
-    Union, overload
+from typing import (
+    Callable, Generic, List, Optional, Tuple, Type, TypeVar, Union, overload)
 
 import torch
 import torch.nn.functional as F
@@ -50,7 +50,8 @@ NextInputTuple = Tuple[torch.ByteTensor, torch.Tensor]
 
 Embedding = Union[
     torch.Tensor,  # embedding weights
-    Callable[[torch.LongTensor], torch.Tensor],  # indices -> embeddings
+    Callable[[torch.LongTensor], torch.Tensor],  # indices -> embeddings,
+    Callable[[List[torch.LongTensor]], torch.Tensor],
 ]
 # indices, position -> embeddings
 EmbeddingWithPos = Callable[[torch.LongTensor, torch.LongTensor], torch.Tensor]
@@ -296,7 +297,8 @@ class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
                 self._start_tokens)
         elif self._embedding_args_cnt == 2:
             # Position index is 0 in the beginning
-            times = self._start_tokens.new_zeros(self._batch_size)
+            times = self._start_tokens.new_zeros(self._batch_size,
+                    dtype=self._start_tokens.dtype)
             self._start_inputs = self._embedding_fn(  # type: ignore
                 self._start_tokens, times)
         else:

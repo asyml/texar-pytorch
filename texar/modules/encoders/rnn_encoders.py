@@ -15,21 +15,20 @@
 Various RNN encoders.
 """
 
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import torch
 import torch.nn as nn
 from torch.nn import Module, Sequential
 
-from typing import Optional, Tuple, Union, Dict, Any, List
-
+from texar.core import RNNCellBase, layers
 from texar.core.cell_wrappers import LSTMCell
-from texar import HParams
+from texar.hyperparams import HParams
 from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.networks.conv_networks import _to_list
-from texar.core import layers, RNNCellBase
+from texar.utils.rnn import bidirectional_dynamic_rnn, dynamic_rnn
 from texar.utils.shapes import mask_sequences
-from texar.utils.rnn import dynamic_rnn, bidirectional_dynamic_rnn
 from texar.utils.types import MaybeTuple
-
 
 # pylint: disable=too-many-arguments, too-many-locals, invalid-name, no-member
 
@@ -37,7 +36,7 @@ __all__ = [
     "_forward_output_layers",
     "RNNEncoderBase",
     "UnidirectionalRNNEncoder",
-    "BidirectionalRNNEncoder"
+    "BidirectionalRNNEncoder",
 ]
 
 State = torch.Tensor

@@ -15,27 +15,26 @@
 Transformer encoders with multihead self attention.
 """
 
-from typing import Optional, Dict
+from typing import Dict
 
 import torch
-from texar import HParams
-from texar import utils
+from torch import nn
+
 from texar.core import layers
 from texar.modules.encoders.encoder_base import EncoderBase
-from texar.modules.encoders.multihead_attention import \
-    MultiheadAttentionEncoder
+from texar.modules.encoders.multihead_attention import (
+    MultiheadAttentionEncoder)
 from texar.modules.networks.networks import FeedForwardNetwork
 from texar.utils import transformer_attentions as attn
 from texar.utils.shapes import shape_list
 from texar.utils.utils import sequence_mask
-from torch import nn
 
 # pylint: disable=too-many-locals, invalid-name
 # pylint: disable=arguments-differ, too-many-branches, too-many-statements
 
 __all__ = [
     "default_transformer_poswise_net_hparams",
-    "TransformerEncoder"
+    "TransformerEncoder",
 ]
 
 
@@ -146,21 +145,31 @@ class TransformerEncoder(EncoderBase):
     .. automethod:: _build
     """
 
-    def __init__(self, hparams: Optional[HParams] = None):
+    def __init__(self, hparams=None):
         # pylint: disable=too-many-instance-attributes
         EncoderBase.__init__(self, hparams)
         self._input_size = self._hparams.dim
         self.self_attns = nn.ModuleList()
-        self.self_attn_layer_norm = nn.ModuleList()
+        if not self._hparams.use_bert_config:
+            self.self_attn_layer_norm = nn.ModuleList()
         self.poswise_networks = nn.ModuleList()
         self.poswise_layer_norm = nn.ModuleList()
         self.output_layer_norm = nn.ModuleList()
+
+        if self._hparams.use_bert_config:
+            # In TensorFlow, eps for LayerNorm is 1e-12 by default.
+            eps = 1e-12
+        else:
+            # In PyTorch, eps for LayerNorm is 1e-6 by default.
+            eps = 1e-6
 
         for _ in range(self._hparams.num_blocks):
             mh_attn = MultiheadAttentionEncoder(
                 self._input_size, self._hparams.multihead_attention)
             self.self_attns.append(mh_attn)
-            self.self_attn_layer_norm.append(nn.LayerNorm(self._input_size))
+            if not self._hparams.use_bert_config:
+                self.self_attn_layer_norm.append(
+                    nn.LayerNorm(self._input_size, eps=eps))
             if self._hparams.dim != mh_attn.hparams.output_dim:
                 raise ValueError(
                     'The "dim" in the hparams of '
@@ -178,23 +187,28 @@ class TransformerEncoder(EncoderBase):
                     'to the "dim" of TransformerEncoder.')
 
             self.poswise_networks.append(pw_net)
-            self.poswise_layer_norm.append(nn.LayerNorm(self._input_size))
+            self.poswise_layer_norm.append(
+                nn.LayerNorm(self._input_size, eps=eps))
             if self._hparams.use_bert_config:
-                self.output_layer_norm.append(nn.LayerNorm(self._input_size))
+                self.output_layer_norm.append(
+                    nn.LayerNorm(self._input_size, eps=eps))
 
         self.embed_dropout = nn.Dropout(p=self._hparams.embedding_dropout)
         self.residual_dropout = nn.Dropout(p=self._hparams.residual_dropout)
+
         if self._hparams.use_bert_config:
-            self.input_normalizer = nn.LayerNorm(self._input_size)
+            self.input_normalizer = nn.LayerNorm(self._input_size, eps=eps)
         else:
-            self.final_layer_normalizer = nn.LayerNorm(self._input_size)
+            self.final_layer_normalizer = nn.LayerNorm(
+                self._input_size, eps=eps)
+
         if self._hparams.initializer:
-            # pylint: disable=fixme
-            # TODO: This might be different to what TensorFlow does
             initialize = layers.get_initializer(self._hparams.initializer)
             assert initialize is not None
-            for param in self.parameters():
-                initialize(param)
+            # Do not re-initialize LayerNorm modules.
+            for name, param in self.named_parameters():
+                if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:
+                    initialize(param)
 
     @staticmethod
     def default_hparams():
@@ -233,14 +247,12 @@ class TransformerEncoder(EncoderBase):
             If `False`, apply the standard Transformer Encoder architecture from
             the original paper `(Vaswani et al.) "Attention is All You Need"`.
             If `True`, apply the Transformer Encoder architecture used in BERT
-            `(Devlin et al.)`.
+            `(Devlin et al.)` and the default setting of Tensorflow.
             The differences lie in:
-                1. The standard arch restricts the word embedding of PAD token \
-                   to all zero. The BERT arch does not.
-                2. The attention bias for padding tokens: \
+                1. The attention bias for padding tokens: \
                    The standard arch uses `-1e8` for nagative attention mask. \
                    BERT uses `-1e4` instead.
-                3. The residual connections between internal tensors: \
+                2. The residual connections between internal tensors: \
                    In BERT, a residual layer connects the tensors *after* \
                    layer normalization. In the standard arch, the tensors are \
                    connected *before* layer normalization.
@@ -333,22 +345,14 @@ class TransformerEncoder(EncoderBase):
         else:
             x = self.embed_dropout(input_embedding)
 
-        # Just to keep consistent with BERT, actually makes no difference
-        if self._hparams.use_bert_config:
-            pad_remover = None
-        else:
-            pad_remover = utils.transformer_utils.PadRemover(inputs_padding)
-
         for i in range(self._hparams.num_blocks):
-            multihead_attention = self.self_attns[i]
-            multihead_attention_normalizer = self.self_attn_layer_norm[i]
             # trivial difference between BERT and original Transformer
             if self._hparams.use_bert_config:
                 _queries_input = x
             else:
-                _queries_input = multihead_attention_normalizer(x)
+                _queries_input = self.self_attn_layer_norm[i](x)
 
-            attention_output = multihead_attention(
+            attention_output = self.self_attns[i](
                 queries=_queries_input,
                 memory=_queries_input,
                 memory_attention_bias=encoder_self_attention_bias,
@@ -370,18 +374,10 @@ class TransformerEncoder(EncoderBase):
             original_shape = shape_list(y)
 
             y = y.view(-1, self._hparams.dim)
-            if pad_remover:
-                y = torch.unsqueeze(pad_remover.remove(y), dim=0)
-                # [1, batch_size*seq_length, hidden_dim]
 
             layer_output = poswise_network(y)
             sub_output = self.residual_dropout(layer_output)
-            if pad_remover:
-                sub_output = pad_remover.restore(
-                    torch.squeeze(sub_output, dim=0))
-                sub_output = sub_output.view(original_shape)
-            else:
-                sub_output = sub_output.view(original_shape)
+            sub_output = sub_output.view(original_shape)
 
             x = x + sub_output
             if self._hparams.use_bert_config:
@@ -389,5 +385,4 @@ class TransformerEncoder(EncoderBase):
 
         if not self._hparams.use_bert_config:
             x = self.final_layer_normalizer(x)
-
         return x

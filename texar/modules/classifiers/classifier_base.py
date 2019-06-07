@@ -15,11 +15,11 @@
 Base class for encoders.
 """
 
+from typing import Any, Dict, Optional, Union
+
 import torch
 
-from typing import Optional, Union, Dict, Any
-
-from texar import HParams
+from texar.hyperparams import HParams
 from texar.module_base import ModuleBase
 
 __all__ = [
@@ -43,6 +43,6 @@ class ClassifierBase(ModuleBase):
             "name": "classifier"
         }
 
-    def forward(self, *input: torch.Tensor):  # noqa pylint: disable=redefined-builtin
+    def forward(self, *input: torch.Tensor):  # noqa: E501 pylint: disable=redefined-builtin
         raise NotImplementedError
 

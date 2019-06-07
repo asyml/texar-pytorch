@@ -32,7 +32,7 @@ __all__ = [
     "sequence_sparse_softmax_cross_entropy",
     "sequence_sigmoid_cross_entropy",
     "binary_sigmoid_cross_entropy",
-    "binary_sigmoid_cross_entropy_with_clas"
+    "binary_sigmoid_cross_entropy_with_clas",
 ]
 
 
@@ -100,8 +100,8 @@ def sequence_softmax_cross_entropy(
     if stop_gradient_to_label:
         labels = labels.detach()
 
-    losses = torch.sum(-labels.type(logits.dtype) * F.log_softmax(logits, -1),
-                       -1)
+    losses = (-labels.type(logits.dtype) *
+              F.log_softmax(logits, -1)).sum(dim=-1)
 
     losses = mask_and_reduce(losses,
                              sequence_length,

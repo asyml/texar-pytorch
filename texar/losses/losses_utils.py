@@ -28,7 +28,7 @@ from texar.utils.types import MaybeList
 __all__ = [
     "mask_and_reduce",
     "reduce_batch_time",
-    "reduce_dimensions"
+    "reduce_dimensions",
 ]
 
 

@@ -15,24 +15,22 @@
 Transformer decoder.
 """
 
-from typing import Dict, List, NamedTuple, Optional, Tuple, Union
+from typing import Dict, NamedTuple, Optional, Tuple, Union
 
 import torch
 from torch import nn
 
-from texar import HParams, ModuleBase
 from texar.core import layers
-from texar.modules import FeedForwardNetwork
-from texar.modules.decoders import Helper
+from texar.hyperparams import HParams
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
-from texar.modules.decoders.decoder_helpers import EmbeddingHelper
-from texar.modules.embedders import EmbedderBase
-from texar.modules.encoders.multihead_attention import \
-    Cache, MultiheadAttentionEncoder
-from texar.modules.encoders.transformer_encoder import \
-    default_transformer_poswise_net_hparams
+from texar.modules.decoders.decoder_helpers import EmbeddingHelper, Helper
+from texar.modules.encoders.multihead_attention import (
+    Cache, MultiheadAttentionEncoder)
+from texar.modules.encoders.transformer_encoder import (
+    default_transformer_poswise_net_hparams)
+from texar.modules.networks import FeedForwardNetwork
 # from texar.utils import beam_search
-from texar.utils import get_instance, transformer_attentions as attn
+from texar.utils import transformer_attentions as attn
 from texar.utils.shapes import mask_sequences
 from texar.utils.utils import sequence_mask
 
@@ -70,14 +68,16 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
             - A callable layer, e.g., an instance of :class:`torch.nn.Module`.
             - A tensor. A :class:`~torch.nn.Linear` layer will be created using
-            the tensor as weights. The bias of the dense layer is determined by
-            `hparams.output_layer_bias`. This can be used to tie the output
-            layer with the input embedding matrix, as proposed in
-            https://arxiv.org/pdf/1608.05859.pdf
+              the tensor as weights. The bias of the dense layer is determined
+              by `hparams.output_layer_bias`. This can be used to tie the output
+              layer with the input embedding matrix, as proposed in
+              <https://arxiv.org/pdf/1608.05859.pdf>. Note that the shape of the
+              tensor should the same as the embedding matrix, i.e.
+              ``[vocab_size, embed_dim]``.
             - `None`. A dense layer will be created based on attr:`vocab_size`
-            and `hparams.output_layer_bias`.
+              and `hparams.output_layer_bias`.
             - If no output layer is needed at the end, set
-            `(vocab_size=None, output_layer=texar.core.identity)`.
+              `(vocab_size=None, output_layer=texar.core.identity)`.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter sturcture and
@@ -112,6 +112,12 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         self.end_dec_attn_layer_norm = nn.ModuleList()
         self.poswise_networks = nn.ModuleList()
         self.poswise_layer_norm = nn.ModuleList()
+
+        if self._hparams.use_gpt_config:
+            eps = 1e-5
+        else:
+            eps = 1e-12
+
         for i in range(self._hparams.num_blocks):
             attn_module = MultiheadAttentionEncoder(
                 self._input_size, self._hparams.multihead_attention)
@@ -120,7 +126,8 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                                  "MultiheadEncoder should be equal "
                                  "to the dim of TransformerDecoder")
             self.self_attns.append(attn_module)
-            self.self_attn_layer_norm.append(nn.LayerNorm(self._input_size))
+            self.self_attn_layer_norm.append(
+                nn.LayerNorm(self._input_size, eps=eps))
 
             attn_module = MultiheadAttentionEncoder(
                 self._input_size, self._hparams.multihead_attention)
@@ -129,7 +136,8 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                                  "MultiheadEncoder should be equal "
                                  "to the dim of TransformerDecoder")
             self.enc_dec_attns.append(attn_module)
-            self.end_dec_attn_layer_norm.append(nn.LayerNorm(self._input_size))
+            self.end_dec_attn_layer_norm.append(
+                nn.LayerNorm(self._input_size, eps=eps))
 
             poswise_network = FeedForwardNetwork(
                 hparams=self._hparams.poswise_feedforward)
@@ -139,9 +147,10 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                                  "FeedForwardNetwork should be equal "
                                  "to the dim of TransformerDecoder")
             self.poswise_networks.append(poswise_network)
-            self.poswise_layer_norm.append(nn.LayerNorm(self._input_size))
+            self.poswise_layer_norm.append(
+                nn.LayerNorm(self._input_size, eps=eps))
 
-        self.final_layer_norm = nn.LayerNorm(self._input_size)
+        self.final_layer_norm = nn.LayerNorm(self._input_size, eps=eps)
         self.embed_dropout = nn.Dropout(self._hparams.embedding_dropout)
         self.residual_dropout = nn.Dropout(self._hparams.residual_dropout)
 
@@ -149,8 +158,10 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             # TODO: This might be different to what TensorFlow does
             initialize = layers.get_initializer(self._hparams.initializer)
             assert initialize is not None
-            for param in self.parameters():
-                initialize(param)
+            # Do not re-initialize LayerNorm modules.
+            for name, param in self.named_parameters():
+                if name.split(".")[-1] == "weight" and "layer_norm" not in name:
+                    initialize(param)
 
     @staticmethod
     def default_hparams():
@@ -162,6 +173,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 # Same as in TransformerEncoder
                 "num_blocks": 6,
                 "dim": 512,
+                "use_gpt_config": False,
                 "embedding_dropout": 0.1,
                 "residual_dropout": 0.1,
                 "poswise_feedforward": default_transformer_poswise_net_hparams,
@@ -189,6 +201,9 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
         "dim" : int
             Hidden dimension of the encoder.
+
+        "use_gpt_config": bool
+            Whether to follow the eps setting of OpenAI's GPT
 
         "embedding_dropout": float
             Dropout rate of the input word and position embeddings.
@@ -240,6 +255,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         return {
             'num_blocks': 6,
             'dim': dim,
+            'use_gpt_config': False,
             'embedding_tie': True,
             'output_layer_bias': False,
             'max_decoding_length': int(1e10),
@@ -502,7 +518,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
         self._state_max_decoding_length = max_decoding_length
 
-        if beam_width is None:  # Inference-like decoding
+        if beam_width is None or beam_width == 1:  # Inference-like decoding
             # Prepare helper
             if helper is None:
                 kwargs.update(decoding_strategy=decoding_strategy)
@@ -516,8 +532,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 beam_search_decoding=False, batch_size=helper.batch_size)
             if context is not None:
                 assert self._state_context is not None
-                pad_length = \
-                    max_decoding_length - self._state_context.size(1)
+                pad_length = max_decoding_length - self._state_context.size(1)
                 if pad_length > 0:
                     self._state_context = torch.cat((
                         self._state_context,

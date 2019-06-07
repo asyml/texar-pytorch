@@ -14,20 +14,20 @@
 """
 Various convolutional networks.
 """
+from typing import List, Optional, Tuple, Union
+
 import torch
 
-from typing import Union, List, Tuple, Optional, Any
-
+from texar.core.layers import get_pooling_layer_hparams
+from texar.hyperparams import HParams
 from texar.modules.networks.network_base import FeedForwardNetworkBase
 from texar.modules.networks.network_base import _build_layers
-from texar.core.layers import get_pooling_layer_hparams
-from texar.utils.utils import uniquify_str
 from texar.utils.shapes import mask_sequences
-from texar.hyperparams import HParams
+from texar.utils.utils import uniquify_str
 
 __all__ = [
     "_to_list",
-    "Conv1DNetwork"
+    "Conv1DNetwork",
 ]
 
 

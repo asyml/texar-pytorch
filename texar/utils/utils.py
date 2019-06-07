@@ -25,8 +25,6 @@ import inspect
 from pydoc import locate
 from typing import *
 
-import torch
-
 import funcsigs
 import numpy as np
 import torch
@@ -71,6 +69,8 @@ __all__ = [
 
 T = TypeVar('T')  # type argument
 R = TypeVar('R')  # return type
+K = TypeVar('K')  # key type
+V = TypeVar('V')  # value type
 Kwargs = Dict[str, Any]
 AnyDict = MutableMapping[str, Any]
 ParamDict = Union[HParams, AnyDict]
@@ -177,8 +177,10 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
     Raises:
         ValueError: if `maxlen` is not a scalar.
     """
-    if not torch.is_tensor(lengths):
+    if not isinstance(lengths, torch.Tensor):
         lengths = torch.tensor(lengths, device=device)
+    elif device is None:
+        device = lengths.device
     lengths: torch.LongTensor
     if max_len is None:
         max_len = torch.max(lengths).item()
@@ -186,9 +188,10 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
     size = lengths.size()
     row_vector = torch.arange(max_len, device=device, dtype=lengths.dtype).view(
         *([1] * len(size)), -1).expand(*size, max_len)
+    row_vector = row_vector
     mask = (row_vector < lengths.unsqueeze(-1))
     if dtype is not None:
-        mask = mask.to(dtype=dtype)
+        mask = mask.to(dtype=dtype, device=row_vector.device)
 
     return mask
 
@@ -585,8 +588,8 @@ def dict_patch(tgt_dict: AnyDict, src_dict: AnyDict) -> AnyDict:
     return tgt_dict
 
 
-def dict_lookup(dict_: AnyDict, keys: np.ndarray,
-                default: Optional[Any] = None) -> np.ndarray:
+def dict_lookup(dict_: MutableMapping[K, V], keys: Union[List[K], np.ndarray],
+                default: Optional[V] = None) -> np.ndarray:
     r"""Looks up :attr:`keys` in the dict, returns the corresponding values.
 
     The :attr:`default` is used for keys not present in the dict.
@@ -604,7 +607,7 @@ def dict_lookup(dict_: AnyDict, keys: np.ndarray,
     Raises:
         TypeError: If key is not in :attr:`dict_` and :attr:`default` is `None`.
     """
-    return np.vectorize(lambda x: dict_.get(x, default))(keys)
+    return np.vectorize(lambda x: dict_.get(x, default))(keys)  # type: ignore
 
 
 def dict_fetch(src_dict: Optional[ParamDict],
@@ -801,7 +804,7 @@ def strip_token(str_: MaybeSeq[str], token: str,
     s = str_
 
     if is_token_list:
-        s = str_join(s)
+        s = str_join(s)  # type: ignore
 
     strp_str = _recur_strip(s)
 
@@ -845,7 +848,7 @@ def strip_eos(str_: MaybeSeq[str], eos_token: str = '<EOS>',
     s = str_
 
     if is_token_list:
-        s = str_join(s)
+        s = str_join(s)  # type: ignore
 
     strp_str = _recur_strip(s)
 
@@ -894,7 +897,7 @@ def strip_bos(str_: MaybeSeq[str], bos_token: str = '<BOS>',
     s = str_
 
     if is_token_list:
-        s = str_join(s)
+        s = str_join(s)  # type: ignore
 
     strp_str = _recur_strip(s)
 
@@ -952,7 +955,7 @@ def strip_special_tokens(str_: MaybeSeq[str],
     s = str_
 
     if is_token_list:
-        s = str_join(s)
+        s = str_join(s)  # type: ignore
 
     if strip_eos is not None and strip_eos is not False:
         s = _strip_eos_(s, strip_eos, is_token_list=False)
@@ -969,7 +972,7 @@ def strip_special_tokens(str_: MaybeSeq[str],
     return s
 
 
-def str_join(tokens: Sequence[str], sep: str = ' ') -> Sequence[str]:
+def str_join(tokens: Sequence[List], sep: str = ' ') -> Sequence[str]:
     r"""Concats :attr:`tokens` along the last dimension with intervening
     occurrences of :attr:`sep`.
 
@@ -1076,7 +1079,7 @@ def ceildiv(a: int, b: int) -> int:
     return -(-a // b)
 
 
-def straight_through(fw_tensor, bw_tensor):
+def straight_through(fw_tensor: torch.Tensor, bw_tensor: torch.Tensor):
     r"""Use a tensor in forward pass while backpropagating gradient to another.
 
     Args:

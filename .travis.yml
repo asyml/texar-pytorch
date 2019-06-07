@@ -1,6 +1,7 @@
 sudo: required
 language: python
 dist: xenial  # required for Python 3.7
+cache: pip
 
 python:
   - "3.6"
@@ -8,7 +9,7 @@ python:
 
 install:
   - pip install --upgrade pip
-  - pip install --progress-bar off -r requirements.txt
+  - pip install --progress-bar off .[torch,extras]
   - pip install flake8
   - pip install mypy
   - pip install pytest

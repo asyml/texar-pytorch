@@ -15,15 +15,14 @@
 The BLEU metric.
 """
 
-from typing import List
-
+import logging
 import os
-from io import open  # pylint: disable=redefined-builtin
-import shutil
 import re
+import shutil
 import subprocess
 import tempfile
-import logging
+from typing import List
+
 import numpy as np
 
 from texar.utils.dtypes import compat_as_text
@@ -33,7 +32,7 @@ from texar.utils.types import MaybeList
 
 __all__ = [
     "sentence_bleu_moses",
-    "corpus_bleu_moses"
+    "corpus_bleu_moses",
 ]
 
 

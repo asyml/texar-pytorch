@@ -18,10 +18,9 @@ Various position embedders.
 import math
 from typing import Optional
 
-import torch
 import torch.nn.functional as F
+import torch
 
-from texar import HParams
 from texar.modules.embedders import embedder_utils
 from texar.modules.embedders.embedder_base import EmbedderBase
 from texar.modules.embedders.embedder_base import EmbeddingDropout
@@ -149,7 +148,7 @@ class PositionEmbedder(EmbedderBase):
 
         ids_rank = len(list(inputs.shape))
         embedding = self._embedding
-
+        inputs = inputs.to(device=embedding.device)
         # Gets dropout strategy
         st = self._hparams.dropout_strategy
 
@@ -225,7 +224,7 @@ class SinusoidsPositionEmbedder(EmbedderBase):
     .. automethod:: _build
     """
 
-    def __init__(self, position_size: int, hparams: Optional[HParams] = None):
+    def __init__(self, position_size: int, hparams=None):
         super().__init__(hparams=hparams)
         self._num_embeds = position_size
         self._dim = self._hparams.dim
@@ -247,7 +246,8 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         if dim % 2 == 1:
             signal = torch.cat(
                 [signal, signal.new_zeros(signal.size(0), 1)], dim=1)
-        self.signal = signal.reshape(position_size, dim)
+        signal = signal.reshape(position_size, dim)
+        self.register_buffer('signal', signal)
 
     @staticmethod
     def default_hparams():
@@ -307,7 +307,6 @@ class SinusoidsPositionEmbedder(EmbedderBase):
             inputs = positions
 
         outputs = F.embedding(inputs, self.signal, **kwargs)
-
         if sequence_length is not None:
             outputs = mask_sequences(outputs, sequence_length)
 

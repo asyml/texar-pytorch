@@ -17,19 +17,18 @@ Various neural network layers
 
 # pylint: disable=too-many-branches
 
-import functools
 import copy
-from typing import Optional, Callable, Union, List, Dict, Tuple, Any
+import functools
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import torch
 from torch import nn
 
 from texar.core import cell_wrappers as wrappers
-from texar.core.regularizers import Regularizer, L1L2
+from texar.core.regularizers import L1L2, Regularizer
 from texar.hyperparams import HParams
 from texar.utils import utils
 from texar.utils.dtypes import is_str
-
 
 __all__ = [
     'default_rnn_cell_hparams',
@@ -46,7 +45,7 @@ __all__ = [
     'MergeLayer',
     'Flatten',
     'Identity',
-    'default_linear_kwargs'
+    'default_linear_kwargs',
 ]
 
 

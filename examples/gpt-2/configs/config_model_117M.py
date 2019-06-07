@@ -16,6 +16,7 @@ position_size = 1024
 decoder = {
     "dim": dim,
     "num_blocks": 12,
+    "use_gpt_config": True,
     'embedding_dropout': 0.0,
     'residual_dropout': 0.0,
     "multihead_attention": {
@@ -44,7 +45,7 @@ decoder = {
                 }
             },
             {
-                "type": "GELU",
+                "type": "GPTGELU",
                 "kwargs": {
                 }
             },

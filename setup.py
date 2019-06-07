@@ -2,7 +2,7 @@ import setuptools
 
 
 long_description = '''
-Texar is an open-source toolkit based on Pytorch,
+Texar is an open-source toolkit based on PyTorch,
 aiming to support a broad set of machine learning especially text generation 
 tasks, such as machine translation, dialog, summarization, content manipulation,
 language modeling, and so on.
@@ -31,7 +31,9 @@ setuptools.setup(
         'mypy_extensions',
     ],
     extras_require={
-        'torch': ['torch==1.0.1'],
+        'torch': ['torch>=1.0'],
+        'examples': [],
+        'extras': ['Pillow>=3.0'],
     },
     package_data={
         "texar": [

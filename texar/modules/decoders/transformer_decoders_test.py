@@ -47,7 +47,7 @@ class TransformerDecoderTest(unittest.TestCase):
         self._embedding_fn = _embedding_fn
 
         self._output_layer = torch.rand(
-            self._emb_dim, self._vocab_size, dtype=torch.float)
+            self._vocab_size, self._emb_dim, dtype=torch.float)
 
         self._start_tokens = torch.full(
             (self._batch_size,), 1, dtype=torch.long)
@@ -68,7 +68,7 @@ class TransformerDecoderTest(unittest.TestCase):
         self.assertIsInstance(decoder, TransformerDecoder)
 
         tensor = torch.rand(
-            self._emb_dim, self._vocab_size, dtype=torch.float)
+            self._vocab_size, self._emb_dim, dtype=torch.float)
         decoder = TransformerDecoder(output_layer=tensor)
         self.assertIsInstance(decoder, TransformerDecoder)
         self.assertEqual(decoder.vocab_size, self._vocab_size)

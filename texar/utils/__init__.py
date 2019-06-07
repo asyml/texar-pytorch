@@ -20,5 +20,4 @@ Modules of texar library utils.
 from texar.utils.average_recorder import *
 from texar.utils.dtypes import *
 from texar.utils.utils import *
-from texar.utils.transformer_utils import *
-#from texar.utils.mode import *
+from texar.utils.utils_io import *

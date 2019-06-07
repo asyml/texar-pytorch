@@ -21,8 +21,9 @@ from texar.modules.embedders.embedder_base import EmbeddingDropout
 from texar.modules.embedders import embedder_utils
 
 __all__ = [
-    "WordEmbedder"
+    "WordEmbedder",
 ]
+
 
 class WordEmbedder(EmbedderBase):
     """Simple word embedder that maps indexes into embeddings. The indexes

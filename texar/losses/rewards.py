@@ -27,7 +27,7 @@ from texar.utils.utils import sequence_mask
 __all__ = [
     "discount_reward",
     "_discount_reward_tensor_1d",
-    "_discount_reward_tensor_2d"
+    "_discount_reward_tensor_2d",
 ]
 
 

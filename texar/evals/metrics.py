@@ -21,7 +21,7 @@ import torch
 
 __all__ = [
     "accuracy",
-    "binary_clas_accuracy"
+    "binary_clas_accuracy",
 ]
 
 
@@ -37,8 +37,8 @@ def accuracy(labels: torch.Tensor,
     Returns:
         A float scalar Tensor containing the accuracy.
     """
-    labels = labels.type(preds.dtype)
-    return torch.mean(torch.eq(labels, preds).float())
+    labels = labels.type(preds.dtype).reshape(preds.shape)
+    return (labels == preds).float().mean()
 
 
 def binary_clas_accuracy(pos_preds: Optional[torch.Tensor] = None,

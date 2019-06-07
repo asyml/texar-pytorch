@@ -11,9 +11,9 @@ import unittest
 import torch
 from torch import nn
 
-import texar.core.cell_wrappers as wrappers
-from texar import HParams
+from texar.core import cell_wrappers as wrappers
 from texar.core.layers import default_rnn_cell_hparams, get_rnn_cell
+from texar.hyperparams import HParams
 from texar.utils import utils
 
 
