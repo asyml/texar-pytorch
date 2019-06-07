@@ -19,11 +19,11 @@ from typing import Dict, Any, Optional
 
 import torch
 
-from texar import HParams
+from texar.hyperparams import HParams
 from texar.module_base import ModuleBase
 
 __all__ = [
-    'EncoderBase'
+    'EncoderBase',
 ]
 
 

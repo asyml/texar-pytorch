@@ -21,7 +21,7 @@ from texar.modules.embedders.embedder_base import EmbeddingDropout
 from texar.modules.embedders import embedder_utils
 
 __all__ = [
-    "WordEmbedder"
+    "WordEmbedder",
 ]
 
 

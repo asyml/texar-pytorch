@@ -29,7 +29,7 @@ __all__ = [
     'is_str',
     'is_callable',
     'maybe_hparams_to_dict',
-    'compat_as_text'
+    'compat_as_text',
 ]
 
 

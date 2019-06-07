@@ -18,15 +18,15 @@ TensorFlow-style RNN cell wrappers.
 # pylint: disable=redefined-builtin, arguments-differ, too-many-arguments
 # pylint: disable=invalid-name, too-few-public-methods
 
-from typing import Generic, List, Optional, Tuple, TypeVar, Union, Callable
+from typing import Callable, Generic, List, Optional, Tuple, TypeVar, Union
 
 import torch
 import torch.nn.functional as F
 from torch import nn
 
-from texar.utils import utils
-from texar.utils.types import MaybeList, MaybeSeq
 from texar.core.attention_mechanism import *
+from texar.utils import utils
+from texar.utils.types import MaybeList
 
 __all__ = [
     'HiddenState',
@@ -39,7 +39,7 @@ __all__ = [
     'ResidualWrapper',
     'HighwayWrapper',
     'MultiRNNCell',
-    'AttentionWrapper'
+    'AttentionWrapper',
 ]
 
 State = TypeVar('State')

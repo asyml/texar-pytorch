@@ -18,27 +18,26 @@ Various RNN decoders.
 # pylint: disable=no-name-in-module, too-many-arguments, too-many-locals
 # pylint: disable=not-context-manager, protected-access, invalid-name
 
-from typing import NamedTuple, Optional, Tuple, Union, Callable,TypeVar
+from typing import Callable, NamedTuple, Optional, Tuple, TypeVar, Union
 
 import torch
 from torch import nn
 
-from texar import HParams
 from texar.core import RNNCellBase
+from texar.core.attention_mechanism import *
+from texar.core.cell_wrappers import AttentionWrapper
 from texar.core.cell_wrappers import HiddenState
+from texar.hyperparams import HParams
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.modules.decoders.rnn_decoder_base import RNNDecoderBase
 from texar.utils.types import MaybeTuple
-
-from texar.utils.utils import get_function, check_or_get_instance
-from texar.core.cell_wrappers import AttentionWrapper
-from texar.core.attention_mechanism import *
+from texar.utils.utils import check_or_get_instance, get_function
 
 __all__ = [
     'BasicRNNDecoderOutput',
     'AttentionRNNDecoderOutput',
     'BasicRNNDecoder',
-    'AttentionRNNDecoder'
+    'AttentionRNNDecoder',
 ]
 
 State = TypeVar('State')

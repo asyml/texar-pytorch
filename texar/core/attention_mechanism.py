@@ -18,18 +18,17 @@ Various helper classes and utilities for cell wrappers.
 # pylint: disable=too-many-arguments, too-many-instance-attributes
 # pylint: disable=missing-docstring  # does not support generic classes
 
-from typing import NamedTuple, Optional, List, Union, Callable, Tuple, TypeVar
+import functools
+from typing import Callable, List, NamedTuple, Optional, Tuple, TypeVar
 
 import numpy as np
-import functools
-
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 from texar.module_base import ModuleBase
-from texar.utils.utils import sequence_mask
 from texar.utils.types import MaybeTuple
+from texar.utils.utils import sequence_mask
 
 __all__ = [
     "AttentionMechanism",

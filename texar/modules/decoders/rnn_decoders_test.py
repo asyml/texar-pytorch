@@ -12,10 +12,11 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from texar import HParams
+from texar.hyperparams import HParams
 from texar.modules import get_helper
-from texar.modules.decoders.rnn_decoders import BasicRNNDecoder, \
-    BasicRNNDecoderOutput, AttentionRNNDecoder, AttentionRNNDecoderOutput
+from texar.modules.decoders.rnn_decoders import (
+    BasicRNNDecoder, BasicRNNDecoderOutput, AttentionRNNDecoder,
+    AttentionRNNDecoderOutput)
 
 
 class BasicRNNDecoderTest(unittest.TestCase):
@@ -349,7 +350,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
 
         helper_infer = decoder.create_helper(
             embedding=self._embedding,
-            start_tokens=torch.tensor([1]*self._batch_size),
+            start_tokens=torch.tensor([1] * self._batch_size),
             end_token=2)
 
         outputs, final_state, sequence_lengths = decoder(
@@ -403,7 +404,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
 
         helper_infer = decoder.create_helper(
             embedding=self._embedding,
-            start_tokens=torch.tensor([1]*self._batch_size),
+            start_tokens=torch.tensor([1] * self._batch_size),
             end_token=2)
 
         outputs, final_state, sequence_lengths = decoder(
@@ -457,7 +458,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
 
         helper_infer = decoder.create_helper(
             embedding=self._embedding,
-            start_tokens=torch.tensor([1]*self._batch_size),
+            start_tokens=torch.tensor([1] * self._batch_size),
             end_token=2)
 
         outputs, final_state, sequence_lengths = decoder(
@@ -512,7 +513,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
 
         helper_infer = decoder.create_helper(
             embedding=self._embedding,
-            start_tokens=torch.tensor([1]*self._batch_size),
+            start_tokens=torch.tensor([1] * self._batch_size),
             end_token=2)
 
         outputs, final_state, sequence_lengths = decoder(

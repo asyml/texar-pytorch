@@ -14,8 +14,9 @@
 """
 Various data iterator classes.
 """
-from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, \
-    Sequence, Tuple, Union
+from typing import (
+    Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence,
+    Tuple, Union)
 
 import torch
 from torch.utils.data import DataLoader

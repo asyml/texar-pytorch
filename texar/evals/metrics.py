@@ -21,7 +21,7 @@ import torch
 
 __all__ = [
     "accuracy",
-    "binary_clas_accuracy"
+    "binary_clas_accuracy",
 ]
 
 

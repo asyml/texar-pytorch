@@ -15,26 +15,26 @@
 Transformer encoders with multihead self attention.
 """
 
-from typing import Optional, Dict
+from typing import Dict
 
 import torch
-from texar import HParams
+from torch import nn
+
 from texar.core import layers
 from texar.modules.encoders.encoder_base import EncoderBase
-from texar.modules.encoders.multihead_attention import \
-    MultiheadAttentionEncoder
+from texar.modules.encoders.multihead_attention import (
+    MultiheadAttentionEncoder)
 from texar.modules.networks.networks import FeedForwardNetwork
 from texar.utils import transformer_attentions as attn
 from texar.utils.shapes import shape_list
 from texar.utils.utils import sequence_mask
-from torch import nn
 
 # pylint: disable=too-many-locals, invalid-name
 # pylint: disable=arguments-differ, too-many-branches, too-many-statements
 
 __all__ = [
     "default_transformer_poswise_net_hparams",
-    "TransformerEncoder"
+    "TransformerEncoder",
 ]
 
 

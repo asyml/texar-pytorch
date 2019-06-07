@@ -15,7 +15,7 @@
 Regularizers
 """
 
-from typing import Union, Dict
+from typing import Dict, Union
 
 import torch
 

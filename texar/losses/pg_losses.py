@@ -27,7 +27,7 @@ from texar.utils.shapes import get_rank
 
 __all__ = [
     "pg_loss_with_logits",
-    "pg_loss_with_log_probs"
+    "pg_loss_with_log_probs",
 ]
 
 

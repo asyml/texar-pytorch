@@ -26,7 +26,7 @@ from typing import List, Optional, overload, Union, Dict, Tuple
 import numpy as np
 import requests
 
-import texar.utils.utils_io as utils_io
+from texar.utils import utils_io
 from texar.utils.types import MaybeList, MaybeTuple
 
 # pylint: disable=invalid-name, too-many-branches
@@ -35,7 +35,7 @@ __all__ = [
     "maybe_download",
     "read_words",
     "make_vocab",
-    "count_file_lines"
+    "count_file_lines",
 ]
 
 Py3 = sys.version_info[0] == 3

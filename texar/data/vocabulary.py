@@ -25,7 +25,7 @@ from texar.utils.utils import dict_lookup
 
 __all__ = [
     "SpecialTokens",
-    "Vocab"
+    "Vocab",
 ]
 
 

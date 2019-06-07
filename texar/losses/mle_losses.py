@@ -32,7 +32,7 @@ __all__ = [
     "sequence_sparse_softmax_cross_entropy",
     "sequence_sigmoid_cross_entropy",
     "binary_sigmoid_cross_entropy",
-    "binary_sigmoid_cross_entropy_with_clas"
+    "binary_sigmoid_cross_entropy_with_clas",
 ]
 
 

@@ -24,7 +24,7 @@ from texar.utils import utils
 __all__ = [
     "load_word2vec",
     "load_glove",
-    "Embedding"
+    "Embedding",
 ]
 
 

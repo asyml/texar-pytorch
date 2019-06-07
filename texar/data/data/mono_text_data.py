@@ -31,7 +31,7 @@ from texar.utils import utils
 
 __all__ = [
     "_default_mono_text_dataset_hparams",
-    "MonoTextData"
+    "MonoTextData",
 ]
 
 

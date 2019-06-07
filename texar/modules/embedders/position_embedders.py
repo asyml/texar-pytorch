@@ -16,12 +16,11 @@ Various position embedders.
 """
 
 import math
-from typing import Optional, Dict
+from typing import Optional
 
-import torch
 import torch.nn.functional as F
+import torch
 
-from texar import HParams
 from texar.modules.embedders import embedder_utils
 from texar.modules.embedders.embedder_base import EmbedderBase
 from texar.modules.embedders.embedder_base import EmbeddingDropout

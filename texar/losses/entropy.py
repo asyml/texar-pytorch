@@ -27,7 +27,7 @@ from texar.utils.shapes import get_rank
 
 __all__ = [
     "entropy_with_logits",
-    "sequence_entropy_with_logits"
+    "sequence_entropy_with_logits",
 ]
 
 

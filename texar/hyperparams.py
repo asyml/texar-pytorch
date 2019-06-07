@@ -21,7 +21,7 @@ from typing import (
     Any, Dict, ItemsView, Iterator, KeysView, Optional, Tuple, Union)
 
 __all__ = [
-    'HParams'
+    'HParams',
 ]
 
 

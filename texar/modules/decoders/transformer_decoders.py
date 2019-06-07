@@ -20,8 +20,8 @@ from typing import Dict, NamedTuple, Optional, Tuple, Union
 import torch
 from torch import nn
 
-from texar import HParams
 from texar.core import layers
+from texar.hyperparams import HParams
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
 from texar.modules.decoders.decoder_helpers import EmbeddingHelper, Helper
 from texar.modules.encoders.multihead_attention import (

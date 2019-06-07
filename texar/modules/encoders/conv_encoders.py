@@ -22,7 +22,7 @@ from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.networks.conv_networks import Conv1DNetwork
 
 __all__ = [
-    "Conv1DEncoder"
+    "Conv1DEncoder",
 ]
 
 

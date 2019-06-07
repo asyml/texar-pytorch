@@ -24,9 +24,9 @@ from typing import Optional, Tuple, TypeVar
 import torch
 from torch import nn
 
-from texar import HParams
 from texar.core import RNNCellBase, layers
 from texar.core.cell_wrappers import HiddenState
+from texar.hyperparams import HParams
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
 from texar.modules.decoders.decoder_helpers import Helper

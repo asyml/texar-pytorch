@@ -18,8 +18,9 @@ preprocessing operations.
 """
 import warnings
 from abc import ABC
-from typing import Callable, Dict, Generic, Iterable, Iterator, List, \
-    Optional, Sequence, Tuple, TypeVar, Union
+from typing import (
+    Callable, Dict, Generic, Iterable, Iterator, List, Optional, Sequence,
+    Tuple, TypeVar, Union)
 
 import torch
 from torch.utils.data import Dataset

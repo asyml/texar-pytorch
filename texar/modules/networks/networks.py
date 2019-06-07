@@ -20,7 +20,7 @@ from texar.modules.networks.network_base import _build_layers
 
 
 __all__ = [
-    "FeedForwardNetwork"
+    "FeedForwardNetwork",
 ]
 
 

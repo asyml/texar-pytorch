@@ -22,10 +22,10 @@ from abc import ABC
 from typing import (
     Callable, Generic, List, Optional, Tuple, Type, TypeVar, Union, overload)
 
+import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical, Gumbel
 
-import torch
 from texar.utils import get_args, utils
 
 __all__ = [

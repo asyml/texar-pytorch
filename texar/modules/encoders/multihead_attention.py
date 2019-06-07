@@ -22,11 +22,10 @@ from typing import List, Optional
 import torch
 import torch.nn.functional as F
 from mypy_extensions import TypedDict
-# pylint: disable=ungrouped-imports
 from torch import nn
 
-from texar import HParams
 from texar.core import layers
+from texar.hyperparams import HParams
 from texar.modules.encoders.encoder_base import EncoderBase
 from texar.utils.types import MaybeList
 

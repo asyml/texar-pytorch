@@ -23,6 +23,11 @@ import torch.nn.functional as F
 from texar.utils.types import MaybeTuple
 
 
+__all__ = [
+    'binary_adversarial_losses',
+]
+
+
 def binary_adversarial_losses(
         real_data: torch.Tensor,
         fake_data: torch.Tensor,

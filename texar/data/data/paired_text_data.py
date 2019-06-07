@@ -19,7 +19,6 @@ from typing import List, Optional, Tuple
 import numpy as np
 import torch
 
-import texar.utils.utils as utils
 from texar.data.data.data_base import (
     DataSource, FilterDataSource, ZipDataSource)
 from texar.data.data.dataset_utils import Batch, padded_batch
@@ -29,10 +28,11 @@ from texar.data.data.text_data_base import TextDataBase, TextLineDataSource
 from texar.data.embedding import Embedding
 from texar.data.vocabulary import SpecialTokens, Vocab
 from texar.hyperparams import HParams
+from texar.utils import utils
 
 __all__ = [
     "_default_paired_text_dataset_hparams",
-    "PairedTextData"
+    "PairedTextData",
 ]
 
 

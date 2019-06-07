@@ -24,7 +24,7 @@ from texar.modules.embedders import embedder_utils
 # pylint: disable=invalid-name
 
 __all__ = [
-    "EmbedderBase"
+    "EmbedderBase",
 ]
 
 

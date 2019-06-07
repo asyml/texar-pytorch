@@ -15,15 +15,15 @@
 Base class for feed forward neural networks.
 """
 
+from typing import Any, Dict, List, Optional, Union
+
 import torch
 from torch import nn
 
-from typing import Union, Dict, List, Optional, Any
-
-from texar.module_base import ModuleBase
 from texar.core.layers import get_layer
-from texar.utils.utils import uniquify_str
 from texar.hyperparams import HParams
+from texar.module_base import ModuleBase
+from texar.utils.utils import uniquify_str
 
 # pylint: disable=too-many-instance-attributes, arguments-differ
 # pylint: disable=protected-access
