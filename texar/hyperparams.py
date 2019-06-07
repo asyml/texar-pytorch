@@ -71,12 +71,13 @@ class HParams:
           For example, in :func:`~texar.core.get_rnn_cell`, hyperparameter
           `"type"` can take value of an RNNCell class, its string name of module
           path, or an RNNCell class instance. (String name or module path is
-          allowd so that users can specify the value in YAML config files.)
+          allowed so that users can specify the value in YAML config files.)
 
         - For other hyperparameters, list them
-          in the `"@no_typecheck"` field in `default_hparams` to skip typecheck.
-          For example, in :func:`~texar.core.get_rnn_cell`, hyperparameter
-          ``"\*_keep_prob"`` can be set to either a `float` or a `tf.placeholder`.
+          in the `"@no_typecheck"` field in :meth:`default_hparams` to skip
+          typecheck. For example, in :class:`~texar.modules.Conv1DNetwork`,
+          hyperparameter `"kernel_size"` can be set to either a `list` of int
+          or simply an `int`.
 
     - **Special flexibility of keyword argument hyperparameters.**
       Hyperparameters named "kwargs" are used as keyword arguments for a class
@@ -94,8 +95,9 @@ class HParams:
             my_hparams = {
                 "kwargs" {
                     "num_units": 123,
-                    "forget_bias": 0.0         # Other valid keyword arguments
-                    "activation": "tf.nn.relu" # for LSTMCell constructor
+                    # Other valid keyword arguments for LSTMCell constructor
+                    "forget_bias": 0.0
+                    "activation": "torch.nn.functional.relu"
                 }
             }
             _ = HParams(my_hparams, default_rnn_cell_hparams)

@@ -30,43 +30,40 @@ import texar as tx
 # Data 
 data = tx.data.PairedTextData(hparams=hparams_data) # Hyperparameter configs in `hparams` 
 iterator = tx.data.DataIterator(data)
-batch = iterator.get_next() # A data mini-batch
 
 # Model architecture
 embedder = tx.modules.WordEmbedder(data.target_vocab.size, hparams=hparams_emb)
-encoder = tx.modules.TransformerEncoder(hparams=hparams_encoder)
+encoder = tx.modules.BidirectionalRNNEncoder(input_size=source_embedder.dim,
+                                             hparams=hparams_encoder)
 outputs_enc = encoder(inputs=embedder(batch['source_text_ids']),
                       sequence_length=batch['source_length'])
                       
 decoder = tx.modules.AttentionRNNDecoder(memory=output_enc, 
                                          memory_sequence_length=batch['source_length'],
                                          hparams=hparams_decoder)
-outputs, _, _ = decoder(inputs=embedder(batch['target_text_ids']),
-                        sequence_length=batch['target_length']-1)
-                        
-# Loss for maximum likelihood learning
-loss = tx.losses.sequence_sparse_softmax_cross_entropy(
-    labels=batch['target_text_ids'][:, 1:],
-    logits=outputs.logits,
-    sequence_length=batch['target_length']-1) # Automatic masks
 
-# Beam search decoding
-outputs_bs, _, _ = tx.modules.beam_search_decode(
-    decoder,
-    embedding=embedder,
-    start_tokens=[data.target_vocab.bos_token_id]*num_samples,
-    end_token=data.target_vocab.eos_token_id)
-```
-```python
-# Policy gradient agent for RL learning
-agent = tx.agents.SeqPGAgent(samples=outputs.sample_id,
-                             logits=outputs.logits,
-                             sequence_length=batch['target_length']-1,
-                             hparams=config_model.agent)
+attn_dim = hparams_decoder["attention_dim"]["kwargs"]["num_units"]
+decoder = tx.modules.AttentionRNNDecoder(encoder_output_size=encoder.cell_fw.hidden_size \
+                                                             + encoder.cell_bw.hidden_size,
+                                         input_size=embedder.dim + attn_dim,
+                                         vocab_size=data.target_vocab.size, 
+                                         hparams=hparams_decoder)
+
+for batch in iterator:
+    training_outputs, _, _ = decoder(memory=torch.cat(enc_outputs, dim=2),
+                                     memory_sequence_length=batch['source_length'],
+                                     inputs=embedder(batch['target_text_ids'][:,:-1]),
+                                     sequence_length=batch['target_length'] - 1)
+
+    # mle loss
+    mle_loss = tx.losses.sequence_sparse_softmax_cross_entropy(
+                    labels=batch['target_text_ids'][:, 1:],
+                    logits=training_outputs.logits,
+                    sequence_length=batch['target_length'] - 1)
 ```
 Many more examples are available [here](https://github.com/asyml/texar/tree/master/examples)
   
-### Installtion
+### Installation
 ```
 git clone https://github.com/asyml/texar.git
 cd texar
