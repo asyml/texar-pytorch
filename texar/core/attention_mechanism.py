@@ -73,6 +73,7 @@ def _prepare_memory(memory: torch.Tensor,
     Args:
         memory: `Tensor`, shaped `[batch_size, max_time, ...]`.
         memory_sequence_length: `int32` `Tensor`, shaped `[batch_size]`.
+
     Returns:
         A (possibly masked), new `memory`.
     """
@@ -259,8 +260,10 @@ def _luong_score(query: torch.Tensor,
         query: Tensor, shape `[batch_size, num_units]` to compare to keys.
         keys: Processed memory, shape `[batch_size, max_time, num_units]`.
         scale: the optional tensor to scale the attention score.
+
     Returns:
         A `[batch_size, max_time]` tensor of unnormalized score values.
+
     Raises:
         ValueError: If `key` and `query` depths do not match.
     """
@@ -306,6 +309,7 @@ class LuongAttention(_BaseAttentionMechanism):
     Bahdanau attention.
     To enable the second form, construct the object with parameter
     `scale=True`.
+
     Args:
         num_units: The depth of the attention mechanism.
         encoder_output_size: The output size of the encoder cell.
@@ -407,6 +411,7 @@ def _bahdanau_score(processed_query: torch.Tensor,
     "Weight Normalization: A Simple Reparameterization to Accelerate
      Training of Deep Neural Networks." <https://arxiv.org/abs/1602.07868>`_
     To enable the second form, set please pass in attention_g and attention_b.
+
     Args:
         processed_query: Tensor, shape `[batch_size, num_units]` to compare to
             keys.
@@ -415,6 +420,7 @@ def _bahdanau_score(processed_query: torch.Tensor,
         attention_g: Optional scalar tensor for normalization.
         attention_b: Optional tensor with shape `[num_units]` for
             normalization.
+
     Returns:
         A `[batch_size, max_time]` tensor of unnormalized score values.
     """
@@ -442,6 +448,7 @@ class BahdanauAttention(_BaseAttentionMechanism):
     Training of Deep Neural Networks." <https://arxiv.org/abs/1602.07868>`_
     To enable the second form, construct the object with parameter
     `normalize=True`.
+
     Args:
         num_units: The depth of the query mechanism.
         cell_output_size: The output size of the decoder cell.
@@ -502,6 +509,7 @@ class BahdanauAttention(_BaseAttentionMechanism):
                 memory_sequence_length: Optional[torch.Tensor] = None,
                 ) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""Score the query based on the keys and values.
+
         Args:
             query: Tensor of dtype matching `self.values` and shape
                 `[batch_size, query_depth]`.
@@ -551,10 +559,12 @@ def safe_cumprod(x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
     As long as the argument is all positive, we can instead compute the
     cumulative product as `exp(cumsum(log(x)))`.  This function can be called
     identically to :torch:`cumprod`.
+
     Args:
         x: Tensor to take the cumulative product of.
         *args: Passed on to cumsum; these are identical to those in cumprod.
         **kwargs: Passed on to cumsum; these are identical to those in cumprod.
+
     Returns:
         Cumulative product of x.
     """
@@ -581,6 +591,7 @@ def monotonic_attention(p_choose_i: torch.Tensor,
     output timesteps.  This function generates attention distributions
     according to these assumptions.  For more information, see `Online and
     Linear-Time Attention by Enforcing Monotonic Alignments`.
+
     Args:
         p_choose_i: Probability of choosing input sequence/memory element i.
             Should be of shape (batch_size, input_sequence_length), and should
@@ -605,9 +616,11 @@ def monotonic_attention(p_choose_i: torch.Tensor,
                 - ``"hard"`` requires that the probabilities in
                   :attr:`p_choose_i` are all either 0 or 1, and subsequently
                   uses a more efficient and exact solution.
+
     Returns:
         A tensor of shape (batch_size, input_sequence_length) representing the
         attention distributions for each sequence in the batch.
+
     Raises:
         ValueError: mode is not one of ``"recursive"``, ``"parallel"``,
         ``"hard"``.
@@ -679,6 +692,7 @@ def _monotonic_probability_fn(score: torch.Tensor,
     Colin Raffel, Minh-Thang Luong, Peter J. Liu, Ron J. Weiss, Douglas Eck,
     "Online and Linear-Time Attention by Enforcing Monotonic Alignments."
     ICML 2017.  https://arxiv.org/abs/1704.00784
+
     Args:
         score: Unnormalized attention scores, shape
             `[batch_size, alignments_size]`
@@ -692,6 +706,7 @@ def _monotonic_probability_fn(score: torch.Tensor,
         mode: How to compute the attention distribution.  Must be one of
             `"recursive"`, `"parallel"`, or `"hard"`.  See the docstring for
             :func:`~texar.core.monotonic_attention` for more information.
+
     Returns:
         A `[batch_size, alignments_size]`-shape tensor corresponding to the
         resulting attention distribution.
@@ -831,6 +846,7 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 memory_sequence_length: Optional[torch.Tensor] = None
                 ) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""Score the query based on the keys and values.
+
         Args:
             query: Tensor of dtype matching `self.values` and shape
                 `[batch_size, query_depth]`.
@@ -843,6 +859,7 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 entries in memory.  If provided, the memory tensor rows are
                 masked with zeros for values past the respective sequence
                 lengths.
+
         Returns:
             Tensor of dtype matching `self.values` and shape
             `[batch_size, alignments_size]` (`alignments_size` is memory's
@@ -887,6 +904,7 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
     "Online and Linear-Time Attention by Enforcing Monotonic Alignments."
     ICML 2017.  <https://arxiv.org/abs/1704.00784>`_
     Construct the Attention mechanism.
+
     Args:
         num_units: The depth of the query mechanism.
         encoder_output_size: The output size of the encoder cell.
@@ -944,6 +962,7 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 memory_sequence_length: Optional[torch.Tensor] = None,
                 ) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""Score the query based on the keys and values.
+
         Args:
             query: Tensor of dtype matching `self.values` and shape
                 `[batch_size, query_depth]`.
@@ -956,6 +975,7 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 entries in memory.  If provided, the memory tensor rows are
                 masked with zeros for values past the respective sequence
                 lengths.
+
         Returns:
             Tensor of dtype matching `self.values` and shape
             `[batch_size, alignments_size]` (`alignments_size` is memory's
@@ -984,8 +1004,10 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
 def hardmax(logits: torch.Tensor) -> torch.Tensor:
     r"""Returns batched one-hot vectors. The depth index containing
     the `1` is that of the maximum logit value.
+
     Args:
         logits: A batch tensor of logit values.
+
     Returns:
         A batched one-hot tensor.
     """
@@ -1066,14 +1088,17 @@ class AttentionWrapperState(NamedTuple):
         The new state fields' shape must match original state fields' shape.
         This will be validated, and original fields' shape will be propagated
         to new fields.
+
         Example:
         .. code-block:: python
             initial_state = attention_wrapper.zero_state(dtype=...,
             batch_size=...)
             initial_state = initial_state.clone(cell_state=encoder_state)
+
         Args:
             **kwargs: Any properties of the state object to replace in the
                 returned :class:`~texar.core.AttentionWrapperState`.
+
         Returns:
             A new :class:`~texar.core.AttentionWrapperState` whose properties
             are the same as this one, except any overridden properties as

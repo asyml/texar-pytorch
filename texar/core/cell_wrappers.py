@@ -563,8 +563,10 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
         r"""Returns `seq` as tuple or the singular element.
         Which is returned is determined by how the AttentionMechanism(s) were
         passed to the constructor.
+
         Args:
             seq: A non-empty sequence of items or generator.
+
         Returns:
             Either the values in the sequence as a tuple if
             AttentionMechanism(s) were passed to the constructor as a sequence
@@ -652,17 +654,26 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
         - Step 6: Calculate the attention output by concatenating the cell
           output and context through the attention layer (a linear layer with
           `attention_layer_size` outputs).
+
         Args:
             inputs: (Possibly nested tuple of) Tensor, the input at this time
                 step.
             state: An instance of :class:`~texar.core.AttentionWrapperState`
                 containing tensors from the previous time step.
+            memory: The memory to query; usually the output of an RNN encoder.
+                This tensor should be shaped `[batch_size, max_time, ...]`.
+            memory_sequence_length: (optional) Sequence lengths for the batch
+                entries in memory.  If provided, the memory tensor rows are
+                masked with zeros for values past the respective sequence
+                lengths.
+
         Returns:
             A tuple `(attention_or_cell_output, next_state)`, where:
                 - `attention_or_cell_output` depending on `output_attention`.
                 - `next_state` is an instance of
                   :class:`~texar.core.AttentionWrapperState` containing the
                   state calculated at this time step.
+
         Raises:
             TypeError: If `state` is not an instance of
                 :class:`~texar.core.AttentionWrapperState`.

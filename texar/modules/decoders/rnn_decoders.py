@@ -105,6 +105,7 @@ class AttentionRNNDecoderOutput(NamedTuple):
 
 class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
     r"""Basic RNN decoder.
+
     Args:
         input_size (int): Dimension of input embeddings.
         cell (RNNCellBase, optional): An instance of
@@ -121,10 +122,12 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
             hyperparameters will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
+
     See :meth:`~texar.modules.RNNDecoderBase.forward` for the inputs and
     outputs of the decoder. The decoder returns
     ``(outputs, final_state, sequence_lengths)``, where ``outputs`` is an
     instance of :class:`~texar.modules.BasicRNNDecoderOutput`.
+
     Example:
         .. code-block:: python
             embedder = WordEmbedder(vocab_size=data.vocab.size)
@@ -174,6 +177,7 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
                 }
                 "name": "basic_rnn_decoder"
             }
+
         Here:
         "rnn_cell": dict
             A dictionary of RNN cell hyperparameters. Ignored if
@@ -230,6 +234,7 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
 
 class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
     r"""RNN decoder with attention mechanism.
+
     Args:
         input_size (int): Input size of the decoder cell.
         encoder_output_size (int): The output size of the encoder cell.
@@ -258,10 +263,12 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
+
     See :meth:`~texar.modules.RNNDecoderBase.forward` for the inputs and
     outputs of the decoder. The decoder returns
     `(outputs, final_state, sequence_lengths)`, where `outputs` is an instance
     of :class:`~texar.modules.AttentionRNNDecoderOutput`.
+
     Example:
         .. code-block:: python
             # Encodes the source
