@@ -604,7 +604,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
             if max_decoding_length is None:
                 max_decoding_length = utils.MAX_SEQ_LENGTH
 
-        return self.dynamic_decode(
+        return self.dynamic_decode(  # type: ignore
             helper, inputs, sequence_length, initial_state,
             max_decoding_length, impute_finished)
 
