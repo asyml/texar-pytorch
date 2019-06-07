@@ -1,6 +1,7 @@
 """Configurations of Transformer model
 """
 import copy
+
 import texar as tx
 
 random_seed = 1234

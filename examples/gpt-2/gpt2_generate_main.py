@@ -16,15 +16,16 @@
 
 import argparse
 import importlib
+import random
+
 import numpy as np
 import torch
+from torch import nn
 
 import texar as tx
 from texar.modules.embedders.embedders import WordEmbedder
-from texar.modules.embedders.position_embedders import \
-    PositionEmbedder
+from texar.modules.embedders.position_embedders import PositionEmbedder
 from texar.modules.decoders.transformer_decoders import TransformerDecoder
-
 from utils import model_utils, processor
 
 # pylint: disable=invalid-name, too-many-locals, too-many-statements, no-member
@@ -99,13 +100,53 @@ parser.add_argument('--config_model',
 args = parser.parse_args()
 
 
+class GPT2(nn.Module):
+    def __init__(self, gpt2_config, top_k, temperature):
+        super().__init__()
+        self.word_embedder = WordEmbedder(
+            vocab_size=gpt2_config.vocab_size,
+            hparams=gpt2_config.embed)
+
+        self.pos_embedder = PositionEmbedder(
+            position_size=gpt2_config.position_size,
+            hparams=gpt2_config.pos_embed)
+
+        self.decoder = TransformerDecoder(
+            vocab_size=gpt2_config.vocab_size,
+            output_layer=self.word_embedder.embedding,
+            hparams=gpt2_config.decoder)
+
+        self.top_k = top_k
+        self.temperature = temperature
+
+        self._embedding_fn = lambda x, y: (
+                self.word_embedder(x) + self.pos_embedder(y))
+
+    def forward(self, start_tokens, end_token, context, context_sequence_length,
+                max_decoding_length):
+        helper = tx.modules.TopKSampleEmbeddingHelper(
+            embedding=self._embedding_fn,
+            start_tokens=start_tokens,
+            end_token=end_token,
+            top_k=self.top_k,
+            softmax_temperature=self.temperature)
+        output, _ = self.decoder(
+            context=context,
+            context_sequence_length=context_sequence_length,
+            max_decoding_length=max_decoding_length,
+            helper=helper)
+        return output
+
+
 def run_model():
     r"""Build the model and run.
     """
     if args.seed:
+        random.seed(args.seed)
         np.random.seed(args.seed)
-        torch.random.manual_seed(args.seed)
-        torch.cuda.manual_seed(args.seed)
+        torch.manual_seed(args.seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(args.seed)
 
     nsamples = args.nsamples
     batch_size = args.batch_size
@@ -127,45 +168,23 @@ def run_model():
         "nsamples must be dividable by batch_size")
 
     # Create a data pre-processor for, e.g., BPE encoding
-    proc = processor.get_encoder(
-        "gpt2_pretrained_models/model_117M")
     proc = processor.get_encoder(args.pretrain_model_dir)
     end_token = proc.encoder['<|endoftext|>']
 
     # Build the GPT-2 model
-    word_embedder = WordEmbedder(
-        vocab_size=gpt2_config.vocab_size,
-        hparams=gpt2_config.embed)
-
-    pos_embedder = PositionEmbedder(
-        position_size=gpt2_config.position_size,
-        hparams=gpt2_config.pos_embed)
-
-    def _embedding_fn(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        # `x` is token ids, `y` is time steps
-        res = word_embedder(x) + pos_embedder(y)
-        return res
-
-    output_layer = word_embedder.embedding
-    decoder = TransformerDecoder(
-        vocab_size=gpt2_config.vocab_size,
-        output_layer=output_layer,
-        hparams=gpt2_config.decoder)
+    model = GPT2(gpt2_config, args.top_k, args.temperature)
 
     # Load model checkpoint
     if args.checkpoint:
-        model_utils.init_gpt2_checkpoint(
-            word_embedder,
-            pos_embedder,
-            decoder,
-            args.checkpoint)
-
+        model_utils.init_gpt2_checkpoint(model, args.checkpoint)
     elif args.pretrain_checkpoint:
-        model_utils.init_gpt2_checkpoint(
-            word_embedder,
-            pos_embedder,
-            decoder,
-            args.pretrain_checkpoint)
+        model_utils.init_gpt2_checkpoint(model, args.pretrain_checkpoint)
+
+    if torch.cuda.is_available():
+        model.cuda()
+        device = torch.cuda.current_device()
+    else:
+        device = None
 
     print("\nFinished loading\n")
 
@@ -173,34 +192,30 @@ def run_model():
         # Generate continuations of context
         while True:
 
-            raw_text = input("Model input >>> ")
-
-            while not raw_text:
-                print('Input should not be empty!')
+            try:
                 raw_text = input("Model input >>> ")
+                while not raw_text:
+                    print('Input should not be empty!')
+                    raw_text = input("Model input >>> ")
+            except EOFError:
+                exit(0)
 
             context_tokens = proc.encode(raw_text)
-            context = torch.tensor([context_tokens for _ in range(
-                batch_size)])
+            context = torch.tensor(
+                [context_tokens for _ in range(batch_size)], device=device)
             context_length = torch.tensor(
-                [len(context_tokens) for _ in range(batch_size)])
+                [len(context_tokens) for _ in range(batch_size)], device=device)
 
             start_tokens = context[:, 0]
-            helper = tx.modules.TopKSampleEmbeddingHelper(
-                embedding=_embedding_fn,
-                start_tokens=start_tokens,
-                end_token=end_token,
-                top_k=args.top_k,
-                softmax_temperature=args.temperature)
 
             generated = 0
             for _ in range(nsamples // batch_size):
-
-                output, _ = decoder(
+                output = model(
+                    start_tokens=start_tokens,
+                    end_token=end_token,
                     context=context,
                     context_sequence_length=context_length,
-                    max_decoding_length=max_decoding_length,
-                    helper=helper)
+                    max_decoding_length=max_decoding_length)
 
                 sample_id = output.sample_id
                 for i in range(batch_size):
@@ -213,20 +228,16 @@ def run_model():
             print("=" * 80)
     else:
         # Generate samples from scratch
-        start_tokens = torch.full([batch_size], end_token, dtype=torch.int64)
-        helper = tx.modules.TopKSampleEmbeddingHelper(
-            embedding=_embedding_fn,
-            start_tokens=start_tokens,
-            end_token=end_token,
-            top_k=args.top_k,
-            softmax_temperature=args.temperature)
+        start_tokens = torch.full(
+            [batch_size], end_token, dtype=torch.int64, device=device)
 
         generated = 0
         while nsamples == 0 or generated < nsamples:
 
-            output, _ = decoder(
-                max_decoding_length=max_decoding_length,
-                helper=helper)
+            output = model(
+                start_tokens=start_tokens,
+                end_token=end_token,
+                max_decoding_length=max_decoding_length)
             sample_id = output.sample_id
             for i in range(batch_size):
                 generated += batch_size

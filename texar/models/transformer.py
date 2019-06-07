@@ -45,8 +45,6 @@ class Transformer(ModuleBase):
             ignore_index=0,
         )
 
-        self.step_iteration = 0
-
     def forward(  # type: ignore
         self,
         encoder_input,
@@ -128,10 +126,7 @@ class Transformer(ModuleBase):
             return mle_loss
         else:
             start_tokens = encoder_input.new_full(
-                (batch_size,), self.bos_token_id, dtype=torch.int32)
-
-            if torch.cuda.is_available():
-                start_tokens = start_tokens.cuda()
+                (batch_size,), self.bos_token_id, dtype=torch.long)
 
             def _embedding_fn(x, y):
                 word_embed = self.word_embedder(x)

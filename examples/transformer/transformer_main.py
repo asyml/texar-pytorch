@@ -14,20 +14,20 @@
 """Transformer model.
 """
 import argparse
+import functools
+import importlib
+import os
 import pickle
 import random
-import os
-import importlib
 
 import torch
 from torchtext import data
-import texar as tx
-from texar.models import Transformer
-from texar.utils.utils import adjust_learning_rate
 
+import texar as tx
+from bleu_tool import bleu_wrapper
+from texar.models import Transformer
 from utils import data_utils, utils
 from utils.preprocess import eos_token_id
-from bleu_tool import bleu_wrapper
 
 # pylint: disable=invalid-name, too-many-locals
 
@@ -78,16 +78,27 @@ def main():
     tx.utils.maybe_create_dir(args.model_dir)
     logging_file = os.path.join(args.model_dir, 'logging.txt')
     logger = utils.get_logger(logging_file)
-    print('logging file is saved in: %s', logging_file)
+    print(f"logging file is saved in: {logging_file}")
 
     model = Transformer(config_model, config_data)
     if torch.cuda.is_available():
         model = model.cuda()
+        device = torch.cuda.current_device()
+    else:
+        device = None
 
     best_results = {'score': 0, 'epoch': -1}
-    opt = torch.optim.Adam(
-        model.parameters(), betas=(0.9, 0.997), eps=1e-9
-    )
+    lr_config = config_model.lr_config
+    if lr_config["learning_rate_schedule"] == "static":
+        init_lr = lr_config["static_lr"]
+        scheduler_lambda = lambda x: 1.0
+    else:
+        init_lr = lr_config["lr_constant"]
+        scheduler_lambda = functools.partial(
+            utils.get_lr_multiplier, warmup_steps=lr_config["warmup_steps"])
+    optim = torch.optim.Adam(
+        model.parameters(), lr=init_lr, betas=(0.9, 0.997), eps=1e-9)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optim, scheduler_lambda)
 
     def _eval_epoch(epoch, mode):
         torch.cuda.empty_cache()
@@ -96,14 +107,15 @@ def main():
         elif mode == 'test':
             eval_data = test_data
         else:
-            raise ValueError('`mode` should be either "eval" or "test".')
+            raise ValueError("`mode` should be either \"eval\" or \"test\".")
 
         references, hypotheses = [], []
         bsize = config_data.test_batch_size
         for i in range(0, len(eval_data), bsize):
             sources, targets = zip(*eval_data[i:i + bsize])
             with torch.no_grad():
-                x_block = data_utils.source_pad_concat_convert(sources)
+                x_block = data_utils.source_pad_concat_convert(
+                    sources, device=device)
                 predictions = model(
                     encoder_input=x_block,
                     is_train_mode=False,
@@ -134,20 +146,21 @@ def main():
                 hwords, rwords, fname, mode='s')
             eval_bleu = bleu_wrapper(ref_fn, hyp_fn, case_sensitive=True)
             eval_bleu = 100. * eval_bleu
-            logger.info('epoch: %d, eval_bleu %.4f', epoch, eval_bleu)
-            print('epoch: %d, eval_bleu %.4f' % (epoch, eval_bleu))
+            logger.info("epoch: %d, eval_bleu %.4f", epoch, eval_bleu)
+            print(f"epoch: {epoch:d}, eval_bleu {eval_bleu:.4f}")
 
             if eval_bleu > best_results['score']:
-                logger.info('epoch: %d, best bleu: %.4f', epoch, eval_bleu)
+                logger.info("epoch: %d, best bleu: %.4f", epoch, eval_bleu)
                 best_results['score'] = eval_bleu
                 best_results['epoch'] = epoch
                 model_path = os.path.join(args.model_dir, args.model_fn)
-                logger.info('saving model to %s', model_path)
-                print('saving model to %s' % model_path)
+                logger.info("Saving model to %s", model_path)
+                print(f"Saving model to {model_path}")
 
                 states = {
                     'model': model.state_dict(),
-                    'optimizer': opt.state_dict()
+                    'optimizer': optim.state_dict(),
+                    'scheduler': scheduler.state_dict(),
                 }
                 torch.save(states, model_path)
 
@@ -164,8 +177,8 @@ def main():
             hyp_fn, ref_fn = tx.utils.write_paired_text(
                 hwords, rwords, fname, mode='s',
                 src_fname_suffix='hyp', tgt_fname_suffix='ref')
-            logger.info('Test output writtn to file: %s', hyp_fn)
-            print('Test output writtn to file: %s' % hyp_fn)
+            logger.info("Test output written to file: %s", hyp_fn)
+            print(f"Test output written to file: {hyp_fn}")
 
     def _train_epoch(epoch: int):
         random.shuffle(train_data)
@@ -177,11 +190,9 @@ def main():
             random_shuffler=data.iterator.RandomShuffler())
 
         for _, train_batch in enumerate(train_iter):
-            torch.cuda.empty_cache()
-            opt.zero_grad()
-            in_arrays = data_utils.seq2seq_pad_concat_convert(train_batch)
-            if torch.cuda.is_available():
-                in_arrays = [tensor.cuda() for tensor in in_arrays]
+            optim.zero_grad()
+            in_arrays = data_utils.seq2seq_pad_concat_convert(
+                train_batch, device=device)
             loss = model(
                 encoder_input=in_arrays[0],
                 is_train_mode=True,
@@ -189,41 +200,42 @@ def main():
                 labels=in_arrays[2],
             )
             loss.backward()
-            lr = utils.get_lr(model.step_iteration, config_model.lr_config)
-            adjust_learning_rate(opt, lr)
-            opt.step()
 
-            model.step_iteration += 1
-            step = model.step_iteration
+            optim.step()
+            scheduler.step()
+
+            step = scheduler.last_epoch
             if step % config_data.display_steps == 0:
                 logger.info('step: %d, loss: %.4f', step, loss)
-                print('lr: {} step: {}, loss: {}'.format(lr, step, loss))
+                lr = optim.param_groups[0]['lr']
+                print(f"lr: {lr} step: {step}, loss: {loss:.4}")
             if step and step % config_data.eval_steps == 0:
                 _eval_epoch(epoch, mode='eval')
 
     if args.run_mode == 'train_and_evaluate':
-        logger.info('Begin running with train_and_evaluate mode')
+        logger.info("Begin running with train_and_evaluate mode")
         model_path = os.path.join(args.model_dir, args.model_fn)
         if os.path.exists(model_path):
-            logger.info('Restore latest checkpoint in %s' % model_path)
+            logger.info("Restore latest checkpoint in", model_path)
             ckpt = torch.load(model_path)
             model.load_state_dict(ckpt['model'])
-            opt.load_state_dict(ckpt['optimizer'])
+            optim.load_state_dict(ckpt['optimizer'])
+            scheduler.load_state_dict(ckpt['scheduler'])
             _eval_epoch(0, mode='test')
 
         for epoch in range(config_data.max_train_epoch):
             _train_epoch(epoch)
 
     elif args.run_mode == 'test':
-        logger.info('Begin running with test mode')
+        logger.info("Begin running with test mode")
         model_path = os.path.join(args.model_dir, args.model_fn)
-        logger.info('Restore latest checkpoint in %s' % model_path)
+        logger.info("Restore latest checkpoint in", model_path)
         ckpt = torch.load(model_path)
         model.load_state_dict(ckpt['model'])
         _eval_epoch(0, mode='test')
 
     else:
-        raise ValueError('Unknown mode: {}'.format(args.run_mode))
+        raise ValueError(f"Unknown mode: {args.run_mode}")
 
 
 if __name__ == '__main__':

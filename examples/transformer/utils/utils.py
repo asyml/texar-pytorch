@@ -22,10 +22,12 @@ import numpy as np
 import torch
 
 
-def set_random_seed(myseed):
-    torch.manual_seed(myseed)
-    np.random.seed(myseed)
-    random.seed(myseed)
+def set_random_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
 
 
 def batch_size_fn(new, count, size_so_far):
@@ -37,25 +39,14 @@ def batch_size_fn(new, count, size_so_far):
     return max(src_elements, tgt_elements)
 
 
-def get_lr(step: int, opt_config):
-    step = step
-    if opt_config["learning_rate_schedule"] == "static":
-        lr = opt_config["static_lr"]
-    else:
-        lr = (
-                opt_config["lr_constant"]
-                * min(
-            1.0, (step / opt_config["warmup_steps"])
-        )
-                * (
-                        1
-                        / math.sqrt(
-                    max(step, opt_config["warmup_steps"])
-                )
-                )
-        )
-
-    return lr
+def get_lr_multiplier(step: int, warmup_steps: int) -> float:
+    r"""Calculate the learning rate multiplier given current step and the number
+    of warm-up steps. The learning rate schedule follows a linear warm-up and
+    square-root decay.
+    """
+    multiplier = (min(1.0, step / warmup_steps) *
+                  (1 / math.sqrt(max(step, warmup_steps))))
+    return multiplier
 
 
 def get_logger(log_path):
@@ -83,4 +74,3 @@ def list_strip_eos(list_, eos_token):
             elem = elem[:elem.index(eos_token)]
         list_strip.append(elem)
     return list_strip
-

@@ -42,7 +42,7 @@ def load_data_numpy(input_dir, prefix):
     return train_data, dev_data, test_data
 
 
-def seq2seq_pad_concat_convert(xy_batch, eos_id=2, bos_id=1):
+def seq2seq_pad_concat_convert(xy_batch, eos_id=2, bos_id=1, device=None):
     """
     Args:
         xy_batch (list of tuple of two numpy.ndarray-s or cupy.ndarray-s):
@@ -55,6 +55,7 @@ def seq2seq_pad_concat_convert(xy_batch, eos_id=2, bos_id=1):
             dictionary.
         bos_id: The index of begin-of-sentence special token in the
             dictionary.
+        device: The device of the generated tensors.
 
     Returns:
         Tuple of Converted array.
@@ -84,13 +85,13 @@ def seq2seq_pad_concat_convert(xy_batch, eos_id=2, bos_id=1):
         y_block, ((0, 0), (1, 0)), "constant", constant_values=bos_id
     )
 
-    x_block, y_in_block, y_out_block = \
-        torch.LongTensor(x_block), torch.LongTensor(y_in_block),\
-        torch.LongTensor(y_out_block)
+    x_block = torch.tensor(x_block, dtype=torch.long, device=device)
+    y_in_block = torch.tensor(y_in_block, dtype=torch.long, device=device)
+    y_out_block = torch.tensor(y_out_block, dtype=torch.long, device=device)
     return x_block, y_in_block, y_out_block
 
 
-def source_pad_concat_convert(x_seqs, eos_id=2, bos_id=1):
+def source_pad_concat_convert(x_seqs, eos_id=2, bos_id=1, device=None):
     """
     This function is used when testing the model without target input.
     """
@@ -100,7 +101,7 @@ def source_pad_concat_convert(x_seqs, eos_id=2, bos_id=1):
     x_block = np.pad(x_block, ((0, 0), (0, 1)), "constant", constant_values=0)
     for i_batch, seq in enumerate(x_seqs):
         x_block[i_batch, len(seq)] = eos_id
-    x_block = torch.LongTensor(x_block)
+    x_block = torch.tensor(x_block, dtype=torch.long, device=device)
     return x_block
 
 

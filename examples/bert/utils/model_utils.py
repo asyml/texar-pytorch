@@ -197,6 +197,7 @@ def init_bert_checkpoint(model, init_checkpoint):
                 raise NameError(f"Variable with name '{name}' not found")
             idx += 1
 
+
 def name_to_variable(model, name):
     """
     Find the corresponding variable given the specified name
