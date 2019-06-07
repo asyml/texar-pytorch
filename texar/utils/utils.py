@@ -483,6 +483,9 @@ def get_function(fn_or_name: Union[str, Callable[[torch.Tensor], torch.Tensor]],
 
     Returns:
         A function.
+
+    Raises:
+        ValueError: If method with name as :attr:`fn_or_name` is not found.
     """
     if callable(fn_or_name):
         return fn_or_name
@@ -540,7 +543,7 @@ def get_instance_kwargs(kwargs: Kwargs, hparams: ParamDict) -> Kwargs:
     `kwargs_ = {'hparams': dict(hparams), **kwargs}`.
 
     This is typically used for constructing a module which takes a set of
-    arguments as well as a argument named `hparams`.
+    arguments as well as a argument named ``"hparams"``.
 
     Args:
         kwargs (dict): A dict of keyword arguments. Can be `None`.
@@ -548,7 +551,7 @@ def get_instance_kwargs(kwargs: Kwargs, hparams: ParamDict) -> Kwargs:
 
     Returns:
         A `dict` that contains the keyword arguments in :attr:`kwargs`, and
-        an additional keyword argument named `hparams`.
+        an additional keyword argument named ``"hparams"``.
     """
     if hparams is None or isinstance(hparams, dict):
         kwargs_ = {'hparams': hparams}
@@ -593,7 +596,7 @@ def dict_lookup(dict_: MutableMapping[K, V], keys: Union[List[K], np.ndarray],
     The :attr:`default` is used for keys not present in the dict.
 
     Args:
-        dict_ (dict): A dictionary for lookup.
+        dict\_ (dict): A dictionary for lookup.
         keys: A numpy array or a (possibly nested) list of keys.
         default (optional): Value to be returned when a key is not in
             :attr:`dict_`. Error is raised if :attr:`default` is not given and
@@ -644,7 +647,7 @@ def dict_pop(dict_: MutableMapping[T, Any], pop_keys: MaybeSeq[T],
     r"""Removes keys from a dict and returns their values.
 
     Args:
-        dict_ (dict): A dictionary from which items are removed.
+        dict\_ (dict): A dictionary from which items are removed.
         pop_keys: A key or a list of keys to remove and return respective
             values or :attr:`default`.
         default (optional): Value to be returned when a key is not in
@@ -667,11 +670,11 @@ def flatten_dict(dict_: AnyDict, parent_key: str = "", sep: str = "."):
     https://github.com/google/seq2seq/blob/master/seq2seq/models/model_base.py
 
     Args:
-        dict_ (dict): The dictionary to flatten.
+        dict\_ (dict): The dictionary to flatten.
         parent_key (str): A prefix to prepend to each key.
         sep (str): Separator that intervenes between parent and child keys.
-            E.g., if `sep` == '.', then `{ "a": { "b": 3 } }` is converted
-            into `{ "a.b": 3 }`.
+            E.g., if :attr:`sep` == ``"."``, then `{ "a": { "b": 3 } }` is
+            converted into `{ "a.b": 3 }`.
 
     Returns:
         A new flattened `dict`.
@@ -696,7 +699,7 @@ def default_str(str_: Optional[str], default: str) -> str:
     :attr:`default_str`.
 
     Args:
-        str_: A string.
+        str\_: A string.
         default: A string.
 
     Returns:
@@ -715,7 +718,7 @@ def uniquify_str(str_: str, str_set: Collection[str]) -> str:
     :attr:`str_` directly if it is not included in :attr:`str_set`.
 
     Args:
-        str_ (string): A string to uniquify.
+        str\_ (string): A string to uniquify.
         str_set (set, dict, or list): A collection of strings. The returned
             string is guaranteed to be different from the elements in the
             collection.
@@ -764,10 +767,10 @@ def strip_token(str_: MaybeSeq[str], token: str,
     :attr:`str_` are separated with whitespace character.
 
     Args:
-        str_: A `str`, or an `n`-D numpy array or (possibly nested)
+        str\_: A `str`, or an `n`-D numpy array or (possibly nested)
             list of `str`.
-        token (str): The token to strip, e.g., the '<PAD>' token defined in
-            :class:`~texar.data.SpecialTokens`.PAD
+        token (str): The token to strip, e.g., the ``"<PAD>"`` token defined in
+            :class:`~texar.data.SpecialTokens`.
         is_token_list (bool): Whether each sentence in :attr:`str_` is a list
             of tokens. If False, each sentence in :attr:`str_` is assumed to
             contain tokens separated with space character.
@@ -820,9 +823,9 @@ def strip_eos(str_: MaybeSeq[str], eos_token: str = '<EOS>',
     :attr:`str_` are separated with whitespace character.
 
     Args:
-        str_: A `str`, or an `n`-D numpy array or (possibly nested)
+        str\_: A `str`, or an `n`-D numpy array or (possibly nested)
             list of `str`.
-        eos_token (str): The EOS token. Default is '<EOS>' as defined in
+        eos_token (str): The EOS token. Default is ``"<EOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.EOS
         is_token_list (bool): Whether each sentence in :attr:`str_` is a list
             of tokens. If False, each sentence in :attr:`str_` is assumed to
@@ -872,7 +875,7 @@ def strip_bos(str_: MaybeSeq[str], bos_token: str = '<BOS>',
     Args:
         str_: A `str`, or an `n`-D numpy array or (possibly nested)
             list of `str`.
-        bos_token (str): The BOS token. Default is '<BOS>' as defined in
+        bos_token (str): The BOS token. Default is ``"<BOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.BOS
         is_token_list (bool): Whether each sentence in :attr:`str_` is a list
             of tokens. If False, each sentence in :attr:`str_` is assumed to
@@ -926,21 +929,21 @@ def strip_special_tokens(str_: MaybeSeq[str],
     :func:`strip_bos`
 
     Args:
-        str_: A `str`, or an `n`-D numpy array or (possibly nested)
+        str\_: A `str`, or an `n`-D numpy array or (possibly nested)
             list of `str`.
         strip_pad (str): The PAD token to strip from the strings (i.e., remove
             the leading and trailing PAD tokens of the strings). Default
-            is '<PAD>' as defined in
+            is ``"<PAD>"`` as defined in
             :class:`~texar.data.SpecialTokens`.PAD.
             Set to `None` or `False` to disable the stripping.
         strip_bos (str): The BOS token to strip from the strings (i.e., remove
             the leading BOS tokens of the strings).
-            Default is '<BOS>' as defined in
+            Default is ``"<BOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.BOS.
             Set to `None` or `False` to disable the stripping.
         strip_eos (str): The EOS token to strip from the strings (i.e., remove
             the EOS tokens and all subsequent tokens of the strings).
-            Default is '<EOS>' as defined in
+            Default is ``"<EOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.EOS.
             Set to `None` or `False` to disable the stripping.
         is_token_list (bool): Whether each sentence in :attr:`str_` is a list
@@ -998,6 +1001,7 @@ def str_join(tokens: Sequence[List], sep: str = ' ') -> Sequence[str]:
 
 def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]],
                     vocab: 'Vocab',  # type: ignore
+                    # pylint: disable=fixme
                     # TODO: Remove the ignored type after Vocab is implemented.
                     join: bool = True, strip_pad: Optional[str] = '<PAD>',
                     strip_bos: Optional[str] = '<BOS>',
@@ -1013,17 +1017,17 @@ def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]],
             the tokens into a string separated with a space character.
         strip_pad (str): The PAD token to strip from the strings (i.e., remove
             the leading and trailing PAD tokens of the strings). Default
-            is '<PAD>' as defined in
+            is ``"<PAD>"`` as defined in
             :class:`~texar.data.SpecialTokens`.PAD.
             Set to `None` or `False` to disable the stripping.
         strip_bos (str): The BOS token to strip from the strings (i.e., remove
             the leading BOS tokens of the strings).
-            Default is '<BOS>' as defined in
+            Default is ``"<BOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.BOS.
             Set to `None` or `False` to disable the stripping.
         strip_eos (str): The EOS token to strip from the strings (i.e., remove
             the EOS tokens and all subsequent tokens of the strings).
-            Default is '<EOS>' as defined in
+            Default is ``"<EOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.EOS.
             Set to `None` or `False` to disable the stripping.
 

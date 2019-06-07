@@ -108,6 +108,7 @@ def mask_sequences(sequence: Union[torch.Tensor, List[int]],
         If both :attr:`sequence` and :attr:`sequence_length` are python
         arrays, the returned value is a python array as well.
     """
+    # pylint: disable=not-callable
     if not torch.is_tensor(sequence):
         sequence = torch.tensor(sequence, dtype=dtype)
     sequence: torch.Tensor
@@ -143,7 +144,7 @@ def flatten(tensor: torch.Tensor, preserve_dims: int,
             dimension. If not given, infer automatically.
 
     Returns:
-        A Tensor with rank :attr:`preserve_dims`+1.
+        A Tensor with rank :attr:`preserve_dims` +1.
 
     Example:
         .. code-block:: python
@@ -182,8 +183,7 @@ def pad_and_concat(values: List[torch.Tensor], axis: int,
         tensors.
 
     Raises:
-        ValueError: If :attr:`rank` is `None` and cannot be inferred from
-            :attr:`values`.
+        ValueError: If `rank` of :attr:`values` are not consistant.
 
     Example:
 
@@ -211,7 +211,7 @@ def pad_and_concat(values: List[torch.Tensor], axis: int,
         pad_axis = [r for r in range(rank) if r != axis]
     elif isinstance(pad_axis, int):
         pad_axis = [pad_axis]
-
+    # pylint: disable=invalid-name
     for pad_dim in pad_axis:
         max_dim_size = max(v.size(pad_dim) for v in values)
         for i, v in enumerate(values):

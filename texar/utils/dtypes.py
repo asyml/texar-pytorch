@@ -134,10 +134,10 @@ def _as_text(bytes_or_text, encoding='utf-8'):
 
 
 def compat_as_text(str_):
-    """Converts strings into `unicode` (Python 2) or `str` (Python 3).
+    r"""Converts strings into `unicode` (Python 2) or `str` (Python 3).
 
     Args:
-        str_: A string or other data types convertible to string, or an
+        str\_: A string or other data types convertible to string, or an
             `n`-D numpy array or (possibly nested) list of such elements.
 
     Returns:

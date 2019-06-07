@@ -12,10 +12,6 @@ Frequent Use
 .. autoclass:: texar.utils.AverageRecorder
     :members:
 
-:hidden:`collect_trainable_variables`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.collect_trainable_variables
-
 :hidden:`compat_as_text`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.compat_as_text
@@ -33,52 +29,8 @@ Frequent Use
 .. autofunction:: texar.utils.straight_through
 
 
-Variables
-=========
-
-:hidden:`collect_trainable_variables`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.collect_trainable_variables
-
-:hidden:`get_unique_named_variable_scope`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.get_unique_named_variable_scope
-
-:hidden:`add_variable`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.add_variable
-
-
-IO
-===
-
-:hidden:`write_paired_text`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.write_paired_text
-
-:hidden:`load_config`
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.load_config
-
-:hidden:`maybe_create_dir`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.maybe_create_dir
-
-:hidden:`get_files`
-~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.get_files
-
-
 DType
 =====
-
-:hidden:`compat_as_text`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.compat_as_text
-
-:hidden:`get_tf_dtype`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.get_tf_dtype
 
 :hidden:`is_callable`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -88,13 +40,13 @@ DType
 ~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.is_str
 
-:hidden:`is_placeholder`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_placeholder
-
 :hidden:`maybe_hparams_to_dict`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.maybe_hparams_to_dict
+
+:hidden:`compat_as_text`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.compat_as_text
 
 
 Shape
@@ -120,13 +72,14 @@ Shape
 ~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.shape_list
 
+:hidden:`flatten`
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.flatten
+
 :hidden:`pad_and_concat`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.pad_and_concat
 
-:hidden:`flatten`
-~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.flatten
 
 Dictionary
 ===========
@@ -150,6 +103,7 @@ Dictionary
 :hidden:`flatten_dict`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.flatten_dict
+
 
 String
 =======
