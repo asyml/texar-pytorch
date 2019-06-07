@@ -16,18 +16,18 @@ from texar.utils.rnn import dynamic_rnn, reverse_sequence, \
 
 
 class ReverseSequenceTest(unittest.TestCase):
-    """Tests reverse_sequence.
+    r"""Tests reverse_sequence.
     """
 
     def setUp(self):
         self.inputs = [[[10, 11], [12, 13], [14, 15], [16, 17], [18, 19]],
-                      [[20, 21], [22, 23], [24, 25], [26, 27], [28, 29]],
-                      [[30, 31], [32, 33], [34, 35], [36, 37], [38, 39]],
-                      [[40, 41], [42, 43], [44, 45], [46, 47], [48, 49]]]
+                       [[20, 21], [22, 23], [24, 25], [26, 27], [28, 29]],
+                       [[30, 31], [32, 33], [34, 35], [36, 37], [38, 39]],
+                       [[40, 41], [42, 43], [44, 45], [46, 47], [48, 49]]]
         self.inputs = torch.tensor(self.inputs)
 
     def test_reverse_sequence(self):
-        """Tests :meth:`~texar.utils.rnn.reverse_sequence`.
+        r"""Tests :meth:`~texar.utils.rnn.reverse_sequence`.
         """
         seq_lengths_batch_first = torch.tensor([1, 2, 3, 4])
         output = reverse_sequence(inputs=self.inputs,
@@ -47,15 +47,15 @@ class ReverseSequenceTest(unittest.TestCase):
                                   time_major=True)
 
         expect_out = [[[10, 11], [12, 13], [24, 25], [36, 37], [48, 49]],
-                      [[22, 23], [20, 21], [14, 15], [26, 27], [38, 39]],
-                      [[34, 35], [32, 33], [30, 31], [16, 17], [28, 29]],
-                      [[46, 47], [44, 45], [42, 43], [40, 41], [18, 19]]]
+                      [[20, 21], [22, 23], [14, 15], [26, 27], [38, 39]],
+                      [[30, 31], [32, 33], [34, 35], [16, 17], [28, 29]],
+                      [[40, 41], [42, 43], [44, 45], [46, 47], [18, 19]]]
 
         self.assertEqual(output.tolist(), expect_out)
 
 
 class DynamicRNNTest(unittest.TestCase):
-    """Tests dynamic_rnn.
+    r"""Tests dynamic_rnn.
     """
 
     def setUp(self):
@@ -68,7 +68,7 @@ class DynamicRNNTest(unittest.TestCase):
         self._gru = GRUCell(self._input_size, self._hidden_size)
 
     def test_dynamic_rnn_basic(self):
-        """Tests :meth:`~texar.utils.rnn.dynamic_rnn`.
+        r"""Tests :meth:`~texar.utils.rnn.dynamic_rnn`.
         """
         inputs = torch.rand(self._batch_size, self._max_time, self._input_size)
 
@@ -114,7 +114,7 @@ class DynamicRNNTest(unittest.TestCase):
                                                         self._hidden_size]))
 
     def test_dynamic_rnn_time_major(self):
-        """Tests :meth:`~texar.utils.rnn.dynamic_rnn`.
+        r"""Tests :meth:`~texar.utils.rnn.dynamic_rnn`.
         """
         inputs = torch.rand(self._max_time, self._batch_size, self._input_size)
 
@@ -160,7 +160,7 @@ class DynamicRNNTest(unittest.TestCase):
                                                         self._hidden_size]))
 
     def test_dynamic_rnn_sequence_length(self):
-        """Tests :meth:`~texar.utils.rnn.dynamic_rnn`.
+        r"""Tests :meth:`~texar.utils.rnn.dynamic_rnn`.
         """
         inputs = torch.rand(self._batch_size, self._max_time, self._input_size)
         sequence_length = [0, 43, 23, 63, 12, 54, 33, 8]
@@ -208,7 +208,7 @@ class DynamicRNNTest(unittest.TestCase):
                                                         self._hidden_size]))
 
     def test_dynamic_rnn_initial_state(self):
-        """Tests :meth:`~texar.utils.rnn.dynamic_rnn`. 
+        r"""Tests :meth:`~texar.utils.rnn.dynamic_rnn`.
         """
         inputs = torch.rand(self._batch_size, self._max_time, self._input_size)
 
@@ -260,7 +260,7 @@ class DynamicRNNTest(unittest.TestCase):
 
 
 class BidirectionalDynamicRNNTest(unittest.TestCase):
-    """Tests bidirectional_dynamic_rnn.
+    r"""Tests bidirectional_dynamic_rnn.
     """
 
     def setUp(self):
@@ -276,7 +276,7 @@ class BidirectionalDynamicRNNTest(unittest.TestCase):
         self._gru_bw = GRUCell(self._input_size, self._hidden_size)
 
     def test_bidirectional_dynamic_rnn_basic(self):
-        """Tests :meth:`~texar.utils.rnn.bidirectional_dynamic_rnn`.
+        r"""Tests :meth:`~texar.utils.rnn.bidirectional_dynamic_rnn`.
         """
         inputs = torch.rand(self._batch_size, self._max_time, self._input_size)
 
@@ -359,7 +359,7 @@ class BidirectionalDynamicRNNTest(unittest.TestCase):
                                                             self._hidden_size]))
 
     def test_bidirectional_dynamic_rnn_time_major(self):
-        """Tests :meth:`~texar.utils.rnn.bidirectional_dynamic_rnn`.
+        r"""Tests :meth:`~texar.utils.rnn.bidirectional_dynamic_rnn`.
         """
         inputs = torch.rand(self._max_time, self._batch_size, self._input_size)
 
@@ -442,7 +442,7 @@ class BidirectionalDynamicRNNTest(unittest.TestCase):
                                                             self._hidden_size]))
 
     def test_bidirectional_dynamic_rnn_sequence_length(self):
-        """Tests :meth:`~texar.utils.rnn.bidirectional_dynamic_rnn`.
+        r"""Tests :meth:`~texar.utils.rnn.bidirectional_dynamic_rnn`.
         """
         inputs = torch.rand(self._batch_size, self._max_time, self._input_size)
         sequence_length = [0, 43, 23, 63, 12, 54, 33, 8]
@@ -526,7 +526,7 @@ class BidirectionalDynamicRNNTest(unittest.TestCase):
                                                             self._hidden_size]))
 
     def test_bidirectional_dynamic_rnn_initial_state(self):
-        """Tests :meth:`~texar.utils.rnn.bidirectional_dynamic_rnn`.
+        r"""Tests :meth:`~texar.utils.rnn.bidirectional_dynamic_rnn`.
         """
         inputs = torch.rand(self._batch_size, self._max_time, self._input_size)
 

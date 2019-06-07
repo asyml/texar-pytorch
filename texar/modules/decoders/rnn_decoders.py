@@ -33,6 +33,9 @@ from texar.modules.decoders.rnn_decoder_base import RNNDecoderBase
 from texar.utils.types import MaybeTuple
 from texar.utils.utils import check_or_get_instance, get_function
 
+from texar.modules.decoders import decoder_helpers
+from texar.utils import utils
+
 __all__ = [
     'BasicRNNDecoderOutput',
     'AttentionRNNDecoderOutput',
@@ -42,119 +45,99 @@ __all__ = [
 
 State = TypeVar('State')
 
+Output = TypeVar('Output')  # output type can be of any nested structure
+
 
 class BasicRNNDecoderOutput(NamedTuple):
-    r"""The outputs of basic RNN decoder that include both RNN outputs and
-    sampled ids at each step. This is also used to store results of all the
-    steps after decoding the whole sequence.
-
-    Attributes:
-        logits: The outputs of RNN (at each step/of all steps) by applying the
-            output layer on cell outputs. E.g., in
-            :class:`~texar.modules.BasicRNNDecoder` with default
-            hyperparameters, this is a Tensor of
-            shape `[batch_size, max_time, vocab_size]` after decoding the
-            whole sequence.
-        sample_id: The sampled results (at each step/of all steps). E.g., in
-            BasicRNNDecoder with decoding strategy of train_greedy,
-            this is a Tensor
-            of shape `[batch_size, max_time]` containing the sampled token
-            indexes of all steps.
-        cell_output: The output of RNN cell (at each step/of all steps).
-            This is the results prior to the output layer. E.g., in
-            BasicRNNDecoder with default
-            hyperparameters, this is a Tensor of
-            shape `[batch_size, max_time, cell_output_size]` after decoding
-            the whole sequence.
+    r"""The outputs of :class:`~texar.modules.BasicRNNDecoder` that include both
+    RNN outputs and sampled IDs at each step. This is also used to store results
+    of all the steps after decoding the whole sequence.
     """
     logits: torch.Tensor
+    r"""The outputs of RNN (at each step/of all steps) by applying the
+    output layer on cell outputs. E.g., in
+    :class:`~texar.modules.BasicRNNDecoder` with default hyperparameters, this
+    is a :torch:`Tensor` of shape ``[batch_size, max_time, vocab_size]`` after
+    decoding the whole sequence."""
     sample_id: torch.LongTensor
+    r"""The sampled results (at each step/of all steps). E.g., in
+    :class:`~texar.modules.BasicRNNDecoder` with decoding strategy of
+    ``"train_greedy"``, this is a :torch:`LongTensor` of shape
+    ``[batch_size, max_time]`` containing the sampled token indices of all
+    steps."""
     cell_output: torch.Tensor
+    r"""The output of RNN cell (at each step/of all steps). This contains the
+    results prior to the output layer. E.g., in
+    :class:`~texar.modules.BasicRNNDecoder` with default hyperparameters, this
+    is a :torch:`Tensor` of shape ``[batch_size, max_time, cell_output_size]``
+    after decoding the whole sequence."""
 
 
 class AttentionRNNDecoderOutput(NamedTuple):
-    r"""The outputs of attention RNN decoders that additionally include
-    attention results.
-
-    Attributes:
-        logits: The outputs of RNN (at each step/of all steps) by applying the
-            output layer on cell outputs. E.g., in
-            :class:`~texar.modules.AttentionRNNDecoder`, this is a Tensor of
-            shape `[batch_size, max_time, vocab_size]` after decoding.
-        sample_id: The sampled results (at each step/of all steps). E.g., in
-            :class:`~texar.modules.AttentionRNNDecoder` with decoding strategy
-            of train_greedy, this
-            is a Tensor of shape `[batch_size, max_time]` containing the
-            sampled token indexes of all steps.
-        cell_output: The output of RNN cell (at each step/of all steps).
-            This is the results prior to the output layer. E.g., in
-            AttentionRNNDecoder with default
-            hyperparameters, this is a Tensor of
-            shape `[batch_size, max_time, cell_output_size]` after decoding
-            the whole sequence.
-        attention_scores: A single or tuple of `Tensor`(s) containing the
-            alignments emitted (at the previous time step/of all time steps)
-            for each attention mechanism.
-        attention_context: The attention emitted (at the previous time step/of
-            all time steps).
+    r"""The outputs of :class:`~texar.modules.AttentionRNNDecoder` that
+    additionally includes attention results.
     """
     logits: torch.Tensor
+    r"""The outputs of RNN (at each step/of all steps) by applying the
+    output layer on cell outputs. E.g., in
+    :class:`~texar.modules.AttentionRNNDecoder` with default hyperparameters,
+    this is a :torch:`Tensor` of shape ``[batch_size, max_time, vocab_size]``
+    after decoding the whole sequence."""
     sample_id: torch.LongTensor
+    r"""The sampled results (at each step/of all steps). E.g., in
+    :class:`~texar.modules.AttentionRNNDecoder` with decoding strategy of
+    ``"train_greedy"``, this is a :torch:`LongTensor` of shape
+    ``[batch_size, max_time]`` containing the sampled token indices of all
+    steps."""
     cell_output: torch.Tensor
+    r"""The output of RNN cell (at each step/of all steps). This contains the
+    results prior to the output layer. E.g., in
+    :class:`~texar.modules.AttentionRNNDecoder` with default hyperparameters,
+    this is a :torch:`Tensor` of shape
+    ``[batch_size, max_time, cell_output_size]`` after decoding the whole
+    sequence."""
     attention_scores: MaybeTuple[torch.Tensor]
+    r"""A single or tuple of `Tensor(s)` containing the alignments emitted (at
+    the previous time step/of all time steps) for each attention mechanism."""
     attention_context: torch.Tensor
+    r"""The attention emitted (at the previous time step/of all time steps)."""
 
 
 class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
     r"""Basic RNN decoder.
-
     Args:
-        cell (RNNCell, optional): An instance of
-            :tf_main:`RNNCell <ontrib/rnn/RNNCell>`. If `None`
-            (default), a cell is created as specified in
-            :attr:`hparams`.
-        cell_dropout_mode (optional): A Tensor taking value of
-            :tf_main:`tf.estimator.ModeKeys <estimator/ModeKeys>`, which
-            toggles dropout in the RNN cell (e.g., activates dropout in
-            TRAIN mode). If `None`, :func:`~texar.global_mode` is used.
-            Ignored if :attr:`cell` is given.
+        input_size (int): Dimension of input embeddings.
+        cell (RNNCellBase, optional): An instance of
+            :class:`~texar.core.RNNCellBase`. If ``None`` (default), a cell is
+            created as specified in :attr:`hparams`.
         vocab_size (int, optional): Vocabulary size. Required if
-            :attr:`output_layer` is `None`.
-        output_layer (optional): An instance of
-            :tf_main:`tf.layers.Layer <layers/Layer>`, or
-            :tf_main:`tf.identity <identity>`. Apply to the RNN cell
-            output to get logits. If `None`, a dense layer
-            is used with output dimension set to :attr:`vocab_size`.
-            Set `output_layer=tf.identity` if you do not want to have an
-            output layer after the RNN cell outputs.
+            :attr:`output_layer` is ``None``.
+        output_layer (optional): An instance of :torch_nn:`Module`. Apply to
+            the RNN cell output to get logits. If `None`, a :torch_nn:`Linear`
+            layer is used with output dimension set to :attr:`vocab_size`.
+            Set ``output_layer`` to :func:`~texar.core.identity` if you do
+            not want to have an output layer after the RNN cell outputs.
         hparams (dict, optional): Hyperparameters. Missing
-            hyperparamerter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameters will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
-
-    See :meth:`~texar.modules.RNNDecoderBase._build` for the inputs and outputs
-    of the decoder. The decoder returns
-    `(outputs, final_state, sequence_lengths)`, where `outputs` is an instance
-    of :class:`~texar.modules.BasicRNNDecoderOutput`.
-
+    See :meth:`~texar.modules.RNNDecoderBase.forward` for the inputs and
+    outputs of the decoder. The decoder returns
+    ``(outputs, final_state, sequence_lengths)``, where ``outputs`` is an
+    instance of :class:`~texar.modules.BasicRNNDecoderOutput`.
     Example:
-
         .. code-block:: python
-
             embedder = WordEmbedder(vocab_size=data.vocab.size)
             decoder = BasicRNNDecoder(vocab_size=data.vocab.size)
-
             # Training loss
             outputs, _, _ = decoder(
                 decoding_strategy='train_greedy',
                 inputs=embedder(data_batch['text_ids']),
                 sequence_length=data_batch['length']-1)
-
             loss = tx.losses.sequence_sparse_softmax_cross_entropy(
                 labels=data_batch['text_ids'][:, 1:],
                 logits=outputs.logits,
                 sequence_length=data_batch['length']-1)
-
             # Inference sample
             outputs, _, _ = decoder(
                 decoding_strategy='infer_sample',
@@ -163,7 +146,6 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
                 embedding=embedder,
                 max_decoding_length=60,
                 mode=tf.estimator.ModeKeys.PREDICT)
-
             sample_id = sess.run(outputs.sample_id)
             sample_text = tx.utils.map_ids_to_strs(sample_id, data.vocab)
             print(sample_text)
@@ -177,9 +159,7 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
     @staticmethod
     def default_hparams():
         r"""Returns a dictionary of hyperparameters with default values.
-
         .. code-block:: python
-
             {
                 "rnn_cell": default_rnn_cell_hparams(),
                 "max_decoding_length_train": None,
@@ -194,42 +174,33 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
                 }
                 "name": "basic_rnn_decoder"
             }
-
         Here:
-
-        "rnn_cell" : dict
+        "rnn_cell": dict
             A dictionary of RNN cell hyperparameters. Ignored if
             :attr:`cell` is given to the decoder constructor.
             The default value is defined in
             :func:`~texar.core.default_rnn_cell_hparams`.
-
         "max_decoding_length_train": int or None
-            Maximum allowed number of decoding steps in training mode.
-            If `None` (default), decoding is
-            performed until fully done, e.g., encountering the <EOS> token.
-            Ignored if `max_decoding_length` is given when calling
-            the decoder.
-
-        "max_decoding_length_infer" : int or None
-            Same as "max_decoding_length_train" but for inference mode.
-
-        "helper_train" : dict
+            Maximum allowed number of decoding steps in training mode. If
+            ``None`` (default), decoding is performed until fully done, e.g.,
+            encountering the ``<EOS>`` token. Ignored if
+            ``"max_decoding_length"`` is not ``None`` given when calling the
+            decoder.
+        "max_decoding_length_infer": int or None
+            Same as ``"max_decoding_length_train"`` but for inference mode.
+        "helper_train": dict
             The hyperparameters of the helper used in training.
-            "type" can be a helper class, its name or module path, or a
+            ``"type"`` can be a helper class, its name or module path, or a
             helper instance. If a class name is given, the class must be
-            from module :tf_main:`tf.contrib.seq2seq <contrib/seq2seq>`,
-            :mod:`texar.modules`, or :mod:`texar.custom`. This is used
-            only when both `decoding_strategy` and `helper` augments are
-            `None` when calling the decoder. See
-            :meth:`~texar.modules.RNNDecoderBase._build` for more details.
-
+            from module :mod:`texar.modules`, or :mod:`texar.custom`.
+            This is used only when both ``"decoding_strategy"`` and ``"helper"``
+            arguments are ``None`` when calling the decoder. See
+            :meth:`~texar.modules.RNNDecoderBase.forward` for more details.
         "helper_infer": dict
-            Same as "helper_train" but during inference mode.
-
-        "name" : str
+            Same as ``"helper_train"`` but during inference mode.
+        "name": str
             Name of the decoder.
-
-            The default value is "basic_rnn_decoder".
+            The default value is ``"basic_rnn_decoder"``.
         """
         hparams = RNNDecoderBase.default_hparams()
         hparams['name'] = 'basic_rnn_decoder'
@@ -248,7 +219,7 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
             sample_ids=sample_ids)
         next_state = cell_state
         outputs = BasicRNNDecoderOutput(logits, sample_ids, cell_outputs)
-        return (outputs, next_state, next_inputs, finished)
+        return outputs, next_state, next_inputs, finished
 
     @property
     def output_size(self):
@@ -258,71 +229,53 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
 
 
 class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
-    """RNN decoder with attention mechanism.
-
+    r"""RNN decoder with attention mechanism.
     Args:
-        memory: The memory to query, e.g., the output of an RNN encoder. This
-            tensor should be shaped `[batch_size, max_time, dim]`.
-        memory_sequence_length (optional): A tensor of shape `[batch_size]`
-            containing the sequence lengths for the batch
-            entries in memory. If provided, the memory tensor rows are masked
-            with zeros for values past the respective sequence lengths.
-        cell (RNNCell, optional): An instance of `RNNCell`. If `None`, a cell
+        input_size (int): Input size of the decoder cell.
+        encoder_output_size (int): The output size of the encoder cell.
+        cell (RNNCellBase, optional): An instance of
+            :class:`~texar.core.RNNCellBase`. If `None`, a cell
             is created as specified in :attr:`hparams`.
-        cell_dropout_mode (optional): A Tensor taking value of
-            :tf_main:`tf.estimator.ModeKeys <estimator/ModeKeys>`, which
-            toggles dropout in the RNN cell (e.g., activates dropout in
-            TRAIN mode). If `None`, :func:`~texar.global_mode` is used.
-            Ignored if :attr:`cell` is given.
         vocab_size (int, optional): Vocabulary size. Required if
             :attr:`output_layer` is `None`.
         output_layer (optional): An output layer that transforms cell output
             to logits. This can be:
-
-            - A callable layer, e.g., an instance \
-            of :tf_main:`tf.layers.Layer <layers/Layer>`.
-            - A tensor. A dense layer will be created using the tensor \
-            as the kernel weights. The bias of the dense layer is determined by\
-            `hparams.output_layer_bias`. This can be used to tie the output \
-            layer with the input embedding matrix, as proposed in \
-            https://arxiv.org/pdf/1608.05859.pdf
-            - `None`. A dense layer will be created based on attr:`vocab_size`\
-            and `hparams.output_layer_bias`.
-            - If no output layer after the cell output is needed, set \
-            `(vocab_size=None, output_layer=tf.identity)`.
+            - A callable layer, e.g., an instance of :torch_nn:`Module`.
+            - A tensor. A dense layer will be created using the tensor
+              as the kernel weights. The bias of the dense layer is determined
+              by `hparams.output_layer_bias`. This can be used to tie the
+              output layer with the input embedding matrix, as proposed in
+              https://arxiv.org/pdf/1608.05859.pdf
+            - `None`. A dense layer will be created based on attr:`vocab_size`
+              and `hparams.output_layer_bias`.
+            - If no output layer after the cell output is needed, set
+              `(vocab_size=None, output_layer=texar.core.identity)`.
         cell_input_fn (callable, optional): A callable that produces RNN cell
             inputs. If `None` (default), the default is used:
-            `lambda inputs, attention: tf.concat([inputs, attention], -1)`,
+            `lambda inputs, attention: torch.cat([inputs, attention], -1)`,
             which cancats regular RNN cell inputs with attentions.
         hparams (dict, optional): Hyperparameters. Missing
-            hyperparamerter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameter will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
-
-    See :meth:`~texar.modules.RNNDecoderBase._build` for the inputs and outputs
-    of the decoder. The decoder returns
+    See :meth:`~texar.modules.RNNDecoderBase.forward` for the inputs and
+    outputs of the decoder. The decoder returns
     `(outputs, final_state, sequence_lengths)`, where `outputs` is an instance
     of :class:`~texar.modules.AttentionRNNDecoderOutput`.
-
     Example:
-
         .. code-block:: python
-
             # Encodes the source
             enc_embedder = WordEmbedder(data.source_vocab.size, ...)
             encoder = UnidirectionalRNNEncoder(...)
-
             enc_outputs, _ = encoder(
                 inputs=enc_embedder(data_batch['source_text_ids']),
                 sequence_length=data_batch['source_length'])
-
             # Decodes while attending to the source
             dec_embedder = WordEmbedder(vocab_size=data.target_vocab.size, ...)
             decoder = AttentionRNNDecoder(
                 memory=enc_outputs,
                 memory_sequence_length=data_batch['source_length'],
                 vocab_size=data.target_vocab.size)
-
             outputs, _, _ = decoder(
                 decoding_strategy='train_greedy',
                 inputs=dec_embedder(data_batch['target_text_ids']),
@@ -330,24 +283,19 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
     """
 
     def __init__(self,
-                 memory: torch.Tensor,
                  input_size: int,
+                 encoder_output_size: int,
                  vocab_size: int,
-                 memory_sequence_length: Optional[torch.Tensor] = None,
                  cell: Optional[RNNCellBase] = None,
                  output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
-                 # attention_layer=None, # TODO(zhiting): only valid for tf>=1.0
                  cell_input_fn: Optional[Callable[[torch.Tensor],
                                          torch.Tensor]] = None,
                  hparams: Optional[HParams] = None):
-
         super().__init__(cell=cell,
                          input_size=input_size,
                          vocab_size=vocab_size,
                          output_layer=output_layer,
                          hparams=hparams)
-
-        self.dtype: torch.dtype = memory.dtype
 
         attn_hparams = self._hparams['attention']
         attn_kwargs = attn_hparams['kwargs'].todict()
@@ -363,9 +311,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                                     'BahdanauMonotonicAttention']:
             attn_kwargs.update({"cell_output_size": self._cell.hidden_size})
 
-        attn_kwargs.update({
-            "memory_sequence_length": memory_sequence_length,
-            "memory": memory})
+        attn_kwargs.update({"encoder_output_size": encoder_output_size})
+
         self._attn_kwargs = attn_kwargs
         attn_modules = ['texar.core']
 
@@ -383,15 +330,21 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
 
         if attn_hparams["output_attention"] and vocab_size is not None and \
                 self.attention_mechanism is not None:
-            self._output_layer = nn.Linear(
-                self.attention_mechanism.values.shape[-1],
-                vocab_size)
+            if attn_hparams["attention_layer_size"] is None:
+                self._output_layer = nn.Linear(
+                    self.attention_mechanism.encoder_output_size,
+                    vocab_size)
+            else:
+                self._output_layer = nn.Linear(
+                    sum(attn_hparams["attention_layer_size"])
+                    if isinstance(attn_hparams["attention_layer_size"], list)
+                    else attn_hparams["attention_layer_size"],
+                    vocab_size)
 
         attn_cell = AttentionWrapper(  # type: ignore
             self._cell,
             self.attention_mechanism,
             cell_input_fn=self._cell_input_fn,
-            #attention_layer=attention_layer,
             **self._attn_cell_kwargs)
 
         self._cell = attn_cell
@@ -399,16 +352,13 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of hyperparameters with default values:
-
+        r"""Returns a dictionary of hyperparameters with default values:
         Common hyperparameters are the same as in
         :class:`~texar.modules.BasicRNNDecoder`.
         :meth:`~texar.modules.BasicRNNDecoder.default_hparams`.
         Additional hyperparameters are for attention mechanism
         configuration.
-
         .. code-block:: python
-
             {
                 "attention": {
                     "type": "LuongAttention",
@@ -434,69 +384,50 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                 }
                 "name": "attention_rnn_decoder"
             }
-
         Here:
-
-        "attention" : dict
+        "attention": dict
             Attention hyperparameters, including:
-
-            "type" : str or class or instance
+            "type": str or class or instance
                 The attention type. Can be an attention class, its name or
                 module path, or a class instance. The class must be a subclass
-                of :tf_main:`TF AttentionMechanism
-                <contrib/seq2seq/AttentionMechanism>`. If class name is
-                given, the class must be from modules
-                :tf_main:`tf.contrib.seq2seq <contrib/seq2seq>` or
+                of :class:`texar.core.AttentionMechanism`. If class name is
+                given, the class must be from modules or
                 :mod:`texar.custom`.
-
                 Example:
-
                     .. code-block:: python
-
                         # class name
                         "type": "LuongAttention"
                         "type": "BahdanauAttention"
                         # module path
-                        "type": "tf.contrib.seq2seq.BahdanauMonotonicAttention"
                         "type": "my_module.MyAttentionMechanismClass"
-                        # class
-                        "type": tf.contrib.seq2seq.LuongMonotonicAttention
                         # instance
                         "type": LuongAttention(...)
-
-            "kwargs" : dict
+            "kwargs": dict
                 keyword arguments for the attention class constructor.
                 Arguments :attr:`memory` and
                 :attr:`memory_sequence_length` should **not** be
                 specified here because they are given to the decoder
                 constructor. Ignored if "type" is an attention class
                 instance. For example
-
                 Example:
-
                     .. code-block:: python
-
                         "type": "LuongAttention",
                         "kwargs": {
                             "num_units": 256,
-                            "probability_fn": tf.nn.softmax
+                            "probability_fn": torch.nn.softmax
                         }
-
                     Here "probability_fn" can also be set to the string name
                     or module path to a probability function.
-
-                "attention_layer_size" : int or None
+                "attention_layer_size": int or None
                     The depth of the attention (output) layer. The context and
                     cell output are fed into the attention layer to generate
                     attention at each time step.
                     If `None` (default), use the context as attention at each
                     time step.
-
                 "alignment_history": bool
                     whether to store alignment history from all time steps
                     in the final output state. (Stored as a time major
                     `TensorArray` on which you must call `stack()`.)
-
                 "output_attention": bool
                     If `True` (default), the output at each time step is
                     the attention value. This is the behavior of Luong-style
@@ -523,32 +454,37 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         return hparams
 
     def initialize(self,  # type: ignore
+                   memory: torch.Tensor,
                    helper: Helper,
                    inputs: Optional[torch.Tensor],
                    sequence_length: Optional[torch.LongTensor],
                    initial_state: Optional[AttentionWrapperState]) -> \
             Tuple[torch.ByteTensor, torch.Tensor,
-                  Optional[AttentionWrapperState]]:
+                  AttentionWrapperState]:
         initial_finished, initial_inputs = helper.initialize(
             inputs, sequence_length)
 
-        if inputs is not None:
-            batch_size = inputs.shape[0]
-        else:
-            batch_size = helper._batch_size  # type: ignore
-
-        initial_state = self._cell.zero_state(batch_size=batch_size)
+        initial_state = self._cell.zero_state(batch_size=memory.shape[0],
+                                              max_time=memory.shape[1],
+                                              dtype=memory.dtype,
+                                              device=memory.device)
         return initial_finished, initial_inputs, initial_state
 
     def step(self,  # type: ignore
              helper: Helper,
              time: int,
              inputs: torch.Tensor,
-             state: AttentionWrapperState) -> \
+             state: AttentionWrapperState,
+             memory: torch.Tensor,
+             memory_sequence_length: Optional[torch.LongTensor] = None) -> \
             Tuple[AttentionRNNDecoderOutput, AttentionWrapperState,
                   torch.Tensor, torch.ByteTensor]:
-        wrapper_outputs, wrapper_state = self._cell(inputs, state)
+        wrapper_outputs, wrapper_state = self._cell(inputs,
+                                                    state,
+                                                    memory,
+                                                    memory_sequence_length)
         # Essentisally the same as in BasicRNNDecoder.step()
+
         logits = self._output_layer(wrapper_outputs)
         sample_ids = helper.sample(time=time, outputs=logits)
         finished, next_inputs = helper.next_inputs(
@@ -565,22 +501,202 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
 
         return outputs, next_state, next_inputs, finished
 
+    def forward(self,  # type: ignore
+                memory: torch.Tensor,
+                memory_sequence_length: Optional[torch.LongTensor] = None,
+                inputs: Optional[torch.Tensor] = None,
+                sequence_length: Optional[torch.LongTensor] = None,
+                initial_state: Optional[AttentionWrapperState] = None,
+                helper: Optional[Helper] = None,
+                max_decoding_length: Optional[int] = None,
+                impute_finished: bool = False,
+                infer_mode: Optional[bool] = None, **kwargs) \
+            -> Tuple[Output, Optional[AttentionWrapperState], torch.LongTensor]:
+        r"""Performs decoding.
+
+        Implementation calls initialize() once and step() repeatedly on the
+        Decoder object. Please refer to `tf.contrib.seq2seq.dynamic_decode`.
+
+        See Also:
+            Arguments of :meth:`create_helper`.
+
+        Args:
+            memory: The memory to query; usually the output of an RNN encoder.
+                This tensor should be shaped `[batch_size, max_time, ...]`.
+            memory_sequence_length: (optional) Sequence lengths for the batch
+                entries in memory.  If provided, the memory tensor rows are
+                masked with zeros for values past the respective sequence
+                lengths.
+            inputs (optional): Input tensors for teacher forcing decoding.
+                Used when `decoding_strategy` is set to "train_greedy", or
+                when `hparams`-configured helper is used.
+
+                - If :attr:`embedding` is `None`, `inputs` is directly \
+                fed to the decoder. E.g., in `"train_greedy"` strategy, \
+                `inputs` must be a 3D Tensor of shape \
+                `[batch_size, max_time, emb_dim]` (or \
+                `[max_time, batch_size, emb_dim]` if `input_time_major`==True).
+                - If `embedding` is given, `inputs` is used as index \
+                to look up embeddings and feed in the decoder. \
+                E.g., if `embedding` is an instance of \
+                :class:`~texar.modules.WordEmbedder`, \
+                then :attr:`inputs` is usually a 2D int Tensor \
+                `[batch_size, max_time]` (or \
+                `[max_time, batch_size]` if `input_time_major`==True) \
+                containing the token indexes.
+            sequence_length (optional): A 1D int Tensor containing the
+                sequence length of :attr:`inputs`.
+                Used when `decoding_strategy="train_greedy"` or
+                `hparams`-configured helper is used.
+            initial_state (optional): Initial state of decoding.
+                If `None` (default), zero state is used.
+            max_decoding_length: A int scalar Tensor indicating the maximum
+                allowed number of decoding steps. If `None` (default), either
+                `hparams["max_decoding_length_train"]` or
+                `hparams["max_decoding_length_infer"]` is used
+                according to :attr:`mode`.
+            impute_finished (bool): If `True`, then states for batch
+                entries which are marked as finished get copied through and
+                the corresponding outputs get zeroed out.  This causes some
+                slowdown at each time step, but ensures that the final state
+                and outputs have the correct values and that backprop ignores
+                time steps that were marked as finished.
+            helper (optional): An instance of
+                :tf_main:`Helper <contrib/seq2seq/Helper>`
+                that defines the decoding strategy. If given,
+                `decoding_strategy`
+                and helper configs in :attr:`hparams` are ignored.
+            infer_mode (optional): If not `None`, overrides mode given by
+                `self.training`.
+            **kwargs: Other keyword arguments for constructing helpers
+                defined by `hparams["helper_trainn"]` or
+                `hparams["helper_infer"]`.
+
+        Returns:
+            `(outputs, final_state, sequence_lengths)`, where
+
+             - **`outputs`**: an object containing the decoder output on all \
+            time steps.
+            - **`final_state`**: is the cell state of the final time step.
+            - **`sequence_lengths`**: is an int Tensor of shape `[batch_size]` \
+            containing the length of each sample.
+        """
+        # TODO: Add faster code path for teacher-forcing training.
+
+        # Helper
+        if helper is None:
+            helper = self._create_or_get_helper(infer_mode, **kwargs)
+
+        if (isinstance(helper, decoder_helpers.TrainingHelper) and
+                (inputs is None or sequence_length is None)):
+            raise ValueError("'input' and 'sequence_length' must not be None "
+                             "when using 'TrainingHelper'.")
+
+        # Initial state
+        self._cell.init_batch()
+
+        # Maximum decoding length
+        if max_decoding_length is None:
+            if self.training:
+                max_decoding_length = self._hparams.max_decoding_length_train
+            else:
+                max_decoding_length = self._hparams.max_decoding_length_infer
+            if max_decoding_length is None:
+                max_decoding_length = utils.MAX_SEQ_LENGTH
+
+        return self.dynamic_decode(
+            helper, inputs, sequence_length, initial_state, memory,
+            memory_sequence_length, max_decoding_length, impute_finished)
+
+    def dynamic_decode(  # type: ignore
+            self,
+            helper: Helper,
+            inputs: Optional[torch.Tensor],
+            sequence_length: Optional[torch.LongTensor],
+            initial_state: Optional[AttentionWrapperState],
+            memory: torch.Tensor,
+            memory_sequence_length: Optional[torch.LongTensor] = None,
+            max_decoding_length: Optional[int] = None,
+            impute_finished: bool = False) \
+            -> Tuple[Output, Optional[AttentionWrapperState], torch.LongTensor]:
+        r"""Generic routine for dynamic decoding. Please check the documentation
+        for the TensorFlow counterpart.
+
+        Returns:
+            A tuple of output, final state, and sequence lengths. Note that
+            final state could be `None`, when all sequences are of zero length
+            and `initial_state` is also `None`.
+        """
+
+        # Decode
+        finished, step_inputs, state = self.initialize(memory, helper,
+                                                       inputs, sequence_length,
+                                                       initial_state)
+        zero_outputs = step_inputs.new_zeros(
+            step_inputs.size(0), self.output_size)
+
+        if max_decoding_length is not None:
+            finished |= (max_decoding_length <= 0)
+        sequence_lengths = torch.zeros_like(
+            finished, dtype=torch.long, device=finished.device)
+        time = 0
+
+        outputs = []
+
+        while (not torch.all(finished).item() and
+               (max_decoding_length is None or time < max_decoding_length)):
+            (next_outputs, decoder_state, next_inputs,
+             decoder_finished) = self.step(helper, time, step_inputs, state,
+                                           memory, memory_sequence_length)
+
+            if getattr(self, 'tracks_own_finished', False):
+                next_finished = decoder_finished
+            else:
+                next_finished = decoder_finished | finished
+
+            # Zero out output values past finish
+            if impute_finished:
+                emit = utils.map_structure_zip(
+                    lambda new, cur: torch.where(finished, cur, new),
+                    (next_outputs, zero_outputs))
+                next_state = utils.map_structure_zip(
+                    lambda new, cur: torch.where(finished, cur, new),
+                    (decoder_state, state))
+            else:
+                emit = next_outputs
+                next_state = decoder_state
+
+            outputs.append(emit)
+            sequence_lengths.index_fill_(
+                dim=0, value=time + 1,
+                index=torch.nonzero((~finished).long()).flatten())
+            time += 1
+            finished = next_finished
+            step_inputs = next_inputs
+            state = next_state
+
+        final_outputs = utils.map_structure_zip(
+            lambda *tensors: torch.stack(tensors),
+            outputs)  # output at each time step may be a namedtuple
+        final_state = state
+        final_sequence_lengths = sequence_lengths
+
+        try:
+            final_outputs, final_state = self.finalize(  # type: ignore
+                final_outputs, final_state, final_sequence_lengths)
+        except NotImplementedError:
+            pass
+
+        if not self._output_time_major:
+            final_outputs = utils.map_structure(
+                lambda x: x.transpose(0, 1) if x.dim() >= 2 else x,
+                final_outputs)
+
+        return (final_outputs, final_state, final_sequence_lengths)
+
     @property
     def output_size(self):
         r"""Output size of one step.
-                """
-        return self._cell.hidden_size
-
-    def wrapper_zero_state(self,
-                           batch_size: int) -> AttentionWrapperState:
-        """Returns zero state of the attention-wrapped cell.
-        Equivalent to :attr:`decoder.cell.zero_state`.
         """
-        return self._cell.zero_state(batch_size=batch_size)
+        return self._cell.output_size
 
-    @property
-    def wrapper_state_size(self) -> AttentionWrapperState:
-        """The state size of the attention-wrapped cell.
-        Equivalent to :attr:`decoder.cell.state_size`.
-        """
-        return self._cell.state_size
