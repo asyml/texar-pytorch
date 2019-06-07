@@ -87,7 +87,7 @@ def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
 
 class DecoderBase(ModuleBase, Generic[State, Output], ABC):
     r"""Base class inherited by all RNN decoder classes.
-    See :class:`~texar.modules.BasicRNNDecoder` for the argumenrts.
+    See :class:`~texar.modules.BasicRNNDecoder` for the arguments.
 
     See :meth:`_build` for the inputs and outputs of RNN decoders in general.
     """
@@ -157,12 +157,12 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                 outputs_1, _, _ = decoder(
                     decoding_strategy='train_greedy',
                     inputs=embedder(data_batch['text_ids']),
-                    sequence_length=data_batch['length']-1)
+                    sequence_length=data_batch['length'] - 1)
 
                 # Random sample decoding. Gets 100 sequence samples
                 outputs_2, _, sequence_length = decoder(
                     decoding_strategy='infer_sample',
-                    start_tokens=[data.vocab.bos_token_id]*100,
+                    start_tokens=[data.vocab.bos_token_id] * 100,
                     end_token=data.vocab.eos.token_id,
                     embedding=embedder,
                     max_decoding_length=60)
@@ -194,28 +194,28 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                 # `decoding_strategy='train_greedy'`
                 helper_1 = TrainingHelper(
                     inputs=embedders(data_batch['text_ids']),
-                    sequence_length=data_batch['length']-1)
+                    sequence_length=data_batch['length'] - 1)
                 outputs_1, _, _ = decoder(helper=helper_1)
 
                 # Gumbel-softmax decoding
                 helper_2 = GumbelSoftmaxEmbeddingHelper(
                     embedding=embedder,
-                    start_tokens=[data.vocab.bos_token_id]*100,
+                    start_tokens=[data.vocab.bos_token_id] * 100,
                     end_token=data.vocab.eos_token_id,
                     tau=0.1)
                 outputs_2, _, sequence_length = decoder(
                     max_decoding_length=60, helper=helper_2)
 
-        3. :attr:`hparams["helper_train"]` and :attr:`hparams["helper_infer"]`:
+        3. ``hparams["helper_train"]`` and ``hparams["helper_infer"]``:
            Specifying the helper through hyperparameters. Train and infer
-           strategy is toggled based on :attr:`mode`. Appriopriate arguments
+           strategy is toggled based on :attr:`mode`. Appropriate arguments
            (e.g., :attr:`inputs`, :attr:`start_tokens`, etc) are selected to
            construct the helper. Additional arguments for helper constructor
            can be provided either through :attr:`**kwargs`, or through
-           :attr:`hparams["helper_train/infer"]["kwargs"]`.
+           ``hparams["helper_train/infer"]["kwargs"]``.
 
            This means is used only when both :attr:`decoding_strategy` and
-           :attr:`helper` are `None`.
+           :attr:`helper` are ``None``.
 
            Example:
 
@@ -231,14 +231,13 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                 decoder = BasicRNNDecoder(vocab_size=data.vocab.size, hparams=h)
 
                 # Gumbel-softmax decoding
+                decoder.eval()  # disable dropout
                 output, _, _ = decoder(
                     decoding_strategy=None, # Sets to None explicit
                     embedding=embedder,
-                    start_tokens=[data.vocab.bos_token_id]*100,
+                    start_tokens=[data.vocab.bos_token_id] * 100,
                     end_token=data.vocab.eos_token_id,
-                    max_decoding_length=60,
-                    mode=tf.estimator.ModeKeys.PREDICT)
-                        # PREDICT mode also shuts down dropout
+                    max_decoding_length=60)
 
         Args:
             decoding_strategy (str): A string specifying the decoding
@@ -252,33 +251,31 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                 :tf_main:`tf.nn.embedding_lookup <nn/embedding_lookup>`.
                 If provided, `inputs` (if used) will be passed to
                 `embedding` to fetch the embedding vectors of the inputs.
-                Required when `decoding_strategy="infer_greedy"`
-                or `"infer_sample"`; optional when
-                `decoding_strategy="train_greedy"`.
-            start_tokens (optional): A int Tensor of shape `[batch_size]`,
-                the start tokens.
-                Used when `decoding_strategy="infer_greedy"` or
-                `"infer_sample"`, or when `hparams`-configured
+                Required when :attr:`decoding_strategy` is ``"infer_greedy"``
+                or ``"infer_sample"``; optional when
+                ``decoding_strategy="train_greedy"``.
+            start_tokens (optional): A :torch:`LongTensor` of shape
+                ``[batch_size]``, the start tokens.
+                Used when :attr:`decoding_strategy` is ``"infer_greedy"`` or
+                ``"infer_sample"``, or when `hparams`-configured
                 helper is used.
-                Companying with Texar data module, to get `batch_size` samples
-                where batch_size is changing according to the data module,
-                this can be set as
-                `start_tokens=tf.ones_like(batch['length'])*bos_token_id`.
-            end_token (optional): A int 0D Tensor, the token that marks end
-                of decoding.
-                Used when `decoding_strategy="infer_greedy"` or
-                `"infer_sample"`, or when `hparams`-configured
-                helper is used.
-            softmax_temperature (optional): A float 0D Tensor, value to divide
-                the logits by before computing the softmax. Larger values
-                (above 1.0) result in more random samples. Must > 0. If `None`,
-                1.0 is used.
-                Used when `decoding_strategy="infer_sample"`.
-            infer_mode (optional): If not `None`, overrides mode given by
-                `self.training`.
+                When used with the Texar data module, to get ``batch_size``
+                samples where ``batch_size`` is changing according to the data
+                module, this can be set as
+                ``start_tokens=torch.full_like(batch['length'], bos_token_id)``.
+            end_token (optional): A integer or 0D :torch:`LongTensor`, the token
+                that marks the end of decoding.
+                Used when :attr:`decoding_strategy` is ``"infer_greedy"`` or
+                ``"infer_sample"``, or when `hparams`-configured helper is used.
+            softmax_temperature (float, optional): Value to divide the logits
+                by before computing the softmax. Larger values (above 1.0)
+                result in more random samples. Must be > 0. If ``None``, 1.0 is
+                used. Used when ``decoding_strategy="infer_sample"``.
+            infer_mode (optional): If not ``None``, overrides mode given by
+                :attr:`self.training`.
             **kwargs: Other keyword arguments for constructing helpers
-                defined by `hparams["helper_trainn"]` or
-                `hparams["helper_infer"]`.
+                defined by ``hparams["helper_train"]`` or
+                ``hparams["helper_infer"]``.
 
         Returns:
             The constructed helper instance.
@@ -343,7 +340,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         r"""Set the default helper used in training mode.
 
         Args:
-            helper: the helper to set as default training helper.
+            helper: The helper to set as default training helper.
         """
         self._train_helper = helper
 
@@ -351,7 +348,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         r"""Set the default helper used in eval (inference) mode.
 
         Args:
-            helper: the helper to set as default inference helper.
+            helper: The helper to set as default inference helper.
         """
         self._infer_helper = helper
 
@@ -361,13 +358,14 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                        max_decoding_length: Optional[int] = None,
                        impute_finished: bool = False) \
             -> Tuple[Output, Optional[State], torch.LongTensor]:
-        r"""Generic routine for dynamic decoding. Please check the documentation
+        r"""Generic routine for dynamic decoding. Please check the
+        `documentation <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/dynamic_decode>`_
         for the TensorFlow counterpart.
 
         Returns:
             A tuple of output, final state, and sequence lengths. Note that
-            final state could be `None`, when all sequences are of zero length
-            and `initial_state` is also `None`.
+            final state could be ``None``, when all sequences are of zero length
+            and :attr:`initial_state` is also ``None``.
         """
 
         # Decode
@@ -451,14 +449,15 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
 
         Args:
             helper: The :class:`~texar.modules.Helper` instance to use.
-            inputs: A (structure of) input tensors.
-            sequence_length: An int32 vector tensor.
-            initial_state: Initial RNNCell state (possibly nested tuple of)
-                tensor[s].
+            inputs (optional): A (structure of) input tensors.
+            sequence_length (optional): A :torch:`LongTensor` representing
+                lengths of each sequence.
+            initial_state: A possibly nested structure of tensors indicating the
+                initial decoder state.
 
         Returns:
-            `(finished, initial_inputs, initial_state)`: initial values of
-            'finished' flags, inputs and state.
+            A tuple ``(finished, initial_inputs, initial_state)`` representing
+            initial values of ``finished`` flags, inputs, and state.
         """
         raise NotImplementedError
 
@@ -469,19 +468,19 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
 
         Args:
             helper: The :class:`~texar.modules.Helper` instance to use.
-            time: Scalar `int32` tensor. Current step number.
-            inputs: RNNCell input (possibly nested tuple of) tensor[s] for this
-                time step.
-            state: RNNCell state (possibly nested tuple of) tensor[s] from
-                previous time step.
+            time (int): Current step number.
+            inputs: Inputs for this time step.
+            state: Decoder state from the previous time step.
 
         Returns:
-            `(outputs, next_state, next_inputs, finished)`: `outputs` is an
-            object containing the decoder output, `next_state` is a (structure
-            of) state tensors and TensorArrays, `next_inputs` is the tensor that
-            should be used as input for the next step, `finished` is a boolean
-            tensor telling whether the sequence is complete, for each sequence
-            in the batch.
+            A tuple ``(outputs, next_state, next_inputs, finished)``.
+
+            - ``outputs`` is an object containing the decoder output.
+            - ``next_state`` is the decoder state for the next time step.
+            - ``next_inputs`` is the tensor that should be used as input for the
+              next step.
+            - ``finished`` is a :torch:`ByteTensor` tensor telling whether the
+              sequence is complete, for each sequence in the batch.
         """
         raise NotImplementedError
 
@@ -507,18 +506,21 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             sequence_lengths: Sequence lengths for each sequence in batch.
 
         Returns:
-            `(outputs, final_state)`: `outputs` is an object containing the
-            decoder output, `final_state` is a (structure of) state tensors
-            and TensorArrays.
+            A tuple ``(outputs, final_state)``.
+
+            - ``outputs`` is an object containing the decoder output.
+            - ``final_state`` is the final decoder state.
         """
         return outputs, final_state
 
     @property
     def vocab_size(self):
-        r"""The vocab size."""
+        r"""The vocabulary size.
+        """
         return self._vocab_size
 
     @property
     def output_layer(self):
-        r"""The output layer."""
+        r"""The output layer.
+        """
         return self._output_layer

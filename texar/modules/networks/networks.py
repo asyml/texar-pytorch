@@ -31,8 +31,8 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
             instances composing the network. If not given, layers are created
             according to :attr:`hparams`.
         hparams (dict, optional): Embedder hyperparameters. Missing
-            hyperparamerter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameters will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
     See :meth:`~texar.modules.RNNDecoderBase._build` of

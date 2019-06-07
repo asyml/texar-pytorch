@@ -37,10 +37,10 @@ class EmbedderBase(ModuleBase):
             the vocabulary size of a word embedder.
         init_value (Tensor or numpy array, optional): Initial values of the
             embedding variable. If not given, embedding is initialized as
-            specified in :attr:`hparams["initializer"]`.
+            specified in ``hparams["initializer"]``.
         hparams (dict or HParams, optional): Embedder hyperparameters. Missing
-            hyperparameter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameters will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
     """
 
@@ -109,8 +109,8 @@ class EmbeddingDropout(ModuleBase):
             Set to 0 to disable dropout.
 
         hparams (dict or HParams, optional): Embedder hyperparameters. Missing
-            hyperparamerter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameters will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
     """
 

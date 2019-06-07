@@ -136,8 +136,8 @@ class TransformerEncoder(EncoderBase):
 
     Args:
         hparams (dict or HParams, optional): Hyperparameters. Missing
-            hyperparameter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameters will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
     .. document private functions
@@ -265,14 +265,14 @@ class TransformerEncoder(EncoderBase):
         "poswise_feedforward" : dict
             Hyperparameters for a feed-forward network used in residual
             connections.
-            Make sure the dimension of the output tensor is equal to `dim`.
+            Make sure the dimension of the output tensor is equal to ``"dim"``.
             See :func:`~texar.modules.default_transformer_poswise_net_hparams`
             for details.
 
         "multihead_attention" : dict
             Hyperparameters for the multihead attention strategy.
-            Make sure the "output_dim" in this module is equal to "dim".
-            See :func:`~texar.modules.MultiheadAttentionEncoder.default_harams`
+            Make sure the ``"output_dim"`` in this module is equal to ``"dim"``.
+            See :func:`~texar.modules.MultiheadAttentionEncoder.default_hparams`
             for details.
 
         "initializer" : dict, optional
@@ -311,17 +311,17 @@ class TransformerEncoder(EncoderBase):
         r"""Encodes the inputs.
 
         Args:
-            inputs: A 3D Tensor of shape `[batch_size, max_time, dim]`,
+            inputs: A 3D Tensor of shape ``[batch_size, max_time, dim]``,
                 containing the embedding of input sequences. Note that
                 the embedding dimension `dim` must equal "dim" in
                 :attr:`hparams`. The input embedding is typically an
                 aggregation of word embedding and position embedding.
-            sequence_length: A 1D Tensor of shape `[batch_size]`. Input tokens
-                beyond respective sequence lengths are masked out
+            sequence_length: A 1D :torch:`LongTensor` of shape ``[batch_size]``.
+                Input tokens beyond respective sequence lengths are masked out
                 automatically.
 
         Returns:
-            A Tensor of shape `[batch_size, max_time, dim]` containing the
+            A Tensor of shape ``[batch_size, max_time, dim]`` containing the
             encoded vectors.
         """
         # Multiply input embedding with the sqrt of its dimension for

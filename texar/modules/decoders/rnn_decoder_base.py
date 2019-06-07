@@ -75,7 +75,7 @@ class RNNDecoderBase(DecoderBase[State, Output]):
         The hyperparameters are the same as in
         :meth:`~texar.modules.BasicRNNDecoder.default_hparams` of
         :class:`~texar.modules.BasicRNNDecoder`, except that the default
-        "name" here is "rnn_decoder".
+        ``"name"`` here is ``"rnn_decoder"``.
         """
         return {
             'rnn_cell': layers.default_rnn_cell_hparams(),
@@ -108,20 +108,22 @@ class RNNDecoderBase(DecoderBase[State, Output]):
 
         Args:
             inputs (optional): Input tensors for teacher forcing decoding.
-                Used when `decoding_strategy` is set to "train_greedy", or
-                when `hparams`-configured helper is used.
+                Used when :attr:`decoding_strategy` is set to
+                ``"train_greedy"``, or when `hparams`-configured helper is used.
 
-                - If :attr:`embedding` is `None`, `inputs` is directly fed to
-                  the decoder. E.g., in `"train_greedy"` strategy, `inputs` must
-                  be a 3D Tensor of shape `[batch_size, max_time, emb_dim]` (or
-                  `[max_time, batch_size, emb_dim]` if
-                  `input_time_major`==True).
-                - If `embedding` is given, `inputs` is used as index to look up
-                  embeddings and feed in the decoder. E.g., if `embedding` is an
-                  instance of :class:`~texar.modules.WordEmbedder`, then
-                  :attr:`inputs` is usually a 2D int Tensor
-                  `[batch_size, max_time]` (or `[max_time, batch_size]` if
-                  `input_time_major`==True) containing the token indexes.
+                - If :attr:`embedding` is ``None``, :attr:`inputs` is directly
+                  fed to the decoder. E.g., in ``"train_greedy"`` strategy,
+                  :attr:`inputs` must be a 3D Tensor of shape
+                  ``[batch_size, max_time, emb_dim]`` (or
+                  ``[max_time, batch_size, emb_dim]`` if
+                  ``"input_time_major"`` is ``True``).
+                - If :attr:`embedding` is given, :attr:`inputs` is used as
+                  index to look up embeddings and feed in the decoder. E.g.,
+                  if `embedding` is an instance of
+                  :class:`~texar.modules.WordEmbedder`, then :attr:`inputs`
+                  is usually a 2D int Tensor `[batch_size, max_time]` (or
+                  `[max_time, batch_size]` if `input_time_major` == True)
+                  containing the token indexes.
             sequence_length (optional): A 1D int Tensor containing the
                 sequence length of :attr:`inputs`.
                 Used when `decoding_strategy="train_greedy"` or

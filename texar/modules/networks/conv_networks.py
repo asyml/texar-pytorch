@@ -32,11 +32,10 @@ __all__ = [
 
 
 def _to_list(value: Union[List, Tuple, int], name=None, list_length=None):
-    r"""Converts hparam value into a list.
+    r"""Converts `hparams` value into a list.
 
-    If :attr:`list_length` is given,
-    then the canonicalized :attr:`value` must be of
-    length :attr:`list_length`.
+    If :attr:`list_length` is given, then the canonicalized :attr:`value`
+    must be of length :attr:`list_length`.
     """
     if not isinstance(value, (list, tuple)):
         if list_length is not None:
@@ -109,65 +108,66 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         .. code-block:: python
 
             {
-            # (1) Conv layers
-            "num_conv_layers": 1,
-            "in_channels": 32,
-            "out_channels": 64,
-            "kernel_size": [3, 4, 5],
-            "conv_activation": "ReLU",
-            "conv_activation_kwargs": None,
-            "other_conv_kwargs": None,
-            # (2) Pooling layers
-            "pooling": "MaxPool1d",
-            "pool_size": None,
-            "pool_stride": 1,
-            "other_pool_kwargs": None,
-            # (3) Dense layers
-            "num_dense_layers": 1,
-            "in_features": 192,
-            "out_features": 256,
-            "dense_activation": None,
-            "dense_activation_kwargs": None,
-            "final_dense_activation": None,
-            "final_dense_activation_kwargs": None,
-            "other_dense_kwargs": None,
-            # (4) Dropout
-            "dropout_conv": [1],
-            "dropout_dense": [],
-            "dropout_rate": 0.75,
-            # (5) Others
-            "name": "conv1d_network"
-        }
+                # (1) Conv layers
+                "num_conv_layers": 1,
+                "in_channels": 32,
+                "out_channels": 64,
+                "kernel_size": [3, 4, 5],
+                "conv_activation": "ReLU",
+                "conv_activation_kwargs": None,
+                "other_conv_kwargs": None,
+                # (2) Pooling layers
+                "pooling": "MaxPool1d",
+                "pool_size": None,
+                "pool_stride": 1,
+                "other_pool_kwargs": None,
+                # (3) Dense layers
+                "num_dense_layers": 1,
+                "in_features": 192,
+                "out_features": 256,
+                "dense_activation": None,
+                "dense_activation_kwargs": None,
+                "final_dense_activation": None,
+                "final_dense_activation_kwargs": None,
+                "other_dense_kwargs": None,
+                # (4) Dropout
+                "dropout_conv": [1],
+                "dropout_dense": [],
+                "dropout_rate": 0.75,
+                # (5) Others
+                "name": "conv1d_network"
+            }
 
         Here:
 
         1. For **convolutional** layers:
 
-            "num_conv_layers" : int
+            "num_conv_layers": int
                 Number of convolutional layers.
 
-            "out_channels" : int or list
+            "out_channels": int or list
                 The number of out_channels in the convolution, i.e., the
-                dimensionality of the output space. If "num_conv_layers" > 1,
-                "out_channels" must be a list of "num_conv_layers" integers.
+                dimensionality of the output space. If
+                ``"num_conv_layers"`` > 1, ``"out_channels"`` must be a list of
+                ``"num_conv_layers"`` integers.
 
-            "kernel_size" : int or list
+            "kernel_size": int or list
                 Lengths of 1D convolution windows.
 
-                - If "num_conv_layers" == 1, this can be a list of arbitrary
-                  number of `int` denoting different sized conv windows. The
-                  number of filters of each size is specified by "filters". For
-                  example, the default values will create 3 sets of filters,
+                - If `"num_conv_layers"` = 1, this can be a ``int`` list of
+                  arbitrary length denoting different sized conv windows. The
+                  number of filters of each size is specified by ``"filters"``.
+                  For example, the default values will create 3 sets of filters,
                   each of which has kernel size of 3, 4, and 5, respectively,
                   and has filter number 128.
-                - If "num_conv_layers" > 1, this must be a list of length
-                  "num_conv_layers". Each element can be an `int` or a list
-                  of arbitrary number of `int` denoting the kernel size of
-                  respective layer.
+                - If ``"num_conv_layers"`` > 1, this must be a list of length
+                  ``"num_conv_layers"``. Each element can be an ``int`` or a
+                  ``int`` list of arbitrary length denoting the kernel size of
+                  each layer.
 
             "conv_activation": str or callable
                 Activation applied to the output of the convolutional
-                layers. Set to "None" to maintain a linear activation.
+                layers. Set to ``None`` to maintain a linear activation.
                 See :func:`~texar.core.get_layer` for more details.
 
             "conv_activation_kwargs" : dict, optional
@@ -177,7 +177,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             "other_conv_kwargs" : dict, optional
                 Other keyword arguments for
                 :torch_docs:`torch.nn.Conv1d <nn.html#conv1d>` constructor,
-                e.g., "padding"
+                e.g., ``padding``.
 
         2. For **pooling** layers:
 
@@ -187,18 +187,18 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 instance.
 
             "pool_size" : int or list, optional
-                Size of the pooling window. If an `int`, all pooling layer
+                Size of the pooling window. If an ``int``, all pooling layer
                 will have the same pool size. If a list, the list length must
-                equal "num_conv_layers". If `None` and the pooling type
+                equal ``"num_conv_layers"``. If ``None`` and the pooling type
                 is either :torch_docs:`MaxPool1d <nn.html#maxpool1d>` or
                 :torch_docs:`AvgPool1d <nn.html#avgpool1d>`, the pool size will
                 be set to input size. That is, the output of the pooling layer
                 is a single unit.
 
             "pool_stride" : int or list, optional
-                Strides of the pooling operation. If an `int`, all pooling layer
-                will have the same stride. If a list, the list length must
-                equal "num_conv_layers".
+                Strides of the pooling operation. If an ``int``, all
+                layers will have the same stride. If a list, the list length
+                must equal ``"num_conv_layers"``.
 
             "other_pool_kwargs" : dict, optional
                 Other keyword arguments for pooling layer class constructor.
@@ -210,14 +210,15 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 Number of dense layers.
 
             "out_features" int or list
-                Number of out_features after the dense layers. If an `int`, all
-                dense layers will have the same out_features size. If a list of
-                `int`, the list length must equal "num_dense_layers".
+                Dimension of output features after the dense layers. If an
+                ``int``, all dense layers will have the same feature dimension.
+                If a list of ``int``, the list length must equal
+                ``"num_dense_layers"``.
 
             "dense_activation" : str or callable
                 Activation function applied to the output of the dense
                 layers **except** the last dense layer output. Set to
-                "None" to maintain a linear activation.
+                ``None`` to maintain a linear activation.
 
             "dense_activation_kwargs" : dict, optional
                 Keyword arguments for dense layer activation functions before
@@ -225,7 +226,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
             "final_dense_activation" : str or callable
                 Activation function applied to the output of the **last** dense
-                layer. Set to "None" to maintain a linear activation.
+                layer. Set to ``None`` to maintain a linear activation.
 
             "final_dense_activation_kwargs" : dict, optional
                 Keyword arguments for the activation function of last
@@ -237,7 +238,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         4. For **dropouts**:
 
             "dropout_conv" : int or list
-                The indexes of conv layers (starting from `0`) whose **inputs**
+                The indices of conv layers (starting from 0) whose **inputs**
                 are applied with dropout. The index = :attr:`num_conv_layers`
                 means dropout applies to the final conv layer output. E.g.,
 
@@ -255,12 +256,12 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 by the :attr:`mode` argument of :meth:`_build`.
 
             "dropout_dense" : int or list
-                Same as "dropout_conv" but applied to dense layers (index
-                starting from `0`).
+                Same as ``"dropout_conv"`` but applied to dense layers (index
+                starting from 0).
 
             "dropout_rate" : float
                 The dropout rate, between 0 and 1. E.g.,
-                `"dropout_rate": 0.1` would drop out 10% of elements.
+                ``"dropout_rate": 0.1`` would drop out 10% of elements.
 
         5. Others:
 
@@ -511,8 +512,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
         Args:
             input: The inputs to the network, which is a 3D tensor.
-            sequence_length (optional): An int tensor of shape
-                `[batch_size]` or a python array containing the length of
+            sequence_length (optional): An :torch:`LongTensor` of shape
+                ``[batch_size]`` or a python array containing the length of
                 each element in :attr:`inputs`. If given, time steps beyond
                 the length will first be masked out before feeding to the
                 layers.

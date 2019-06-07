@@ -39,8 +39,8 @@ class FeedForwardNetworkBase(ModuleBase):
 
     Args:
         hparams (dict, optional): Hyperparameters. Missing
-            hyperparameter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameters will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
     See :meth:`_build` for the inputs and outputs.
@@ -93,8 +93,8 @@ class FeedForwardNetworkBase(ModuleBase):
         feasible before :attr:`_build` is called.
 
         Args:
-            layer: A subclass of :torch_nn:`Module`, or
-                a dict of layer hyperparameters.
+            layer: A subclass of :torch_nn:`Module`, or a dict of layer
+                hyperparameters.
         """
         layer_ = layer
         if not isinstance(layer_, nn.Module):
@@ -105,8 +105,8 @@ class FeedForwardNetworkBase(ModuleBase):
         self._layers_by_name[layer_name] = layer_
 
     def has_layer(self, layer_name: str) -> bool:
-        r"""Returns `True` if the network with the name exists. Returns `False`
-        otherwise.
+        r"""Returns ``True`` if the network with the name exists. Returns
+        ``False`` otherwise.
 
         Args:
             layer_name (str): Name of the layer.
@@ -114,7 +114,7 @@ class FeedForwardNetworkBase(ModuleBase):
         return layer_name in self._layers_by_name
 
     def layer_by_name(self, layer_name: str) -> Optional[nn.Module]:
-        r"""Returns the layer with the name. Returns `None` if the layer name
+        r"""Returns the layer with the name. Returns ``None`` if the layer name
         does not exist.
 
         Args:
@@ -143,8 +143,8 @@ class FeedForwardNetworkBase(ModuleBase):
 
 def _build_layers(network: FeedForwardNetworkBase,
                   layers: Optional[nn.ModuleList] = None,
-                  layer_hparams:
-                  Optional[List[Union[HParams, Dict[str, Any]]]] = None):
+                  layer_hparams: Optional[List[
+                      Union[HParams, Dict[str, Any]]]] = None):
     r"""Builds layers.
 
     Either :attr:`layer_hparams` or :attr:`layers` must be
@@ -152,9 +152,9 @@ def _build_layers(network: FeedForwardNetworkBase,
 
     Args:
         network: An instance of a subclass of
-            :class:`~texar.modules.networks.network_base.FeedForwardNetworkBase`
+            :class:`~texar.modules.networks.FeedForwardNetworkBase`.
         layers (optional): A list of layer instances supplied as an instance of
-        :torch_nn:`ModuleList`.
+            :torch_nn:`ModuleList`.
         layer_hparams (optional): A list of layer hparams, each to which
             is fed to :func:`~texar.core.layers.get_layer` to create the
             layer instance.

@@ -39,16 +39,16 @@ class PositionEmbedder(EmbedderBase):
     via lookup.
 
     Either :attr:`init_value` or :attr:`position_size` is required. If both are
-    given, there must be `init_value.shape[0]==position_size`.
+    given, there must be ``init_value.shape[0]==position_size``.
 
     Args:
-        init_value (optional): A `Tensor` or numpy array that contains the
+        init_value (optional): A Tensor or numpy array that contains the
             initial value of embeddings. It is typically of shape
-            `[position_size, embedding dim]`
+            ``[position_size, embedding dim]``.
 
-            If `None`, embedding is initialized as specified in
-            :attr:`hparams["initializer"]`. Otherwise, the
-            :attr:`"initializer"` and :attr:`"dim"`
+            If ``None``, embedding is initialized as specified in
+            ``hparams["initializer"]``. Otherwise, the
+            ``"initializer"`` and ``"dim"``
             hyperparameters in :attr:`hparams` are ignored.
         position_size (int, optional): The number of possible positions, e.g.,
             the maximum sequence length. Required if :attr:`init_value` is
@@ -118,17 +118,16 @@ class PositionEmbedder(EmbedderBase):
               embeddings of those time steps beyond the respective sequence
               lengths.
             - If only :attr:`sequence_length` is given, then positions
-              from `0` to `sequence_length-1` are embedded.
+              from 0 to ``sequence_length - 1`` are embedded.
 
         Args:
-            positions (optional): An integer tensor containing the position
-                ids to embed.
-            sequence_length (optional): An integer tensor of shape
-                `[batch_size]`. Time steps beyond
-                the respective sequence lengths will have
-                zero-valued embeddings.
+            positions (optional): A :torch:`LongTensor` containing the position
+                IDs to embed.
+            sequence_length (optional): An :torch:`LongTensor` of shape
+                ``[batch_size]``. Time steps beyond the respective sequence
+                lengths will have zero-valued embeddings.
             kwargs: Additional keyword arguments for
-                `torch.nn.functional.embedding` besides
+                :torch_nn:`functional.embedding` besides
                 :attr:`params` and :attr:`ids`.
 
         Returns:
@@ -207,13 +206,13 @@ class SinusoidsPositionEmbedder(EmbedderBase):
 
     Timing signals should be added to some precursors of both the query
     and the memory inputs to attention.
-    The use of relative position is possible because sin(x+y) and
-    cos(x+y) can be expressed in terms of y, sin(x) and cos(x).
+    The use of relative position is possible because `sin(x+y)` and
+    `cos(x+y)` can be expressed in terms of `y`, `sin(x)`, and `cos(x)`.
     In particular, we use a geometric sequence of timescales starting with
     min_timescale and ending with max_timescale.  The number of different
-    timescales is equal to dim / 2. For each timescale, we
-    generate the two sinusoidal signals sin(timestep/timescale) and
-    cos(timestep/timescale).  All of these sinusoids are concatenated in
+    timescales is equal to ``dim / 2``. For each timescale, we
+    generate the two sinusoidal signals `sin(timestep/timescale)` and
+    `cos(timestep/timescale)`.  All of these sinusoids are concatenated in
     the dim dimension.
 
     Args:
@@ -254,7 +253,7 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         r"""Returns a dictionary of hyperparameters with default values
         We use a geometric sequence of timescales starting with
         min_timescale and ending with max_timescale. The number of different
-        timescales is equal to dim/2.
+        timescales is equal to ``dim / 2``.
 
         .. code-block:: python
 
@@ -283,17 +282,17 @@ class SinusoidsPositionEmbedder(EmbedderBase):
               embeddings of those time steps beyond the respective sequence
               lengths.
             - If only :attr:`sequence_length` is given, then positions
-              from `0` to `sequence_length-1` are embedded.
+              from `0` to `sequence_length - 1` are embedded.
 
         Args:
-            positions (optional): An integer tensor containing the position
-                ids to embed.
-            sequence_length (optional): An integer tensor of shape
-                `[batch_size]`. Time steps beyond
+            positions (optional): An :torch:`LongTensor` containing the position
+                IDs to embed.
+            sequence_length (optional): An :torch:`LongTensor` of shape
+                ``[batch_size]``. Time steps beyond
                 the respective sequence lengths will have zero-valued
                 embeddings.
         Returns:
-            A `Tensor` of shape `[batch_size, position_size, dim]`.
+            A Tensor of shape ``[batch_size, position_size, dim]``.
         """
         if positions is None:
             if sequence_length is None:

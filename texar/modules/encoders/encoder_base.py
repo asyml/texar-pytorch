@@ -48,10 +48,9 @@ class EncoderBase(ModuleBase):
         r"""Encodes the inputs.
 
         Args:
-          inputs: Inputs to the encoder.
-          *args: Other arguments.
-          **kwargs: Keyword arguments.
+            inputs: Inputs to the encoder.
+
         Returns:
-          Encoding results.
+            Encoding results.
         """
         raise NotImplementedError
