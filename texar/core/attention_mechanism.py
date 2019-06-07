@@ -372,10 +372,6 @@ class LuongAttention(_BaseAttentionMechanism):
             `[batch_size, alignments_size]` (`alignments_size` is memory's
             `max_time`).
         """
-        probability_fn = lambda score, prev: (
-            self.wrapped_probability_fn(
-                _maybe_mask_score(score, memory_sequence_length,
-                                  self.score_mask_value), prev))
         self._values = _prepare_memory(memory, memory_sequence_length)
 
         _keys: torch.Tensor
@@ -386,7 +382,10 @@ class LuongAttention(_BaseAttentionMechanism):
             _keys = self._values
 
         score = _luong_score(query, _keys, self.attention_g)
-        alignments = probability_fn(score, state)
+        alignments = self.wrapped_probability_fn(
+            _maybe_mask_score(score, memory_sequence_length,
+                              self.score_mask_value), state)
+
         next_state = alignments
         return alignments, next_state
 
@@ -522,11 +521,6 @@ class BahdanauAttention(_BaseAttentionMechanism):
             `max_time`).
         """
         processed_query = self.query_layer(query) if self.query_layer else query
-
-        probability_fn = lambda score, prev: (
-            self.wrapped_probability_fn(
-                _maybe_mask_score(score, memory_sequence_length,
-                                  self.score_mask_value), prev))
         self._values = _prepare_memory(memory, memory_sequence_length)
 
         _keys: torch.Tensor
@@ -541,7 +535,11 @@ class BahdanauAttention(_BaseAttentionMechanism):
                                 self.attention_v,
                                 self.attention_g,
                                 self.attention_b)
-        alignments = probability_fn(score, state)
+
+        alignments = self.wrapped_probability_fn(
+                _maybe_mask_score(score, memory_sequence_length,
+                                  self.score_mask_value), state)
+
         next_state = alignments
         return alignments, next_state
 
@@ -592,26 +590,27 @@ def monotonic_attention(p_choose_i: torch.Tensor,
             For the first output timestep, preevious_attention[n] should be
             [1, 0, 0, ..., 0] for all n in [0, ... batch_size - 1].
         mode: How to compute the attention distribution.
-            Must be one of `"recursive"`, `"parallel"`, or `"hard"`:
-                - `"recursive"` recursively computes the distribution.
+            Must be one of ``"recursive"``, ``"parallel"``, or ``"hard"``:
+                - ``"recursive"`` recursively computes the distribution.
                   This is slowest but is exact, general, and does not suffer
                   from numerical instabilities.
-                - `"parallel"` uses parallelized cumulative-sum and cumulative-
-                  product operations to compute a closed-form solution to the
-                  recurrence relation defining the attention distribution.
-                  This makes it more efficient than `"recursive"`, but it
-                  requires numerical checks which make the distribution
-                  non-exact. This can be a problem in particular when input
-                  sequence is long and/or :attr:`p_choose_i` has entries very
-                  close to 0 or 1.
-                - `"hard"` requires that the probabilities in :attr:`p_choose_i`
-                  are all either 0 or 1, and subsequently uses a more efficient
-                  and exact solution.
+                - ``"parallel"`` uses parallelized cumulative-sum and
+                  cumulative-product operations to compute a closed-form
+                  solution to the recurrence relation defining the attention
+                  distribution. This makes it more efficient than
+                  ``"recursive"``, but it requires numerical checks which make
+                  the distribution non-exact. This can be a problem in
+                  particular when input sequence is long and/or
+                  :attr:`p_choose_i` has entries very close to 0 or 1.
+                - ``"hard"`` requires that the probabilities in
+                  :attr:`p_choose_i` are all either 0 or 1, and subsequently
+                  uses a more efficient and exact solution.
     Returns:
         A tensor of shape (batch_size, input_sequence_length) representing the
         attention distributions for each sequence in the batch.
     Raises:
-        ValueError: mode is not one of `"recursive"`, `"parallel"`, `"hard"`.
+        ValueError: mode is not one of ``"recursive"``, ``"parallel"``,
+        ``"hard"``.
     """
     # Force things to be tensors
     if not isinstance(p_choose_i, torch.Tensor):
@@ -759,6 +758,7 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
     `Colin Raffel, Minh-Thang Luong, Peter J. Liu, Ron J. Weiss, Douglas Eck,
     "Online and Linear-Time Attention by Enforcing Monotonic Alignments."
     ICML 2017.  <https://arxiv.org/abs/1704.00784>`_
+
     Args:
         num_units: The depth of the query mechanism.
             cell_output_size: The output size of the decoder cell.

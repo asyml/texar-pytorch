@@ -454,7 +454,6 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         return hparams
 
     def initialize(self,  # type: ignore
-                   memory: torch.Tensor,
                    helper: Helper,
                    inputs: Optional[torch.Tensor],
                    sequence_length: Optional[torch.LongTensor],
@@ -464,25 +463,22 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         initial_finished, initial_inputs = helper.initialize(
             inputs, sequence_length)
 
-        initial_state = self._cell.zero_state(batch_size=memory.shape[0],
-                                              max_time=memory.shape[1],
-                                              dtype=memory.dtype,
-                                              device=memory.device)
+        initial_state = self._cell.zero_state(
+            batch_size=self.memory.shape[0],
+            max_time=self.memory.shape[1])
         return initial_finished, initial_inputs, initial_state
 
     def step(self,  # type: ignore
              helper: Helper,
              time: int,
              inputs: torch.Tensor,
-             state: AttentionWrapperState,
-             memory: torch.Tensor,
-             memory_sequence_length: Optional[torch.LongTensor] = None) -> \
+             state: AttentionWrapperState) -> \
             Tuple[AttentionRNNDecoderOutput, AttentionWrapperState,
                   torch.Tensor, torch.ByteTensor]:
         wrapper_outputs, wrapper_state = self._cell(inputs,
                                                     state,
-                                                    memory,
-                                                    memory_sequence_length)
+                                                    self.memory,
+                                                    self.memory_sequence_length)
         # Essentisally the same as in BasicRNNDecoder.step()
 
         logits = self._output_layer(wrapper_outputs)
@@ -583,6 +579,10 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         """
         # TODO: Add faster code path for teacher-forcing training.
 
+        # Save memory and memory_sequence_length
+        self.memory = memory
+        self.memory_sequence_length = memory_sequence_length
+
         # Helper
         if helper is None:
             helper = self._create_or_get_helper(infer_mode, **kwargs)
@@ -605,94 +605,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                 max_decoding_length = utils.MAX_SEQ_LENGTH
 
         return self.dynamic_decode(
-            helper, inputs, sequence_length, initial_state, memory,
-            memory_sequence_length, max_decoding_length, impute_finished)
-
-    def dynamic_decode(  # type: ignore
-            self,
-            helper: Helper,
-            inputs: Optional[torch.Tensor],
-            sequence_length: Optional[torch.LongTensor],
-            initial_state: Optional[AttentionWrapperState],
-            memory: torch.Tensor,
-            memory_sequence_length: Optional[torch.LongTensor] = None,
-            max_decoding_length: Optional[int] = None,
-            impute_finished: bool = False) \
-            -> Tuple[Output, Optional[AttentionWrapperState], torch.LongTensor]:
-        r"""Generic routine for dynamic decoding. Please check the documentation
-        for the TensorFlow counterpart.
-
-        Returns:
-            A tuple of output, final state, and sequence lengths. Note that
-            final state could be `None`, when all sequences are of zero length
-            and `initial_state` is also `None`.
-        """
-
-        # Decode
-        finished, step_inputs, state = self.initialize(memory, helper,
-                                                       inputs, sequence_length,
-                                                       initial_state)
-        zero_outputs = step_inputs.new_zeros(
-            step_inputs.size(0), self.output_size)
-
-        if max_decoding_length is not None:
-            finished |= (max_decoding_length <= 0)
-        sequence_lengths = torch.zeros_like(
-            finished, dtype=torch.long, device=finished.device)
-        time = 0
-
-        outputs = []
-
-        while (not torch.all(finished).item() and
-               (max_decoding_length is None or time < max_decoding_length)):
-            (next_outputs, decoder_state, next_inputs,
-             decoder_finished) = self.step(helper, time, step_inputs, state,
-                                           memory, memory_sequence_length)
-
-            if getattr(self, 'tracks_own_finished', False):
-                next_finished = decoder_finished
-            else:
-                next_finished = decoder_finished | finished
-
-            # Zero out output values past finish
-            if impute_finished:
-                emit = utils.map_structure_zip(
-                    lambda new, cur: torch.where(finished, cur, new),
-                    (next_outputs, zero_outputs))
-                next_state = utils.map_structure_zip(
-                    lambda new, cur: torch.where(finished, cur, new),
-                    (decoder_state, state))
-            else:
-                emit = next_outputs
-                next_state = decoder_state
-
-            outputs.append(emit)
-            sequence_lengths.index_fill_(
-                dim=0, value=time + 1,
-                index=torch.nonzero((~finished).long()).flatten())
-            time += 1
-            finished = next_finished
-            step_inputs = next_inputs
-            state = next_state
-
-        final_outputs = utils.map_structure_zip(
-            lambda *tensors: torch.stack(tensors),
-            outputs)  # output at each time step may be a namedtuple
-        final_state = state
-        final_sequence_lengths = sequence_lengths
-
-        try:
-            final_outputs, final_state = self.finalize(  # type: ignore
-                final_outputs, final_state, final_sequence_lengths)
-        except NotImplementedError:
-            pass
-
-        if not self._output_time_major:
-            final_outputs = utils.map_structure(
-                lambda x: x.transpose(0, 1) if x.dim() >= 2 else x,
-                final_outputs)
-
-        return (final_outputs, final_state, final_sequence_lengths)
+            helper, inputs, sequence_length, initial_state,
+            max_decoding_length, impute_finished)
 
     @property
     def output_size(self):

@@ -457,46 +457,49 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                                          torch.Tensor]] = None,
                  output_attention: bool = True):
         r"""Wraps RNN cell with attention.
-    Construct the `AttentionWrapper`.
-    Args:
-        cell: An instance of RNN cell.
-        attention_mechanism: A list of :class:`~texar.core.AttentionMechanism`
-            instances or a single instance.
-        attention_layer_size: A list of Python integers or a single Python
-            integer, the depth of the attention (output) layer(s). If None
-            (default), use the context as attention at each time step.
-            Otherwise, feed the context and cell output into the attention
-            layer to generate attention at each time step. If
-            attention_mechanism is a list, attention_layer_size must be a
-            list of the same length. If attention_layer is set, this must be
-            None. If attention_fn is set, it must guaranteed that the
-            outputs of attention_fn also meet the above requirements.
-        alignment_history (bool): whether to store alignment
-            history from all time steps in the final output state (currently
-            stored as a time major `TensorArray` on which you must call
-            `stack()`).
-        cell_input_fn (optional): A `callable`.  The default is:
-            `lambda inputs, attention: array_ops.concat([inputs, attention],
-            -1)`.
-        output_attention (bool): If `True` (default), the output at
-            each time step is the attention value.  This is the behavior of
-            Luong-style attention mechanisms.  If `False`, the output at
-            each time step is the output of `cell`.  This is the behavior
-            of Bhadanau-style attention mechanisms.  In both cases, the
-            `attention` tensor is propagated to the next time step via the
-            state and is used there. This flag only controls whether the
-            attention mechanism is propagated up to the next cell in an RNN
-            stack or to the top RNN output.
-    Raises:
-        TypeError: :attr:`attention_layer_size` is not None and
-            (`attention_mechanism` is a list but :attr:`attention_layer_size` is
-            not; or vice versa).
-        ValueError: if `attention_layer_size` is not None,
-            :attr:`attention_mechanism` is a list, and its length does not match
-            that of :attr:`attention_layer_size`; if
-            :attr:`attention_layer_size` and `attention_layer` are set
-            simultaneously.
-    """
+        Construct the `AttentionWrapper`.
+
+        Args:
+            cell: An instance of RNN cell.
+            attention_mechanism: A list of
+                :class:`~texar.core.AttentionMechanism` instances or a single
+                instance.
+            attention_layer_size: A list of Python integers or a single Python
+                integer, the depth of the attention (output) layer(s). If None
+                (default), use the context as attention at each time step.
+                Otherwise, feed the context and cell output into the attention
+                layer to generate attention at each time step. If
+                attention_mechanism is a list, attention_layer_size must be a
+                list of the same length. If attention_layer is set, this must be
+                None. If attention_fn is set, it must guaranteed that the
+                outputs of attention_fn also meet the above requirements.
+            alignment_history (bool): whether to store alignment
+                history from all time steps in the final output state (currently
+                stored as a time major `TensorArray` on which you must call
+                `stack()`).
+            cell_input_fn (optional): A `callable`.  The default is:
+                `lambda inputs, attention: array_ops.concat([inputs, attention],
+                -1)`.
+            output_attention (bool): If `True` (default), the output at
+                each time step is the attention value.  This is the behavior of
+                Luong-style attention mechanisms.  If `False`, the output at
+                each time step is the output of `cell`.  This is the behavior
+                of Bhadanau-style attention mechanisms.  In both cases, the
+                `attention` tensor is propagated to the next time step via the
+                state and is used there. This flag only controls whether the
+                attention mechanism is propagated up to the next cell in an RNN
+                stack or to the top RNN output.
+
+        Raises:
+            TypeError: :attr:`attention_layer_size` is not None and
+                (`attention_mechanism` is a list but
+                :attr:`attention_layer_size` is not; or vice versa).
+            ValueError: if `attention_layer_size` is not None,
+                :attr:`attention_mechanism` is a list, and its length does not
+                match that of :attr:`attention_layer_size`; if
+                :attr:`attention_layer_size` and `attention_layer` are set
+                simultaneously.
+        """
         super().__init__(cell)
         self._is_multi: bool
         if isinstance(attention_mechanism, (list, tuple)):
@@ -582,23 +585,23 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
 
     def zero_state(self,  # type: ignore
                    batch_size: int,
-                   max_time: int,
-                   dtype: torch.dtype,
-                   device: torch.device) -> AttentionWrapperState:
+                   max_time: int) -> AttentionWrapperState:
         r"""Return an initial (zero) state tuple for this
         :class:`AttentionWrapper`.
-        **NOTE** Please see the initializer documentation for details of how
-        to call :meth:`zero_state` if using an
-        :class:`~texar.core.AttentionWrapper` with a
-        :class:`~texar.modules.BeamSearchDecoder`.
+        ..note::
+                Please see the initializer documentation for details of how
+                to call :meth:`zero_state` if using an
+                :class:`~texar.core.AttentionWrapper` with a
+                :class:`~texar.modules.BeamSearchDecoder`.
+
         Args:
             batch_size: `0D` integer tensor: the batch size.
             max_time: `0D` integer tensor: the max_time.
-            dtype: The internal state data type.
-            device: The `device`.
+
         Returns:
             An :class:`~texar.core.AttentionWrapperState` tuple containing
             zeroed out tensors and, possibly, empty `TensorArray` objects.
+
         Raises:
             ValueError: (or, possibly at runtime, InvalidArgument), if
                 :attr:`batch_size` does not match the output size of the encoder
@@ -609,7 +612,8 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
 
         initial_alignments = [
             attention_mechanism.initial_alignments(batch_size, max_time,
-                                                   dtype, device)
+                                                   self._param.dtype,
+                                                   self._param.device)
             for attention_mechanism in self._attention_mechanisms]
 
         alignment_history: List[List[Optional[torch.Tensor]]]
@@ -624,7 +628,8 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
             alignments=self._item_or_tuple(initial_alignments),
             attention_state=self._item_or_tuple(
               attention_mechanism.initial_state(batch_size, max_time,
-                                                dtype, device)
+                                                self._param.dtype,
+                                                self._param.device)
               for attention_mechanism in self._attention_mechanisms),
             alignment_history=self._item_or_tuple(alignment_history))
 
