@@ -115,6 +115,7 @@ Exploration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.core.EpsilonLinearDecayExploration
     :members:
+    :exclude-members: cell_state, attention, time, alignments, alignment_history, attention_state
 
 :hidden:`ExplorationBase`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

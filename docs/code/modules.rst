@@ -102,6 +102,7 @@ Decoders
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.BasicRNNDecoderOutput
     :members:
+    :exclude-members: logits, sample_id, cell_output
 
 :hidden:`AttentionRNNDecoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -114,6 +115,7 @@ Decoders
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.AttentionRNNDecoderOutput
     :members:
+    :exclude-members: logits, sample_id, cell_output, attention_scores, attention_context
 
 :hidden:`beam_search_decode`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -128,6 +130,7 @@ Decoders
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.TransformerDecoderOutput
     :members:
+    :exclude-members: logits, sample_id
 
 :hidden:`TopKSampleEmbeddingHelper`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

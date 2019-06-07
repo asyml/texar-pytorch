@@ -100,7 +100,7 @@ def sentence_bleu(references: List[MaybeList[str]],
         BLEU score.
 
         If :attr:`return_all` is `True`, returns a list of float32 scores:
-        `[BLEU] + n-gram precisions`, which is of length :attr:`max_order`+1.
+        `[BLEU] + n-gram precisions`, which is of length :attr:`max_order` +1.
     """
     return corpus_bleu([references],
                        [hypothesis],
@@ -137,7 +137,7 @@ def corpus_bleu(list_of_references: List[List[MaybeList[str]]],
         BLEU score.
 
         If :attr:`return_all` is `True`, returns a list of float32 scores:
-        `[BLEU] + n-gram precisions`, which is of length :attr:`max_order`+1.
+        `[BLEU] + n-gram precisions`, which is of length :attr:`max_order` +1.
     """
     list_of_references = compat_as_text(list_of_references)
     hypotheses = compat_as_text(hypotheses)
