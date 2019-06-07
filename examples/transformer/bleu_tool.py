@@ -1,3 +1,5 @@
+# flake8: noqa: E501
+
 # Copyright 2018 The Tensor2Tensor Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

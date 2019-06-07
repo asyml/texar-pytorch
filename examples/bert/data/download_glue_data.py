@@ -1,3 +1,4 @@
+# flake8: noqa: E501
 """Script for downloading all GLUE data.
 
 Adapted from https://gist.github.com/W4ngatang/60c2bdb54d156a41194446737ce03e2e
@@ -9,7 +10,8 @@ import sys
 import urllib.request
 import zipfile
 
-TASKS = ["CoLA", "SST", "MRPC", "QQP", "STS", "MNLI", "SNLI", "QNLI", "RTE", "WNLI", "diagnostic"]
+TASKS = ["CoLA", "SST", "MRPC", "QQP", "STS", "MNLI", "SNLI", "QNLI",
+         "RTE", "WNLI", "diagnostic"]
 TASK2PATH = {
     "CoLA": 'https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FCoLA.zip?alt=media&token=46d5e637-3411-4188-bc44-5809b5bfb5f4',
     "SST": 'https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FSST-2.zip?alt=media&token=aabc5f6b-e466-44a2-b9b4-cf6337f84ac8',
