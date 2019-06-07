@@ -73,6 +73,7 @@ class BertClassifier(ClassifierBase):
 
         self.pooler = nn.Sequential(
             nn.Linear(self._hparams.hidden_size, self._hparams.hidden_size),
+            nn.Tanh(),
             nn.Dropout(self._hparams.dropout))
 
         self._num_classes = self._hparams.num_classes
@@ -89,6 +90,7 @@ class BertClassifier(ClassifierBase):
 
             self.logits_layer = nn.Linear(
                 self._hparams.hidden_size, self._num_classes, **logit_kwargs)
+
         else:
             self.logits_layer = None
 
@@ -267,6 +269,8 @@ class BertClassifier(ClassifierBase):
         seq_length = seq_length.to(device=inputs.device)
         pos_embeds = self.position_embedder(sequence_length=seq_length)
         input_embeds = word_embeds + segment_embeds + pos_embeds
+
+
         enc_output = self.encoder(input_embeds, sequence_length)
 
         # Compute logits

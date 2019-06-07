@@ -23,12 +23,11 @@ import os
 import pprint
 
 import torch
-from torch.nn.utils.clip_grad import clip_grad_norm_
 
 import texar as tx
 import utils.model_utils as model_utils
 from texar.models import BertClassifier
-
+from texar.custom.optimizers import BertAdam
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
@@ -115,7 +114,6 @@ def main():
     vars_with_decay = []
     vars_without_decay = []
     for name, param in model.named_parameters():
-        print('name:{} param:{}'.format(name, param.size()))
         if 'layer_norm' in name or name.endswith('bias'):
             vars_without_decay.append(param)
         else:
@@ -124,16 +122,14 @@ def main():
     opt_params = [
         {
             'params': vars_with_decay,
-            'weight_decay': 1e-2,
+            'weight_decay': 0.01,
         },
         {
             'params': vars_without_decay,
-            'weight_decay': 0,
+            'weight_decay': 0.0,
         }
     ]
-
-    optim = torch.optim.Adam(opt_params, lr=static_lr,
-                             betas=(0.9, 0.999), eps=1e-6)
+    optim = BertAdam(opt_params, betas=(0.9, 0.999), eps=1e-6, lr=static_lr)
 
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optim, functools.partial(
@@ -156,6 +152,7 @@ def main():
 
         model.train()
         for batch in iterator:
+            optim.zero_grad()
             input_ids = batch["input_ids"]
             segment_ids = batch["segment_ids"]
             labels = batch["label_ids"]
@@ -171,11 +168,9 @@ def main():
                 inputs=input_ids,
                 sequence_length=input_length,
                 segment_ids=segment_ids,
-                labels=labels,
+                labels=labels
             )
-
             loss.backward()
-            clip_grad_norm_(model.parameters(), max_norm=1.0)
             optim.step()
             scheduler.step()
             step = scheduler.last_epoch
@@ -221,7 +216,6 @@ def main():
             cum_acc += accu * batch_size
             cum_loss += loss * batch_size
             nsamples += batch_size
-
         logging.info(
             "eval accu: {}; loss: {}; nsamples: {}".format(
                 cum_acc / nsamples, cum_loss / nsamples, nsamples

@@ -31,7 +31,7 @@ encoder = {
                 "type": "Linear",
             },
             {
-                "type": "GELU",
+                "type": "BertGELU",
             },
             {
                 "kwargs": {

@@ -156,12 +156,19 @@ class TransformerEncoder(EncoderBase):
         self.poswise_layer_norm = nn.ModuleList()
         self.output_layer_norm = nn.ModuleList()
 
+        if self._hparams.use_bert_config:
+            # in tensorflow, eps for LayerNorm is 1e-12 by default
+            eps = 1e-12
+        else:
+            # in pytorch, eps for LayerNorm is 1e-6 by default
+            eps = 1e-6
+
         for _ in range(self._hparams.num_blocks):
             mh_attn = MultiheadAttentionEncoder(
                 self._input_size, self._hparams.multihead_attention)
             self.self_attns.append(mh_attn)
             if not self._hparams.use_bert_config:
-                self.self_attn_layer_norm.append(nn.LayerNorm(self._input_size))
+                self.self_attn_layer_norm.append(nn.LayerNorm(self._input_size), eps)
             if self._hparams.dim != mh_attn.hparams.output_dim:
                 raise ValueError(
                     'The "dim" in the hpa   rams of '
@@ -179,17 +186,17 @@ class TransformerEncoder(EncoderBase):
                     'to the "dim" of TransformerEncoder.')
 
             self.poswise_networks.append(pw_net)
-            self.poswise_layer_norm.append(nn.LayerNorm(self._input_size))
+            self.poswise_layer_norm.append(nn.LayerNorm(self._input_size, eps))
             if self._hparams.use_bert_config:
-                self.output_layer_norm.append(nn.LayerNorm(self._input_size))
+                self.output_layer_norm.append(nn.LayerNorm(self._input_size, eps))
 
         self.embed_dropout = nn.Dropout(p=self._hparams.embedding_dropout)
         self.residual_dropout = nn.Dropout(p=self._hparams.residual_dropout)
 
         if self._hparams.use_bert_config:
-            self.input_normalizer = nn.LayerNorm(self._input_size)
+            self.input_normalizer = nn.LayerNorm(self._input_size, eps)
         else:
-            self.final_layer_normalizer = nn.LayerNorm(self._input_size)
+            self.final_layer_normalizer = nn.LayerNorm(self._input_size, eps)
 
         if self._hparams.initializer:
             initialize = layers.get_initializer(self._hparams.initializer)
@@ -236,14 +243,12 @@ class TransformerEncoder(EncoderBase):
             If `False`, apply the standard Transformer Encoder architecture from
             the original paper `(Vaswani et al.) "Attention is All You Need"`.
             If `True`, apply the Transformer Encoder architecture used in BERT
-            `(Devlin et al.)`.
+            `(Devlin et al.)` and the default setting of Tensorflow.
             The differences lie in:
-                1. The standard arch restricts the word embedding of PAD token \
-                   to all zero. The BERT arch does not.
-                2. The attention bias for padding tokens: \
+                1. The attention bias for padding tokens: \
                    The standard arch uses `-1e8` for nagative attention mask. \
                    BERT uses `-1e4` instead.
-                3. The residual connections between internal tensors: \
+                2. The residual connections between internal tensors: \
                    In BERT, a residual layer connects the tensors *after* \
                    layer normalization. In the standard arch, the tensors are \
                    connected *before* layer normalization.
@@ -376,5 +381,4 @@ class TransformerEncoder(EncoderBase):
 
         if not self._hparams.use_bert_config:
             x = self.final_layer_normalizer(x)
-
         return x

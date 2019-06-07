@@ -149,8 +149,7 @@ class PositionEmbedder(EmbedderBase):
 
         ids_rank = len(list(inputs.shape))
         embedding = self._embedding
-
-        inputs = inputs.to(device=sequence_length.device)
+        inputs = inputs.to(device=embedding.device)
         # Gets dropout strategy
         st = self._hparams.dropout_strategy
 

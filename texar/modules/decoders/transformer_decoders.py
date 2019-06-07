@@ -111,6 +111,12 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         self.end_dec_attn_layer_norm = nn.ModuleList()
         self.poswise_networks = nn.ModuleList()
         self.poswise_layer_norm = nn.ModuleList()
+
+        if self._hparams.use_gpt_config:
+            eps = 1e-5
+        else:
+            eps = 1e-12
+
         for i in range(self._hparams.num_blocks):
             attn_module = MultiheadAttentionEncoder(
                 self._input_size, self._hparams.multihead_attention)
@@ -119,7 +125,8 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                                  "MultiheadEncoder should be equal "
                                  "to the dim of TransformerDecoder")
             self.self_attns.append(attn_module)
-            self.self_attn_layer_norm.append(nn.LayerNorm(self._input_size))
+            self.self_attn_layer_norm.append(
+                nn.LayerNorm(self._input_size, eps=eps))
 
             attn_module = MultiheadAttentionEncoder(
                 self._input_size, self._hparams.multihead_attention)
@@ -128,7 +135,8 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                                  "MultiheadEncoder should be equal "
                                  "to the dim of TransformerDecoder")
             self.enc_dec_attns.append(attn_module)
-            self.end_dec_attn_layer_norm.append(nn.LayerNorm(self._input_size))
+            self.end_dec_attn_layer_norm.append(
+                nn.LayerNorm(self._input_size, eps=eps))
 
             poswise_network = FeedForwardNetwork(
                 hparams=self._hparams.poswise_feedforward)
@@ -138,9 +146,10 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                                  "FeedForwardNetwork should be equal "
                                  "to the dim of TransformerDecoder")
             self.poswise_networks.append(poswise_network)
-            self.poswise_layer_norm.append(nn.LayerNorm(self._input_size))
+            self.poswise_layer_norm.append(
+                nn.LayerNorm(self._input_size, eps=eps))
 
-        self.final_layer_norm = nn.LayerNorm(self._input_size)
+        self.final_layer_norm = nn.LayerNorm(self._input_size, eps=eps)
         self.embed_dropout = nn.Dropout(self._hparams.embedding_dropout)
         self.residual_dropout = nn.Dropout(self._hparams.residual_dropout)
 
@@ -163,6 +172,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 # Same as in TransformerEncoder
                 "num_blocks": 6,
                 "dim": 512,
+                "use_gpt_config": False,
                 "embedding_dropout": 0.1,
                 "residual_dropout": 0.1,
                 "poswise_feedforward": default_transformer_poswise_net_hparams,
@@ -190,6 +200,9 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
         "dim" : int
             Hidden dimension of the encoder.
+
+        "use_gpt_config": bool
+            Whether to follow the eps setting of OpenAI's GPT
 
         "embedding_dropout": float
             Dropout rate of the input word and position embeddings.
@@ -241,6 +254,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         return {
             'num_blocks': 6,
             'dim': dim,
+            'use_gpt_config': False,
             'embedding_tie': True,
             'output_layer_bias': False,
             'max_decoding_length': int(1e10),

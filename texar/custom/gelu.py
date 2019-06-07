@@ -3,11 +3,18 @@ import math
 import torch
 from torch import nn
 
-
-class GELU(nn.Module):
+class BertGELU(nn.Module):
     """
-    Paper Section 3.4, last paragraph notice that BERT used the GELU
-    instead of RELU.
+    Bert use GELU as the activation function for the poswise network.
+    """
+
+    def forward(self, x):
+        return x * 0.5 * (1.0 + torch.erf(x / math.sqrt(2.0)))
+
+class GPTGELU(nn.Module):
+    """
+    For information: OpenAI GPT's gelu is slightly different (and gives slightly different results):
+        0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
     """
 
     def forward(self, x):

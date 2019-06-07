@@ -58,7 +58,7 @@ def transform_bert_to_texar_config(input_json):
                     },
                 },
                 {
-                    'type': config_ckpt['hidden_act'].upper()
+                    'type': 'Bert' + config_ckpt['hidden_act'].upper()
                 },
                 {
                     "type": "Linear",
@@ -149,14 +149,14 @@ def init_bert_checkpoint(model, init_checkpoint):
         array = tf.train.load_variable(tf_path, name)
         tfnames.append(name)
         arrays.append(array.squeeze())
-
     py_prefix = "encoder."
 
     idx = 0
     for name, array in zip(tfnames, arrays):
         processing = (idx + 1.0) / len(tfnames)
 
-        if not name.startswith('bert'):
+        if name.startswith('cls'):
+            # ignore those variables begin with cls
             continue
 
         if name in global_tensor_map:
@@ -196,7 +196,6 @@ def init_bert_checkpoint(model, init_checkpoint):
             else:
                 raise NameError(f"Variable with name '{name}' not found")
             idx += 1
-
 
 def name_to_variable(model, name):
     """

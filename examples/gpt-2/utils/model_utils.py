@@ -28,6 +28,7 @@ def transform_gpt2_to_texar_config(input_json_path):
     configs["decoder"] = {
         "dim": hidden_dim,
         "num_blocks": config_gpt["n_layer"],
+        "use_gpt_config": True,
         "embedding_dropout": 0,
         "residual_dropout": 0,
         "multihead_attention": {
@@ -55,7 +56,7 @@ def transform_gpt2_to_texar_config(input_json_path):
                     }
                 },
                 {
-                    "type": "GELU",
+                    "type": "GPTGELU",
                     "kwargs": {}
                 },
                 {
