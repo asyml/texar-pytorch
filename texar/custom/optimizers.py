@@ -1,5 +1,4 @@
-from collections import Iterable
-from typing import Callable, List, Optional, Tuple, Union, Dict
+from typing import Callable, Iterable, List, Optional, Tuple, Union, Dict
 
 import torch
 from mypy_extensions import TypedDict
