@@ -16,7 +16,7 @@
 
 import torch
 
-import texar.core.layers as layers
+from texar.core import layers
 from texar.hyperparams import HParams
 
 __all__ = [

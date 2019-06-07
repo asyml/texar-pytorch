@@ -21,10 +21,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import torch
 from torch import nn
 
-import texar.utils.utils as utils
 from texar.hyperparams import HParams
 from texar.modules.classifiers.classifier_base import ClassifierBase
 from texar.modules.encoders.conv_encoders import Conv1DEncoder
+from texar.utils import utils
 
 __all__ = [
     "Conv1DClassifier",

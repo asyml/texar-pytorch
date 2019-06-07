@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 
 import texar
-import texar.modules.decoders.decoder_helpers as decoder_helpers
+from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.transformer_decoders import TransformerDecoder
 from texar.modules.decoders.transformer_decoders import TransformerDecoderOutput
 

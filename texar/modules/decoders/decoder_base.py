@@ -26,7 +26,7 @@ from typing import Generic, Optional, Tuple, TypeVar, Union, overload
 import torch
 from torch import nn
 
-from texar.core import identity
+from texar.core.layers import identity
 from texar.hyperparams import HParams
 from texar.module_base import ModuleBase
 from texar.modules.decoders import decoder_helpers

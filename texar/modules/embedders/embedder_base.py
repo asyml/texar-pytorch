@@ -18,8 +18,8 @@ The base embedder class.
 import torch
 from torch.nn.parameter import Parameter
 
-import texar.modules.embedders.embedder_utils as embedder_utils
 from texar.module_base import ModuleBase
+from texar.modules.embedders import embedder_utils
 
 # pylint: disable=invalid-name
 

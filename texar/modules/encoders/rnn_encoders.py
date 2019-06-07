@@ -20,8 +20,8 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar, Union
 import torch
 import torch.nn as nn
 
-from texar.core import RNNCellBase, layers
-from texar.core.cell_wrappers import LSTMCell
+from texar.core import layers
+from texar.core.cell_wrappers import LSTMCell, RNNCellBase
 from texar.hyperparams import HParams
 from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.networks.conv_networks import _to_list

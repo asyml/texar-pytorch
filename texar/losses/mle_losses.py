@@ -23,8 +23,8 @@ from typing import Callable, Optional, Tuple, Union
 import torch
 import torch.nn.functional as F
 
-import texar.utils.shapes as shapes
 from texar.losses.losses_utils import mask_and_reduce, reduce_dimensions
+from texar.utils import shapes
 from texar.utils.types import MaybeTuple
 
 __all__ = [

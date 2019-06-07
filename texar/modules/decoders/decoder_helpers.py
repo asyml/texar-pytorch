@@ -26,8 +26,7 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical, Gumbel
 
-import texar.utils.utils as utils
-from texar.utils.utils import get_args
+from texar.utils import utils
 
 __all__ = [
     '_convert_embedding',
@@ -292,7 +291,7 @@ class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
 
         self._embedding_fn = _convert_embedding(embedding)
 
-        self._embedding_args_cnt = len(get_args(self._embedding_fn))
+        self._embedding_args_cnt = len(utils.get_args(self._embedding_fn))
         if self._embedding_args_cnt == 1:
             self._start_inputs = self._embedding_fn(  # type: ignore
                 self._start_tokens)

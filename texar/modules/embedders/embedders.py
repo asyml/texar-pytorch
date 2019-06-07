@@ -17,7 +17,7 @@ Various embedders.
 
 import torch
 
-import texar.modules.embedders.embedder_utils as embedder_utils
+from texar.modules.embedders import embedder_utils
 from texar.modules.embedders.embedder_base import (
     EmbedderBase, EmbeddingDropout)
 

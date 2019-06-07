@@ -7,7 +7,7 @@ Unit tests for embedder utils.
 
 import unittest
 
-import texar.modules.embedders.embedder_utils as embedder_utils
+from texar.modules.embedders import embedder_utils
 
 
 class GetEmbeddingTest(unittest.TestCase):
