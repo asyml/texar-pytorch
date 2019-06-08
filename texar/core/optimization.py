@@ -68,7 +68,8 @@ def default_optimization_hparams() -> Dict[str, Any]:
     Here:
 
     "optimizer" : dict
-        Hyperparameters of a :tf_main:`tf.train.Optimizer <train/Optimizer>`.
+        Hyperparameters of a
+        :torch_docs:`torch.optim.Optimizer <optim.html#torch.optim.Optimizer>`.
 
         - **"type"** specifies the optimizer class. This can be
 
@@ -83,12 +84,10 @@ def default_optimization_hparams() -> Dict[str, Any]:
 
             .. code-block:: python
 
-                "type": "AdamOptimizer" # class name
-                "type": "my_module.MyOptimizer" # module path
-                "type": tf.contrib.opt.AdamWOptimizer # class
-                "type": my_module.MyOptimizer # class
-                "type": GradientDescentOptimizer(learning_rate=0.1) # instance
-                "type": MyOptimizer(...) # instance
+                "type": "Adam"                    # class name
+                "type": "my_module.MyOptimizer"   # module path
+                "type": texar.custom.BertAdam     # class
+                "type": my_module.MyOptimizer     # class
 
         - **"kwargs"** is a `dict` specifying keyword arguments for creating
           the optimizer class instance, with :python:`opt_class(**kwargs)`.
@@ -112,32 +111,21 @@ def default_optimization_hparams() -> Dict[str, Any]:
         The function is called with
         :python:`lr = decay_fn(learning_rate=lr, global_step=offset_step,
         **kwargs)`, where `offset_step` is the global step offset as above.
-        The only exception is :tf_main:`tf.train.piecewise_constant
-        <train/piecewise_constant>` which is called with
-        :python:`lr = piecewise_constant(x=offset_step, **kwargs)`.
 
     "gradient_clip" : dict
         Hyperparameters of gradient clipping. The gradient clipping function
         takes a list of `(gradients, variables)` tuples and returns a list
         of `(clipped_gradients, variables)` tuples. Typical examples include
-        :tf_main:`tf.clip_by_global_norm <clip_by_global_norm>`,
-        :tf_main:`tf.clip_by_value <clip_by_value>`,
-        :tf_main:`tf.clip_by_norm <clip_by_norm>`,
-        :tf_main:`tf.clip_by_average_norm <clip_by_average_norm>`, etc.
+        :torch_nn:`utils.clip_grad_norm_` and
+        :torch_nn:`utils.clip_grad_value_`.
 
         "type" specifies the gradient clip function, and can be a function,
         or its name or mudule path. If function name is provided, the
-        function must be from module :tf_main:`tf < >` or :mod:`texar.custom`,
-        :mod:`texar.core.optimization`.
+        function must be from module :mod:`torch.nn.utils`, :mod:`texar.custom`,
+        or :mod:`texar.core.optimization`.
 
         `"kwargs"` specifies keyword arguments to the function, except arguments
-        named `"t"` or `"t_list"`.
-
-        The function is called with
-        :python:`clipped_grads(, _) = clip_fn(t_list=grads, **kwargs)`
-        (e.g., for :tf_main:`tf.clip_by_global_norm <clip_by_global_norm>`) or
-        :python:`clipped_grads = [clip_fn(t=grad, **kwargs) for grad in grads]`
-        (e.g., for :tf_main:`tf.clip_by_value <clip_by_value>`).
+        named `"parameters"`.
 
     "gradient_noise_scale" : float, optional
         Adds 0-mean normal noise scaled by this value to gradient.

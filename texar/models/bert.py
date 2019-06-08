@@ -48,7 +48,6 @@ class BertClassifier(ClassifierBase):
             and default values.
 
     .. document private functions
-    .. automethod:: _build
     """
 
     def __init__(self, hparams=None):

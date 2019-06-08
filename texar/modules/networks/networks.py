@@ -27,7 +27,7 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
     r"""Feed-forward neural network that consists of a sequence of layers.
 
     Args:
-        layers (list, optional): A list of :tf_main:`Layer <layers/Layer>`
+        layers (list, optional): A list of :torch_nn:`Linear`
             instances composing the network. If not given, layers are created
             according to :attr:`hparams`.
         hparams (dict, optional): Embedder hyperparameters. Missing
@@ -35,8 +35,7 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
-    See :meth:`~texar.modules.RNNDecoderBase._build` of
-    :class:`~texar.modules.FeedForwardNetworkBase` for the inputs and outputs.
+    See :meth:`forward` for the inputs and outputs.
 
     Example:
 
@@ -50,7 +49,7 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
             }
             nn = FeedForwardNetwork(hparams=hparams)
 
-            inputs = tf.random_uniform([64, 100])
+            inputs = torch.randn([64, 100])
             outputs = nn(inputs)
             # outputs == Tensor of shape [64, 10]
     """

@@ -19,5 +19,6 @@ Modules of Texar library encoders.
 
 from texar.modules.encoders.conv_encoders import *
 from texar.modules.encoders.encoder_base import *
+from texar.modules.encoders.multihead_attention import *
 from texar.modules.encoders.rnn_encoders import *
 from texar.modules.encoders.transformer_encoder import *

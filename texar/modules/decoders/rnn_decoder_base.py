@@ -44,7 +44,7 @@ class RNNDecoderBase(DecoderBase[State, Output]):
     r"""Base class inherited by all RNN decoder classes.
     See :class:`~texar.modules.BasicRNNDecoder` for the arguments.
 
-    See :meth:`_build` for the inputs and outputs of RNN decoders in general.
+    See :meth:`forward` for the inputs and outputs of RNN decoders in general.
     """
 
     def __init__(self,
@@ -142,24 +142,24 @@ class RNNDecoderBase(DecoderBase[State, Output]):
                 and outputs have the correct values and that backprop ignores
                 time steps that were marked as finished.
             helper (optional): An instance of
-                :tf_main:`Helper <contrib/seq2seq/Helper>`
+                :class:`texar.modules.decoders.Helper`
                 that defines the decoding strategy. If given,
-                `decoding_strategy`
-                and helper configs in :attr:`hparams` are ignored.
+                ``decoding_strategy`` and helper configs in :attr:`hparams`
+                are ignored.
             infer_mode (optional): If not `None`, overrides mode given by
                 `self.training`.
             **kwargs: Other keyword arguments for constructing helpers
-                defined by `hparams["helper_trainn"]` or
-                `hparams["helper_infer"]`.
+                defined by ``hparams["helper_trainn"]`` or
+                ``hparams["helper_infer"]``.
 
         Returns:
-            `(outputs, final_state, sequence_lengths)`, where
+            ``(outputs, final_state, sequence_lengths)``, where
 
-            - **`outputs`**: an object containing the decoder output on all
+            - `outputs`: an object containing the decoder output on all
               time steps.
-            - **`final_state`**: is the cell state of the final time step.
-            - **`sequence_lengths`**: is an int Tensor of shape `[batch_size]`
-              containing the length of each sample.
+            - `final_state`: the cell state of the final time step.
+            - `sequence_lengths`: a :torch:`LongTensor` of shape
+              ``[batch_size]`` containing the length of each sample.
         """
         # TODO: Add faster code path for teacher-forcing training.
 

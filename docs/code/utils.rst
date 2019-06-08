@@ -36,17 +36,9 @@ IO
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.write_paired_text
 
-:hidden:`load_config`
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.load_config
-
 :hidden:`maybe_create_dir`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.maybe_create_dir
-
-:hidden:`get_files`
-~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.get_files
 
 
 DType
@@ -57,7 +49,7 @@ DType
 .. autofunction:: texar.utils.get_numpy_dtype
 
 :hidden:`maybe_hparams_to_dict`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.maybe_hparams_to_dict
 
 :hidden:`compat_as_text`

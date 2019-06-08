@@ -89,7 +89,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
     r"""Base class inherited by all RNN decoder classes.
     See :class:`~texar.modules.BasicRNNDecoder` for the arguments.
 
-    See :meth:`_build` for the inputs and outputs of RNN decoders in general.
+    See :meth:`forward` for the inputs and outputs of RNN decoders in general.
     """
 
     def __init__(self,

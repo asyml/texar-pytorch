@@ -36,6 +36,7 @@ __all__ = [
     'identity',
     'default_regularizer_hparams',
     'get_initializer',
+    'get_regularizer',
     'get_activation_fn',
     'get_layer',
     '_ReducePool1d',
@@ -542,7 +543,7 @@ class _ReducePool1d(nn.Module):
 class MaxReducePool1d(_ReducePool1d):
     """A subclass of :torch_nn:`Module`.
     Max Pool layer for 1D inputs. The same as
-    :torch.nn.Module:`MaxPool1d <nn.html#maxpool1d>` except that the pooling
+    :torch_nn:`MaxPool1d` except that the pooling
     dimension is entirely reduced (i.e., `pool_size=input_length`).
     """
 
@@ -553,7 +554,7 @@ class MaxReducePool1d(_ReducePool1d):
 class AvgReducePool1d(_ReducePool1d):
     r"""A subclass of :torch_nn:`Module`.
     Avg Pool layer for 1D inputs. The same as
-    :torch.nn.Module:`AvgPool1d <nn.html#avgpool1d>` except that the pooling
+    :torch_nn:`AvgPool1d` except that the pooling
     dimension is entirely reduced (i.e., `pool_size=input_length`).
     """
 

@@ -81,7 +81,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             default values.
 
     .. document private functions
-    .. automethod:: _build
     """
 
     # State variables used during `dynamic_decode`. Assigned in `forward`.
@@ -193,10 +192,11 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             }
 
         Here:
-        "num_blocks" : int
+
+        "num_blocks": int
             Number of stacked blocks.
 
-        "dim" : int
+        "dim": int
             Hidden dimension of the encoder.
 
         "use_gpt_config": bool
@@ -205,10 +205,10 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         "embedding_dropout": float
             Dropout rate of the input word and position embeddings.
 
-        "residual_dropout" :  float
+        "residual_dropout":  float
             Dropout rate of the residual connections.
 
-        "poswise_feedforward" : dict
+        "poswise_feedforward": dict
             Hyperparameters for a feed-forward network used in residual
             connections.
             Make sure the dimension of the output tensor is equal to ``dim``.
@@ -216,33 +216,33 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             See :func:`~texar.modules.default_transformer_poswise_net_hparams`
             for details.
 
-        "multihead_attention" : dict
+        "multihead_attention": dict
             Hyperparameters for the multihead attention strategy.
             Make sure the ``output_dim`` in this module is equal to ``dim``.
 
             See :func:`~texar.modules.MultiheadAttentionEncoder.default_hparams`
             for details.
 
-        "initializer" : dict, optional
+        "initializer": dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
 
             See :func:`~texar.core.get_initializer` for details.
 
-        "embedding_tie" : bool
+        "embedding_tie": bool
             Whether to use the word embedding matrix as the output layer
             that computes logits. If ``False``, a new dense layer is created.
 
-        "output_layer_bias" : bool
+        "output_layer_bias": bool
             Whether to use bias to the output layer.
 
-        "max_decoding_length" : int
+        "max_decoding_length": int
             The maximum allowed number of decoding steps.
             Set to a very large number of avoid the length constraint.
             Ignored if provided in :meth:`forward` or ``"train_greedy"``
             decoding is used.
 
-        "name" : str
+        "name": str
             Name of the module.
         """
         dim = 512
@@ -323,7 +323,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         r"""Performs decoding.
 
         The interface is very similar to that of RNN decoders
-        (:meth:`texar.modules.RNNDecoderBase._build`). In particular,
+        (:class:`texar.modules.RNNDecoderBase`). In particular,
         the function provides **3 ways** to specify the decoding method, with
         varying flexibility:
 
@@ -349,10 +349,10 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
           :attr:`beam_width` are both `None`.
 
         2. The :attr:`helper` argument: An instance of subclass of
-           :tf_main:`tf.contrib.seq2seq.Helper <contrib/seq2seq/Helper>`.
+           :class:`texar.modules.decoders.Helper`.
            This provides a superset of decoding strategies than above.
            The interface is the same as in RNN decoders.
-           Please refer to :meth:`texar.modules.RNNDecoderBase._build` for
+           Please refer to :meth:`texar.modules.RNNDecoderBase.forward` for
            detailed usage and examples.
 
            Note that, here, though using a
@@ -421,9 +421,10 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 time steps that were marked as finished. Ignored in
                 ``"train_greedy"`` decoding.
             helper (optional): An instance of
-                :tf_main:`Helper <contrib/seq2seq/Helper>` that defines the
-                decoding strategy. If given, :attr:`decoding_strategy` is
-                ignored.
+                :class:`texar.modules.decoders.Helper`
+                that defines the decoding strategy. If given,
+                ``decoding_strategy`` and helper configs in :attr:`hparams`
+                are ignored.
             infer_mode (optional): If not ``None``, overrides mode given by
                 :attr:`self.training`.
 

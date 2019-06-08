@@ -48,7 +48,7 @@ class Conv1DClassifier(ClassifierBase):
 
             clas = Conv1DClassifier(hparams={'num_classes': 10})
 
-            inputs = tf.random_uniform([64, 20, 256])
+            inputs = torch.randn([64, 20, 256])
             logits, pred = clas(inputs)
             # logits == Tensor of shape [64, 10]
             # pred   == Tensor of shape [64]
@@ -114,11 +114,11 @@ class Conv1DClassifier(ClassifierBase):
             "num_classes": int
                 Number of classes:
 
-                - If **`> 0`**, an additional :tf_main:`Dense <layers/Dense>`
+                - If `> 0`, an additional :torch_nn:`Linear`
                   layer is appended to the encoder to compute the logits over
                   classes.
 
-                - If **<= 0**, no dense layer is appended. The number of
+                - If `<= 0`, no dense layer is appended. The number of
                   classes is assumed to be equal to ``out_features`` of the
                   final dense layer size of the encoder.
 

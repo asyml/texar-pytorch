@@ -205,7 +205,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
-    See :meth:`_build` for the inputs and outputs of the encoder.
+    See :meth:`forward` for the inputs and outputs of the encoder.
 
     Example:
 
@@ -220,7 +220,6 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
                 sequence_length=data_batch['length'])
 
     .. document private functions
-    .. automethod:: _build
     """
     _cell: RNNCellBase[State]
 
@@ -332,7 +331,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
                 `-dropout-layer0-layer1-dropout-`.
 
                 The dropout mode (training or not) is controlled
-                by the :attr:`mode` argument of :meth:`_build`.
+                by :attr:`self.training`.
 
             "dropout_rate" : float
                 The dropout rate, between 0 and 1. E.g.,
@@ -488,7 +487,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
-    See :meth:`_build` for the inputs and outputs of the encoder.
+    See :meth:`forward` for the inputs and outputs of the encoder.
 
     Example:
 

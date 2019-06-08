@@ -135,16 +135,21 @@ class BasicRNNDecoder(RNNDecoderBase[HiddenState, BasicRNNDecoderOutput]):
                 labels=data_batch['text_ids'][:, 1:],
                 logits=outputs.logits,
                 sequence_length=data_batch['length']-1)
-            # Inference sample
-            outputs, _, _ = decoder(
+
+            # Create helper
+            helper = decoder.create_helper(
                 decoding_strategy='infer_sample',
                 start_tokens=[data.vocab.bos_token_id]*100,
                 end_token=data.vocab.eos.token_id,
-                embedding=embedder,
-                max_decoding_length=60,
-                mode=tf.estimator.ModeKeys.PREDICT)
-            sample_id = sess.run(outputs.sample_id)
-            sample_text = tx.utils.map_ids_to_strs(sample_id, data.vocab)
+                embedding=embedder)
+
+            # Inference sample
+            outputs, _, _ = decoder(
+                helper=helerp,
+                max_decoding_length=60)
+
+            sample_text = tx.utils.map_ids_to_strs(
+                outputs.sample_id, data.vocab)
             print(sample_text)
             # [
             #   the first sequence sample .
@@ -240,6 +245,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             :attr:`output_layer` is `None`.
         output_layer (optional): An output layer that transforms cell output
             to logits. This can be:
+
             - A callable layer, e.g., an instance of :torch_nn:`Module`.
             - A tensor. A dense layer will be created using the tensor
               as the kernel weights. The bias of the dense layer is determined
@@ -259,8 +265,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
-    See :meth:`~texar.modules.RNNDecoderBase.forward` for the inputs and
-    outputs of the decoder. The decoder returns
+    See :meth:`texar.modules.RNNDecoderBase.forward` for the inputs and outputs
+    of the decoder. The decoder returns
     `(outputs, final_state, sequence_lengths)`, where `outputs` is an instance
     of :class:`~texar.modules.AttentionRNNDecoderOutput`.
 
@@ -396,8 +402,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             "type": str or class or instance
                 The attention type. Can be an attention class, its name or
                 module path, or a class instance. The class must be a subclass
-                of :class:`texar.core.AttentionMechanism`. If class name is
-                given, the class must be from modules or
+                of :class:`~texar.core.AttentionMechanism`. If class name is
+                given, the class must be from modules :mod:`texar.core` or
                 :mod:`texar.custom`.
                 Example:
                     .. code-block:: python
@@ -405,7 +411,10 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                         "type": "LuongAttention"
                         "type": "BahdanauAttention"
                         # module path
+                        "type": "texar.core.BahdanauMonotonicAttention"
                         "type": "my_module.MyAttentionMechanismClass"
+                        # class
+                        "type": texar.core.LuongMonotonicAttention
                         # instance
                         "type": LuongAttention(...)
             "kwargs": dict
@@ -420,7 +429,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                         "type": "LuongAttention",
                         "kwargs": {
                             "num_units": 256,
-                            "probability_fn": torch.nn.softmax
+                            "probability_fn": torch.nn.functional.softmax,
                         }
                     Here "probability_fn" can also be set to the string name
                     or module path to a probability function.

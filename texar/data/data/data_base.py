@@ -265,6 +265,10 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         self._hparams = HParams(hparams, self.default_hparams())
         self.device = device
 
+        if self._hparams.num_epochs != 1:
+            warnings.warn(f"'num_epochs' is set to {self._hparams.num_epochs}, "
+                          f"but will be treated as 1.")
+
         # Check and convert strategy hyperparameters.
         self._lazy_strategy = _LazyStrategy(self._hparams.lazy_strategy)
         self._cache_strategy = _CacheStrategy(self._hparams.cache_strategy)
@@ -390,14 +394,9 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         Here:
 
             "num_epochs" : int
-                Number of times the dataset should be repeated. An
-                :tf_main:`OutOfRangeError <errors/OutOfRangeError>` signal will
-                be raised after the whole repeated dataset has been iterated
-                through.
-
-                E.g., For training data, set it to 1 (default) so that you
-                will get the signal after each epoch of training. Set to -1
-                to repeat the dataset indefinitely.
+                Number of times the dataset should be repeated. This option only
+                exists for compatibility, and will be ignored. A warning will be
+                generated is any value other than 1 is used.
 
             "batch_size" : int
                 Batch size, i.e., the number of consecutive elements of the

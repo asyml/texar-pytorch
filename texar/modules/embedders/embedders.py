@@ -50,7 +50,7 @@ class WordEmbedder(EmbedderBase):
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
-    See :meth:`_build` for the inputs and outputs of the embedder.
+    See :meth:`forward` for the inputs and outputs of the embedder.
 
     Example:
 
@@ -86,7 +86,6 @@ class WordEmbedder(EmbedderBase):
 
 
     .. document private functions
-    .. automethod:: _build
     """
 
     def __init__(self, init_value=None, vocab_size=None, hparams=None):

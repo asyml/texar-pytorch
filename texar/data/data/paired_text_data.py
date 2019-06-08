@@ -72,29 +72,29 @@ class PairedTextData(TextDataBase[Tuple[str, str],
     batching and other pre-processing steps, and results in a Dataset
     whose element is a python `dict` including six fields:
 
-        - "source_text":
-            A list of [batch_size] elements each containing a list of **raw**
-            text tokens of source sequences. Short sequences in the batch are
-            padded with **empty string**. By default only EOS token is appended
-            to each sequence. Out-of-vocabulary tokens are **NOT** replaced with
-             UNK.
-        - "source_text_ids":
-            A list of [batch_size] elements each containing a list of token
-            indexes of source sequences in the batch
-        - "source_length":
-            A list of [batch_size] elements of ints containing the length of
-            each source sequence in the batch
-        - "target_text":
-            A list same as "source_text" but for target sequences. By
-            default both BOS and EOS are added.
-        - "target_text_ids":
-            A list same as "source_text_ids" but for target sequences.
-        - "target_length":
-            An list same as "source_length" but for target sequences.
+    "source_text":
+        A list of ``[batch_size]`` elements each containing a list of **raw**
+        text tokens of source sequences. Short sequences in the batch are
+        padded with **empty string**. By default only ``EOS`` token is appended
+        to each sequence. Out-of-vocabulary tokens are **NOT** replaced with
+        ``UNK``.
+    "source_text_ids":
+        A list of ``[batch_size]`` elements each containing a list of token
+        indexes of source sequences in the batch
+    "source_length":
+        A list of ``[batch_size]`` elements of ints containing the length of
+        each source sequence in the batch
+    "target_text":
+        A list same as "source_text" but for target sequences. By
+        default both BOS and EOS are added.
+    "target_text_ids":
+        A list same as "source_text_ids" but for target sequences.
+    "target_length":
+        An list same as "source_length" but for target sequences.
 
     The above field names can be accessed through :attr:`source_text_name`,
     :attr:`source_text_id_name`, :attr:`source_length_name`, and those prefixed
-    with `target_`, respectively.
+    with ``target_``, respectively.
 
     Example:
 

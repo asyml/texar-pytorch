@@ -43,7 +43,7 @@ class FeedForwardNetworkBase(ModuleBase):
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
-    See :meth:`_build` for the inputs and outputs.
+    See :meth:`forward` for the inputs and outputs.
     """
 
     def __init__(self,
@@ -89,8 +89,7 @@ class FeedForwardNetworkBase(ModuleBase):
         return outputs
 
     def append_layer(self, layer: Union[nn.Module, HParams, Dict[str, Any]]):
-        r"""Appends a layer to the end of the network. The method is only
-        feasible before :attr:`_build` is called.
+        r"""Appends a layer to the end of the network.
 
         Args:
             layer: A subclass of :torch_nn:`Module`, or a dict of layer

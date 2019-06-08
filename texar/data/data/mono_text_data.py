@@ -80,18 +80,19 @@ class MonoTextData(TextDataBase[str, List[str]]):
     batching and other pre-processing steps, and results in a TF Dataset
     whose element is a python `dict` including three fields:
 
-        - "text":
-            A list of [batch_size] elements each containing a list of **raw**
-            text tokens of the sequences. Short sequences in the batch are
-            padded with **empty string**. By default only EOS token is appended
-            to each sequence. Out-of-vocabulary tokens are **NOT** replaced with
-             UNK.
-        - "text_ids":
-            A list of [batch_size] elements each containing a list of token
-            indexes of source sequences in the batch
-        - "length":
-            A list of [batch_size] elements of ints containing the length of
-            each source sequence in the batch (including BOS and EOS if added).
+    "text":
+        A list of ``[batch_size]`` elements each containing a list of **raw**
+        text tokens of the sequences. Short sequences in the batch are
+        padded with **empty string**. By default only ``EOS`` token is appended
+        to each sequence. Out-of-vocabulary tokens are **NOT** replaced with
+        ``UNK``.
+    "text_ids":
+        A list of ``[batch_size]`` elements each containing a list of token
+        indexes of source sequences in the batch
+    "length":
+        A list of ``[batch_size]`` elements of ints containing the length of
+        each source sequence in the batch (including ``BOS`` and ``EOS`` if
+        added).
 
     The above field names can be accessed through :attr:`text_name`,
     :attr:`text_id_name`, :attr:`length_name`.
@@ -294,10 +295,8 @@ class MonoTextData(TextDataBase[str, List[str]]):
         2. For the **general** hyperparameters, see
         :meth:`texar.data.DataBase.default_hparams` for details.
 
-        3. **Bucketing** is to group elements of the dataset together by length
-        and then pad and batch. (See more at
-        :tf_main:`bucket_by_sequence_length
-        <contrib/data/bucket_by_sequence_length>`). For bucketing
+        3. (Not yet supported) **Bucketing** is to group elements of the dataset
+        together by length and then pad and batch. For bucketing
         hyperparameters:
 
             "bucket_boundaries" : list
@@ -314,7 +313,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
                 in :attr:`batch_size`.
 
             "bucket_length_fn" : str or callable
-                Function maps dataset element to `tf.int32` scalar, determines
+                Function maps dataset element to ``int``, determines
                 the length of the element.
 
                 This can be a function, or the name or full module path to the

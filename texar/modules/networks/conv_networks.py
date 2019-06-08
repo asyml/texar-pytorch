@@ -59,7 +59,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
-    See :meth:`_build` for the inputs and outputs. The inputs must be a
+    See :meth:`forward` for the inputs and outputs. The inputs must be a
     3D Tensor of shape `[batch_size, channels, length]`. For example, for
     sequence classification, `length` corresponds to time steps, and `channels`
     corresponds to embedding dim.
@@ -76,7 +76,6 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             # has size 128.
 
     .. document private functions
-    .. automethod:: _build
     """
 
     def __init__(self, in_channels: int, in_features: Optional[int] = None,
@@ -253,7 +252,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 `-dropout-conv0-conv1-dropout-`.
 
                 The dropout mode (training or not) is controlled
-                by the :attr:`mode` argument of :meth:`_build`.
+                by :attr:`self.training`.
 
             "dropout_dense" : int or list
                 Same as ``"dropout_conv"`` but applied to dense layers (index

@@ -59,7 +59,6 @@ class PositionEmbedder(EmbedderBase):
 
 
     .. document private functions
-    .. automethod:: _build
     """
 
     def __init__(self, init_value=None, position_size=None, hparams=None):

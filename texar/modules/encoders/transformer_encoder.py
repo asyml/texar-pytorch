@@ -143,7 +143,6 @@ class TransformerEncoder(EncoderBase):
             default values.
 
     .. document private functions
-    .. automethod:: _build
     """
 
     def __init__(self, hparams=None):

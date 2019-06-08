@@ -47,11 +47,6 @@ Encoders
 .. autoclass:: texar.modules.BidirectionalRNNEncoder
     :members:
 
-:hidden:`HierarchicalRNNEncoder`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.HierarchicalRNNEncoder
-    :members:
-
 :hidden:`MultiheadAttentionEncoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.MultiheadAttentionEncoder
@@ -112,10 +107,6 @@ Decoders
 .. autoclass:: texar.modules.AttentionRNNDecoderOutput
     :members:
 
-:hidden:`beam_search_decode`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.modules.beam_search_decode
-
 :hidden:`TransformerDecoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.TransformerDecoder
@@ -146,57 +137,12 @@ Decoders
 .. autofunction:: texar.modules.get_helper
 
 
-Connectors
-==========
-
-:hidden:`ConnectorBase`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.ConnectorBase
-    :members:
-    :inherited-members:
-
-:hidden:`ConstantConnector`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.ConstantConnector
-    :members:
-    :inherited-members:
-
-:hidden:`ForwardConnector`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.ForwardConnector
-    :members:
-    :inherited-members:
-
-:hidden:`MLPTransformConnector`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.MLPTransformConnector
-    :members:
-    :inherited-members:
-
-:hidden:`ReparameterizedStochasticConnector`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.ReparameterizedStochasticConnector
-    :members:
-    :inherited-members:
-
-:hidden:`StochasticConnector`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.StochasticConnector
-    :members:
-    :inherited-members:
-
-
 Classifiers
 ============
 
 :hidden:`Conv1DClassifier`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.Conv1DClassifier
-    :members:
-
-:hidden:`UnidirectionalRNNClassifier`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.UnidirectionalRNNClassifier
     :members:
 
 Networks
