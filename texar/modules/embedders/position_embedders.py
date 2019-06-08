@@ -120,9 +120,9 @@ class PositionEmbedder(EmbedderBase):
               from 0 to ``sequence_length - 1`` are embedded.
 
         Args:
-            positions (optional): A :torch:`LongTensor` containing the position
+            positions (optional): A :tensor:`LongTensor` containing the position
                 IDs to embed.
-            sequence_length (optional): An :torch:`LongTensor` of shape
+            sequence_length (optional): An :tensor:`LongTensor` of shape
                 ``[batch_size]``. Time steps beyond the respective sequence
                 lengths will have zero-valued embeddings.
             kwargs: Additional keyword arguments for
@@ -276,19 +276,20 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         r"""Embeds.
         Either :attr:`positions` or :attr:`sequence_length` is required:
 
-            - If both are given, :attr:`sequence_length` is used to mask out
-              embeddings of those time steps beyond the respective sequence
-              lengths.
-            - If only :attr:`sequence_length` is given, then positions
-              from `0` to `sequence_length - 1` are embedded.
+        - If both are given, :attr:`sequence_length` is used to mask out
+          embeddings of those time steps beyond the respective sequence
+          lengths.
+        - If only :attr:`sequence_length` is given, then positions
+          from `0` to `sequence_length - 1` are embedded.
 
         Args:
-            positions (optional): An :torch:`LongTensor` containing the position
-                IDs to embed.
-            sequence_length (optional): An :torch:`LongTensor` of shape
+            positions (optional): An :tensor:`LongTensor` containing the
+                position IDs to embed.
+            sequence_length (optional): An :tensor:`LongTensor` of shape
                 ``[batch_size]``. Time steps beyond
                 the respective sequence lengths will have zero-valued
                 embeddings.
+
         Returns:
             A Tensor of shape ``[batch_size, position_size, dim]``.
         """

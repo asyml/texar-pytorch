@@ -133,8 +133,8 @@ def get_embedding(num_embeds: Optional[int] = None,
             not provided.
 
     Returns:
-        A 2D :torch:`Tensor` of the same shape with :attr:`init_value` or of the
-        shape ``[num_embeds, hparams["dim"]]``.
+        A 2D :tensor:`Tensor` of the same shape with :attr:`init_value` or of
+        the shape ``[num_embeds, hparams["dim"]]``.
     """
     if hparams is None or isinstance(hparams, dict):
         hparams = HParams(hparams, default_embedding_hparams())

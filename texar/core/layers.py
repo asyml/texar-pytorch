@@ -81,7 +81,7 @@ def default_rnn_cell_hparams():
         The RNN cell type. This can be
 
         - The string name or full module path of a cell class. If class name is
-          provided, the class must be in module :torch_nn:`modules.rnn`,
+          provided, the class must be in module :mod:`torch.nn.modules.rnn`,
           :mod:`texar.core.cell_wrappers`, or :mod:`texar.custom`.
         - A cell class.
         - An instance of a cell class. This is not valid if "num_layers" > 1.
@@ -657,6 +657,14 @@ class MergeLayer(nn.Module):
                     self._layers.append(get_layer(hparams=layer))
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:  # type: ignore
+        r"""Feed input to every containing layer and merge the outputs.
+
+        Args:
+            input: The input tensor.
+
+        Returns:
+            The merged tensor.
+        """
         if self._layers is None:
             layer_outputs: Union[torch.Tensor, List[torch.Tensor]] = input
         else:

@@ -54,35 +54,35 @@ class WordEmbedder(EmbedderBase):
 
     Example:
 
-        .. code-block:: python
+    .. code-block:: python
 
-            ids = torch.empty([32, 10]).uniform_(to=10).type(torch.int64).
-            soft_ids = torch.empty([32, 10, 100]).uniform_()
+        ids = torch.empty([32, 10]).uniform_(to=10).type(torch.int64).
+        soft_ids = torch.empty([32, 10, 100]).uniform_()
 
-            embedder = WordEmbedder(vocab_size=100, hparams={'dim': 256})
-            ids_emb = embedder(ids=ids) # shape: [32, 10, 256]
-            soft_ids_emb = embedder(soft_ids=soft_ids) # shape: [32, 10, 256]
+        embedder = WordEmbedder(vocab_size=100, hparams={'dim': 256})
+        ids_emb = embedder(ids=ids) # shape: [32, 10, 256]
+        soft_ids_emb = embedder(soft_ids=soft_ids) # shape: [32, 10, 256]
 
-        .. code-block:: python
+    .. code-block:: python
 
-            # Use with Texar data module
-            hparams={
-                'dataset': {
-                    'embedding_init': {'file': 'word2vec.txt'}
-                    ...
-                },
-            }
-            data = MonoTextData(data_params)
-            iterator = DataIterator(data)
-            batch = next(iter(iterator))
+        # Use with Texar data module
+        hparams={
+            'dataset': {
+                'embedding_init': {'file': 'word2vec.txt'}
+                ...
+            },
+        }
+        data = MonoTextData(data_params)
+        iterator = DataIterator(data)
+        batch = next(iter(iterator))
 
-            # Use data vocab size
-            embedder_1 = WordEmbedder(vocab_size=data.vocab.size)
-            emb_1 = embedder_1(batch['text_ids'])
+        # Use data vocab size
+        embedder_1 = WordEmbedder(vocab_size=data.vocab.size)
+        emb_1 = embedder_1(batch['text_ids'])
 
-            # Use pre-trained embedding
-            embedder_2 = WordEmbedder(init_value=data.embedding_init_value)
-            emb_2 = embedder_2(batch['text_ids'])
+        # Use pre-trained embedding
+        embedder_2 = WordEmbedder(init_value=data.embedding_init_value)
+        emb_2 = embedder_2(batch['text_ids'])
 
 
     .. document private functions

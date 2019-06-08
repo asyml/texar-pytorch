@@ -758,7 +758,7 @@ class _BaseMonotonicAttentionMechanism(_BaseAttentionMechanism):
 
 
 class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
-    r"""Monotonic attention mechanism with Bahadanau-style energy function.
+    r"""Monotonic attention mechanism with Bahdanau-style energy function.
     This type of attention enforces a monotonic constraint on the attention
     distributions; that is once the model attends to a given point in the
     memory it can't attend to any prior points at subsequence output
@@ -1076,7 +1076,7 @@ class AttentionWrapperState(NamedTuple):
     alignment_history: Optional[MaybeTuple[List[torch.Tensor]]]
     r"""(If enabled) A single or tuple of list(s) containing alignment matrices
     from all time steps for each attention mechanism. Call :torch:`stack` on
-    each list to convert to a :torch:`Tensor`."""
+    each list to convert to a :tensor:`Tensor`."""
     attention_state: MaybeTuple[torch.Tensor]
     r"""A single or tuple of nested objects containing attention mechanism
     states for each attention mechanism."""

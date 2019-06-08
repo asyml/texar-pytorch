@@ -73,21 +73,21 @@ def default_optimization_hparams() -> Dict[str, Any]:
 
         - **"type"** specifies the optimizer class. This can be
 
-            - The string name or full module path of an optimizer class.
-              If the class name is provided, the class must be in module
-              :torch_docs:`torch.optim <optim.html>` or :mod:`texar.custom`,
-              :mod:`texar.core.optimization`
-            - An optimizer class.
-            - An instance of an optimizer class.
+          - The string name or full module path of an optimizer class.
+            If the class name is provided, the class must be in module
+            :torch_docs:`torch.optim <optim.html>` or :mod:`texar.custom`,
+            :mod:`texar.core.optimization`
+          - An optimizer class.
+          - An instance of an optimizer class.
 
-            For example
+          For example
 
-            .. code-block:: python
+          .. code-block:: python
 
-                "type": "Adam"                    # class name
-                "type": "my_module.MyOptimizer"   # module path
-                "type": texar.custom.BertAdam     # class
-                "type": my_module.MyOptimizer     # class
+              "type": "Adam"                    # class name
+              "type": "my_module.MyOptimizer"   # module path
+              "type": texar.custom.BertAdam     # class
+              "type": my_module.MyOptimizer     # class
 
         - **"kwargs"** is a `dict` specifying keyword arguments for creating
           the optimizer class instance, with :python:`opt_class(**kwargs)`.
@@ -100,13 +100,13 @@ def default_optimization_hparams() -> Dict[str, Any]:
 
         The decay function is specified in "type" and "kwargs".
 
-            - `"type"` can be a decay function or its name or module path. If
-              function name is provided, it must be from module
-              :torch_docs:`torch.optim <optim.html>` or :mod:`texar.custom`,
-              :mod:`texar.core.optimization`.
+        - `"type"` can be a decay function or its name or module path. If
+          function name is provided, it must be from module
+          :torch_docs:`torch.optim <optim.html>` or :mod:`texar.custom`,
+          :mod:`texar.core.optimization`.
 
-            - `"kwargs"` is a `dict` of keyword arguments for the function
-              excluding arguments named `"global_step"` and `"learning_rate"`.
+        - `"kwargs"` is a `dict` of keyword arguments for the function
+          excluding arguments named `"global_step"` and `"learning_rate"`.
 
         The function is called with
         :python:`lr = decay_fn(learning_rate=lr, global_step=offset_step,

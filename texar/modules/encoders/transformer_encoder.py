@@ -320,9 +320,9 @@ class TransformerEncoder(EncoderBase):
                 the embedding dimension `dim` must equal "dim" in
                 :attr:`hparams`. The input embedding is typically an
                 aggregation of word embedding and position embedding.
-            sequence_length: A 1D :torch:`LongTensor` of shape ``[batch_size]``.
-                Input tokens beyond respective sequence lengths are masked out
-                automatically.
+            sequence_length: A 1D :tensor:`LongTensor` of shape
+                ``[batch_size]``. Input tokens beyond respective sequence
+                lengths are masked out automatically.
 
         Returns:
             A Tensor of shape ``[batch_size, max_time, dim]`` containing the

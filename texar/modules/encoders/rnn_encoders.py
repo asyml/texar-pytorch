@@ -133,7 +133,7 @@ def _forward_output_layers(
             :attr:`outputs` Tensors. If ``True``, these tensors are of shape
             `[max_time, batch_size, input_size]`. If ``False`` (default),
             these tensors are of shape `[batch_size, max_time, input_size]`.
-        sequence_length (optional): A 1D :torch:`LongTensor` of shape
+        sequence_length (optional): A 1D :tensor:`LongTensor` of shape
             ``[batch_size]``. Sequence lengths of the batch inputs. Used to
             copy-through state and zero-out outputs when past a batch element's
             sequence length.
@@ -209,15 +209,15 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
 
     Example:
 
-        .. code-block:: python
+    .. code-block:: python
 
-            # Use with embedder
-            embedder = WordEmbedder(vocab_size, hparams=emb_hparams)
-            encoder = UnidirectionalRNNEncoder(hparams=enc_hparams)
+        # Use with embedder
+        embedder = WordEmbedder(vocab_size, hparams=emb_hparams)
+        encoder = UnidirectionalRNNEncoder(hparams=enc_hparams)
 
-            outputs, final_state = encoder(
-                inputs=embedder(data_batch['text_ids']),
-                sequence_length=data_batch['length'])
+        outputs, final_state = encoder(
+            inputs=embedder(data_batch['text_ids']),
+            sequence_length=data_batch['length'])
 
     .. document private functions
     """
@@ -366,7 +366,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
                 The first two dimensions
                 :attr:`batch_size` and :attr:`max_time` are exchanged if
                 :attr:`time_major` is ``True``.
-            sequence_length (optional): A 1D :torch:`LongTensor` of shape
+            sequence_length (optional): A 1D :tensor:`LongTensor` of shape
                 ``[batch_size]``.
                 Sequence lengths of the batch inputs. Used to copy-through
                 state and zero-out outputs when past a batch element's sequence
@@ -386,37 +386,37 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
               are ``False``), returns a pair :attr:`(outputs, final_state)`,
               where
 
-                - :attr:`outputs`: The RNN output tensor by the output layer
-                  (if exists) or the RNN cell (otherwise). The tensor is of
-                  shape ``[batch_size, max_time, output_size]`` if
-                  ``time_major`` is ``False``, or
-                  ``[max_time, batch_size, output_size]`` if
-                  ``time_major`` is ``True``.
-                  If RNN cell output is a (nested) tuple of Tensors, then the
-                  :attr:`outputs` will be a (nested) tuple having the same
-                  nest structure as the cell output.
+              - :attr:`outputs`: The RNN output tensor by the output layer
+                (if exists) or the RNN cell (otherwise). The tensor is of
+                shape ``[batch_size, max_time, output_size]`` if
+                ``time_major`` is ``False``, or
+                ``[max_time, batch_size, output_size]`` if
+                ``time_major`` is ``True``.
+                If RNN cell output is a (nested) tuple of Tensors, then the
+                :attr:`outputs` will be a (nested) tuple having the same
+                nest structure as the cell output.
 
-                - :attr:`final_state`: The final state of the RNN, which is a
-                  Tensor of shape ``[batch_size] + cell.state_size`` or
-                  a (nested) tuple of Tensors if ``cell.state_size`` is a
-                  (nested) tuple.
+              - :attr:`final_state`: The final state of the RNN, which is a
+                Tensor of shape ``[batch_size] + cell.state_size`` or
+                a (nested) tuple of Tensors if ``cell.state_size`` is a
+                (nested) tuple.
 
             - If ``return_cell_output`` is True, returns a triple
               :attr:`(outputs, final_state, cell_outputs)`
 
-                - :attr:`cell_outputs`: The outputs by the RNN cell prior to the
-                  output layer, having the same structure with :attr:`outputs`
-                  except for the ``output_dim``.
+              - :attr:`cell_outputs`: The outputs by the RNN cell prior to the
+                output layer, having the same structure with :attr:`outputs`
+                except for the ``output_dim``.
 
             - If ``return_output_size`` is ``True``, returns a tuple
               :attr:`(outputs, final_state, output_size)`
 
-                - :attr:`output_size`: A (possibly nested tuple of) int
-                  representing the size of :attr:`outputs`. If a single int or
-                  an int array, then ``outputs`` has shape
-                  ``[batch/time, time/batch] + output_size``. If
-                  a (nested) tuple, then ``output_size`` has the same
-                  structure as with ``outputs``.
+              - :attr:`output_size`: A (possibly nested tuple of) int
+                representing the size of :attr:`outputs`. If a single int or
+                an int array, then ``outputs`` has shape
+                ``[batch/time, time/batch] + output_size``. If
+                a (nested) tuple, then ``output_size`` has the same
+                structure as with ``outputs``.
 
             - If both ``return_cell_output`` and ``return_output_size`` are
               ``True``, returns
@@ -655,7 +655,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 The first two dimensions
                 ``batch_size`` and ``max_time`` may be exchanged if
                 ``time_major`` is ``True``.
-            sequence_length (optional): A 1D :torch:`LongTensor` of shape
+            sequence_length (optional): A 1D :tensor:`LongTensor` of shape
                 ``[batch_size]``.
                 Sequence lengths of the batch inputs. Used to copy-through
                 state and zero-out outputs when past a batch element's sequence

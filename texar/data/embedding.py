@@ -202,13 +202,13 @@ class Embedding:
 
             The `dict` has the following fields:
 
-                "type" : str or callable
-                    The initialization function. Can be either the function,
-                    or its string name or full module path.
+            "type" : str or callable
+                The initialization function. Can be either the function,
+                or its string name or full module path.
 
-                "kwargs" : dict
-                    Keyword arguments for calling the function. The function
-                    is called with :python:`init_fn(size=[.., ..], **kwargs)`.
+            "kwargs" : dict
+                Keyword arguments for calling the function. The function
+                is called with :python:`init_fn(size=[.., ..], **kwargs)`.
         """
         return {
             "file": "",

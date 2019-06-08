@@ -66,12 +66,6 @@ Data
     :inherited-members:
     :exclude-members: make_vocab,make_embedding
 
-:hidden:`TextDataBase`
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. autoclass:: texar.data.TextDataBase
-    :members:
-
 
 Data Iterators
 ===============

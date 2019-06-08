@@ -92,6 +92,12 @@ def maybe_hparams_to_dict(hparams: Optional[Union[HParams, Dict[str, Any]]]) \
     r"""If :attr:`hparams` is an instance of :class:`~texar.HParams`,
     converts it to a ``dict`` and returns. If :attr:`hparams` is a ``dict``,
     returns as is.
+
+    Args:
+        hparams: The :class:`~texar.HParams` instance to convert.
+
+    Returns:
+        dict: The corresponding ``dict`` instance
     """
     if hparams is None:
         return None
@@ -138,10 +144,10 @@ def compat_as_text(str_):
 
     Args:
         str\_: A string or other data types convertible to string, or an
-            ``n``-D numpy array or (possibly nested) list of such elements.
+            `n`-D numpy array or (possibly nested) list of such elements.
 
     Returns:
-        The converted strings of the same structure/shape as :attr:``str_``.
+        The converted strings of the same structure/shape as :attr:`str_`.
     """
     def _recur_convert(s):
         if isinstance(s, (list, tuple, np.ndarray)):

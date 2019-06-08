@@ -44,14 +44,14 @@ class Conv1DClassifier(ClassifierBase):
 
     Example:
 
-        .. code-block:: python
+    .. code-block:: python
 
-            clas = Conv1DClassifier(hparams={'num_classes': 10})
+        clas = Conv1DClassifier(hparams={'num_classes': 10})
 
-            inputs = torch.randn([64, 20, 256])
-            logits, pred = clas(inputs)
-            # logits == Tensor of shape [64, 10]
-            # pred   == Tensor of shape [64]
+        inputs = torch.randn([64, 20, 256])
+        logits, pred = clas(inputs)
+        # logits == Tensor of shape [64, 10]
+        # pred   == Tensor of shape [64]
 
     .. document private functions
     """
@@ -111,25 +111,25 @@ class Conv1DClassifier(ClassifierBase):
 
         2. Additional hyperparameters:
 
-            "num_classes": int
-                Number of classes:
+           "num_classes": int
+               Number of classes:
 
-                - If `> 0`, an additional :torch_nn:`Linear`
-                  layer is appended to the encoder to compute the logits over
-                  classes.
+               - If `> 0`, an additional :torch_nn:`Linear`
+                 layer is appended to the encoder to compute the logits over
+                 classes.
 
-                - If `<= 0`, no dense layer is appended. The number of
-                  classes is assumed to be equal to ``out_features`` of the
-                  final dense layer size of the encoder.
+               - If `<= 0`, no dense layer is appended. The number of
+                 classes is assumed to be equal to ``out_features`` of the
+                 final dense layer size of the encoder.
 
-            "logit_layer_kwargs": dict
-                Keyword arguments for the logit :torch_nn:`Linear` layer
-                constructor, except for argument ``out_features`` which is set
-                to ``"num_classes"``. Ignored if no extra logit layer is
-                appended.
+           "logit_layer_kwargs": dict
+               Keyword arguments for the logit :torch_nn:`Linear` layer
+               constructor, except for argument ``out_features`` which is set
+               to ``"num_classes"``. Ignored if no extra logit layer is
+               appended.
 
-            "name": str
-                Name of the classifier.
+           "name": str
+               Name of the classifier.
         """
         hparams = Conv1DEncoder.default_hparams()
         hparams.update({
@@ -168,11 +168,11 @@ class Conv1DClassifier(ClassifierBase):
         Returns:
             A tuple ``(logits, pred)``, where
 
-            - ``logits`` is a :torch:`Tensor` of shape
+            - ``logits`` is a :tensor:`Tensor` of shape
               ``[batch_size, num_classes]`` for ``num_classes`` >1, and
               ``[batch_size]`` for ``num_classes`` =1 (i.e., binary
               classification).
-            - ``pred`` is the prediction, a :torch:`LongTensor` of shape
+            - ``pred`` is the prediction, a :tensor:`LongTensor` of shape
               ``[batch_size]``. For binary classification, the standard
               sigmoid function is used for prediction, and the class labels are
               ``{0, 1}``.

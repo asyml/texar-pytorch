@@ -24,10 +24,6 @@ Frequent Use
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.write_paired_text
 
-:hidden:`straight_through`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.straight_through
-
 
 IO
 ===
@@ -67,10 +63,6 @@ Shape
 :hidden:`transpose_batch_time`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.transpose_batch_time
-
-:hidden:`get_batch_size`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.get_batch_size
 
 :hidden:`flatten`
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -192,9 +184,14 @@ Misc
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.ceildiv
 
-:hidden:`straight_through`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.straight_through
+:hidden:`map_structure`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.map_structure
+
+:hidden:`map_structure_zip`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.map_structure_zip
+
 
 
 AverageRecorder

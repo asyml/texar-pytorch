@@ -9,6 +9,7 @@ ModuleBase
 
 .. autoclass:: texar.ModuleBase
     :members:
+    :exclude-members: forward
 
 Embedders
 =========
@@ -32,6 +33,7 @@ Embedders
 ~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.EmbedderBase
     :members:
+    :exclude-members: forward
 
 
 Encoders
@@ -117,6 +119,35 @@ Decoders
 .. autoclass:: texar.modules.TransformerDecoderOutput
     :members:
 
+:hidden:`Helper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.Helper
+    :members:
+
+:hidden:`TrainingHelper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.TrainingHelper
+    :members:
+    :exclude-members: initialize,sample,next_inputs
+
+:hidden:`EmbeddingHelper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.EmbeddingHelper
+    :members:
+    :exclude-members: initialize
+
+:hidden:`GreedyEmbeddingHelper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.GreedyEmbeddingHelper
+    :members:
+    :exclude-members: sample
+
+:hidden:`SampleEmbeddingHelper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.SampleEmbeddingHelper
+    :members:
+    :exclude-members: sample
+    
 :hidden:`TopKSampleEmbeddingHelper`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.TopKSampleEmbeddingHelper
@@ -126,6 +157,7 @@ Decoders
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.SoftmaxEmbeddingHelper
     :members:
+    :exclude-members: sample_ids_shape,next_inputs
 
 :hidden:`GumbelSoftmaxEmbeddingHelper`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

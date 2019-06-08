@@ -393,126 +393,126 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
         Here:
 
-            "num_epochs" : int
-                Number of times the dataset should be repeated.
+        "num_epochs" : int
+            Number of times the dataset should be repeated.
 
-                .. note::
-                    This option only exists for compatibility, and will be
-                    ignored. A warning will be generated is any value other than
-                    1 is used.
+            .. note::
+                This option only exists for compatibility, and will be
+                ignored. A warning will be generated is any value other than
+                1 is used.
 
-            "batch_size" : int
-                Batch size, i.e., the number of consecutive elements of the
-                dataset to combine in a single batch.
+        "batch_size" : int
+            Batch size, i.e., the number of consecutive elements of the
+            dataset to combine in a single batch.
 
-            "allow_smaller_final_batch" : bool
-               Whether to allow the final batch to be smaller if there are
-               insufficient elements left. If `False`, the final batch is
-               discarded if it is smaller than batch size. Note that,
-               if `True`, `output_shapes` of the resulting dataset
-               will have a a **static** batch_size dimension equal to
-               "batch_size".
+        "allow_smaller_final_batch" : bool
+           Whether to allow the final batch to be smaller if there are
+           insufficient elements left. If `False`, the final batch is
+           discarded if it is smaller than batch size. Note that,
+           if `True`, `output_shapes` of the resulting dataset
+           will have a a **static** batch_size dimension equal to
+           "batch_size".
 
-            "shuffle" : bool
-                Whether to randomly shuffle the elements of the dataset.
+        "shuffle" : bool
+            Whether to randomly shuffle the elements of the dataset.
 
-            "shuffle_buffer_size" : int
-                The buffer size for data shuffling. The larger, the better
-                the resulting data is mixed.
+        "shuffle_buffer_size" : int
+            The buffer size for data shuffling. The larger, the better
+            the resulting data is mixed.
 
-                If `None` (default), buffer size is set to the size of the
-                whole dataset (i.e., make the shuffling the maximally
-                effective).
+            If `None` (default), buffer size is set to the size of the
+            whole dataset (i.e., make the shuffling the maximally
+            effective).
 
-            "shard_and_shuffle" : bool
-                Whether to first shard the dataset and then shuffle each
-                block respectively. Useful when the whole data is too large to
-                be loaded efficiently into the memory.
+        "shard_and_shuffle" : bool
+            Whether to first shard the dataset and then shuffle each
+            block respectively. Useful when the whole data is too large to
+            be loaded efficiently into the memory.
 
-                If `True`, :attr:`shuffle_buffer_size` must be specified to
-                determine the size of each shard.
+            If `True`, :attr:`shuffle_buffer_size` must be specified to
+            determine the size of each shard.
 
-                .. warning::
-                    Sharding is not yet supported. This option will be ignored.
+            .. warning::
+                Sharding is not yet supported. This option will be ignored.
 
-            "num_parallel_calls" : int
-                Number of elements from the datasets to process in parallel.
-                When ``"num_parallel_calls"`` equals 1, no worker threads will
-                be created; however, when the value is greater than 1, the
-                number of worker threads will be equal to
-                ``"num_parallel_calls"``.
+        "num_parallel_calls" : int
+            Number of elements from the datasets to process in parallel.
+            When ``"num_parallel_calls"`` equals 1, no worker threads will
+            be created; however, when the value is greater than 1, the
+            number of worker threads will be equal to
+            ``"num_parallel_calls"``.
 
-            "prefetch_buffer_size" : int
-                The maximum number of elements that will be buffered when
-                prefetching.
+        "prefetch_buffer_size" : int
+            The maximum number of elements that will be buffered when
+            prefetching.
 
-                .. note::
-                    This option exists only for compatibility. Currently data
-                    is only prefetched when ``"num_parallel_calls"`` is greater
-                    than 1, and the number of examples to prefetch is controlled
-                    internally by PyTorch :torch_docs:`DataLoader
-                    <utils.html#torch.utils.data.DataLoader>`.
+            .. note::
+                This option exists only for compatibility. Currently data
+                is only prefetched when ``"num_parallel_calls"`` is greater
+                than 1, and the number of examples to prefetch is controlled
+                internally by PyTorch :torch_docs:`DataLoader
+                <data.html#torch.utils.data.DataLoader>`.
 
-            max_dataset_size : int
-                Maximum number of instances to include in
-                the dataset. If set to `-1` or greater than the size of
-                dataset, all instances will be included. This constraint is
-                imposed after data shuffling and filtering.
+        max_dataset_size : int
+            Maximum number of instances to include in
+            the dataset. If set to `-1` or greater than the size of
+            dataset, all instances will be included. This constraint is
+            imposed after data shuffling and filtering.
 
-            seed : int, optional
-                The random seed for shuffle.
+        seed : int, optional
+            The random seed for shuffle.
 
-                Note that if a seed is set, the shuffle order will be exact
-                the same every time when going through the (repeated) dataset.
+            Note that if a seed is set, the shuffle order will be exact
+            the same every time when going through the (repeated) dataset.
 
-                .. warning::
-                    Manual seeding is not yet supported. This option will be
-                    ignored.
+            .. warning::
+                Manual seeding is not yet supported. This option will be
+                ignored.
 
-            name : str
-                Name of the data.
+        name : str
+            Name of the data.
 
-            lazy_strategy : str
-                Lazy strategy for data examples. Lazy loading/processing defers
-                data loading/processing until when it's being accessed.
-                Non-lazy (eager) loading/processing would load/process all data
-                upon construction of dataset. Available options are:
+        lazy_strategy : str
+            Lazy strategy for data examples. Lazy loading/processing defers
+            data loading/processing until when it's being accessed.
+            Non-lazy (eager) loading/processing would load/process all data
+            upon construction of dataset. Available options are:
 
-                    - `none`: Perform eager loading and processing.
-                    - `process`: Perform eager loading and lazy processing.
-                    - `all`: Perform lazy loading and processing.
+            - `none`: Perform eager loading and processing.
+            - `process`: Perform eager loading and lazy processing.
+            - `all`: Perform lazy loading and processing.
 
-                Defaults to `all`. Note that currently, all eager operations
-                are performed on a single process only.
+            Defaults to `all`. Note that currently, all eager operations
+            are performed on a single process only.
 
-            cache_strategy: str
-                Caching strategy for data examples. Available options are:
+        cache_strategy: str
+            Caching strategy for data examples. Available options are:
 
-                    - `none`: No data is cached. Data is always loaded from
-                        source (e.g. file) and processed upon access.
-                    - `loaded`: Only cache raw data loaded from source,
-                        processing routines are performed upon access.
-                    - `processed`: Processed data is cached. **Note:** raw data
-                        will not be cached in this case, because raw data is
-                        only used to construct the processed data.
+            - `none`: No data is cached. Data is always loaded from
+              source (e.g. file) and processed upon access.
+            - `loaded`: Only cache raw data loaded from source,
+              processing routines are performed upon access.
+            - `processed`: Processed data is cached. **Note:** raw data
+              will not be cached in this case, because raw data is
+              only used to construct the processed data.
 
-                Default value is `loaded`. This option depends on the value of
-                `lazy_strategy`, specifically:
+            Default value is `loaded`. This option depends on the value of
+            `lazy_strategy`, specifically:
 
-                    - When `lazy_strategy` is `none`, all choices of
-                        `cache_strategy` are equivalent to `processed`.
-                    - When `lazy_strategy` is `process`, `none` is equivalent
-                        to `loaded`.
+            - When `lazy_strategy` is `none`, all choices of
+              `cache_strategy` are equivalent to `processed`.
+            - When `lazy_strategy` is `process`, `none` is equivalent
+              to `loaded`.
 
-            parallelize_processing: bool
-                Whether to perform parallelized processing of data. Since
-                multi-processing parallelism is utilized, this flag should be
-                `False` if your process routine involves modifying a shared
-                object across examples.
+        parallelize_processing: bool
+            Whether to perform parallelized processing of data. Since
+            multi-processing parallelism is utilized, this flag should be
+            `False` if your process routine involves modifying a shared
+            object across examples.
 
-                Note that this only affects cases where `lazy_strategy` is not
-                `none`. If `lazy_strategy` is `none`, processing will be
-                performed on a single process regardless of this value.
+            Note that this only affects cases where `lazy_strategy` is not
+            `none`. If `lazy_strategy` is `none`, processing will be
+            performed on a single process regardless of this value.
         """
         # TODO: Find a way to embed that big table here. Also change the table
         #   to include different behaviors when `parallelize_processing` is
@@ -541,8 +541,8 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
     def to(self, device: torch.device):
         r"""Move the dataset to the specific device. Note that we don't actually
         move data or do anything here --- we rely on correct implementations of
-        :meth:`texar.data.data._process` and :meth:`texar.data.data._collate` to
-        move data to appropriate devices.
+        :meth:`_process` and :meth:`_collate` to move data to appropriate
+        devices.
         """
         self.device = device
 

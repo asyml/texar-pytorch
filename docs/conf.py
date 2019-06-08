@@ -333,6 +333,9 @@ extlinks = {'torch_docs': (
             'torch_tensor': (
                 'https://pytorch.org/docs/stable/tensors.html#torch.Tensor.%s',
                 'torch.Tensor.'),
+            'tensor': (
+                'https://pytorch.org/docs/stable/tensors.html#torch.%s',
+                'torch.'),
             'gym': (
                 'https://gym.openai.com/docs/%s',
                 None),

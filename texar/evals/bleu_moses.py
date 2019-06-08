@@ -110,8 +110,8 @@ def corpus_bleu_moses(list_of_references: List[List[MaybeList[str]]],
         If :attr:`return_all` is ``False`` (default), returns a ``float32``
         BLEU score.
 
-        If :attr:`return_all` is ``True``, returns a list of 5 ``float32`` scores:
-        ``[BLEU, 1-gram precision, ..., 4-gram precision]``.
+        If :attr:`return_all` is ``True``, returns a list of 5 ``float32``
+        scores: ``[BLEU, 1-gram precision, ..., 4-gram precision]``.
     """
     list_of_references = compat_as_text(list_of_references)
     hypotheses = compat_as_text(hypotheses)

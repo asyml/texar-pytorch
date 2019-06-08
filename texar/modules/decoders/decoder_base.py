@@ -52,7 +52,7 @@ def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
     - If ``layer`` is a :torch_nn:`Module`, then the layer is returned as is.
     - If ``layer`` is ``None``, then a :torch_nn:`Linear` layer is constructed
       with ``output_size`` and ``vocab_size`` as input and output dimensions.
-    - If ``layer`` is a :torch:`Tensor`, then a :torch_nn:`Linear` layer is
+    - If ``layer`` is a :tensor:`Tensor`, then a :torch_nn:`Linear` layer is
       constructed with the provided tensor as parameters. Note that this tensor
       should have transposed shape, i.e. shape of ``[vocab_size, output_size]``.
       Also, if the provided tensor is not an instance of :torch_nn:`Parameter`,
@@ -254,7 +254,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                 Required when :attr:`decoding_strategy` is ``"infer_greedy"``
                 or ``"infer_sample"``; optional when
                 ``decoding_strategy="train_greedy"``.
-            start_tokens (optional): A :torch:`LongTensor` of shape
+            start_tokens (optional): A :tensor:`LongTensor` of shape
                 ``[batch_size]``, the start tokens.
                 Used when :attr:`decoding_strategy` is ``"infer_greedy"`` or
                 ``"infer_sample"``, or when `hparams`-configured
@@ -263,8 +263,8 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                 samples where ``batch_size`` is changing according to the data
                 module, this can be set as
                 ``start_tokens=torch.full_like(batch['length'], bos_token_id)``.
-            end_token (optional): A integer or 0D :torch:`LongTensor`, the token
-                that marks the end of decoding.
+            end_token (optional): A integer or 0D :tensor:`LongTensor`, the
+                token that marks the end of decoding.
                 Used when :attr:`decoding_strategy` is ``"infer_greedy"`` or
                 ``"infer_sample"``, or when `hparams`-configured helper is used.
             softmax_temperature (float, optional): Value to divide the logits
@@ -451,7 +451,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         Args:
             helper: The :class:`~texar.modules.Helper` instance to use.
             inputs (optional): A (structure of) input tensors.
-            sequence_length (optional): A :torch:`LongTensor` representing
+            sequence_length (optional): A :tensor:`LongTensor` representing
                 lengths of each sequence.
             initial_state: A possibly nested structure of tensors indicating the
                 initial decoder state.

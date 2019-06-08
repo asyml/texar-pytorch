@@ -71,7 +71,7 @@ def _convert_embedding(embedding):
     it is returned as is.
 
     Args:
-        embedding (:torch:`Tensor` or callable): the embedding to convert.
+        embedding (:tensor:`Tensor` or callable): the embedding to convert.
 
     Returns:
         An instance of Embedder or nn.Embedding.
@@ -224,9 +224,9 @@ class EmbeddingHelper(Helper[IDType], ABC):
     layer to get the next input.
 
     Args:
-        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+        start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
             representing the start tokens for each sequence in batch.
-        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+        end_token: Python int or scalar :tensor:`LongTensor`, denoting the
             token that marks end of decoding.
 
     Raises:
@@ -279,9 +279,9 @@ class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
             when attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
-        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+        start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
             representing the start tokens for each sequence in batch.
-        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+        end_token: Python int or scalar :tensor:`LongTensor`, denoting the
             token that marks end of decoding.
 
     Raises:
@@ -355,9 +355,9 @@ class GreedyEmbeddingHelper(SingleEmbeddingHelper):
             when attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
-        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+        start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
             representing the start tokens for each sequence in batch.
-        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+        end_token: Python int or scalar :tensor:`LongTensor`, denoting the
             token that marks end of decoding.
 
     Raises:
@@ -371,7 +371,6 @@ class GreedyEmbeddingHelper(SingleEmbeddingHelper):
         super().__init__(embedding, start_tokens, end_token)
 
     def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
-        r"""sample for GreedyEmbeddingHelper."""
         del time  # unused by sample_fn
         # Outputs are logits, use argmax to get the most probable id
         if not torch.is_tensor(outputs):
@@ -401,9 +400,9 @@ class SampleEmbeddingHelper(SingleEmbeddingHelper):
             when attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
-        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+        start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
             representing the start tokens for each sequence in batch.
-        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+        end_token: Python int or scalar :tensor:`LongTensor`, denoting the
             token that marks end of decoding.
         softmax_temperature (float, optional): Value to divide the logits by
             before computing the softmax. Larger values (above 1.0) result
@@ -471,9 +470,9 @@ class TopKSampleEmbeddingHelper(SingleEmbeddingHelper):
             when attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
-        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+        start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
             representing the start tokens for each sequence in batch.
-        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+        end_token: Python int or scalar :tensor:`LongTensor`, denoting the
             token that marks end of decoding.
         top_k (int, optional): Number of top candidates to sample from. Must
             be `>=0`. If set to 0, samples from all candidates (i.e.,
@@ -538,9 +537,9 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
             when attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
-        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+        start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
             representing the start tokens for each sequence in batch.
-        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+        end_token: Python int or scalar :tensor:`LongTensor`, denoting the
             token that marks end of decoding.
         tau: A float scalar tensor, the softmax temperature.
         stop_gradient (bool): Whether to stop the gradient backpropagation
@@ -617,9 +616,9 @@ class GumbelSoftmaxEmbeddingHelper(SoftmaxEmbeddingHelper):
             when attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
-        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+        start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
             representing the start tokens for each sequence in batch.
-        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+        end_token: Python int or scalar :tensor:`LongTensor`, denoting the
             token that marks end of decoding.
         tau: A float scalar tensor, the softmax temperature.
         straight_through (bool): Whether to use straight through gradient
@@ -747,9 +746,9 @@ def get_helper(helper_type: Union[Type[T], T, str],
             when attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
-        start_tokens: 1D :torch:`LongTensor` shaped ``[batch_size]``,
+        start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
             representing the start tokens for each sequence in batch.
-        end_token: Python int or scalar :torch:`LongTensor`, denoting the
+        end_token: Python int or scalar :tensor:`LongTensor`, denoting the
             token that marks end of decoding.
         **kwargs: Additional keyword arguments for constructing the helper.
 

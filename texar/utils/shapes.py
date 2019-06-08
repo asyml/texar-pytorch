@@ -49,7 +49,7 @@ def transpose_batch_time(inputs: torch.Tensor) -> torch.Tensor:
 
 
 def get_batch_size(tensor: torch.Tensor) -> int:
-    r"""Returns a scalar representing the batch size, i.e.,
+    r"""Returns an ``int`` representing the batch size, i.e.,
     the size of the 1st dimension of :attr:`tensor`.
     """
     return tensor.size(0)
@@ -82,8 +82,8 @@ def mask_sequences(sequence: Union[torch.Tensor, List[int]],
     lengths. Masks along the time dimension.
 
     :attr:`sequence` and :attr:`sequence_length` can either be python
-    arrays or Tensors, respectively. If both are python arrays (or None), the
-    return will be a python array as well.
+    arrays or Tensors, respectively. If both are Python arrays (or None), the
+    return will be a Python array as well.
 
     Args:
         sequence: A Tensor or Python array of sequence values.

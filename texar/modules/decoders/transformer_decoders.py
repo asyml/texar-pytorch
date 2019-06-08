@@ -44,10 +44,10 @@ class TransformerDecoderOutput(NamedTuple):
     r"""The output of :class:`TransformerDecoder`.
     """
     logits: torch.Tensor
-    r"""A :torch:`Tensor` of shape ``[batch_size, max_time, vocab_size]``
+    r"""A :tensor:`Tensor` of shape ``[batch_size, max_time, vocab_size]``
     containing the logits."""
     sample_id: torch.LongTensor
-    r"""A :torch:`LongTensor` of shape ``[batch_size, max_time]`` containing the
+    r"""A :tensor:`LongTensor` of shape ``[batch_size, max_time]`` containing the
     sampled token indices."""
 
 
@@ -329,21 +329,21 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
         1. The :attr:`decoding_strategy` argument.
 
-            - **"train_greedy"**: decoding in teacher-forcing fashion (i.e.,
-              feeding ground truth to decode the next step), and for each step
-              sample is obtained by taking the `argmax` of logits.
-              Argument :attr:`inputs` is required for this strategy.
-              :attr:`sequence_length` is optional.
-            - **"infer_greedy"**: decoding in inference fashion (i.e., feeding
-              `generated` sample to decode the next step), and for each step
-              sample is obtained by taking the `argmax` of logits.
-              Arguments :attr:`(start_tokens, end_token)` are
-              required for this strategy, and argument
-              :attr:`max_decoding_length` is optional.
-            - **"infer_sample"**: decoding in inference fashion, and for each
-              step sample is obtained by `random sampling` from the logits.
-              Arguments :attr:`(start_tokens, end_token)` are required for this
-              strategy, and argument :attr:`max_decoding_length` is optional.
+           - **"train_greedy"**: decoding in teacher-forcing fashion (i.e.,
+             feeding ground truth to decode the next step), and for each step
+             sample is obtained by taking the `argmax` of logits.
+             Argument :attr:`inputs` is required for this strategy.
+             :attr:`sequence_length` is optional.
+           - **"infer_greedy"**: decoding in inference fashion (i.e., feeding
+             `generated` sample to decode the next step), and for each step
+             sample is obtained by taking the `argmax` of logits.
+             Arguments :attr:`(start_tokens, end_token)` are
+             required for this strategy, and argument
+             :attr:`max_decoding_length` is optional.
+           - **"infer_sample"**: decoding in inference fashion, and for each
+             step sample is obtained by `random sampling` from the logits.
+             Arguments :attr:`(start_tokens, end_token)` are required for this
+             strategy, and argument :attr:`max_decoding_length` is optional.
 
           This argument is used only when arguments :attr:`helper` and
           :attr:`beam_width` are both `None`.
@@ -367,16 +367,21 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
            Arguments :attr:`(start_tokens, end_token)` are required,
            and argument :attr:`max_decoding_length` is optional.
 
+           .. warning::
+               Beam search is not yet implemented. Setting :attr:`beam_width`
+               to any value greater than 1 would raise a
+               :exc:`NotImplementedError`
+
         Args:
             memory (optional): The memory to attend, e.g., the output of an RNN
-                encoder. A :torch:`Tensor` of shape
+                encoder. A :tensor:`Tensor` of shape
                 ``[batch_size, memory_max_time, dim]``.
-            memory_sequence_length (optional): A :torch:`Tensor` of shape
+            memory_sequence_length (optional): A :tensor:`Tensor` of shape
                 ``[batch_size]`` containing the sequence lengths for the batch
                 entries in memory. Used to create attention bias of
                 :attr:`memory_attention_bias` is not given. Ignored if
                 :attr:`memory_attention_bias` is provided.
-            memory_attention_bias (optional): A :torch:`Tensor` of shape
+            memory_attention_bias (optional): A :tensor:`Tensor` of shape
                 ``[batch_size, num_heads, memory_max_time, dim]``.
                 An attention bias typically sets the value of a padding
                 position to a large negative value for masking. If not given,
@@ -386,7 +391,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 shape ``[batch_size, target_max_time, emb_dim]`` containing the
                 target sequence word embeddings. Used when
                 :attr:`decoding_strategy` is set to ``"train_greedy"``.
-            sequence_length (optional): A :torch:`LongTensor` of shape
+            sequence_length (optional): A :tensor:`LongTensor` of shape
                 ``[batch_size]``, containing the sequence length of
                 :attr:`inputs`. Tokens beyond the respective sequence length are
                 masked out.
@@ -404,7 +409,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 search decoding. Refer to https://arxiv.org/abs/1609.08144
                 for more details.
                 It should be larger if longer sentences are desired.
-            context (optional): An :torch:`LongTensor` of shape
+            context (optional): An :tensor:`LongTensor` of shape
                 ``[batch_size, length]``, containing the starting tokens for
                 decoding. If context is set, ``start_tokens`` of the
                 :class:`~texar.modules.Helper` will be ignored.
@@ -439,17 +444,17 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
               a tuple ``(outputs, sequence_lengths)``, where ``outputs`` is an
               instance of :class:`~texar.modules.TransformerDecoderOutput` as
               in `"train_greedy"`, and ``sequence_lengths`` is a
-              :torch:`LongTensor` of shape ``[batch_size]`` containing the
+              :tensor:`LongTensor` of shape ``[batch_size]`` containing the
               length of each sample.
 
             - For **beam search** decoding, returns a ``dict`` containing keys
               ``"sample_id"`` and ``"log_prob"``.
 
-                - ``"sample_id"`` is a :torch:`LongTensor` of shape
+                - ``"sample_id"`` is a :tensor:`LongTensor` of shape
                   ``[batch_size, max_time, beam_width]`` containing generated
                   token indexes. ``sample_id[:,:,0]`` is the highest-probable
                   sample.
-                - ``"log_prob"`` is a :torch:`Tensor` of shape
+                - ``"log_prob"`` is a :tensor:`Tensor` of shape
                   ``[batch_size, beam_width]`` containing the log probability
                   of each sequence sample.
         """
@@ -629,7 +634,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         decoding, the elements of each layer must be initialized and extended
         as different structure respectively. Specifically, for inference-like
         decoding, a simple list is used; for beam-search decoding, a
-        :torch:`Tensor` of shape ``[batch_size, current_steps, num_units]``
+        :tensor:`Tensor` of shape ``[batch_size, current_steps, num_units]``
         is maintained, where ``current_steps`` is the number of steps currently
         decoded.
         """

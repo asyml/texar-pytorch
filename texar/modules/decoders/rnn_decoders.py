@@ -51,19 +51,19 @@ class BasicRNNDecoderOutput(NamedTuple):
     r"""The outputs of RNN (at each step/of all steps) by applying the
     output layer on cell outputs. E.g., in
     :class:`~texar.modules.BasicRNNDecoder` with default hyperparameters, this
-    is a :torch:`Tensor` of shape ``[batch_size, max_time, vocab_size]`` after
+    is a :tensor:`Tensor` of shape ``[batch_size, max_time, vocab_size]`` after
     decoding the whole sequence."""
     sample_id: torch.LongTensor
     r"""The sampled results (at each step/of all steps). E.g., in
     :class:`~texar.modules.BasicRNNDecoder` with decoding strategy of
-    ``"train_greedy"``, this is a :torch:`LongTensor` of shape
+    ``"train_greedy"``, this is a :tensor:`LongTensor` of shape
     ``[batch_size, max_time]`` containing the sampled token indices of all
     steps."""
     cell_output: torch.Tensor
     r"""The output of RNN cell (at each step/of all steps). This contains the
     results prior to the output layer. E.g., in
     :class:`~texar.modules.BasicRNNDecoder` with default hyperparameters, this
-    is a :torch:`Tensor` of shape ``[batch_size, max_time, cell_output_size]``
+    is a :tensor:`Tensor` of shape ``[batch_size, max_time, cell_output_size]``
     after decoding the whole sequence."""
 
 
@@ -75,19 +75,19 @@ class AttentionRNNDecoderOutput(NamedTuple):
     r"""The outputs of RNN (at each step/of all steps) by applying the
     output layer on cell outputs. E.g., in
     :class:`~texar.modules.AttentionRNNDecoder` with default hyperparameters,
-    this is a :torch:`Tensor` of shape ``[batch_size, max_time, vocab_size]``
+    this is a :tensor:`Tensor` of shape ``[batch_size, max_time, vocab_size]``
     after decoding the whole sequence."""
     sample_id: torch.LongTensor
     r"""The sampled results (at each step/of all steps). E.g., in
     :class:`~texar.modules.AttentionRNNDecoder` with decoding strategy of
-    ``"train_greedy"``, this is a :torch:`LongTensor` of shape
+    ``"train_greedy"``, this is a :tensor:`LongTensor` of shape
     ``[batch_size, max_time]`` containing the sampled token indices of all
     steps."""
     cell_output: torch.Tensor
     r"""The output of RNN cell (at each step/of all steps). This contains the
     results prior to the output layer. E.g., in
     :class:`~texar.modules.AttentionRNNDecoder` with default hyperparameters,
-    this is a :torch:`Tensor` of shape
+    this is a :tensor:`Tensor` of shape
     ``[batch_size, max_time, cell_output_size]`` after decoding the whole
     sequence."""
     attention_scores: MaybeTuple[torch.Tensor]
@@ -267,7 +267,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
               `(vocab_size=None, output_layer=texar.core.identity)`.
         cell_input_fn (callable, optional): A callable that produces RNN cell
             inputs. If `None` (default), the default is used:
-            `lambda inputs, attention: torch.cat([inputs, attention], -1)`,
+            :python:`lambda inputs, attention:
+            torch.cat([inputs, attention], -1)`,
             which cancats regular RNN cell inputs with attentions.
         hparams (dict, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
@@ -422,18 +423,18 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                 :mod:`texar.custom`.
                 Example:
 
-                    .. code-block:: python
+                .. code-block:: python
 
-                        # class name
-                        "type": "LuongAttention"
-                        "type": "BahdanauAttention"
-                        # module path
-                        "type": "texar.core.BahdanauMonotonicAttention"
-                        "type": "my_module.MyAttentionMechanismClass"
-                        # class
-                        "type": texar.core.LuongMonotonicAttention
-                        # instance
-                        "type": LuongAttention(...)
+                    # class name
+                    "type": "LuongAttention"
+                    "type": "BahdanauAttention"
+                    # module path
+                    "type": "texar.core.BahdanauMonotonicAttention"
+                    "type": "my_module.MyAttentionMechanismClass"
+                    # class
+                    "type": texar.core.LuongMonotonicAttention
+                    # instance
+                    "type": LuongAttention(...)
 
             "kwargs": dict
                 keyword arguments for the attention class constructor.
@@ -443,16 +444,16 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                 constructor. Ignored if "type" is an attention class
                 instance. For example:
 
-                    .. code-block:: python
+                .. code-block:: python
 
-                        "type": "LuongAttention",
-                        "kwargs": {
-                            "num_units": 256,
-                            "probability_fn": torch.nn.functional.softmax,
-                        }
+                    "type": "LuongAttention",
+                    "kwargs": {
+                        "num_units": 256,
+                        "probability_fn": torch.nn.functional.softmax,
+                    }
 
-                    Here "probability_fn" can also be set to the string name
-                    or module path to a probability function.
+                Here "probability_fn" can also be set to the string name
+                or module path to a probability function.
 
                 "attention_layer_size": int or None
                     The depth of the attention (output) layer. The context and
@@ -471,7 +472,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                     the attention value. This is the behavior of Luong-style
                     attention mechanisms. If `False`, the output at each
                     time step is the output of `cell`.  This is the
-                    beahvior of Bhadanau-style attention mechanisms.
+                    behavior of Bahdanau-style attention mechanisms.
                     In both cases, the `attention` tensor is propagated to
                     the next time step via the state and is used there.
                     This flag only controls whether the attention mechanism

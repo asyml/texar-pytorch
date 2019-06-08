@@ -53,10 +53,10 @@ def reverse_sequence(inputs: torch.Tensor,
             max(seq_lengths) <= input.dims(seq_dim)
         time_major: The shape format of the ``inputs`` and ``outputs`` Tensors.
             If true, these ``Tensors`` must be shaped
-            ``[max_time, batch_size, depth]``. If false, these ``Tensors`` must be
-            shaped ``[batch_size, max_time, depth]``.
-            Using ``time_major = True`` is a bit more efficient because it avoids
-            transposes at the beginning and end of the RNN calculation.
+            ``[max_time, batch_size, depth]``. If false, these ``Tensors`` must
+            be shaped ``[batch_size, max_time, depth]``.
+            Using ``time_major = True`` is a bit more efficient because it
+            avoids transposes at the beginning and end of the RNN calculation.
             However, most TensorFlow data is batch-major, so by
             default this functionb accepts input and emits output
             in batch-major form.
@@ -106,8 +106,9 @@ def bidirectional_dynamic_rnn(
             ``[batch_size, max_time, ...]``, or a nested tuple of such elements.
             If time_major == True, this must be a tensor of shape:
             ``[max_time, batch_size, ...]``, or a nested tuple of such elements.
-        sequence_length: (optional) An int32/int64 tensor, size ``[batch_size]``,
-            containing the actual lengths for each of the sequences in
+        sequence_length: (optional) An int32/int64 tensor, size
+            ``[batch_size]``, containing the actual lengths for each of the
+            sequences in
             the batch. If not provided, all batch entries are assumed
             to be full sequences; and time reversal is applied from time
             ``0`` to ``max_time`` for each sequence.
@@ -124,8 +125,8 @@ def bidirectional_dynamic_rnn(
             ``[max_time, batch_size, depth]``.
             If false, these ``Tensors`` must be shaped
             ``[batch_size, max_time, depth]``.
-            Using ``time_major = True`` is a bit more efficient because it avoids
-            transposes at the beginning and end of the RNN calculation.
+            Using ``time_major = True`` is a bit more efficient because it
+            avoids transposes at the beginning and end of the RNN calculation.
             However, most TensorFlow data is batch-major, so by
             default this function accepts input and emits output
             in batch-major form.

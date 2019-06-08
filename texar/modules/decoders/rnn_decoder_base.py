@@ -160,7 +160,7 @@ class RNNDecoderBase(DecoderBase[State, Output]):
             - `outputs`: an object containing the decoder output on all
               time steps.
             - `final_state`: the cell state of the final time step.
-            - `sequence_lengths`: a :torch:`LongTensor` of shape
+            - `sequence_lengths`: a :tensor:`LongTensor` of shape
               ``[batch_size]`` containing the length of each sample.
         """
         # TODO: Add faster code path for teacher-forcing training.

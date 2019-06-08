@@ -64,7 +64,6 @@ __all__ = [
     'default_str',
     'uniquify_str',
     'ceildiv',
-    'straight_through',
 ]
 
 T = TypeVar('T')  # type argument
@@ -173,8 +172,8 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
             for CPU tensor types and the current CUDA device for CUDA tensor
             types.
     Returns:
-        A mask tensor of shape :python:`lengths.shape + (maxlen,)`, cast to specified
-        dtype.
+        A mask tensor of shape :python:`lengths.shape + (maxlen,)`, cast to
+        specified dtype.
     Raises:
         ValueError: if ``maxlen`` is not a scalar.
     """
@@ -548,7 +547,8 @@ def get_instance_kwargs(kwargs: Kwargs, hparams: ParamDict) -> Kwargs:
 
     Args:
         kwargs (dict): A ``dict`` of keyword arguments. Can be ``None``.
-        hparams: A ``dict`` or an instance of :class:`~texar.HParams` Can be ``None``.
+        hparams: A ``dict`` or an instance of :class:`~texar.HParams` Can be
+            ``None``.
 
     Returns:
         A ``dict`` that contains the keyword arguments in :attr:`kwargs`, and
@@ -607,7 +607,8 @@ def dict_lookup(dict_: MutableMapping[K, V], keys: Union[List[K], np.ndarray],
         A numpy array of values with the same structure as :attr:`keys`.
 
     Raises:
-        TypeError: If key is not in :attr:`dict_` and :attr:`default` is ``None``.
+        TypeError: If key is not in :attr:`dict_` and :attr:`default` is
+            ``None``.
     """
     return np.vectorize(lambda x: dict_.get(x, default))(keys)  # type: ignore
 
@@ -1033,8 +1034,8 @@ def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]],
             Set to ``None`` or ``False`` to disable the stripping.
 
     Returns:
-        If :attr:`join` is True, returns a ``(n-1)``-D numpy array (or list) of
-        concatenated strings. If :attr:``join`` is False, returns an ``n``-D numpy
+        If :attr:`join` is True, returns a `(n-1)`-D numpy array (or list) of
+        concatenated strings. If :attr:`join` is False, returns an `n`-D numpy
         array (or list) of str tokens.
 
     Example:
@@ -1080,18 +1081,3 @@ def ceildiv(a: int, b: int) -> int:
         int: Ceil quotient.
     """
     return -(-a // b)
-
-
-def straight_through(fw_tensor: torch.Tensor, bw_tensor: torch.Tensor):
-    r"""Use a tensor in forward pass while backpropagating gradient to another.
-
-    Args:
-        fw_tensor: A tensor to be used in the forward pass.
-        bw_tensor: A tensor to which gradient is backpropagated. Must have the
-            same shape and type with :attr:`fw_tensor`.
-
-    Returns:
-        A tensor of the same shape and value with :attr:`fw_tensor` but will
-        direct gradient to bw_tensor.
-    """
-    raise NotImplementedError

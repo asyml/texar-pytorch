@@ -20,6 +20,52 @@ Cells
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.core.wrap_builtin_cell
 
+:hidden:`RNNCellBase`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.RNNCellBase
+    :members:
+
+:hidden:`RNNCell`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.RNNCell
+    :members:
+
+:hidden:`GRUCell`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.GRUCell
+    :members:
+
+:hidden:`LSTMCell`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.LSTMCell
+    :members:
+
+:hidden:`DropoutWrapper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.DropoutWrapper
+    :members:
+
+:hidden:`ResidualWrapper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.ResidualWrapper
+    :members:
+
+:hidden:`HighwayWrapper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.HighwayWrapper
+    :members:
+
+:hidden:`MultiRNNCell`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.MultiRNNCell
+    :members:
+
+:hidden:`AttentionWrapper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.AttentionWrapper
+    :members:
+
+
 
 Layers
 ======
@@ -51,6 +97,13 @@ Layers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.core.Flatten
     :members:
+    :exclude-members: forward
+
+:hidden:`Identity`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.Identity
+    :members:
+    :exclude-members: forward
 
 :hidden:`default_regularizer_hparams`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

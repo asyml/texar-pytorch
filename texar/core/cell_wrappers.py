@@ -76,16 +76,16 @@ def wrap_builtin_cell(cell: nn.RNNCellBase):
 
 class RNNCellBase(nn.Module, Generic[State]):
     r"""The base class for RNN cells in our framework. Major differences over
-    :torch_nn:`RNNCell` are two-fold::
+    :torch_nn:`RNNCell` are two-fold:
 
-        1. Holds an :torch_nn:`Module` which could either be a built-in
-           RNN cell or a wrapped cell instance. This design allows
-           :class:`RNNCellBase` to serve as the base class for both vanilla
-           cells and wrapped cells.
+    1. Holds an :torch_nn:`Module` which could either be a built-in
+       RNN cell or a wrapped cell instance. This design allows
+       :class:`RNNCellBase` to serve as the base class for both vanilla
+       cells and wrapped cells.
 
-        2. Adds :meth:`zero_state` method for initialization of hidden states,
-           which can also be used to implement batch-specific initialization
-           routines.
+    2. Adds :meth:`zero_state` method for initialization of hidden states,
+       which can also be used to implement batch-specific initialization
+       routines.
     """
 
     def __init__(self, cell: nn.Module):
@@ -344,10 +344,9 @@ class ResidualWrapper(RNNCellBase[State]):
 class HighwayWrapper(RNNCellBase[State]):
     r"""RNNCell wrapper that adds highway connection on cell input and output.
 
-    Based on:
-        R. K. Srivastava, K. Greff, and J. Schmidhuber, "Highway networks",
-        arXiv preprint arXiv:1505.00387, 2015.
-        https://arxiv.org/abs/1505.00387
+    Based on: R. K. Srivastava, K. Greff, and J. Schmidhuber, "Highway
+    networks", arXiv preprint arXiv:1505.00387, 2015.
+    https://arxiv.org/pdf/1505.00387.pdf
     """
 
     def __init__(self, cell: nn.Module, carry_bias_init: Optional[float] = None,
@@ -484,7 +483,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                 each time step is the attention value.  This is the behavior of
                 Luong-style attention mechanisms.  If `False`, the output at
                 each time step is the output of `cell`.  This is the behavior
-                of Bhadanau-style attention mechanisms.  In both cases, the
+                of Bahdanau-style attention mechanisms.  In both cases, the
                 `attention` tensor is propagated to the next time step via the
                 state and is used there. This flag only controls whether the
                 attention mechanism is propagated up to the next cell in an RNN
@@ -589,7 +588,8 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                    batch_size: int) -> AttentionWrapperState:
         r"""Return an initial (zero) state tuple for this
         :class:`AttentionWrapper`.
-        ..note::
+
+        .. note::
                 Please see the initializer documentation for details of how
                 to call :meth:`zero_state` if using an
                 :class:`~texar.core.AttentionWrapper` with a
@@ -632,6 +632,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                 memory_sequence_length: Optional[torch.LongTensor] = None) -> \
             Tuple[torch.Tensor, AttentionWrapperState]:
         r"""Perform a step of attention-wrapped RNN.
+
         - Step 1: Mix the :attr:`inputs` and previous step's `attention` output
           via `cell_input_fn`.
         - Step 2: Call the wrapped `cell` with this input and its previous
@@ -658,11 +659,12 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                 lengths.
 
         Returns:
-            A tuple `(attention_or_cell_output, next_state)`, where:
-                - `attention_or_cell_output` depending on `output_attention`.
-                - `next_state` is an instance of
-                  :class:`~texar.core.AttentionWrapperState` containing the
-                  state calculated at this time step.
+            A tuple `(attention_or_cell_output, next_state)`, where
+
+            - `attention_or_cell_output` depending on `output_attention`.
+            - `next_state` is an instance of
+              :class:`~texar.core.AttentionWrapperState` containing the
+              state calculated at this time step.
 
         Raises:
             TypeError: If `state` is not an instance of
