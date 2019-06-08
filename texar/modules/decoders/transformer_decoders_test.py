@@ -157,11 +157,10 @@ class TransformerDecoderTest(unittest.TestCase):
 
         self.assertIsInstance(outputs, TransformerDecoderOutput)
 
+    @unittest.skip("beam search is not implemented")
     def test_beam_search(self):
         """Tests beam_search
         """
-        return
-
         decoder = TransformerDecoder(
             vocab_size=self._vocab_size,
             output_layer=self._output_layer)

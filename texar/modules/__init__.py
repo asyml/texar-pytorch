@@ -21,3 +21,4 @@ from texar.modules.decoders import *
 from texar.modules.embedders import *  # type: ignore  # same name submodule
 from texar.modules.encoders import *
 from texar.modules.networks import *  # type: ignore  # same name submodule
+from texar.modules.transformer import *

@@ -36,7 +36,7 @@ class MonoTextDataTest(unittest.TestCase):
         self._text_file = text_file
 
         self._hparams = {
-            "num_epochs": 50,
+            "num_epochs": 1,
             "batch_size": 3,
             "dataset": {
                 "files": self._text_file.name,
@@ -253,7 +253,7 @@ class VarUttMonoTextDataTest(unittest.TestCase):
         self._text_file = text_file
 
         self._hparams = {
-            "num_epochs": 50,
+            "num_epochs": 1,
             "batch_size": 3,
             "shuffle": False,
             "dataset": {

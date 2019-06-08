@@ -172,6 +172,11 @@ Decoders
 Classifiers
 ============
 
+:hidden:`BertClassifier`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.BertClassifier
+    :members:
+
 :hidden:`Conv1DClassifier`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.Conv1DClassifier

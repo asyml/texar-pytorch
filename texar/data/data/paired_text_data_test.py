@@ -41,7 +41,7 @@ class PairedTextDataTest(unittest.TestCase):
         self._tgt_text_file = tgt_text_file
 
         self._hparams = {
-            "num_epochs": 50,
+            "num_epochs": 1,
             "batch_size": 3,
             "source_dataset": {
                 "files": [self._src_text_file.name],

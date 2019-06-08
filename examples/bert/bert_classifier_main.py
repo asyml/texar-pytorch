@@ -26,7 +26,7 @@ import torch
 import texar as tx
 import utils.model_utils as model_utils
 from texar.custom.optimizers import BertAdam
-from texar.models import BertClassifier
+from texar.modules import BertClassifier
 
 parser = argparse.ArgumentParser()
 

@@ -25,7 +25,7 @@ from torchtext import data
 
 import texar as tx
 from bleu_tool import bleu_wrapper
-from texar.models import Transformer
+from texar.modules import Transformer
 from utils import data_utils, utils
 from utils.preprocess import eos_token_id
 

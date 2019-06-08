@@ -31,20 +31,16 @@ __all__ = ["BertClassifier"]
 
 
 class BertClassifier(ClassifierBase):
-    """Classifier based on bert modules.
+    """Classifier based on BERT modules.
 
-    This is a combination of the
-    :class:`~texar.modules.BertEncoder` with a classification
+    This is a combination of the BERT encoder with a classification
     layer. Both step-wise classification and sequence-level classification
     are supported, specified in :attr:`hparams`.
 
-    Arguments are the same as in
-    :class:`~texar.modules.BertEncoder`.
-
     Args:
         hparams (dict or HParams, optional): Hyperparameters. Missing
-            hyperparameter will be set to default values. See
-            `default_hparams` for the hyper-parameter structure
+            hyperparameters will be set to default values. See
+            :meth:`default_hparams` for the hyper-parameter structure
             and default values.
 
     .. document private functions
@@ -99,6 +95,7 @@ class BertClassifier(ClassifierBase):
         """Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
+
             {
                 # (1) Different modules for sentence encoder
                 # (2) Additional hyperparameters
@@ -111,47 +108,49 @@ class BertClassifier(ClassifierBase):
             }
 
         Here:
+
         1. Three parts of embedders. Two for word level tokens, segment IDs
-        where each has the same hyperparameters as in
-        :class:`~texar.modules.embedders.WordEmbedder`. The third is position
-        embedder which is used for
-        :class:`~texar.modules.embedders.PositionEmbedder`
+           where each has the same hyperparameters as in
+           :class:`~texar.modules.embedders.WordEmbedder`. The third is position
+           embedder which is used for
+           :class:`~texar.modules.embedders.PositionEmbedder`
 
         2. Additional hyperparameters for downstream tasks:
 
-            "num_classes" : int
-                Number of classes:
+           "num_classes" : int
+               Number of classes:
 
-                - If **`> 0`**, an additional :torch_nn:`Linear` layer is
-                  appended to the encoder to compute the logits over classes.
-                - If **`<= 0`**, no dense layer is appended. The number of
-                  classes is assumed to be the final dense layer size of the
-                  encoder.
+               - If **`> 0`**, an additional :torch_nn:`Linear` layer is
+                 appended to the encoder to compute the logits over classes.
+               - If **`<= 0`**, no dense layer is appended. The number of
+                 classes is assumed to be the final dense layer size of the
+                 encoder.
 
-            "logit_layer_kwargs" : dict
-                Keyword arguments for the logit Dense layer constructor,
-                except for argument "units" which is set to "num_classes".
-                Ignored if no extra logit layer is appended.
+           "logit_layer_kwargs" : dict
+               Keyword arguments for the logit Dense layer constructor,
+               except for argument "units" which is set to "num_classes".
+               Ignored if no extra logit layer is appended.
 
-            "clas_strategy" : str
-                The classification strategy, one of:
-                - **"cls_time"**: Sequence-level classification based on the
-                  output of the first time step (which is the "CLS" token).
-                  Each sequence has a class.
-                - **"all_time"**: Sequence-level classification based on
-                  the output of all time steps. Each sequence has a class.
-                - **"time_wise"**: Step-wise classification, i.e., make
-                  classification for each time step based on its output.
+           "clas_strategy" : str
+               The classification strategy, one of:
 
-            "max_seq_length" : int, optional
-                Maximum possible length of input sequences. Required if
-                "clas_strategy" is "all_time".
+               - **"cls_time"**: Sequence-level classification based on the
+                 output of the first time step (which is the "CLS" token).
+                 Each sequence has a class.
+               - **"all_time"**: Sequence-level classification based on
+                 the output of all time steps. Each sequence has a class.
+               - **"time_wise"**: Step-wise classification, i.e., make
+                 classification for each time step based on its output.
 
-            "dropout" : float
-                The dropout rate of the bert encoder output.
+           "max_seq_length" : int, optional
+               Maximum possible length of input sequences. Required if
+               "clas_strategy" is "all_time".
 
-            "name" : str
-                Name of the classifier.
+           "dropout" : float
+               The dropout rate of the bert encoder output.
+
+           "name" : str
+               Name of the classifier.
         """
 
         _default_input_dim = 768
@@ -224,9 +223,6 @@ class BertClassifier(ClassifierBase):
             -> Tuple[torch.Tensor, torch.LongTensor, Optional[torch.Tensor]]:
         """Feeds the inputs through the network and makes classification.
 
-        The arguments are the same as in
-        :class:`~texar.modules.BertEncoder`.
-
         Args:
             inputs: A 2D Tensor of shape ``[batch_size, max_time]``,
                 containing the token ids of tokens in input sequences.
@@ -246,19 +242,19 @@ class BertClassifier(ClassifierBase):
 
             - If ``"clas_strategy"`` is ``"cls_time"`` or ``"all_time"``:
 
-                - If ``"num_classes"``==1, ``logits`` and ``pred`` are both of
-                  shape ``[batch_size]``.
-                - If ``"num_classes"``>1, `logits` is of shape
-                  ``[batch_size, num_classes]`` and ``pred`` is of shape
-                  `[batch_size]`.
+              - If ``"num_classes"``==1, ``logits`` and ``pred`` are both of
+                shape ``[batch_size]``.
+              - If ``"num_classes"``>1, `logits` is of shape
+                ``[batch_size, num_classes]`` and ``pred`` is of shape
+                `[batch_size]`.
 
             - If ``"clas_strategy"`` is ``"time_wise"``:
 
-                - If ``"num_classes"``==1, ``logits`` and ``pred`` are both of
-                  shape ``[batch_size, max_time]``.
-                - If ``"num_classes"``>1, ``logits`` is of shape
-                  ``[batch_size, max_time, num_classes]`` and ``pred`` is of
-                  shape ``[batch_size, max_time]``.
+              - If ``"num_classes"``==1, ``logits`` and ``pred`` are both of
+                shape ``[batch_size, max_time]``.
+              - If ``"num_classes"``>1, ``logits`` is of shape
+                ``[batch_size, max_time, num_classes]`` and ``pred`` is of
+                shape ``[batch_size, max_time]``.
         """
         word_embeds = self.word_embedder(inputs)
         segment_embeds = self.segment_embedder(segment_ids)

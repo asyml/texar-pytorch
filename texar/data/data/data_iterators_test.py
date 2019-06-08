@@ -111,7 +111,7 @@ class DataIteratorTest(unittest.TestCase):
         self._vocab_size = len(vocab_list)
 
         self._train_hparams = {
-            "num_epochs": 2,
+            "num_epochs": 1,
             "batch_size": 1,
             "shuffle": False,
             "dataset": {
