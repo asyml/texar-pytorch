@@ -93,7 +93,8 @@ class Helper(Generic[IDType], ABC):
     Helper instances are used by :class:`~texar.DecoderBase`.
 
     Please refer to the documentation for the TensorFlow counterpart
-    `tf.contrib.seq2seq.Helper <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/Helper>`_.
+    `tf.contrib.seq2seq.Helper
+    <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/Helper>`_.
     """
 
     @property
@@ -138,7 +139,8 @@ class TrainingHelper(Helper[torch.LongTensor]):
     Returned ``sample_ids`` are the argmax of the RNN output logits.
 
     Please refer to the documentation for the TensorFlow counterpart
-    `tf.contrib.seq2seq.TrainingHelper <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/TrainingHelper>`_.
+    `tf.contrib.seq2seq.TrainingHelper
+    <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/TrainingHelper>`_.
 
     Args:
         embedding (optional): The ``params`` argument of
@@ -340,7 +342,8 @@ class GreedyEmbeddingHelper(SingleEmbeddingHelper):
     use of :class:`GreedyEmbeddingHelper` is not necessary.
 
     Please refer to the documentation for the TensorFlow counterpart
-    `tf.contrib.seq2seq.GreedyEmbeddingHelper <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/GreedyEmbeddingHelper>`_.
+    `tf.contrib.seq2seq.GreedyEmbeddingHelper
+    <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/GreedyEmbeddingHelper>`_.
 
     Args:
         embedding: A callable or the ``params`` argument for
@@ -385,7 +388,8 @@ class SampleEmbeddingHelper(SingleEmbeddingHelper):
     result through an embedding layer to get the next input.
 
     Please refer to the documentation for the TensorFlow counterpart
-    `tf.contrib.seq2seq.SampleEmbeddingHelper <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/SampleEmbeddingHelper>`_.
+    `tf.contrib.seq2seq.SampleEmbeddingHelper
+    <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/SampleEmbeddingHelper>`_.
 
     Args:
         embedding: A callable or the ``params`` argument for

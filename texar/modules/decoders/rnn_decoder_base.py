@@ -100,8 +100,10 @@ class RNNDecoderBase(DecoderBase[State, Output]):
         :class:`~texar.modules.BasicRNNDecoder` and
         :class:`~texar.modules.AttentionRNNDecoder`.
 
-        Implementation calls initialize() once and step() repeatedly on the
-        Decoder object. Please refer to `tf.contrib.seq2seq.dynamic_decode`.
+        Implementation calls :meth:`initialize` once and :meth:`step`
+        repeatedly on the decoder object. Please refer to
+        `tf.contrib.seq2seq.dynamic_decode
+        <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/dynamic_decode>`_.
 
         See Also:
             Arguments of :meth:`create_helper`.
@@ -149,7 +151,7 @@ class RNNDecoderBase(DecoderBase[State, Output]):
             infer_mode (optional): If not `None`, overrides mode given by
                 `self.training`.
             **kwargs: Other keyword arguments for constructing helpers
-                defined by ``hparams["helper_trainn"]`` or
+                defined by ``hparams["helper_train"]`` or
                 ``hparams["helper_infer"]``.
 
         Returns:

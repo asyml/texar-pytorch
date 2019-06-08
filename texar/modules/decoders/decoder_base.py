@@ -359,7 +359,8 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                        impute_finished: bool = False) \
             -> Tuple[Output, Optional[State], torch.LongTensor]:
         r"""Generic routine for dynamic decoding. Please check the
-        `documentation <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/dynamic_decode>`_
+        `documentation
+        <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/dynamic_decode>`_
         for the TensorFlow counterpart.
 
         Returns:

@@ -72,11 +72,12 @@ def reverse_sequence(inputs: torch.Tensor,
     outputs = inputs.clone()
     for i in range(batch_size):
         outputs[i][0:seq_lengths[i]] = torch.flip(
-            inputs[i][0:seq_lengths[i]], dims=(0, ))
+            inputs[i][0:seq_lengths[i]], dims=(0,))
     if time_major:
         outputs = outputs.permute(1, 0, 2)
 
     return outputs
+
 
 # pylint: disable=too-many-arguments, too-many-locals
 def bidirectional_dynamic_rnn(
@@ -87,8 +88,7 @@ def bidirectional_dynamic_rnn(
         initial_state_fw: Optional[State] = None,
         initial_state_bw: Optional[State] = None,
         time_major: bool = False) -> Tuple[Tuple[torch.Tensor, torch.Tensor],
-                                           Tuple[MaybeTuple[torch.Tensor],
-                                                 MaybeTuple[torch.Tensor]]]:
+                                           Tuple[State, State]]:
     r"""Creates a dynamic version of bidirectional recurrent neural network.
 
     Takes input and builds independent forward and backward RNNs. The
@@ -193,9 +193,8 @@ def dynamic_rnn(
         cell: RNNCellBase[State],
         inputs: torch.Tensor,
         sequence_length: Optional[Union[torch.LongTensor, List[int]]] = None,
-        initial_state: Optional[MaybeTuple[torch.Tensor]] = None,
-        time_major: bool = False) -> Tuple[torch.Tensor,
-                                           MaybeTuple[torch.Tensor]]:
+        initial_state: Optional[State] = None,
+        time_major: bool = False) -> Tuple[torch.Tensor, State]:
     r"""Creates a recurrent neural network specified by RNNCell `cell`.
 
     Performs fully dynamic unrolling of `inputs`.
@@ -312,12 +311,13 @@ def dynamic_rnn(
 
     return outputs, final_state
 
+
 # pylint: disable=too-many-branches
 def _dynamic_rnn_loop(cell: RNNCellBase[State],
                       inputs: torch.Tensor,
-                      initial_state: MaybeTuple[torch.Tensor],
-                      sequence_length: torch.LongTensor) -> \
-        Tuple[torch.Tensor, MaybeTuple[torch.Tensor]]:
+                      initial_state: State,
+                      sequence_length: torch.LongTensor) \
+        -> Tuple[torch.Tensor, State]:
     r"""Internal implementation of Dynamic RNN.
 
     Args:

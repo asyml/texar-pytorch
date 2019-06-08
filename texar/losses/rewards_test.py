@@ -88,7 +88,8 @@ class RewardTest(unittest.TestCase):
                                        0.1 ** (2 - i))
             else:
                 self.assertAlmostEqual(discounted_reward_2[0, i].item(), 0)
-            self.assertAlmostEqual(discounted_reward_2[1, i].item(), 0.1 ** (4 - i))
+            self.assertAlmostEqual(discounted_reward_2[1, i].item(),
+                                   0.1 ** (4 - i))
 
     def test_discount_reward_tensor_2d(self):
         """Tests :func:`texar.losses.rewards._discount_reward_tensor_2d`
