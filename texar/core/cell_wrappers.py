@@ -115,10 +115,8 @@ class RNNCellBase(nn.Module, Generic[State]):
     def init_batch(self):
         r"""Perform batch-specific initialization routines. For most cells this
         is a no-op.
-
-        Args:
-            batch_size: int, the batch size.
         """
+        pass
 
     def zero_state(self, batch_size: int) -> State:
         r"""Return zero-filled state tensor(s).
@@ -449,7 +447,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
     """Wraps another `RNNCell` with attention."""
 
     def __init__(self,
-                 cell: nn.RNNCellBase,
+                 cell: RNNCellBase,
                  attention_mechanism: MaybeList[AttentionMechanism],
                  attention_layer_size: Optional[MaybeList[int]] = None,
                  alignment_history: bool = False,
@@ -627,7 +625,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
 
     def forward(self,  # type: ignore
                 inputs: torch.Tensor,
-                state: AttentionWrapperState,
+                state: Optional[AttentionWrapperState],
                 memory: torch.Tensor,
                 memory_sequence_length: Optional[torch.LongTensor] = None) -> \
             Tuple[torch.Tensor, AttentionWrapperState]:
@@ -668,7 +666,9 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
             TypeError: If `state` is not an instance of
                 :class:`~texar.core.AttentionWrapperState`.
         """
-        if not isinstance(state, AttentionWrapperState):
+        if state is None:
+            state = self.zero_state(batch_size=memory.shape[0])
+        elif not isinstance(state, AttentionWrapperState):
             raise TypeError("Expected state to be instance of "
                             "AttentionWrapperState. Received type %s instead."
                             % type(state))

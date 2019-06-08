@@ -42,10 +42,6 @@ __all__ = [
     'AttentionRNNDecoder',
 ]
 
-State = TypeVar('State')
-
-Output = TypeVar('Output')  # output type can be of any nested structure
-
 
 class BasicRNNDecoderOutput(NamedTuple):
     r"""The outputs of :class:`~texar.modules.BasicRNNDecoder` that include both
@@ -102,7 +98,7 @@ class AttentionRNNDecoderOutput(NamedTuple):
     r"""The attention emitted (at the previous time step/of all time steps)."""
 
 
-class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
+class BasicRNNDecoder(RNNDecoderBase[HiddenState, BasicRNNDecoderOutput]):
     r"""Basic RNN decoder.
 
     Args:
@@ -231,7 +227,8 @@ class BasicRNNDecoder(RNNDecoderBase[BasicRNNDecoderOutput]):
         return self._cell.hidden_size
 
 
-class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
+class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
+                                         AttentionRNNDecoderOutput]):
     r"""RNN decoder with attention mechanism.
 
     Args:
@@ -294,9 +291,10 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                  vocab_size: int,
                  cell: Optional[RNNCellBase] = None,
                  output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
-                 cell_input_fn: Optional[Callable[[torch.Tensor],
-                                         torch.Tensor]] = None,
+                 cell_input_fn: Optional[Callable[[torch.Tensor, torch.Tensor],
+                                                  torch.Tensor]] = None,
                  hparams: Optional[HParams] = None):
+
         super().__init__(cell=cell,
                          input_size=input_size,
                          vocab_size=vocab_size,
@@ -347,7 +345,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                     else attn_hparams["attention_layer_size"],
                     vocab_size)
 
-        attn_cell = AttentionWrapper(  # type: ignore
+        attn_cell = AttentionWrapper(
             self._cell,
             self.attention_mechanism,
             cell_input_fn=self._cell_input_fn,
@@ -462,33 +460,13 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         }
         return hparams
 
-    def initialize(self,  # type: ignore
-                   helper: Helper,
-                   inputs: Optional[torch.Tensor],
-                   sequence_length: Optional[torch.LongTensor],
-                   initial_state: Optional[AttentionWrapperState]) -> \
-            Tuple[torch.ByteTensor, torch.Tensor,
-                  AttentionWrapperState]:
-        initial_finished, initial_inputs = helper.initialize(
-            inputs, sequence_length)
-
-        if initial_state is None:
-            initial_state = self._cell.zero_state(
-                batch_size=self.memory.shape[0])  # type: ignore
-        return initial_finished, initial_inputs, initial_state
-
-    def step(self,  # type: ignore
-             helper: Helper,
-             time: int,
-             inputs: torch.Tensor,
-             state: AttentionWrapperState) -> \
+    def step(self, helper: Helper, time: int,
+             inputs: torch.Tensor, state: Optional[AttentionWrapperState]) -> \
             Tuple[AttentionRNNDecoderOutput, AttentionWrapperState,
                   torch.Tensor, torch.ByteTensor]:
-        wrapper_outputs, wrapper_state = self._cell(inputs,
-                                                    state,
-                                                    self.memory,
-                                                    self.memory_sequence_length)
-        # Essentisally the same as in BasicRNNDecoder.step()
+        wrapper_outputs, wrapper_state = self._cell(
+            inputs, state, self.memory, self.memory_sequence_length)
+        # Essentially the same as in BasicRNNDecoder.step()
 
         logits = self._output_layer(wrapper_outputs)
         sample_ids = helper.sample(time=time, outputs=logits)
@@ -516,7 +494,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
                 max_decoding_length: Optional[int] = None,
                 impute_finished: bool = False,
                 infer_mode: Optional[bool] = None, **kwargs) \
-            -> Tuple[Output, Optional[AttentionWrapperState], torch.LongTensor]:
+            -> Tuple[AttentionRNNDecoderOutput,
+                     Optional[AttentionWrapperState], torch.LongTensor]:
         r"""Performs decoding.
 
         Implementation calls initialize() once and step() repeatedly on the
@@ -613,13 +592,17 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
             if max_decoding_length is None:
                 max_decoding_length = utils.MAX_SEQ_LENGTH
 
-        return self.dynamic_decode(  # type: ignore
+        outputs, final_state, sequence_lengths = self.dynamic_decode(
             helper, inputs, sequence_length, initial_state,
             max_decoding_length, impute_finished)
+
+        self.memory = None
+        self.memory_sequence_length = None
+
+        return outputs, final_state, sequence_lengths
 
     @property
     def output_size(self):
         r"""Output size of one step.
         """
         return self._cell.output_size
-
