@@ -31,8 +31,8 @@ def write_paired_text(src, tgt, fname, append=False, mode='h', sep='\t',
     """Writes paired text to a file.
 
     Args:
-        src: A list (or array) of `str` source text.
-        tgt: A list (or array) of `str` target text.
+        src: A list (or array) of ``str`` source text.
+        tgt: A list (or array) of ``str`` target text.
         fname (str): The output filename.
         append (bool): Whether append content to the end of the file if exists.
         mode (str): The mode of writing, with the following options:
@@ -43,7 +43,7 @@ def write_paired_text(src, tgt, fname, append=False, mode='h', sep='\t',
                     source_1 target_1
                     source_2 target_2
 
-            - **'v'**: The "vertical" mode. Each source target pair is \
+            - **'v'**: The ``"vertical"`` mode. Each source target pair is \
                 written in two consecutive lines, e.g::
 
                     source_1
@@ -53,22 +53,22 @@ def write_paired_text(src, tgt, fname, append=False, mode='h', sep='\t',
 
             - **'s'**: The "separate" mode. Each source target pair is \
                     written in corresponding lines of two files named \
-                    as `"{fname}.{src_fname_suffix}"` \
-                    and `"{fname}.{tgt_fname_suffix}"`, respectively.
+                    as ``"{fname}.{src_fname_suffix}"`` \
+                    and ``"{fname}.{tgt_fname_suffix}"``, respectively.
 
         sep (str): The string intervening between source and target. Used
-            when :attr:`mode` is set to 'h'.
-        src_fname_suffix (str): Used when :attr:`mode` is 's'. The suffix to
-            the source output filename. E.g., with
-            `(fname='output', src_fname_suffix='src')`, the output source file
-            is named as `output.src`.
-        tgt_fname_suffix (str): Used when :attr:`mode` is 's'. The suffix to
-            the target output filename.
+            when :attr:`mode` is set to ``"h"``.
+        src_fname_suffix (str): Used when :attr:`mode` is ``"s"``. The suffix
+            to the source output filename. E.g., with
+            ``(fname='output', src_fname_suffix='src')``, the output source
+            file is named as ``output.src``.
+        tgt_fname_suffix (str): Used when :attr:`mode` is ``"s"``. The suffix
+            to the target output filename.
 
     Returns:
-        The fileanme(s). If `mode` == 'h' or 'v', returns
-        :attr:`fname`. If `mode` == 's', returns a list of filenames
-        `["{fname}.src", "{fname}.tgt"]`.
+        The fileanme(s). If ``mode`` == ``"h"`` or ``"v"``, returns
+        :attr:`fname`. If ``mode`` == ``"s"``, returns a list of filenames
+        ``["{fname}.src", "{fname}.tgt"]``.
     """
     fmode = 'a' if append else 'w'
     if mode == 's':

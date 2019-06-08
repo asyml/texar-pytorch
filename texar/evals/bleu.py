@@ -44,16 +44,17 @@ __all__ = [
 
 def _get_ngrams(segment: str,
                 max_order: int) -> Counter[Tuple[str, ...]]:
-    r"""Extracts all n-grams up to a given maximum order from an input segment.
+    r"""Extracts all n-grams up to a given maximum order from an
+    input segment.
 
     Args:
         segment: text segment from which n-grams will be extracted.
-        max_order: maximum length in tokens of the n-grams returned by this
-            methods.
+        max_order: maximum length in tokens of the n-grams returned
+            by this methods.
 
     Returns:
-        The Counter containing all n-grams upto max_order in segment
-        with a count of how many times each n-gram occurred.
+        The Counter containing all n-grams upto :attr:`max_order`
+        in segment with a count of how many times each n-gram occurred.
     """
     ngram_counts: collections.Counter = collections.Counter()
     for order in range(1, max_order + 1):
@@ -90,17 +91,20 @@ def sentence_bleu(references: List[MaybeList[str]],
             Each hypothesis can be either a list of string tokens, or a
             string containing tokenized tokens separated with whitespaces.
             List can also be numpy array.
-        lowercase (bool): If `True`, lowercase reference and hypothesis tokens.
-        max_order (int): Maximum n-gram order to use when computing BLEU score.
+        lowercase (bool): If ``True``, lowercase reference and hypothesis tokens.
+        max_order (int): Maximum n-gram order to use when computing
+            BLEU score.
         smooth (bool): Whether or not to apply (Lin et al. 2004) smoothing.
-        return_all (bool): If `True`, returns BLEU and all n-gram precisions.
+        return_all (bool): If ``True``, returns BLEU and all
+            n-gram precisions.
 
     Returns:
-        If :attr:`return_all` is `False` (default), returns a float32
+        If :attr:`return_all` is ``False`` (default), returns a float32
         BLEU score.
 
-        If :attr:`return_all` is `True`, returns a list of float32 scores:
-        `[BLEU] + n-gram precisions`, which is of length :attr:`max_order` +1.
+        If :attr:`return_all` is ``True``, returns a list of float32
+        ``[BLEU] + n-gram precisions``, which is of length :attr:`max_order`
+        +1.
     """
     return corpus_bleu([references],
                        [hypothesis],
@@ -127,17 +131,21 @@ def corpus_bleu(list_of_references: List[List[MaybeList[str]]],
             Each hypothesis can be either a list of string tokens, or a
             string containing tokenized tokens separated with whitespaces.
             List can also be numpy array.
-        lowercase (bool): If `True`, lowercase reference and hypothesis tokens.
-        max_order (int): Maximum n-gram order to use when computing BLEU score.
+        lowercase (bool): If ``True``, lowercase reference and hypothesis
+            tokens.
+        max_order (int): Maximum n-gram order to use when computing
+            BLEU score.
         smooth (bool): Whether or not to apply (Lin et al. 2004) smoothing.
-        return_all (bool): If `True`, returns BLEU and all n-gram precisions.
+        return_all (bool): If ``True``, returns BLEU and all
+            n-gram precisions.
 
     Returns:
-        If :attr:`return_all` is `False` (default), returns a float32
+        If :attr:`return_all` is ``False`` (default), returns a ``float32``
         BLEU score.
 
-        If :attr:`return_all` is `True`, returns a list of float32 scores:
-        `[BLEU] + n-gram precisions`, which is of length :attr:`max_order` +1.
+        If :attr:`return_all` is ``True``, returns a list of
+        ``float32`` scores: ``[BLEU] + n-gram precisions``,
+        which is of length :attr:`max_order` +1.
     """
     list_of_references = compat_as_text(list_of_references)
     hypotheses = compat_as_text(hypotheses)

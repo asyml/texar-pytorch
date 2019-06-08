@@ -37,7 +37,7 @@ class _SingleAverageRecorder:
     records) of a single metric.
 
     Args:
-        size (int, optional): The window size of moving average. If `None`,
+        size (int, optional): The window size of moving average. If ``None``,
             the average of all added records is maintained.
         name (str, optional): name of the recorder. Used when printing.
     """
@@ -58,8 +58,8 @@ class _SingleAverageRecorder:
         Args:
             record: A scalar; the new record to append.
             weight (optional): A scalar, weight of the new record for
-                calculating a weighted average. If `None`, weight is set to
-                `1`.
+                calculating a weighted average. If ``None``, weight is set to
+                ``1``.
                 For example, :attr:`weight` can be set to batch size and
                 :attr:`record` the average value of certain metric on the batch
                 in order to calculate the average metric value on a whole
@@ -102,7 +102,7 @@ class _SingleAverageRecorder:
 
         Args:
             precision (int, optional): The number of decimal places to keep in
-                the returned string. E.g., for an average value of `0.1234`,
+                the returned string. E.g., for an average value of ``0.1234``,
                 :python:`precision = 2` leads to ``"0.12"``.
 
         Returns:
@@ -134,7 +134,7 @@ class AverageRecorder:
     Fields are determined by the first call of :meth:`add`.
 
     Args:
-        size (int, optional): The window size of moving average. If `None`,
+        size (int, optional): The window size of moving average. If ``None``,
             the average of all added records is maintained.
 
     Example:
@@ -186,7 +186,7 @@ class AverageRecorder:
     def add(self, record: Record, weight: Optional[Scalar] = None):
         r"""Appends a new record.
 
-        :attr:`record` can be a `list`, `dict`, or a single scalar. The
+        :attr:`record` can be a ``list``, ``dict``, or a single scalar. The
         record type is determined at the first time :meth:`add` is called.
         All subsequent calls to :meth:`add` must have the same type of
         :attr:`record`.
@@ -205,8 +205,8 @@ class AverageRecorder:
         Args:
             record: A single scalar, a list of scalars, or a dict of scalars.
             weight (optional): A scalar, weight of the new record for
-                calculating a weighted average. If `None`, weight is set to
-                `1`.
+                calculating a weighted average. If ``None``, weight is set to
+                ``1``.
                 For example, :attr:`weight` can be set to batch size and
                 :attr:`record` the average value of certain metrics on the batch
                 in order to calculate the average metric values on a whole
@@ -240,8 +240,8 @@ class AverageRecorder:
 
         Args:
             id_or_name (optional): A list of or a single element.
-                Each element is the index (if the record type is `list`) or
-                name (if the record type is `dict`) of the field for which
+                Each element is the index (if the record type is ``list``) or
+                name (if the record type is ``dict``) of the field for which
                 the average is calculated. If not given, the average of all
                 fields are returned.
 
@@ -279,9 +279,9 @@ class AverageRecorder:
 
         Args:
             id_or_name (optional): A list or a single element. Each element is
-                the index (if the record type is `list`) or name (if the
-                record type is `dict`) of the field to reset.
-                If `None`, all fields are reset.
+                the index (if the record type is ``list``) or name (if the
+                record type is ``dict``) of the field to reset.
+                If ``None``, all fields are reset.
         """
         keys = id_or_name
         if keys is None:
@@ -298,7 +298,7 @@ class AverageRecorder:
 
         Args:
             precision (int, optional): The number of decimal places to keep in
-                the returned string. E.g., for an average value of `0.1234`,
+                the returned string. E.g., for an average value of ``0.1234``,
                 :python:`precision = 2` leads to ``"0.12"``.
             delimiter (str): The delimiter string that separates between
                 fields.
@@ -306,7 +306,7 @@ class AverageRecorder:
         Returns:
             A string of the average values.
 
-            If record is of type `dict`, the string is a concatenation of
+            If record is of type ``dict``, the string is a concatenation of
             ``"field_name: average_value"``, delimited with :attr:`delimiter`.
             E.g., ``"field_name_1: 0.1234 field_name_2: 0.5678 ..."``.
 

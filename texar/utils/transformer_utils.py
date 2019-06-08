@@ -72,9 +72,9 @@ class PadRemover(object):
         r"""Remove padding from the given tensor.
 
         Args:
-            x: A Tensor of shape [dim_origin,...]
+            x: A ``Tensor`` of shape [dim_origin,...]
         Returns:
-            A tensor of shape [dim_compressed,...] with dim_compressed
+            A ``Tensor`` of shape [dim_compressed,...] with dim_compressed
             <= dim_origin
         """
         x = x.index_select(0, self.nonpad_ids)
@@ -86,9 +86,9 @@ class PadRemover(object):
         r"""Add padding back to the given tensor.
 
         Args:
-            x: A Tensor of shape [dim_compressed,...]
+            x: A ``Tensor`` of shape [dim_compressed,...]
         Returns:
-            A tensor of shape [dim_origin,...] with
+            A ``Tensor`` of shape [dim_origin,...] with
             dim_compressed >= dim_origin. The
             dim is restored from the original reference tensor
         """
