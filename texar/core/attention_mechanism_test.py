@@ -4,14 +4,14 @@ Unit tests for attention mechanism.
 
 import unittest
 
-import torch
 import numpy as np
+import torch
 
 from texar.core.attention_mechanism import *
 
 
 class AttentionMechanismTest(unittest.TestCase):
-    """Tests attention mechanism.
+    r"""Tests attention mechanism.
     """
 
     def setUp(self):
@@ -28,247 +28,207 @@ class AttentionMechanismTest(unittest.TestCase):
         self._attention_state = torch.rand(self._batch_size, self._max_time)
 
     def test_LuongAttention(self):
-        """Tests `LuongAttention`
+        r"""Tests `LuongAttention`
         """
         attention_mechanism = LuongAttention(
             num_units=self._attention_dim,
-            memory=self._memory,
-            memory_sequence_length=self._memory_sequence_length,
-        )
+            encoder_output_size=self._encoder_output_size)
 
         cell_output = torch.rand(self._batch_size, self._attention_dim)
 
-        attention, alignments, next_attention_state = compute_attention(
-            attention_mechanism=attention_mechanism,
-            cell_output=cell_output,
-            attention_state=self._attention_state,
-            attention_layer=None,
-        )
+        attention, alignments, next_attention_state = \
+            compute_attention(
+                attention_mechanism=attention_mechanism,
+                cell_output=cell_output,
+                attention_state=self._attention_state,
+                memory=self._memory,
+                attention_layer=None,
+                memory_sequence_length=self._memory_sequence_length)
 
-        self.assertEqual(
-            attention.shape,
-            torch.Size([self._batch_size, self._encoder_output_size]),
-        )
-        self.assertEqual(
-            alignments.shape, torch.Size([self._batch_size, self._max_time])
-        )
-        self.assertEqual(
-            next_attention_state.shape,
-            torch.Size([self._batch_size, self._max_time]),
-        )
+        self.assertEqual(attention.shape, torch.Size(
+            [self._batch_size, self._encoder_output_size]))
+        self.assertEqual(alignments.shape, torch.Size(
+            [self._batch_size, self._max_time]))
+        self.assertEqual(next_attention_state.shape, torch.Size(
+            [self._batch_size, self._max_time]))
         self.assertEqual(len(attention_mechanism.trainable_variables), 1)
 
         attention_mechanism = LuongAttention(
             num_units=self._attention_dim,
-            memory=self._memory,
-            memory_sequence_length=self._memory_sequence_length,
-            scale=True,
-        )
+            encoder_output_size=self._encoder_output_size,
+            scale=True)
 
         cell_output = torch.rand(self._batch_size, self._attention_dim)
 
-        attention, alignments, next_attention_state = compute_attention(
-            attention_mechanism=attention_mechanism,
-            cell_output=cell_output,
-            attention_state=self._attention_state,
-            attention_layer=None,
-        )
+        attention, alignments, next_attention_state = \
+            compute_attention(
+                attention_mechanism=attention_mechanism,
+                cell_output=cell_output,
+                attention_state=self._attention_state,
+                memory=self._memory,
+                attention_layer=None,
+                memory_sequence_length=self._memory_sequence_length)
 
-        self.assertEqual(
-            attention.shape,
-            torch.Size([self._batch_size, self._encoder_output_size]),
-        )
-        self.assertEqual(
-            alignments.shape, torch.Size([self._batch_size, self._max_time])
-        )
-        self.assertEqual(
-            next_attention_state.shape,
-            torch.Size([self._batch_size, self._max_time]),
-        )
+        self.assertEqual(attention.shape, torch.Size(
+            [self._batch_size, self._encoder_output_size]))
+        self.assertEqual(alignments.shape, torch.Size(
+            [self._batch_size, self._max_time]))
+        self.assertEqual(next_attention_state.shape, torch.Size(
+            [self._batch_size, self._max_time]))
         self.assertEqual(len(attention_mechanism.trainable_variables), 2)
 
     def test_BahdanauAttention(self):
-        """Tests BahdanauAttention
+        r"""Tests BahdanauAttention
         """
         attention_mechanism = BahdanauAttention(
             num_units=self._attention_dim,
             cell_output_size=128,
-            memory=self._memory,
-            memory_sequence_length=self._memory_sequence_length,
-        )
+            encoder_output_size=self._encoder_output_size)
 
         cell_output = torch.rand(self._batch_size, 128)
 
-        attention, alignments, next_attention_state = compute_attention(
-            attention_mechanism=attention_mechanism,
-            cell_output=cell_output,
-            attention_state=self._attention_state,
-            attention_layer=None,
-        )
+        attention, alignments, next_attention_state = \
+            compute_attention(
+                attention_mechanism=attention_mechanism,
+                cell_output=cell_output,
+                attention_state=self._attention_state,
+                memory=self._memory,
+                attention_layer=None,
+                memory_sequence_length=self._memory_sequence_length)
 
-        self.assertEqual(
-            attention.shape,
-            torch.Size([self._batch_size, self._encoder_output_size]),
-        )
-        self.assertEqual(
-            alignments.shape, torch.Size([self._batch_size, self._max_time])
-        )
-        self.assertEqual(
-            next_attention_state.shape,
-            torch.Size([self._batch_size, self._max_time]),
-        )
+        self.assertEqual(attention.shape, torch.Size(
+            [self._batch_size, self._encoder_output_size]))
+        self.assertEqual(alignments.shape, torch.Size(
+            [self._batch_size, self._max_time]))
+        self.assertEqual(next_attention_state.shape, torch.Size(
+            [self._batch_size, self._max_time]))
         self.assertEqual(len(attention_mechanism.trainable_variables), 3)
 
         attention_mechanism = BahdanauAttention(
             num_units=self._attention_dim,
             cell_output_size=128,
-            memory=self._memory,
-            memory_sequence_length=self._memory_sequence_length,
-            normalize=True,
-        )
+            encoder_output_size=self._encoder_output_size,
+            normalize=True)
 
         cell_output = torch.rand(self._batch_size, 128)
 
-        attention, alignments, next_attention_state = compute_attention(
-            attention_mechanism=attention_mechanism,
-            cell_output=cell_output,
-            attention_state=self._attention_state,
-            attention_layer=None,
-        )
+        attention, alignments, next_attention_state = \
+            compute_attention(
+                attention_mechanism=attention_mechanism,
+                cell_output=cell_output,
+                attention_state=self._attention_state,
+                memory=self._memory,
+                attention_layer=None,
+                memory_sequence_length=self._memory_sequence_length)
 
-        self.assertEqual(
-            attention.shape,
-            torch.Size([self._batch_size, self._encoder_output_size]),
-        )
-        self.assertEqual(
-            alignments.shape, torch.Size([self._batch_size, self._max_time])
-        )
-        self.assertEqual(
-            next_attention_state.shape,
-            torch.Size([self._batch_size, self._max_time]),
-        )
+        self.assertEqual(attention.shape, torch.Size(
+            [self._batch_size, self._encoder_output_size]))
+        self.assertEqual(alignments.shape, torch.Size(
+            [self._batch_size, self._max_time]))
+        self.assertEqual(next_attention_state.shape, torch.Size(
+            [self._batch_size, self._max_time]))
         self.assertEqual(len(attention_mechanism.trainable_variables), 5)
 
     def test_LuongMonotonicAttention(self):
-        """Tests LuongMonotonicAttention
+        r"""Tests LuongMonotonicAttention
         """
         attention_mechanism = LuongMonotonicAttention(
             num_units=self._attention_dim,
-            memory=self._memory,
-            memory_sequence_length=self._memory_sequence_length,
-        )
+            encoder_output_size=self._encoder_output_size)
 
         cell_output = torch.rand(self._batch_size, self._attention_dim)
 
-        attention, alignments, next_attention_state = compute_attention(
-            attention_mechanism=attention_mechanism,
-            cell_output=cell_output,
-            attention_state=self._attention_state,
-            attention_layer=None,
-        )
+        attention, alignments, next_attention_state = \
+            compute_attention(
+                attention_mechanism=attention_mechanism,
+                cell_output=cell_output,
+                attention_state=self._attention_state,
+                memory=self._memory,
+                attention_layer=None,
+                memory_sequence_length=self._memory_sequence_length)
 
-        self.assertEqual(
-            attention.shape,
-            torch.Size([self._batch_size, self._encoder_output_size]),
-        )
-        self.assertEqual(
-            alignments.shape, torch.Size([self._batch_size, self._max_time])
-        )
-        self.assertEqual(
-            next_attention_state.shape,
-            torch.Size([self._batch_size, self._max_time]),
-        )
+        self.assertEqual(attention.shape, torch.Size(
+            [self._batch_size, self._encoder_output_size]))
+        self.assertEqual(alignments.shape, torch.Size(
+            [self._batch_size, self._max_time]))
+        self.assertEqual(next_attention_state.shape, torch.Size(
+            [self._batch_size, self._max_time]))
         self.assertEqual(len(attention_mechanism.trainable_variables), 2)
 
         attention_mechanism = LuongMonotonicAttention(
             num_units=self._attention_dim,
-            memory=self._memory,
-            memory_sequence_length=self._memory_sequence_length,
-            scale=True,
-        )
+            encoder_output_size=self._encoder_output_size,
+            scale=True)
 
         cell_output = torch.rand(self._batch_size, self._attention_dim)
 
-        attention, alignments, next_attention_state = compute_attention(
-            attention_mechanism=attention_mechanism,
-            cell_output=cell_output,
-            attention_state=self._attention_state,
-            attention_layer=None,
-        )
+        attention, alignments, next_attention_state = \
+            compute_attention(
+                attention_mechanism=attention_mechanism,
+                cell_output=cell_output,
+                attention_state=self._attention_state,
+                memory=self._memory,
+                attention_layer=None,
+                memory_sequence_length=self._memory_sequence_length)
 
-        self.assertEqual(
-            attention.shape,
-            torch.Size([self._batch_size, self._encoder_output_size]),
-        )
-        self.assertEqual(
-            alignments.shape, torch.Size([self._batch_size, self._max_time])
-        )
-        self.assertEqual(
-            next_attention_state.shape,
-            torch.Size([self._batch_size, self._max_time]),
-        )
+        self.assertEqual(attention.shape, torch.Size(
+            [self._batch_size, self._encoder_output_size]))
+        self.assertEqual(alignments.shape, torch.Size(
+            [self._batch_size, self._max_time]))
+        self.assertEqual(next_attention_state.shape, torch.Size(
+            [self._batch_size, self._max_time]))
         self.assertEqual(len(attention_mechanism.trainable_variables), 3)
 
     def test_BahdanauMonotonicAttention(self):
-        """Tests BahdanauMonotonicAttention
+        r"""Tests BahdanauMonotonicAttention
         """
         attention_mechanism = BahdanauMonotonicAttention(
             num_units=self._attention_dim,
             cell_output_size=128,
-            memory=self._memory,
-            memory_sequence_length=self._memory_sequence_length,
-        )
+            encoder_output_size=self._encoder_output_size)
 
         cell_output = torch.rand(self._batch_size, 128)
 
-        attention, alignments, next_attention_state = compute_attention(
-            attention_mechanism=attention_mechanism,
-            cell_output=cell_output,
-            attention_state=self._attention_state,
-            attention_layer=None,
-        )
+        attention, alignments, next_attention_state = \
+            compute_attention(
+                attention_mechanism=attention_mechanism,
+                cell_output=cell_output,
+                attention_state=self._attention_state,
+                memory=self._memory,
+                attention_layer=None,
+                memory_sequence_length=self._memory_sequence_length)
 
-        self.assertEqual(
-            attention.shape,
-            torch.Size([self._batch_size, self._encoder_output_size]),
-        )
-        self.assertEqual(
-            alignments.shape, torch.Size([self._batch_size, self._max_time])
-        )
-        self.assertEqual(
-            next_attention_state.shape,
-            torch.Size([self._batch_size, self._max_time]),
-        )
+        self.assertEqual(attention.shape, torch.Size(
+            [self._batch_size, self._encoder_output_size]))
+        self.assertEqual(alignments.shape, torch.Size(
+            [self._batch_size, self._max_time]))
+        self.assertEqual(next_attention_state.shape, torch.Size(
+            [self._batch_size, self._max_time]))
         self.assertEqual(len(attention_mechanism.trainable_variables), 4)
 
         attention_mechanism = BahdanauMonotonicAttention(
             num_units=self._attention_dim,
             cell_output_size=128,
-            memory=self._memory,
-            memory_sequence_length=self._memory_sequence_length,
-            normalize=True,
-        )
+            encoder_output_size=self._encoder_output_size,
+            normalize=True)
 
         cell_output = torch.rand(self._batch_size, 128)
 
-        attention, alignments, next_attention_state = compute_attention(
-            attention_mechanism=attention_mechanism,
-            cell_output=cell_output,
-            attention_state=self._attention_state,
-            attention_layer=None,
-        )
+        attention, alignments, next_attention_state = \
+            compute_attention(
+                attention_mechanism=attention_mechanism,
+                cell_output=cell_output,
+                attention_state=self._attention_state,
+                memory=self._memory,
+                attention_layer=None,
+                memory_sequence_length=self._memory_sequence_length)
 
-        self.assertEqual(
-            attention.shape,
-            torch.Size([self._batch_size, self._encoder_output_size]),
-        )
-        self.assertEqual(
-            alignments.shape, torch.Size([self._batch_size, self._max_time])
-        )
-        self.assertEqual(
-            next_attention_state.shape,
-            torch.Size([self._batch_size, self._max_time]),
-        )
+        self.assertEqual(attention.shape, torch.Size(
+            [self._batch_size, self._encoder_output_size]))
+        self.assertEqual(alignments.shape, torch.Size(
+            [self._batch_size, self._max_time]))
+        self.assertEqual(next_attention_state.shape, torch.Size(
+            [self._batch_size, self._max_time]))
         self.assertEqual(len(attention_mechanism.trainable_variables), 6)
 
 

@@ -25,7 +25,6 @@ import torch
 from torch import nn
 
 from texar.core import RNNCellBase, layers
-from texar.core.cell_wrappers import HiddenState
 from texar.hyperparams import HParams
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
@@ -36,10 +35,11 @@ __all__ = [
     'RNNDecoderBase',
 ]
 
+State = TypeVar('State')
 Output = TypeVar('Output')  # output type can be of any nested structure
 
 
-class RNNDecoderBase(DecoderBase[HiddenState, Output]):
+class RNNDecoderBase(DecoderBase[State, Output]):
     r"""Base class inherited by all RNN decoder classes.
     See :class:`~texar.modules.BasicRNNDecoder` for the arguments.
 
@@ -86,21 +86,15 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
             "output_layer_bias": True,
         }
 
-    @classmethod
-    def _get_batch_size_from_state(cls, state: HiddenState) -> int:
-        if isinstance(state, (list, tuple)):
-            return cls._get_batch_size_from_state(state[0])
-        return state.size(0)
-
     def forward(self,  # type: ignore
                 inputs: Optional[torch.Tensor] = None,
                 sequence_length: Optional[torch.LongTensor] = None,
-                initial_state: Optional[HiddenState] = None,
+                initial_state: Optional[State] = None,
                 helper: Optional[Helper] = None,
                 max_decoding_length: Optional[int] = None,
                 impute_finished: bool = False,
                 infer_mode: Optional[bool] = None, **kwargs) \
-            -> Tuple[Output, Optional[HiddenState], torch.LongTensor]:
+            -> Tuple[Output, Optional[State], torch.LongTensor]:
         r"""Performs decoding. This is a shared interface for both
         :class:`~texar.modules.BasicRNNDecoder` and
         :class:`~texar.modules.AttentionRNNDecoder`.
@@ -205,16 +199,16 @@ class RNNDecoderBase(DecoderBase[HiddenState, Output]):
 
     def initialize(self, helper: Helper, inputs: Optional[torch.Tensor],
                    sequence_length: Optional[torch.LongTensor],
-                   initial_state: Optional[HiddenState]) \
-            -> Tuple[torch.ByteTensor, torch.Tensor, HiddenState]:
+                   initial_state: Optional[State]) \
+            -> Tuple[torch.ByteTensor, torch.Tensor, Optional[State]]:
         initial_finished, initial_inputs = helper.initialize(
             inputs, sequence_length)
         state = initial_state or self._cell.init_batch()
         return (initial_finished, initial_inputs, state)
 
     def step(self, helper: Helper, time: int,
-             inputs: torch.Tensor, state: Optional[HiddenState]) \
-            -> Tuple[Output, HiddenState, torch.Tensor, torch.ByteTensor]:
+             inputs: torch.Tensor, state: Optional[State]) \
+            -> Tuple[Output, State, torch.Tensor, torch.ByteTensor]:
         raise NotImplementedError
 
     @property

@@ -444,7 +444,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
     def initialize(self, helper: Helper, inputs: Optional[torch.Tensor],
                    sequence_length: Optional[torch.LongTensor],
                    initial_state: Optional[State]) \
-            -> Tuple[torch.ByteTensor, torch.Tensor, State]:
+            -> Tuple[torch.ByteTensor, torch.Tensor, Optional[State]]:
         r"""Called before any decoding iterations.
 
         This methods must compute initial input values and initial state.
