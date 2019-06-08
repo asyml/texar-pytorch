@@ -675,44 +675,44 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             - By default (both ``return_cell_output`` and ``return_output_size``
               are ``False``), returns a pair :attr:`(outputs, final_state)`
 
-                - :attr:`outputs`: A tuple ``(outputs_fw, outputs_bw)``
-                  containing the forward and the backward RNN outputs, each of
-                  which is of shape ``[batch_size, max_time, output_dim]``
-                  if ``time_major`` is ``False``, or
-                  ``[max_time, batch_size, output_dim]`` if ``time_major``
-                  is ``True``.
-                  If RNN cell output is a (nested) tuple of Tensors, then
-                  ``outputs_fw`` and ``outputs_bw`` will be a (nested) tuple
-                  having the same structure as the cell output.
+              - :attr:`outputs`: A tuple ``(outputs_fw, outputs_bw)``
+                containing the forward and the backward RNN outputs, each of
+                which is of shape ``[batch_size, max_time, output_dim]``
+                if ``time_major`` is ``False``, or
+                ``[max_time, batch_size, output_dim]`` if ``time_major``
+                is ``True``.
+                If RNN cell output is a (nested) tuple of Tensors, then
+                ``outputs_fw`` and ``outputs_bw`` will be a (nested) tuple
+                having the same structure as the cell output.
 
-                - :attr:`final_state`: A tuple
-                  ``(final_state_fw, final_state_bw)`` containing the final
-                  states of the forward and backward RNNs, each of which is a
-                  Tensor of shape ``[batch_size] + cell.state_size``, or a
-                  (nested) tuple of Tensors if ``cell.state_size`` is a (nested)
-                  tuple.
+              - :attr:`final_state`: A tuple
+                ``(final_state_fw, final_state_bw)`` containing the final
+                states of the forward and backward RNNs, each of which is a
+                Tensor of shape ``[batch_size] + cell.state_size``, or a
+                (nested) tuple of Tensors if ``cell.state_size`` is a (nested)
+                tuple.
 
             - If ``return_cell_output`` is ``True``, returns a triple
               :attr:`(outputs, final_state, cell_outputs)` where
 
-                - :attr:`cell_outputs`: A tuple
-                  ``(cell_outputs_fw, cell_outputs_bw)`` containing the outputs
-                  by the forward and backward RNN cells prior to the output
-                  layers, having the same structure with :attr:`outputs` except
-                  for the ``output_dim``.
+              - :attr:`cell_outputs`: A tuple
+                ``(cell_outputs_fw, cell_outputs_bw)`` containing the outputs
+                by the forward and backward RNN cells prior to the output
+                layers, having the same structure with :attr:`outputs` except
+                for the ``output_dim``.
 
             - If ``return_output_size`` is ``True``, returns a tuple
               :attr:`(outputs, final_state, output_size)` where
 
-                - :attr:`output_size`: A tuple
-                  ``(output_size_fw, output_size_bw)`` containing the size of
-                  ``outputs_fw`` and ``outputs_bw``, respectively.
-                  Take ``*_fw`` for example, ``output_size_fw`` is a (possibly
-                  nested tuple of) int. If a single int or an int array, then
-                  ``outputs_fw`` has shape
-                  ``[batch/time, time/batch] + output_size_fw``. If a (nested)
-                  tuple, then ``output_size_fw`` has the same structure as
-                  ``outputs_fw``. The same applies to ``output_size_bw``.
+              - :attr:`output_size`: A tuple
+                ``(output_size_fw, output_size_bw)`` containing the size of
+                ``outputs_fw`` and ``outputs_bw``, respectively.
+                Take ``*_fw`` for example, ``output_size_fw`` is a (possibly
+                nested tuple of) int. If a single int or an int array, then
+                ``outputs_fw`` has shape
+                ``[batch/time, time/batch] + output_size_fw``. If a (nested)
+                tuple, then ``output_size_fw`` has the same structure as
+                ``outputs_fw``. The same applies to ``output_size_bw``.
 
             - If both ``return_cell_output`` and ``return_output_size`` are
               ``True``, returns

@@ -33,7 +33,7 @@ def load_word2vec(filename: str, vocab: Dict[str, int],
     """Loads embeddings in the word2vec binary format which has a header line
     containing the number of vectors and their dimensionality (two integers),
     followed with number-of-vectors lines each of which is formatted as
-    '<word-string> <embedding-vector>'.
+    ``<word-string> <embedding-vector>``.
 
     Args:
         filename (str): Path to the embedding file.
@@ -72,7 +72,7 @@ def load_word2vec(filename: str, vocab: Dict[str, int],
 def load_glove(filename: str, vocab: Dict[str, int],
                word_vecs: np.ndarray) -> np.ndarray:
     """Loads embeddings in the glove text format in which each line is
-    '<word-string> <embedding-vector>'. Dimensions of the embedding vector
+    ``<word-string> <embedding-vector>``. Dimensions of the embedding vector
     are separated with whitespace characters.
 
     Args:

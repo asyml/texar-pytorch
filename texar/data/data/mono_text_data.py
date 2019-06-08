@@ -80,19 +80,19 @@ class MonoTextData(TextDataBase[str, List[str]]):
     batching and other pre-processing steps, and results in a TF Dataset
     whose element is a python `dict` including three fields:
 
-    "text":
-        A list of ``[batch_size]`` elements each containing a list of **raw**
-        text tokens of the sequences. Short sequences in the batch are
-        padded with **empty string**. By default only ``EOS`` token is appended
-        to each sequence. Out-of-vocabulary tokens are **NOT** replaced with
-        ``UNK``.
-    "text_ids":
-        A list of ``[batch_size]`` elements each containing a list of token
-        indexes of source sequences in the batch
-    "length":
-        A list of ``[batch_size]`` elements of ints containing the length of
-        each source sequence in the batch (including ``BOS`` and ``EOS`` if
-        added).
+        "text":
+            A list of ``[batch_size]`` elements each containing a list of
+            **raw** text tokens of the sequences. Short sequences in the batch
+            are padded with **empty string**. By default only ``EOS`` token is
+            appended to each sequence. Out-of-vocabulary tokens are **NOT**
+            replaced with ``UNK``.
+        "text_ids":
+            A list of ``[batch_size]`` elements each containing a list of token
+            indexes of source sequences in the batch.
+        "length":
+            A list of ``[batch_size]`` elements of ints containing the length
+            of each source sequence in the batch (including ``BOS`` and ``EOS``
+            if added).
 
     The above field names can be accessed through :attr:`text_name`,
     :attr:`text_id_name`, :attr:`length_name`.

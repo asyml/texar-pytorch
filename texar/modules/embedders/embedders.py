@@ -41,8 +41,8 @@ class WordEmbedder(EmbedderBase):
 
             If ``None``, embedding is initialized as specified in
             ``hparams["initializer"]``. Otherwise, the
-            ``"initializer"`` and ``"dim"``
-            hyperparameters in :attr:`hparams` are ignored.
+            ``"initializer"`` and ``"dim"`` hyperparameters in :attr:`hparams`
+            are ignored.
         vocab_size (int, optional): The vocabulary size. Required if
             :attr:`init_value` is not given.
         hparams (dict, optional): Embedder hyperparameters. Missing

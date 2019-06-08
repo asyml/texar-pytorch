@@ -394,9 +394,12 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         Here:
 
             "num_epochs" : int
-                Number of times the dataset should be repeated. This option only
-                exists for compatibility, and will be ignored. A warning will be
-                generated is any value other than 1 is used.
+                Number of times the dataset should be repeated.
+
+                .. note::
+                    This option only exists for compatibility, and will be
+                    ignored. A warning will be generated is any value other than
+                    1 is used.
 
             "batch_size" : int
                 Batch size, i.e., the number of consecutive elements of the
@@ -429,12 +432,26 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 If `True`, :attr:`shuffle_buffer_size` must be specified to
                 determine the size of each shard.
 
+                .. warning::
+                    Sharding is not yet supported. This option will be ignored.
+
             "num_parallel_calls" : int
                 Number of elements from the datasets to process in parallel.
+                When ``"num_parallel_calls"`` equals 1, no worker threads will
+                be created; however, when the value is greater than 1, the
+                number of worker threads will be equal to
+                ``"num_parallel_calls"``.
 
             "prefetch_buffer_size" : int
                 The maximum number of elements that will be buffered when
                 prefetching.
+
+                .. note::
+                    This option exists only for compatibility. Currently data
+                    is only prefetched when ``"num_parallel_calls"`` is greater
+                    than 1, and the number of examples to prefetch is controlled
+                    internally by PyTorch :torch_docs:`DataLoader
+                    <utils.html#torch.utils.data.DataLoader>`.
 
             max_dataset_size : int
                 Maximum number of instances to include in
@@ -448,11 +465,9 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 Note that if a seed is set, the shuffle order will be exact
                 the same every time when going through the (repeated) dataset.
 
-                For example, consider a dataset with elements [1, 2, 3], with
-                "num_epochs"`=2` and some fixed seed, the resulting sequence
-                can be: `2 1 3, 1 3 2 | 2 1 3, 1 3 2, ...` That is, the orders
-                are different **within** every `num_epochs`, but are the same
-                **across** the `num_epochs`.
+                .. warning::
+                    Manual seeding is not yet supported. This option will be
+                    ignored.
 
             name : str
                 Name of the data.
@@ -700,14 +715,17 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         return self._source
 
     def _collate(self, examples: List[Example]) -> Batch:
-        r"""Create a `collate_fn` for :class:`~torch.utils.data.DataLoader` that
-        is used to collate (combine) examples into batches. The function takes a
-        list of processed examples, and returns an instance of
-        :class:`~texar.data.data.Batch`.
+        r"""The collate routine. Subclasses must implement this method.
+
+        The collate routine is called to collate (combine) examples into
+        batches. This function takes a list of processed examples, and returns
+        an instance of :class:`~texar.data.data.Batch`.
 
         Implementation should make sure that the returned callable is safe and
         efficient under multi-processing scenarios. Basically, do not rely on
-        attributes of `self` that could be modified during iteration.
+        variables that could be modified during iteration, and avoid accessing
+        unnecessary variables, as each access would result in a cross-process
+        memory copy.
 
         Args:
             examples: A list of processed examples in a batch.

@@ -46,6 +46,10 @@ Data
 .. autoclass:: texar.data.DataBase
     :members:
 
+    .. automethod:: _process
+
+    .. automethod:: _collate
+
 :hidden:`MonoTextData`
 ~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -15,6 +15,11 @@ h1, h2, .rst-content .toctree-wrapper p.caption, h3, h4, h5, h6, legend, p.capti
     font-weight: normal;
 }
 
+.rst-content table.docutils td p,
+.rst-content table.field-list td p {
+    font-size: inherit;
+}
+
 /* Literal color */
 .rst-content tt.literal, .rst-content tt.literal, .rst-content code.literal {
     color: #DB2407;
@@ -62,3 +67,4 @@ h1, h2, .rst-content .toctree-wrapper p.caption, h3, h4, h5, h6, legend, p.capti
 
 nav .hidden-section {
     display: inherit;
+}
