@@ -28,13 +28,12 @@ from texar.core.attention_mechanism import *
 from texar.core.cell_wrappers import AttentionWrapper
 from texar.core.cell_wrappers import HiddenState
 from texar.hyperparams import HParams
+from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.modules.decoders.rnn_decoder_base import RNNDecoderBase
+from texar.utils import utils
 from texar.utils.types import MaybeTuple
 from texar.utils.utils import check_or_get_instance, get_function
-
-from texar.modules.decoders import decoder_helpers
-from texar.utils import utils
 
 __all__ = [
     'BasicRNNDecoderOutput',
@@ -357,6 +356,9 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         self._cell = attn_cell
         self._cell: AttentionWrapper
 
+        self.memory: Optional[torch.Tensor] = None
+        self.memory_sequence_length: Optional[torch.LongTensor] = None
+
     @staticmethod
     def default_hparams():
         r"""Returns a dictionary of hyperparameters with default values:
@@ -470,9 +472,9 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionRNNDecoderOutput]):
         initial_finished, initial_inputs = helper.initialize(
             inputs, sequence_length)
 
-        initial_state = self._cell.zero_state(
-            batch_size=self.memory.shape[0],
-            max_time=self.memory.shape[1])
+        if initial_state is None:
+            initial_state = self._cell.zero_state(
+                batch_size=self.memory.shape[0])  # type: ignore
         return initial_finished, initial_inputs, initial_state
 
     def step(self,  # type: ignore

@@ -585,9 +585,8 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
         else:
             return self._cell.hidden_size
 
-    def zero_state(self,  # type: ignore
-                   batch_size: int,
-                   max_time: int) -> AttentionWrapperState:
+    def zero_state(self,
+                   batch_size: int) -> AttentionWrapperState:
         r"""Return an initial (zero) state tuple for this
         :class:`AttentionWrapper`.
         ..note::
@@ -598,7 +597,6 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
 
         Args:
             batch_size: `0D` integer tensor: the batch size.
-            max_time: `0D` integer tensor: the max_time.
 
         Returns:
             An :class:`~texar.core.AttentionWrapperState` tuple containing
@@ -612,11 +610,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
         cell_state: torch.Tensor = super().zero_state(  # type: ignore
             batch_size)
 
-        initial_alignments = [
-            attention_mechanism.initial_alignments(batch_size, max_time,
-                                                   self._param.dtype,
-                                                   self._param.device)
-            for attention_mechanism in self._attention_mechanisms]
+        initial_alignments = [None for _ in self._attention_mechanisms]
 
         alignment_history: List[List[Optional[torch.Tensor]]]
         alignment_history = [[] for _ in initial_alignments]
@@ -628,11 +622,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                                             self._attention_layer_size,
                                             requires_grad=False),
             alignments=self._item_or_tuple(initial_alignments),
-            attention_state=self._item_or_tuple(
-              attention_mechanism.initial_state(batch_size, max_time,
-                                                self._param.dtype,
-                                                self._param.device)
-              for attention_mechanism in self._attention_mechanisms),
+            attention_state=self._item_or_tuple(initial_alignments),
             alignment_history=self._item_or_tuple(alignment_history))
 
     def forward(self,  # type: ignore
@@ -706,7 +696,12 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
             attention, alignments, next_attention_state = compute_attention(
                 attention_mechanism=attention_mechanism,
                 cell_output=cell_output,
-                attention_state=previous_attention_state[i],
+                attention_state=previous_attention_state[i]
+                if previous_attention_state[i] is not None
+                else attention_mechanism.initial_state(memory.shape[0],
+                                                       memory.shape[1],
+                                                       self._param.dtype,
+                                                       self._param.device),
                 attention_layer=self._attention_layers[i] if
                 self._attention_layers else None,
                 memory=memory,
