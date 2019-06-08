@@ -38,8 +38,8 @@ DatasetsType = Union[Dict[str, DataBase], MaybeSeq[DataBase]]
 class SamplerBase(torch_sampler.Sampler):
     r"""A subclass of :class:`~torch.utils.data.Sampler` that supports:
 
-        - Returning raw examples when required.
-        - Creating iterators with unknown dataset size.
+    - Returning raw examples when required.
+    - Creating iterators with unknown dataset size.
 
     This class is used internally in :class:`~texar.data.data.DataIterator`.
     It calls the :meth:`~texar.data.data.DataBase._prefetch_source` method to
@@ -221,6 +221,7 @@ class _DataLoaderIter(torch_DataLoaderIter):
     the dataset to not load/process/cache certain elements from the final batch,
     which complicates the already complex logic.
     """
+
     def __init__(self, loader: DataLoader):
         self._batch_size = loader.batch_size
         super().__init__(loader)
@@ -343,19 +344,16 @@ class SingleDatasetIterator(DataLoader):
 class DataIterator:
     r"""Data iterator that switches and iterates through multiple datasets.
 
-    This is a wrapper of TF reinitializable :tf_main:`iterator <data/Iterator>`.
+    This is a wrapper of :class:`~texar.data.SingleDatasetIterator`.
 
     Args:
         datasets: Datasets to iterate through. This can be:
 
-            - A single instance of :tf_main:`tf.data.Dataset <data/Dataset>` \
-            or instance of subclass of :class:`~texar.data.DataBase`.
-            - A `dict` that maps dataset name to \
-            instance of :tf_main:`tf.data.Dataset <data/Dataset>` or \
-            subclass of :class:`~texar.data.DataBase`.
-            - A `list` of instances of subclasses of \
-            :class:`texar.data.DataBase`. The name of instances \
-            (:attr:`texar.data.DataBase.name`) must be unique.
+            - A single instance of :class:`~texar.data.DataBase`.
+            - A `dict` that maps dataset name to instances of
+              :class:`~texar.data.DataBase`.
+            - A `list` of instances of :class:`texar.data.DataBase`. The name
+              of instances (:attr:`texar.data.DataBase.name`) must be unique.
 
     Example:
 
@@ -364,25 +362,16 @@ class DataIterator:
             train_data = MonoTextData(hparams_train)
             test_data = MonoTextData(hparams_test)
             iterator = DataIterator({'train': train_data, 'test': test_data})
-            batch = iterator.get_next()
 
-            sess = tf.Session()
+            for epoch in range(200): # Run 200 epochs of train/test
+                # Starts iterating through training data from the beginning.
+                iterator.switch_to_dataset('train')
+                for batch in iterator:
+                    ... # Do training with the batch.
 
-            for _ in range(200): # Run 200 epochs of train/test
-                # Starts iterating through training data from the beginning
-                iterator.switch_to_dataset(sess, 'train')
-                while True:
-                    try:
-                        train_batch_ = sess.run(batch)
-                    except tf.errors.OutOfRangeError:
-                        print("End of training epoch.")
                 # Starts iterating through test data from the beginning
-                iterator.switch_to_dataset(sess, 'test')
-                while True:
-                    try:
-                        test_batch_ = sess.run(batch)
-                    except tf.errors.OutOfRangeError:
-                        print("End of test epoch.")
+                for batch in iterator.get_iterator('test'):
+                    ... # Do testing with the batch.
     """
 
     # TODO: Think about whether we should support save/load.
@@ -470,8 +459,7 @@ class DataIterator:
 class TrainTestDataIterator(DataIterator):
     r"""Data iterator that alternatives between train, val, and test datasets.
 
-    :attr:`train`, :attr:`val`, and :attr:`test` can be instance of
-    either :tf_main:`tf.data.Dataset <data/Dataset>` or subclass of
+    :attr:`train`, :attr:`val`, and :attr:`test` are instances of
     :class:`~texar.data.DataBase`. At least one of them must be provided.
 
     This is a wrapper of :class:`~texar.data.DataIterator`.
@@ -488,25 +476,16 @@ class TrainTestDataIterator(DataIterator):
             train_data = MonoTextData(hparams_train)
             val_data = MonoTextData(hparams_val)
             iterator = TrainTestDataIterator(train=train_data, val=val_data)
-            batch = iterator.get_next()
 
-            sess = tf.Session()
-
-            for _ in range(200): # Run 200 epochs of train/val
-                # Starts iterating through training data from the beginning
+            for epoch in range(200): # Run 200 epochs of train/val
+                # Starts iterating through training data from the beginning.
                 iterator.switch_to_train_data(sess)
-                while True:
-                    try:
-                        train_batch_ = sess.run(batch)
-                    except tf.errors.OutOfRangeError:
-                        print("End of training epoch.")
-                # Starts iterating through val data from the beginning
-                iterator.switch_to_val_dataset(sess)
-                while True:
-                    try:
-                        val_batch_ = sess.run(batch)
-                    except tf.errors.OutOfRangeError:
-                        print("End of val epoch.")
+                for batch in iterator:
+                    ... # Do training with the batch.
+
+                # Starts iterating through val data from the beginning.
+                for batch in iterator.get_val_iterator():
+                    ... # Do validation on the batch.
     """
 
     def __init__(self, train: Optional[DataBase] = None,

@@ -64,7 +64,6 @@ __all__ = [
     'default_str',
     'uniquify_str',
     'ceildiv',
-    'straight_through',
 ]
 
 T = TypeVar('T')  # type argument
@@ -140,8 +139,9 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
                   device: Optional[torch.device] = None) -> torch.ByteTensor:
     r"""Returns a mask tensor representing the first N positions of each cell.
 
-    If `lengths` has shape `[d_1, d_2, ..., d_n]` the resulting tensor `mask`
-    has dtype `dtype` and shape `[d_1, d_2, ..., d_n, maxlen]`, with
+    If ``lengths`` has shape ``[d_1, d_2, ..., d_n]`` the resulting tensor
+    ``mask`` has dtype ``dtype`` and shape ``[d_1, d_2, ..., d_n, maxlen]``,
+    with
 
     ```
     mask[i_1, i_2, ..., i_n, j] = (j < lengths[i_1, i_2, ..., i_n])
@@ -150,32 +150,32 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
     Examples:
 
     ```python
-    tf.sequence_mask([1, 3, 2], 5)  # [[True, False, False, False, False],
-                                    #  [True, True, True, False, False],
-                                    #  [True, True, False, False, False]]
+    sequence_mask([1, 3, 2], 5)  # [[True, False, False, False, False],
+                                 #  [True,  True,  True, False, False],
+                                 #  [True,  True, False, False, False]]
 
-    tf.sequence_mask([[1, 3],[2,0]])  # [[[True, False, False],
-                                      #   [True, True, True]],
-                                      #  [[True, True, False],
-                                      #   [False, False, False]]]
+    sequence_mask([[1, 3],[2,0]])  # [[[ True, False, False],
+                                   #   [ True,  True,  True]],
+                                   #  [[ True,  True, False],
+                                   #   [False, False, False]]]
     ```
 
     Args:
         lengths: integer tensor or list of int, all its values <= max_len.
         max_len: scalar integer tensor, size of last dimension of returned
-            tensor. Default is the maximum value in `lengths`.
+            tensor. Default is the maximum value in ``lengths``.
         dtype: the desired data type of returned tensor. Default: if None,
-            returns :class:`torch.ByteTensor`.
+            returns :torch:`ByteTensor`.
         device: the desired device of returned tensor. Default: if None, uses
             the current device for the default tensor type (see
-            :meth:`torch.set_default_tensor_type()`). `device` will be the CPU
+            :meth:`torch.set_default_tensor_type()`). :attr:`device` will be CPU
             for CPU tensor types and the current CUDA device for CUDA tensor
             types.
     Returns:
-        A mask tensor of shape `lengths.shape + (maxlen,)`, cast to specified
-        dtype.
+        A mask tensor of shape :python:`lengths.shape + (maxlen,)`, cast to
+        specified dtype.
     Raises:
-        ValueError: if `maxlen` is not a scalar.
+        ValueError: if ``maxlen`` is not a scalar.
     """
     if not isinstance(lengths, torch.Tensor):
         lengths = torch.tensor(lengths, device=device)
@@ -203,7 +203,7 @@ def get_args(fn: Callable) -> List[str]:
         fn (callable): The function to inspect.
 
     Returns:
-        list: A list of argument names (str) of the function.
+        list: A list of argument names (``str``) of the function.
     """
     argspec = inspect.getfullargspec(fn)
     args = argspec.args
@@ -226,7 +226,7 @@ def get_default_arg_values(fn: Callable) -> Dict[str, Any]:
         fn (callable): The function to inspect.
 
     Returns:
-        dict: A dictionary that maps argument names (str) to their default
+        dict: A dictionary that maps argument names (``str``) to their default
         values. The dictionary is empty if no arguments have default values.
     """
     argspec = inspect.getfullargspec(fn)
@@ -279,7 +279,7 @@ def get_class(class_name: str,
         class_name (str): Name or full path to the class.
         module_paths (list): Paths to candidate modules to search for the
             class. This is used if the class cannot be located solely based on
-            `class_name`. The first module in the list that contains the class
+            ``class_name``. The first module in the list that contains the class
             is used.
 
     Returns:
@@ -313,12 +313,11 @@ def check_or_get_instance(ins_or_class_or_name: Union[Type[T], T, str],
         ins_or_class_or_name: Can be of 3 types:
 
             - A class to instantiate.
-            - A string of the name or full path to a class to \
-              instantiate.
+            - A string of the name or full path to a class to instantiate.
             - The class instance to check types.
 
         kwargs (dict): Keyword arguments for the class constructor. Ignored
-            if `ins_or_class_or_name` is a class instance.
+            if ``ins_or_class_or_name`` is a class instance.
         module_paths (list, optional): Paths to candidate modules to
             search for the class. This is used if the class cannot be
             located solely based on :attr:`class_name`. The first module
@@ -398,8 +397,7 @@ def check_or_get_instance_with_redundant_kwargs(
         ins_or_class_or_name: Can be of 3 types:
 
             - A class to instantiate.
-            - A string of the name or module path to a class to \
-              instantiate.
+            - A string of the name or module path to a class to instantiate.
             - The class instance to check types.
 
         kwargs (dict): Keyword arguments for the class constructor.
@@ -471,8 +469,8 @@ def get_instance_with_redundant_kwargs(
 
 
 def get_function(fn_or_name: Union[str, Callable[[torch.Tensor], torch.Tensor]],
-                 module_paths: Optional[List[str]] = None) -> \
-        Callable[[torch.Tensor], torch.Tensor]:
+                 module_paths: Optional[List[str]] = None) \
+        -> Callable[[torch.Tensor], torch.Tensor]:
     r"""Returns the function of specified name and module.
 
     Args:
@@ -485,6 +483,9 @@ def get_function(fn_or_name: Union[str, Callable[[torch.Tensor], torch.Tensor]],
 
     Returns:
         A function.
+
+    Raises:
+        ValueError: If method with name as :attr:`fn_or_name` is not found.
     """
     if callable(fn_or_name):
         return fn_or_name
@@ -513,7 +514,7 @@ def call_function_with_redundant_kwargs(fn: Callable[..., R],
     Args:
         fn (function): A callable. If :attr:`fn` is not a python function,
             :attr:`fn.__call__` is called.
-        kwargs (dict): A `dict` of arguments for the callable. It
+        kwargs (dict): A ``dict`` of arguments for the callable. It
             may include invalid arguments which will be ignored.
 
     Returns:
@@ -539,18 +540,19 @@ def call_function_with_redundant_kwargs(fn: Callable[..., R],
 def get_instance_kwargs(kwargs: Kwargs, hparams: ParamDict) -> Kwargs:
     r"""Makes a dict of keyword arguments with the following structure:
 
-    `kwargs_ = {'hparams': dict(hparams), **kwargs}`.
+    ``kwargs_ = {'hparams': dict(hparams), **kwargs}``.
 
     This is typically used for constructing a module which takes a set of
-    arguments as well as a argument named `hparams`.
+    arguments as well as a argument named ``"hparams"``.
 
     Args:
-        kwargs (dict): A dict of keyword arguments. Can be `None`.
-        hparams: A dict or an instance of :class:`~texar.HParams` Can be `None`.
+        kwargs (dict): A ``dict`` of keyword arguments. Can be ``None``.
+        hparams: A ``dict`` or an instance of :class:`~texar.HParams` Can be
+            ``None``.
 
     Returns:
-        A `dict` that contains the keyword arguments in :attr:`kwargs`, and
-        an additional keyword argument named `hparams`.
+        A ``dict`` that contains the keyword arguments in :attr:`kwargs`, and
+        an additional keyword argument named ``"hparams"``.
     """
     if hparams is None or isinstance(hparams, dict):
         kwargs_ = {'hparams': hparams}
@@ -568,7 +570,7 @@ def dict_patch(tgt_dict: AnyDict, src_dict: AnyDict) -> AnyDict:
     that do not exist in :attr:`tgt_dict`.
 
     If respective items in :attr:`src_dict` and :attr:`tgt_dict` are both
-    `dict`, the :attr:`tgt_dict` item is patched recursively.
+    ``dict``, the :attr:`tgt_dict` item is patched recursively.
 
     Args:
         tgt_dict (dict): Target dictionary to patch.
@@ -595,7 +597,7 @@ def dict_lookup(dict_: MutableMapping[K, V], keys: Union[List[K], np.ndarray],
     The :attr:`default` is used for keys not present in the dict.
 
     Args:
-        dict_ (dict): A dictionary for lookup.
+        dict\_ (dict): A dictionary for lookup.
         keys: A numpy array or a (possibly nested) list of keys.
         default (optional): Value to be returned when a key is not in
             :attr:`dict_`. Error is raised if :attr:`default` is not given and
@@ -605,7 +607,8 @@ def dict_lookup(dict_: MutableMapping[K, V], keys: Union[List[K], np.ndarray],
         A numpy array of values with the same structure as :attr:`keys`.
 
     Raises:
-        TypeError: If key is not in :attr:`dict_` and :attr:`default` is `None`.
+        TypeError: If key is not in :attr:`dict_` and :attr:`default` is
+            ``None``.
     """
     return np.vectorize(lambda x: dict_.get(x, default))(keys)  # type: ignore
 
@@ -646,14 +649,14 @@ def dict_pop(dict_: MutableMapping[T, Any], pop_keys: MaybeSeq[T],
     r"""Removes keys from a dict and returns their values.
 
     Args:
-        dict_ (dict): A dictionary from which items are removed.
+        dict\_ (dict): A dictionary from which items are removed.
         pop_keys: A key or a list of keys to remove and return respective
             values or :attr:`default`.
         default (optional): Value to be returned when a key is not in
-            :attr:`dict_`. The default value is `None`.
+            :attr:`dict_`. The default value is ``None``.
 
     Returns:
-        A `dict` of the items removed from :attr:`dict_`.
+        A ``dict`` of the items removed from :attr:`dict_`.
     """
     if not isinstance(pop_keys, (list, tuple)):
         pop_keys = cast(List[T], [pop_keys])
@@ -669,14 +672,14 @@ def flatten_dict(dict_: AnyDict, parent_key: str = "", sep: str = "."):
     https://github.com/google/seq2seq/blob/master/seq2seq/models/model_base.py
 
     Args:
-        dict_ (dict): The dictionary to flatten.
+        dict\_ (dict): The dictionary to flatten.
         parent_key (str): A prefix to prepend to each key.
         sep (str): Separator that intervenes between parent and child keys.
-            E.g., if `sep` == '.', then `{ "a": { "b": 3 } }` is converted
-            into `{ "a.b": 3 }`.
+            E.g., if :attr:`sep` == ``"."``, then ``{ "a": { "b": 3 } }`` is
+            converted into ``{ "a.b": 3 }``.
 
     Returns:
-        A new flattened `dict`.
+        A new flattened ``dict``.
     """
     items: List[Tuple[str, Any]] = []
     for key, value in dict_.items():
@@ -694,11 +697,11 @@ def flatten_dict(dict_: AnyDict, parent_key: str = "", sep: str = "."):
 
 
 def default_str(str_: Optional[str], default: str) -> str:
-    r"""Returns :attr:`str_` if it is not `None` or empty, otherwise returns
+    r"""Returns :attr:`str_` if it is not ``None`` or empty, otherwise returns
     :attr:`default_str`.
 
     Args:
-        str_: A string.
+        str\_: A string.
         default: A string.
 
     Returns:
@@ -717,7 +720,7 @@ def uniquify_str(str_: str, str_set: Collection[str]) -> str:
     :attr:`str_` directly if it is not included in :attr:`str_set`.
 
     Args:
-        str_ (string): A string to uniquify.
+        str\_ (string): A string to uniquify.
         str_set (set, dict, or list): A collection of strings. The returned
             string is guaranteed to be different from the elements in the
             collection.
@@ -766,10 +769,10 @@ def strip_token(str_: MaybeSeq[str], token: str,
     :attr:`str_` are separated with whitespace character.
 
     Args:
-        str_: A `str`, or an `n`-D numpy array or (possibly nested)
-            list of `str`.
-        token (str): The token to strip, e.g., the '<PAD>' token defined in
-            :class:`~texar.data.SpecialTokens`.PAD
+        str\_: A ``str``, or an ``n``-D numpy array or (possibly nested)
+            list of ``str``.
+        token (str): The token to strip, e.g., the ``"<PAD>"`` token defined in
+            :class:`~texar.data.SpecialTokens`.
         is_token_list (bool): Whether each sentence in :attr:`str_` is a list
             of tokens. If False, each sentence in :attr:`str_` is assumed to
             contain tokens separated with space character.
@@ -795,8 +798,8 @@ def strip_token(str_: MaybeSeq[str], token: str,
             if token == "":
                 return ' '.join(s.strip().split())
             else:
-                return ' '.join(s.strip().split()). \
-                    replace(' ' + token, '').replace(token + ' ', '')
+                return (' '.join(s.strip().split())
+                        .replace(' ' + token, '').replace(token + ' ', ''))
         else:
             s_ = [_recur_strip(si) for si in s]
             return _maybe_list_to_array(s_, s)
@@ -822,9 +825,9 @@ def strip_eos(str_: MaybeSeq[str], eos_token: str = '<EOS>',
     :attr:`str_` are separated with whitespace character.
 
     Args:
-        str_: A `str`, or an `n`-D numpy array or (possibly nested)
-            list of `str`.
-        eos_token (str): The EOS token. Default is '<EOS>' as defined in
+        str\_: A ``str``, or an ``n``-D numpy array or (possibly nested)
+            list of ``str``.
+        eos_token (str): The EOS token. Default is ``"<EOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.EOS
         is_token_list (bool): Whether each sentence in :attr:`str_` is a list
             of tokens. If False, each sentence in :attr:`str_` is assumed to
@@ -872,9 +875,9 @@ def strip_bos(str_: MaybeSeq[str], bos_token: str = '<BOS>',
     :attr:`str_` are separated with whitespace character.
 
     Args:
-        str_: A `str`, or an `n`-D numpy array or (possibly nested)
-            list of `str`.
-        bos_token (str): The BOS token. Default is '<BOS>' as defined in
+        str_: A ``str``, or an ``n``-D numpy array or (possibly nested)
+            list of ``str``.
+        bos_token (str): The BOS token. Default is ``"<BOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.BOS
         is_token_list (bool): Whether each sentence in :attr:`str_` is a list
             of tokens. If False, each sentence in :attr:`str_` is assumed to
@@ -928,25 +931,25 @@ def strip_special_tokens(str_: MaybeSeq[str],
     :func:`strip_bos`
 
     Args:
-        str_: A `str`, or an `n`-D numpy array or (possibly nested)
-            list of `str`.
+        str\_: A ``str``, or an ``n``-D numpy array or (possibly nested)
+            list of ``str``.
         strip_pad (str): The PAD token to strip from the strings (i.e., remove
             the leading and trailing PAD tokens of the strings). Default
-            is '<PAD>' as defined in
+            is ``"<PAD>"`` as defined in
             :class:`~texar.data.SpecialTokens`.PAD.
-            Set to `None` or `False` to disable the stripping.
+            Set to ``None`` or ``False`` to disable the stripping.
         strip_bos (str): The BOS token to strip from the strings (i.e., remove
             the leading BOS tokens of the strings).
-            Default is '<BOS>' as defined in
+            Default is ``"<BOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.BOS.
-            Set to `None` or `False` to disable the stripping.
+            Set to ``None`` or ``False`` to disable the stripping.
         strip_eos (str): The EOS token to strip from the strings (i.e., remove
             the EOS tokens and all subsequent tokens of the strings).
-            Default is '<EOS>' as defined in
+            Default is ``"<EOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.EOS.
-            Set to `None` or `False` to disable the stripping.
+            Set to ``None`` or ``False`` to disable the stripping.
         is_token_list (bool): Whether each sentence in :attr:`str_` is a list
-            of tokens. If False, each sentence in :attr:`str_` is assumed to
+            of tokens. If ``False``, each sentence in :attr:`str_` is assumed to
             contain tokens separated with space character.
 
     Returns:
@@ -977,11 +980,11 @@ def str_join(tokens: Sequence[List], sep: str = ' ') -> Sequence[str]:
     occurrences of :attr:`sep`.
 
     Args:
-        tokens: An `n`-D numpy array or (possibly nested) list of `str`.
+        tokens: An ``n``-D numpy array or (possibly nested) list of ``str``.
         sep (str): The string intervening between the tokens.
 
     Returns:
-        An `(n-1)`-D numpy array (or list) of `str`.
+        An ``(n-1)``-D numpy array (or list) of ``str``.
     """
 
     def _recur_join(s):
@@ -1000,34 +1003,35 @@ def str_join(tokens: Sequence[List], sep: str = ' ') -> Sequence[str]:
 
 def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]],
                     vocab: 'Vocab',  # type: ignore
+                    # pylint: disable=fixme
                     # TODO: Remove the ignored type after Vocab is implemented.
                     join: bool = True, strip_pad: Optional[str] = '<PAD>',
                     strip_bos: Optional[str] = '<BOS>',
                     strip_eos: Optional[str] = '<EOS>') \
         -> Union[np.ndarray, List[str]]:
-    r"""Transforms `int` indexes to strings by mapping ids to tokens,
+    r"""Transforms ``int`` indexes to strings by mapping ids to tokens,
     concatenating tokens into sentences, and stripping special tokens, etc.
 
     Args:
-        ids: An n-D numpy array or (possibly nested) list of `int` indexes.
+        ids: An n-D numpy array or (possibly nested) list of ``int`` indexes.
         vocab: An instance of :class:`~texar.data.Vocab`.
         join (bool): Whether to concat along the last dimension of the
             the tokens into a string separated with a space character.
         strip_pad (str): The PAD token to strip from the strings (i.e., remove
             the leading and trailing PAD tokens of the strings). Default
-            is '<PAD>' as defined in
+            is ``"<PAD>"`` as defined in
             :class:`~texar.data.SpecialTokens`.PAD.
-            Set to `None` or `False` to disable the stripping.
+            Set to ``None`` or ``False`` to disable the stripping.
         strip_bos (str): The BOS token to strip from the strings (i.e., remove
             the leading BOS tokens of the strings).
-            Default is '<BOS>' as defined in
+            Default is ``"<BOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.BOS.
-            Set to `None` or `False` to disable the stripping.
+            Set to ``None`` or ``False`` to disable the stripping.
         strip_eos (str): The EOS token to strip from the strings (i.e., remove
             the EOS tokens and all subsequent tokens of the strings).
-            Default is '<EOS>' as defined in
+            Default is ``"<EOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.EOS.
-            Set to `None` or `False` to disable the stripping.
+            Set to ``None`` or ``False`` to disable the stripping.
 
     Returns:
         If :attr:`join` is True, returns a `(n-1)`-D numpy array (or list) of
@@ -1067,7 +1071,7 @@ def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]],
 def ceildiv(a: int, b: int) -> int:
     r"""Divides with ceil.
 
-    E.g., `5 / 2 = 2.5`, `ceildiv(5, 2) = 3`.
+    E.g., ``5 / 2 = 2.5``, ``ceildiv(5, 2) = 3``.
 
     Args:
         a (int): Dividend integer.
@@ -1077,18 +1081,3 @@ def ceildiv(a: int, b: int) -> int:
         int: Ceil quotient.
     """
     return -(-a // b)
-
-
-def straight_through(fw_tensor: torch.Tensor, bw_tensor: torch.Tensor):
-    r"""Use a tensor in forward pass while backpropagating gradient to another.
-
-    Args:
-        fw_tensor: A tensor to be used in the forward pass.
-        bw_tensor: A tensor to which gradient is backpropagated. Must have the
-            same shape and type with :attr:`fw_tensor`.
-
-    Returns:
-        A tensor of the same shape and value with :attr:`fw_tensor` but will
-        direct gradient to bw_tensor.
-    """
-    raise NotImplementedError

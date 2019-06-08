@@ -37,7 +37,7 @@ def attention_bias_lower_triangle(length: int,
         bias_value: value to fill the bias tensor with.
 
     Returns:
-        a `Tensor` with shape [1, 1, length, length].
+        a ``Tensor`` with shape [1, 1, length, length].
     """
     return attention_bias_local(length, -1, 0, bias_value)
 
@@ -59,7 +59,7 @@ def attention_bias_local(length: int, max_backward: int, max_forward: int,
         bias_value: value to fill the bias tensor with.
 
     Returns:
-        a `Tensor` with shape [1, 1, length, length].
+        a ``Tensor`` with shape [1, 1, length, length].
         [batch_size, num_heads, query_len, query_len]
     """
     band = _ones_matrix_band_part(
@@ -76,11 +76,11 @@ def attention_bias_ignore_padding(memory_padding: torch.Tensor,
     r"""Create an bias tensor to be added to attention logits.
 
     Args:
-        memory_padding: a float `Tensor` with shape [batch, memory_length].
+        memory_padding: a float ``Tensor`` with shape [batch, memory_length].
         bias_value: value to fill the bias tensor with.
 
     Returns:
-        a `Tensor` with shape [batch, 1, 1, memory_length].
+        a ``Tensor`` with shape [batch, 1, 1, memory_length].
         each dim corresponding to batch_size, num_heads, queries_len,
         memory_length
     """

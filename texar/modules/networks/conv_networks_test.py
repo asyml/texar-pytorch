@@ -3,6 +3,7 @@
 Unit tests for conv networks.
 """
 import unittest
+
 import torch
 from torch import nn
 
@@ -57,7 +58,7 @@ class Conv1DNetworkTest(unittest.TestCase):
         # dropout-merge-dropout-(Sequential(Conv, ReLU))-avgpool-dropout-
         # flatten-(Sequential(Linear,ReLU))-(Sequential(Linear,ReLU))-dropout
         # -linear
-        self.assertEqual(len(network_2.layers), 1+1+1+3+4+1)
+        self.assertEqual(len(network_2.layers), 1 + 1 + 1 + 3 + 4 + 1)
         self.assertTrue(isinstance(network_2.layer_by_name("MergeLayer"),
                                    tx.core.MergeLayer))
         for layer in network_2.layers[1].layers:

@@ -77,8 +77,8 @@ def _prepare_memory(memory: torch.Tensor,
     Returns:
         A (possibly masked), new `memory`.
     """
-    if memory_sequence_length is not None and \
-            not isinstance(memory_sequence_length, torch.Tensor):
+    if (memory_sequence_length is not None and
+            not isinstance(memory_sequence_length, torch.Tensor)):
         memory_sequence_length = torch.tensor(memory_sequence_length)
 
     if memory_sequence_length is None:
@@ -243,7 +243,6 @@ def _luong_score(query: torch.Tensor,
                  keys: torch.Tensor,
                  scale: Optional[torch.Tensor]) -> torch.Tensor:
     r"""Implements Luong-style (multiplicative) scoring function.
-
     This attention has two forms.  The first is standard Luong attention,
     as described in:
 
@@ -471,7 +470,6 @@ class BahdanauAttention(_BaseAttentionMechanism):
                  probability_fn: Optional[Callable[[torch.Tensor],
                                                    torch.Tensor]] = None,
                  score_mask_value: Optional[torch.Tensor] = None):
-
         if probability_fn is None:
             probability_fn = lambda x: F.softmax(x, dim=-1)
         self.wrapped_probability_fn = lambda score, _: probability_fn(score)
@@ -545,8 +543,8 @@ class BahdanauAttention(_BaseAttentionMechanism):
                                 self.attention_b)
 
         alignments = self.wrapped_probability_fn(
-                _maybe_mask_score(score, memory_sequence_length,
-                                  self.score_mask_value), state)
+            _maybe_mask_score(score, memory_sequence_length,
+                              self.score_mask_value), state)
 
         next_state = alignments
         return alignments, next_state
@@ -760,7 +758,7 @@ class _BaseMonotonicAttentionMechanism(_BaseAttentionMechanism):
 
 
 class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
-    r"""Monotonic attention mechanism with Bahadanau-style energy function.
+    r"""Monotonic attention mechanism with Bahdanau-style energy function.
     This type of attention enforces a monotonic constraint on the attention
     distributions; that is once the model attends to a given point in the
     memory it can't attend to any prior points at subsequence output
@@ -1078,7 +1076,7 @@ class AttentionWrapperState(NamedTuple):
     alignment_history: Optional[MaybeTuple[List[torch.Tensor]]]
     r"""(If enabled) A single or tuple of list(s) containing alignment matrices
     from all time steps for each attention mechanism. Call :torch:`stack` on
-    each list to convert to a :torch:`Tensor`."""
+    each list to convert to a :tensor:`Tensor`."""
     attention_state: MaybeTuple[torch.Tensor]
     r"""A single or tuple of nested objects containing attention mechanism
     states for each attention mechanism."""
@@ -1106,14 +1104,13 @@ class AttentionWrapperState(NamedTuple):
         """
 
         def with_same_shape(old, new):
-            """Check and set new tensor's shape."""
+            r"""Check and set new tensor's shape."""
             if isinstance(old, torch.Tensor) and isinstance(new, torch.Tensor):
                 if old.shape != new.shape:
                     raise ValueError(
-                        "The shape of the AttentionWrapperState is "
-                        "expected to be same as the one to clone. "
-                        "self.shape: {}, input.shape: {}".fotmat
-                        (old.shape, new.shape))
+                        f"The shape of the AttentionWrapperState is "
+                        f"expected to be same as the one to clone. "
+                        f"self.shape: {old.shape}, input.shape: {new.shape}")
             return new
 
         return with_same_shape(

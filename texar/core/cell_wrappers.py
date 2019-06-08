@@ -24,7 +24,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from texar.core.attention_mechanism import *
+from texar.core.attention_mechanism import (
+    AttentionMechanism, AttentionWrapperState, compute_attention)
 from texar.utils import utils
 from texar.utils.types import MaybeList
 
@@ -50,7 +51,7 @@ HiddenState = MaybeList[Union[RNNState, LSTMState]]
 
 
 def wrap_builtin_cell(cell: nn.RNNCellBase):
-    r"""Convert a built-in :class:`torch.nn.RNNCellBase` derived RNN cell to
+    r"""Convert a built-in :torch_nn:`RNNCellBase` derived RNN cell to
     our wrapped version.
 
     Args:
@@ -75,16 +76,16 @@ def wrap_builtin_cell(cell: nn.RNNCellBase):
 
 class RNNCellBase(nn.Module, Generic[State]):
     r"""The base class for RNN cells in our framework. Major differences over
-    :class:`torch.nn.RNNCell` are two-fold::
+    :torch_nn:`RNNCell` are two-fold:
 
-        1. Holds an :class:`torch.nn.Module` which could either be a built-in
-           RNN cell or a wrapped cell instance. This design allows
-           :class:`RNNCellBase` to serve as the base class for both vanilla
-           cells and wrapped cells.
+    1. Holds an :torch_nn:`Module` which could either be a built-in
+       RNN cell or a wrapped cell instance. This design allows
+       :class:`RNNCellBase` to serve as the base class for both vanilla
+       cells and wrapped cells.
 
-        2. Adds :meth:`zero_state` method for initialization of hidden states,
-           which can also be used to implement batch-specific initialization
-           routines.
+    2. Adds :meth:`zero_state` method for initialization of hidden states,
+       which can also be used to implement batch-specific initialization
+       routines.
     """
 
     def __init__(self, cell: nn.Module):
@@ -96,12 +97,12 @@ class RNNCellBase(nn.Module, Generic[State]):
         self._cell = cell
 
     @property
-    def input_size(self):
+    def input_size(self) -> int:
         r"""The number of expected features in the input."""
         return self._cell.input_size
 
     @property
-    def hidden_size(self):
+    def hidden_size(self) -> int:
         r"""The number of features in the hidden state."""
         return self._cell.hidden_size
 
@@ -151,7 +152,7 @@ class RNNCellBase(nn.Module, Generic[State]):
 
 
 class BuiltinCellWrapper(RNNCellBase[State]):
-    r"""Base class for wrappers over built-in :class:`torch.nn.RNNCellBase`
+    r"""Base class for wrappers over built-in :torch_nn:`RNNCellBase`
     RNN cells.
     """
 
@@ -166,7 +167,7 @@ class BuiltinCellWrapper(RNNCellBase[State]):
 
 
 class RNNCell(BuiltinCellWrapper[RNNState]):
-    r"""A wrapper over :class:`torch.nn.RNNCell`."""
+    r"""A wrapper over :torch_nn:`RNNCell`."""
 
     def __init__(self, input_size, hidden_size, bias=True, nonlinearity="tanh"):
         cell = nn.RNNCell(
@@ -175,7 +176,7 @@ class RNNCell(BuiltinCellWrapper[RNNState]):
 
 
 class GRUCell(BuiltinCellWrapper[RNNState]):
-    r"""A wrapper over :class:`torch.nn.GRUCell`."""
+    r"""A wrapper over :torch_nn:`GRUCell`."""
 
     def __init__(self, input_size, hidden_size, bias=True):
         cell = nn.GRUCell(input_size, hidden_size, bias=bias)
@@ -183,7 +184,7 @@ class GRUCell(BuiltinCellWrapper[RNNState]):
 
 
 class LSTMCell(BuiltinCellWrapper[LSTMState]):
-    r"""A wrapper over :class:`torch.nn.LSTMCell`, additionally providing the
+    r"""A wrapper over :torch_nn:`LSTMCell`, additionally providing the
     option to initialize the forget-gate bias to a constant value.
     """
 
@@ -343,10 +344,9 @@ class ResidualWrapper(RNNCellBase[State]):
 class HighwayWrapper(RNNCellBase[State]):
     r"""RNNCell wrapper that adds highway connection on cell input and output.
 
-    Based on:
-        R. K. Srivastava, K. Greff, and J. Schmidhuber, "Highway networks",
-        arXiv preprint arXiv:1505.00387, 2015.
-        https://arxiv.org/abs/1505.00387
+    Based on: R. K. Srivastava, K. Greff, and J. Schmidhuber, "Highway
+    networks", arXiv preprint arXiv:1505.00387, 2015.
+    https://arxiv.org/pdf/1505.00387.pdf
     """
 
     def __init__(self, cell: nn.Module, carry_bias_init: Optional[float] = None,
@@ -369,7 +369,8 @@ class HighwayWrapper(RNNCellBase[State]):
         if carry_bias_init is not None:
             nn.init.constant_(self.carry.bias, carry_bias_init)
             if not couple_carry_transform_gates:
-                nn.init.constant_(self.transform.bias, -carry_bias_init)  # noqa: E501 pylint: disable=invalid-unary-operand-type
+                nn.init.constant_(self.transform.bias,
+                                  -carry_bias_init)  # noqa: E501 pylint: disable=invalid-unary-operand-type
 
     def forward(self,  # type: ignore
                 input: torch.Tensor, state: Optional[State] = None) \
@@ -444,7 +445,7 @@ class MultiRNNCell(RNNCellBase[List[State]]):
 
 
 class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
-    """Wraps another `RNNCell` with attention."""
+    r"""Wraps another `RNNCell` with attention."""
 
     def __init__(self,
                  cell: RNNCellBase,
@@ -452,7 +453,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                  attention_layer_size: Optional[MaybeList[int]] = None,
                  alignment_history: bool = False,
                  cell_input_fn: Optional[Callable[[torch.Tensor, torch.Tensor],
-                                         torch.Tensor]] = None,
+                                                  torch.Tensor]] = None,
                  output_attention: bool = True):
         r"""Wraps RNN cell with attention.
         Construct the `AttentionWrapper`.
@@ -482,7 +483,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                 each time step is the attention value.  This is the behavior of
                 Luong-style attention mechanisms.  If `False`, the output at
                 each time step is the output of `cell`.  This is the behavior
-                of Bhadanau-style attention mechanisms.  In both cases, the
+                of Bahdanau-style attention mechanisms.  In both cases, the
                 `attention` tensor is propagated to the next time step via the
                 state and is used there. This flag only controls whether the
                 attention mechanism is propagated up to the next cell in an RNN
@@ -587,7 +588,8 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                    batch_size: int) -> AttentionWrapperState:
         r"""Return an initial (zero) state tuple for this
         :class:`AttentionWrapper`.
-        ..note::
+
+        .. note::
                 Please see the initializer documentation for details of how
                 to call :meth:`zero_state` if using an
                 :class:`~texar.core.AttentionWrapper` with a
@@ -630,6 +632,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                 memory_sequence_length: Optional[torch.LongTensor] = None) -> \
             Tuple[torch.Tensor, AttentionWrapperState]:
         r"""Perform a step of attention-wrapped RNN.
+
         - Step 1: Mix the :attr:`inputs` and previous step's `attention` output
           via `cell_input_fn`.
         - Step 2: Call the wrapped `cell` with this input and its previous
@@ -656,11 +659,12 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                 lengths.
 
         Returns:
-            A tuple `(attention_or_cell_output, next_state)`, where:
-                - `attention_or_cell_output` depending on `output_attention`.
-                - `next_state` is an instance of
-                  :class:`~texar.core.AttentionWrapperState` containing the
-                  state calculated at this time step.
+            A tuple `(attention_or_cell_output, next_state)`, where
+
+            - `attention_or_cell_output` depending on `output_attention`.
+            - `next_state` is an instance of
+              :class:`~texar.core.AttentionWrapperState` containing the
+              state calculated at this time step.
 
         Raises:
             TypeError: If `state` is not an instance of
@@ -707,9 +711,9 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                 memory=memory,
                 memory_sequence_length=memory_sequence_length)
 
-            if self._alignment_history and \
-                    previous_alignment_history is not None:
-                alignment_history = previous_alignment_history[i]+[alignments]
+            if (self._alignment_history and
+                    previous_alignment_history is not None):
+                alignment_history = previous_alignment_history[i] + [alignments]
             else:
                 alignment_history = [torch.tensor(0.)]
 

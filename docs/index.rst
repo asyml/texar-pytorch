@@ -29,10 +29,6 @@ API
    code/data.rst
    code/core.rst
    code/modules.rst
-   code/agents.rst
    code/losses.rst
    code/evals.rst
-   code/models.rst
-   code/run.rst
-   code/context.rst
    code/utils.rst

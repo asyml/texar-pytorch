@@ -28,7 +28,7 @@ from texar.modules.encoders.multihead_attention import (
     Cache, MultiheadAttentionEncoder)
 from texar.modules.encoders.transformer_encoder import (
     default_transformer_poswise_net_hparams)
-from texar.modules.networks import FeedForwardNetwork
+from texar.modules.networks.networks import FeedForwardNetwork
 # from texar.utils import beam_search
 from texar.utils import transformer_attentions as attn
 from texar.utils.shapes import mask_sequences
@@ -42,15 +42,13 @@ __all__ = [
 
 class TransformerDecoderOutput(NamedTuple):
     r"""The output of :class:`TransformerDecoder`.
-
-    Attributes:
-        logits: A float Tensor of shape
-            `[batch_size, max_time, vocab_size]` containing the logits.
-        sample_id: An int Tensor of shape `[batch_size, max_time]`
-            containing the sampled token indexes.
     """
     logits: torch.Tensor
+    r"""A :tensor:`Tensor` of shape ``[batch_size, max_time, vocab_size]``
+    containing the logits."""
     sample_id: torch.LongTensor
+    r"""A :tensor:`LongTensor` of shape ``[batch_size, max_time]`` containing the
+    sampled token indices."""
 
 
 class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
@@ -66,25 +64,23 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         output_layer (optional): An output layer that transforms cell output
             to logits. This can be:
 
-            - A callable layer, e.g., an instance of :class:`torch.nn.Module`.
-            - A tensor. A :class:`~torch.nn.Linear` layer will be created using
-              the tensor as weights. The bias of the dense layer is determined
-              by `hparams.output_layer_bias`. This can be used to tie the output
-              layer with the input embedding matrix, as proposed in
-              <https://arxiv.org/pdf/1608.05859.pdf>. Note that the shape of the
-              tensor should the same as the embedding matrix, i.e.
-              ``[vocab_size, embed_dim]``.
-            - `None`. A dense layer will be created based on attr:`vocab_size`
-              and `hparams.output_layer_bias`.
+            - A callable layer, e.g., an instance of :torch_nn:`Module`.
+            - A tensor. A :torch_nn:`Linear` layer will be created using the
+              tensor as weights. The bias of the dense layer is determined
+              by ``hparams.output_layer_bias``. This can be used to tie the
+              output layer with the input embedding matrix, as proposed in
+              https://arxiv.org/pdf/1608.05859.pdf.
+            - `None`. A :torch_nn:`Linear` layer will be created based on
+              attr:`vocab_size` and ``hparams.output_layer_bias``.
             - If no output layer is needed at the end, set
-              `(vocab_size=None, output_layer=texar.core.identity)`.
+              :attr:`vocab_size` to ``None`` and ``output_layer`` to
+              :func:`~texar.core.identity`.
         hparams (dict or HParams, optional): Hyperparameters. Missing
-            hyperparameter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameters will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
     .. document private functions
-    .. automethod:: _build
     """
 
     # State variables used during `dynamic_decode`. Assigned in `forward`.
@@ -196,10 +192,11 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             }
 
         Here:
-        "num_blocks" : int
+
+        "num_blocks": int
             Number of stacked blocks.
 
-        "dim" : int
+        "dim": int
             Hidden dimension of the encoder.
 
         "use_gpt_config": bool
@@ -208,47 +205,44 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         "embedding_dropout": float
             Dropout rate of the input word and position embeddings.
 
-        "residual_dropout" :  float
+        "residual_dropout":  float
             Dropout rate of the residual connections.
 
-        "poswise_feedforward" : dict
+        "poswise_feedforward": dict
             Hyperparameters for a feed-forward network used in residual
             connections.
-            Make sure the dimension of the output tensor is equal to `dim`.
+            Make sure the dimension of the output tensor is equal to ``dim``.
 
             See :func:`~texar.modules.default_transformer_poswise_net_hparams`
             for details.
 
-        "multihead_attention" : dict
+        "multihead_attention": dict
             Hyperparameters for the multihead attention strategy.
-            Make sure the `output_dim` in this module is equal to `dim`.
+            Make sure the ``output_dim`` in this module is equal to ``dim``.
 
             See :func:`~texar.modules.MultiheadAttentionEncoder.default_hparams`
             for details.
 
-        "initializer" : dict, optional
+        "initializer": dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
+
             See :func:`~texar.core.get_initializer` for details.
 
-        "embedding_tie" : bool
+        "embedding_tie": bool
             Whether to use the word embedding matrix as the output layer
-            that computes logits. If `False`, a new dense layer
-            is created.
+            that computes logits. If ``False``, a new dense layer is created.
 
-        "output_layer_bias" : bool
+        "output_layer_bias": bool
             Whether to use bias to the output layer.
 
-        "max_decoding_length" : int
+        "max_decoding_length": int
             The maximum allowed number of decoding steps.
             Set to a very large number of avoid the length constraint.
-            Ignored if provided in :meth:`_build` or
-            "train_greedy" decoding is used.
+            Ignored if provided in :meth:`forward` or ``"train_greedy"``
+            decoding is used.
 
-            Length penalty coefficient. Refer to
-            https://arxiv.org/abs/1609.08144 for more details.
-
-        "name" : str
+        "name": str
             Name of the module.
         """
         dim = 512
@@ -279,10 +273,11 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         r"""Returns the outputs of one decoding step (for example,
         the predicted logits of the next token).
 
-        `inputs` should be of shape `[batch_size, dim]`.
+        :attr:`inputs` should be of shape ``[batch_size, dim]``.
 
-        Returns outputs (i.e. logits) of shape `[batch_size, vocab_size]`
-        and updated cache.
+        Returns:
+            A tuple of logits and updated cache. Logits are of shape
+            ``[batch_size, vocab_size]``.
         """
         outputs = self._self_attention_stack(
             inputs.unsqueeze(1), memory=cache['memory'], cache=cache)
@@ -292,12 +287,13 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
     def _input_ids_to_outputs(self, input_ids: torch.LongTensor, step: int,
                               cache: Cache) -> Tuple[torch.Tensor, Cache]:
-        """The function is called in beam-search decoding.
+        r"""The function is called in beam-search decoding.
 
-        `inputs` should be of shape `[batch_size]`.
+        :attr:`inputs` should be of shape ``[batch_size]``.
 
-        Returns outputs (i.e. logits) of shape `[batch_size, vocab_size]`
-        and updated cache.
+        Returns:
+            A tuple of logits and updated cache. Logits are of shape
+            ``[batch_size, vocab_size]``.
         """
         _batch_size = input_ids.size(0)
         times = input_ids.new_full((_batch_size,), step)
@@ -327,42 +323,42 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         r"""Performs decoding.
 
         The interface is very similar to that of RNN decoders
-        (:meth:`texar.modules.RNNDecoderBase._build`). In particular,
+        (:class:`texar.modules.RNNDecoderBase`). In particular,
         the function provides **3 ways** to specify the decoding method, with
         varying flexibility:
 
         1. The :attr:`decoding_strategy` argument.
 
-            - **"train_greedy"**: decoding in teacher-forcing fashion (i.e.,
-              feeding ground truth to decode the next step), and for each step
-              sample is obtained by taking the `argmax` of logits.
-              Argument :attr:`inputs` is required for this strategy.
-              :attr:`sequence_length` is optional.
-            - **"infer_greedy"**: decoding in inference fashion (i.e., feeding
-              `generated` sample to decode the next step), and for each step
-              sample is obtained by taking the `argmax` of logits.
-              Arguments :attr:`(start_tokens, end_token)` are
-              required for this strategy, and argument
-              :attr:`max_decoding_length` is optional.
-            - **"infer_sample"**: decoding in inference fashion, and for each
-              step sample is obtained by `random sampling` from the logits.
-              Arguments :attr:`(start_tokens, end_token)` are required for this
-              strategy, and argument :attr:`max_decoding_length` is optional.
+           - **"train_greedy"**: decoding in teacher-forcing fashion (i.e.,
+             feeding ground truth to decode the next step), and for each step
+             sample is obtained by taking the `argmax` of logits.
+             Argument :attr:`inputs` is required for this strategy.
+             :attr:`sequence_length` is optional.
+           - **"infer_greedy"**: decoding in inference fashion (i.e., feeding
+             `generated` sample to decode the next step), and for each step
+             sample is obtained by taking the `argmax` of logits.
+             Arguments :attr:`(start_tokens, end_token)` are
+             required for this strategy, and argument
+             :attr:`max_decoding_length` is optional.
+           - **"infer_sample"**: decoding in inference fashion, and for each
+             step sample is obtained by `random sampling` from the logits.
+             Arguments :attr:`(start_tokens, end_token)` are required for this
+             strategy, and argument :attr:`max_decoding_length` is optional.
 
           This argument is used only when arguments :attr:`helper` and
           :attr:`beam_width` are both `None`.
 
         2. The :attr:`helper` argument: An instance of subclass of
-           :tf_main:`tf.contrib.seq2seq.Helper <contrib/seq2seq/Helper>`.
+           :class:`texar.modules.decoders.Helper`.
            This provides a superset of decoding strategies than above.
            The interface is the same as in RNN decoders.
-           Please refer to :meth:`texar.modules.RNNDecoderBase._build` for
+           Please refer to :meth:`texar.modules.RNNDecoderBase.forward` for
            detailed usage and examples.
 
-           Note that, here, though using a :tf_main:`TrainingHelper
-           <contrib/seq2seq/TrainingHelper>` corresponding to the
-           "train_greedy" strategy above, the implementation is *slower* than
-           directly setting `decoding_strategy="train_greedy"` (though the
+           Note that, here, though using a
+           :class:`~texar.decoder.TrainingHelper` corresponding to the
+           ``"train_greedy"`` strategy above, the implementation is *slower*
+           than directly setting ``decoding_strategy="train_greedy"`` (though
            output results are the same).
 
            Argument :attr:`max_decoding_length` is optional.
@@ -371,32 +367,39 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
            Arguments :attr:`(start_tokens, end_token)` are required,
            and argument :attr:`max_decoding_length` is optional.
 
+           .. warning::
+               Beam search is not yet implemented. Setting :attr:`beam_width`
+               to any value greater than 1 would raise a
+               :exc:`NotImplementedError`
+
         Args:
             memory (optional): The memory to attend, e.g., the output of an RNN
-                encoder. A Tensor of shape `[batch_size, memory_max_time, dim]`.
-            memory_sequence_length (optional): A Tensor of shape `[batch_size]`
-                containing the sequence lengths for the batch entries in
-                memory. Used to create attention bias of
+                encoder. A :tensor:`Tensor` of shape
+                ``[batch_size, memory_max_time, dim]``.
+            memory_sequence_length (optional): A :tensor:`Tensor` of shape
+                ``[batch_size]`` containing the sequence lengths for the batch
+                entries in memory. Used to create attention bias of
                 :attr:`memory_attention_bias` is not given. Ignored if
-                `memory_attention_bias` is provided.
-            memory_attention_bias (optional): A Tensor of shape
-                `[batch_size, num_heads, memory_max_time, dim]`.
+                :attr:`memory_attention_bias` is provided.
+            memory_attention_bias (optional): A :tensor:`Tensor` of shape
+                ``[batch_size, num_heads, memory_max_time, dim]``.
                 An attention bias typically sets the value of a padding
                 position to a large negative value for masking. If not given,
                 :attr:`memory_sequence_length` is used to automatically
                 create an attention bias.
             inputs (optional): Input tensor for teacher forcing decoding, of
-                shape `[batch_size, target_max_time, emb_dim]` containing the
-                target sequence word embeddings.
-                Used when :attr:`decoding_strategy` is set to "train_greedy".
-            sequence_length (optional): A Tensor of shape `[batch_size]`,
-                containing the sequence length of :attr:`inputs`.
-                Tokens beyond the respective sequence length are masked out.
+                shape ``[batch_size, target_max_time, emb_dim]`` containing the
+                target sequence word embeddings. Used when
+                :attr:`decoding_strategy` is set to ``"train_greedy"``.
+            sequence_length (optional): A :tensor:`LongTensor` of shape
+                ``[batch_size]``, containing the sequence length of
+                :attr:`inputs`. Tokens beyond the respective sequence length are
+                masked out.
                 Used when :attr:`decoding_strategy` is set to
-                "train_greedy".
+                ``"train_greedy"``.
             decoding_strategy (str): A string specifying the decoding
-                strategy, including "train_greedy", "infer_greedy",
-                "infer_sample".
+                strategy, including ``"train_greedy"``, ``"infer_greedy"``,
+                ``"infer_sample"``.
                 Different arguments are required based on the
                 strategy. See above for details. Ignored if
                 :attr:`beam_width` or :attr:`helper` is set.
@@ -405,66 +408,55 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             length_penalty (float): Length penalty coefficient used in beam
                 search decoding. Refer to https://arxiv.org/abs/1609.08144
                 for more details.
-                It Should be larger if longer sentences are wanted.
-            start_tokens (optional): An int Tensor of shape `[batch_size]`,
-                containing the start tokens.
-                Used when :attr:`decoding_strategy` = "infer_greedy" or
-                "infer_sample", or :attr:`beam_width` is set.
-                Ignored when context is set.
-            end_token (optional): An int 0D Tensor, the token that marks end
-                of decoding.
-                Used when :attr:`decoding_strategy` = "infer_greedy" or
-                "infer_sample", or :attr:`beam_width` is set.
-            context (optional): An int Tensor of shape `[batch_size, length]`,
-                containing the starting tokens for decoding.
-                If context is set, the start_tokens will be ignored.
-            context_sequence_length (optional): specify the length of context.
-            softmax_temperature (optional): A float 0D Tensor, value to divide
-                the logits by before computing the softmax. Larger values
-                (above 1.0) result in more random samples. Must > 0. If `None`,
-                1.0 is used.
-                Used when :attr:`decoding_strategy` = "infer_sample"`.
-            max_decoding_length (optional): An int scalar Tensor indicating
-                the maximum allowed number of decoding steps.
-                If `None` (default), use "max_decoding_length" defined in
-                :attr:`hparams`. Ignored in "train_greedy" decoding.
-            impute_finished (bool): If `True`, then states for batch
+                It should be larger if longer sentences are desired.
+            context (optional): An :tensor:`LongTensor` of shape
+                ``[batch_size, length]``, containing the starting tokens for
+                decoding. If context is set, ``start_tokens`` of the
+                :class:`~texar.modules.Helper` will be ignored.
+            context_sequence_length (optional): Specify the length of context.
+            max_decoding_length (int, optional): The maximum allowed number of
+                decoding steps.
+                If ``None`` (default), use ``"max_decoding_length"`` defined in
+                :attr:`hparams`. Ignored in ``"train_greedy"`` decoding.
+            impute_finished (bool): If ``True``, then states for batch
                 entries which are marked as finished get copied through and
                 the corresponding outputs get zeroed out.  This causes some
                 slowdown at each time step, but ensures that the final state
                 and outputs have the correct values and that backprop ignores
                 time steps that were marked as finished. Ignored in
-                "train_greedy" decoding.
+                ``"train_greedy"`` decoding.
             helper (optional): An instance of
-                :tf_main:`Helper <contrib/seq2seq/Helper>` that defines the
-                decoding strategy. If given, :attr:`decoding_strategy` is
-                ignored.
-            infer_mode (optional): If not `None`, overrides mode given by
-                `self.training`.
+                :class:`texar.modules.decoders.Helper`
+                that defines the decoding strategy. If given,
+                ``decoding_strategy`` and helper configs in :attr:`hparams`
+                are ignored.
+            infer_mode (optional): If not ``None``, overrides mode given by
+                :attr:`self.training`.
 
         Returns:
 
-            - For **"train_greedy"** decoding, returns an instance of \
-            :class:`~texar.modules.TransformerDecoderOutput` which contains\
-            `sample_id` and `logits`.
+            - For **"train_greedy"** decoding, returns an instance of
+              :class:`~texar.modules.TransformerDecoderOutput` which contains
+              `sample_id` and `logits`.
 
-            - For **"infer_greedy"** and **"infer_sample"** decoding or\
-            decoding with :attr:`helper`, returns\
-            a tuple `(outputs, sequence_lengths)`, where `outputs` is an \
-            instance of :class:`~texar.modules.TransformerDecoderOutput` as\
-            in "train_greedy", and `sequence_lengths` is a Tensor of shape\
-            `[batch_size]` containing the length of each sample.
+            - For **"infer_greedy"** and **"infer_sample"** decoding or
+              decoding with :attr:`helper`, returns
+              a tuple ``(outputs, sequence_lengths)``, where ``outputs`` is an
+              instance of :class:`~texar.modules.TransformerDecoderOutput` as
+              in `"train_greedy"`, and ``sequence_lengths`` is a
+              :tensor:`LongTensor` of shape ``[batch_size]`` containing the
+              length of each sample.
 
-            - For **beam search** decoding, returns a `dict` containing keys\
-            "sample_id" and "log_prob".
+            - For **beam search** decoding, returns a ``dict`` containing keys
+              ``"sample_id"`` and ``"log_prob"``.
 
-                - **"sample_id"** is an int Tensor of shape \
-                `[batch_size, max_time, beam_width]` containing generated\
-                token indexes. `sample_id[:,:,0]` is the highest-probable \
-                sample.
-                - **"log_prob"** is a float Tensor of shape \
-                `[batch_size, beam_width]` containing the log probability \
-                of each sequence sample.
+                - ``"sample_id"`` is a :tensor:`LongTensor` of shape
+                  ``[batch_size, max_time, beam_width]`` containing generated
+                  token indexes. ``sample_id[:,:,0]`` is the highest-probable
+                  sample.
+                - ``"log_prob"`` is a :tensor:`Tensor` of shape
+                  ``[batch_size, beam_width]`` containing the log probability
+                  of each sequence sample.
         """
 
         if memory is not None:
@@ -600,7 +592,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             decoder_self_attention_bias: Optional[torch.Tensor] = None,
             memory_attention_bias: Optional[torch.Tensor] = None,
             cache: Optional[Cache] = None) -> torch.Tensor:
-        r"""Stacked multihead attention module.
+        r"""Forward through the stacked multihead attentions.
         """
         inputs = self.embed_dropout(inputs)
         if cache is not None:
@@ -640,13 +632,14 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
         In order to support both inference-like decoding and beam-search
         decoding, the elements of each layer must be initialized and extended
-        as different structure respectively. Specifically, when inference-like
-        decoding, tf.TensorArray is used, which satisfies the shape consistency
-        check in the while-loop in tf.contrib.seq2seq.dynamic_decode. When
-        beam-search decoding, a tf.Tensor of shape
-        `[batch_size, current_steps, num_units]` is maintained, where
-        `current_steps` is the number of steps currently decoded.
+        as different structure respectively. Specifically, for inference-like
+        decoding, a simple list is used; for beam-search decoding, a
+        :tensor:`Tensor` of shape ``[batch_size, current_steps, num_units]``
+        is maintained, where ``current_steps`` is the number of steps currently
+        decoded.
         """
+
+        device = next(self.parameters()).device
 
         def _create_ta():
             return []
@@ -654,7 +647,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         def _create_empty_tensor():
             return torch.zeros(
                 batch_size, 0, self._hparams.multihead_attention.num_units,
-                dtype=torch.float)
+                dtype=torch.float, device=device)
 
         _create_fn = (_create_empty_tensor if beam_search_decoding
                       else _create_ta)

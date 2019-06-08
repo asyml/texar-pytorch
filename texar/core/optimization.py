@@ -38,7 +38,7 @@ __all__ = [
 
 
 def default_optimization_hparams() -> Dict[str, Any]:
-    """Returns a `dict` of default hyperparameters of training op
+    r"""Returns a `dict` of default hyperparameters of training op
     and their default values
 
     .. role:: python(code)
@@ -68,32 +68,30 @@ def default_optimization_hparams() -> Dict[str, Any]:
     Here:
 
     "optimizer" : dict
-        Hyperparameters of a :tf_main:`tf.train.Optimizer <train/Optimizer>`.
+        Hyperparameters of a
+        :torch_docs:`torch.optim.Optimizer <optim.html#torch.optim.Optimizer>`.
 
         - **"type"** specifies the optimizer class. This can be
 
-            - The string name or full module path of an optimizer class. \
-            If the class name is provided, the class must be in module \
-            :tf_main:`tf.train <train>`, \
-            :tf_main:`tf.contrib.opt <contrib/opt>` or :mod:`texar.custom` \
-            , :mod:`texar.core.optimization`
-            - An optimizer class.
-            - An instance of an optimizer class.
+          - The string name or full module path of an optimizer class.
+            If the class name is provided, the class must be in module
+            :torch_docs:`torch.optim <optim.html>` or :mod:`texar.custom`,
+            :mod:`texar.core.optimization`
+          - An optimizer class.
+          - An instance of an optimizer class.
 
-            For example
+          For example
 
-            .. code-block:: python
+          .. code-block:: python
 
-                "type": "AdamOptimizer" # class name
-                "type": "my_module.MyOptimizer" # module path
-                "type": tf.contrib.opt.AdamWOptimizer # class
-                "type": my_module.MyOptimizer # class
-                "type": GradientDescentOptimizer(learning_rate=0.1) # instance
-                "type": MyOptimizer(...) # instance
+              "type": "Adam"                    # class name
+              "type": "my_module.MyOptimizer"   # module path
+              "type": texar.custom.BertAdam     # class
+              "type": my_module.MyOptimizer     # class
 
-        - **"kwargs"** is a `dict` specifying keyword arguments for creating \
-        the optimizer class instance, with :python:`opt_class(**kwargs)`. \
-        Ignored if "type" is a class instance.
+        - **"kwargs"** is a `dict` specifying keyword arguments for creating
+          the optimizer class instance, with :python:`opt_class(**kwargs)`.
+          Ignored if `"type"` is a class instance.
 
     "learning_rate_decay" : dict
         Hyperparameters of learning rate decay function. The learning rate
@@ -102,44 +100,32 @@ def default_optimization_hparams() -> Dict[str, Any]:
 
         The decay function is specified in "type" and "kwargs".
 
-            - "type" can be a decay function or its name or module path. If \
-            function name is provided, it must be from module \
-            :tf_main:`tf.train <train>` or :mod:`texar.custom`, \
-            :mod:`texar.core.optimization`.
+        - `"type"` can be a decay function or its name or module path. If
+          function name is provided, it must be from module
+          :torch_docs:`torch.optim <optim.html>` or :mod:`texar.custom`,
+          :mod:`texar.core.optimization`.
 
-            - "kwargs" is a `dict` of keyword arguments for the function \
-            excluding arguments named "global_step" and "learning_rate".
+        - `"kwargs"` is a `dict` of keyword arguments for the function
+          excluding arguments named `"global_step"` and `"learning_rate"`.
 
         The function is called with
         :python:`lr = decay_fn(learning_rate=lr, global_step=offset_step,
         **kwargs)`, where `offset_step` is the global step offset as above.
-        The only exception is :tf_main:`tf.train.piecewise_constant
-        <train/piecewise_constant>` which is called with
-        :python:`lr = piecewise_constant(x=offset_step, **kwargs)`.
 
     "gradient_clip" : dict
         Hyperparameters of gradient clipping. The gradient clipping function
         takes a list of `(gradients, variables)` tuples and returns a list
         of `(clipped_gradients, variables)` tuples. Typical examples include
-        :tf_main:`tf.clip_by_global_norm <clip_by_global_norm>`,
-        :tf_main:`tf.clip_by_value <clip_by_value>`,
-        :tf_main:`tf.clip_by_norm <clip_by_norm>`,
-        :tf_main:`tf.clip_by_average_norm <clip_by_average_norm>`, etc.
+        :torch_nn:`utils.clip_grad_norm_` and
+        :torch_nn:`utils.clip_grad_value_`.
 
         "type" specifies the gradient clip function, and can be a function,
         or its name or mudule path. If function name is provided, the
-        function must be from module :tf_main:`tf < >` or :mod:`texar.custom`,
-        :mod:`texar.core.optimization`.
+        function must be from module :mod:`torch.nn.utils`, :mod:`texar.custom`,
+        or :mod:`texar.core.optimization`.
 
-
-        "kwargs" specifies keyword arguments to the function, except arguments
-        named "t" or "t_list".
-
-        The function is called with
-        :python:`clipped_grads(, _) = clip_fn(t_list=grads, **kwargs)`
-        (e.g., for :tf_main:`tf.clip_by_global_norm <clip_by_global_norm>`) or
-        :python:`clipped_grads = [clip_fn(t=grad, **kwargs) for grad in grads]`
-        (e.g., for :tf_main:`tf.clip_by_value <clip_by_value>`).
+        `"kwargs"` specifies keyword arguments to the function, except arguments
+        named `"parameters"`.
 
     "gradient_noise_scale" : float, optional
         Adds 0-mean normal noise scaled by this value to gradient.
@@ -169,7 +155,7 @@ def get_optimizer(
         params: Union[List[torch.Tensor], List[Dict[str, List[torch.Tensor]]]],
         hparams: Optional[Union[HParams, Dict[str, Any]]] = None) -> \
         Optimizer:
-    """Creates a optimizer instance.
+    r"""Creates a optimizer instance.
 
         Args:
             params: an iterable of :class:`torch.Tensor` s or
@@ -213,7 +199,7 @@ def get_optimizer(
 def get_scheduler(optimizer: Optimizer,
                   hparams: Optional[Union[HParams, Dict[str, Any]]] = None) -> \
         Optional[_LRScheduler]:
-    """Creates a scheduler instance.
+    r"""Creates a scheduler instance.
 
         Args:
             optimizer: A torch.optim.Optimizer instance.
@@ -258,7 +244,7 @@ def get_scheduler(optimizer: Optimizer,
 def get_grad_clip_fn(hparams: Optional[Union[HParams,
                                              Dict[str, Any]]] = None) -> \
         Optional[Callable[[torch.Tensor], Optional[torch.Tensor]]]:
-    """Create a clip_grad function.
+    r"""Create a clip_grad function.
 
         Args:
             hparams (dict or HParams, optional): hyperparameters. Missing
@@ -290,7 +276,7 @@ def get_grad_clip_fn(hparams: Optional[Union[HParams,
 def get_train_op(optimizer: Optimizer,
                  hparams: Optional[Union[HParams, Dict[str, Any]]] = None) -> \
         Callable[[], None]:
-    """Creates a training op..
+    r"""Creates a training op..
 
         Args:
             optimizer: A torch.optim.Optimizer instance to optimize the loss.

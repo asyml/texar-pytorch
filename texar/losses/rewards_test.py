@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 """
 Unit tests for RL rewards.
 """
@@ -8,8 +6,8 @@ Unit tests for RL rewards.
 
 import unittest
 
-import torch
 import numpy as np
+import torch
 
 import texar as tx
 
@@ -87,10 +85,11 @@ class RewardTest(unittest.TestCase):
         for i in range(5):
             if i < 3:
                 self.assertAlmostEqual(discounted_reward_2[0, i].item(),
-                                       0.1**(2-i))
+                                       0.1 ** (2 - i))
             else:
                 self.assertAlmostEqual(discounted_reward_2[0, i].item(), 0)
-            self.assertAlmostEqual(discounted_reward_2[1, i].item(), 0.1**(4-i))
+            self.assertAlmostEqual(discounted_reward_2[1, i].item(),
+                                   0.1 ** (4 - i))
 
     def test_discount_reward_tensor_2d(self):
         """Tests :func:`texar.losses.rewards._discount_reward_tensor_2d`
@@ -114,11 +113,11 @@ class RewardTest(unittest.TestCase):
         for i in range(10):
             if i < 5:
                 self.assertEqual(discounted_reward_2[0, i],
-                                 int(11111./10**i) / 10**(4-i))
+                                 int(11111. / 10 ** i) / 10 ** (4 - i))
             else:
                 self.assertEqual(discounted_reward_2[0, i], 0)
             self.assertEqual(discounted_reward_2[1, i],
-                             int(1111111111./10**i) / 10**(9-i))
+                             int(1111111111. / 10 ** i) / 10 ** (9 - i))
 
 
 if __name__ == "__main__":

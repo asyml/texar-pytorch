@@ -16,9 +16,56 @@ Cells
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.core.get_rnn_cell
 
-:hidden:`get_rnn_cell_trainable_variables`
+:hidden:`wrap_builtin_cell`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.core.get_rnn_cell_trainable_variables
+.. autofunction:: texar.core.wrap_builtin_cell
+
+:hidden:`RNNCellBase`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.RNNCellBase
+    :members:
+
+:hidden:`RNNCell`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.RNNCell
+    :members:
+
+:hidden:`GRUCell`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.GRUCell
+    :members:
+
+:hidden:`LSTMCell`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.LSTMCell
+    :members:
+
+:hidden:`DropoutWrapper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.DropoutWrapper
+    :members:
+
+:hidden:`ResidualWrapper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.ResidualWrapper
+    :members:
+
+:hidden:`HighwayWrapper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.HighwayWrapper
+    :members:
+
+:hidden:`MultiRNNCell`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.MultiRNNCell
+    :members:
+
+:hidden:`AttentionWrapper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.cell_wrappers.AttentionWrapper
+    :members:
+
+
 
 Layers
 ======
@@ -27,14 +74,14 @@ Layers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.core.get_layer
 
-:hidden:`MaxReducePooling1D`
+:hidden:`MaxReducePool1d`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.core.MaxReducePooling1D
+.. autoclass:: texar.core.MaxReducePool1d
     :members:
 
-:hidden:`AverageReducePooling1D`
+:hidden:`AvgReducePool1d`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.core.AverageReducePooling1D
+.. autoclass:: texar.core.AvgReducePool1d
     :members:
 
 :hidden:`get_pooling_layer_hparams`
@@ -46,10 +93,17 @@ Layers
 .. autoclass:: texar.core.MergeLayer
     :members:
 
-:hidden:`SequentialLayer`
+:hidden:`Flatten`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.core.SequentialLayer
+.. autoclass:: texar.core.Flatten
     :members:
+    :exclude-members: forward
+
+:hidden:`Identity`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.Identity
+    :members:
+    :exclude-members: forward
 
 :hidden:`default_regularizer_hparams`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -67,18 +121,6 @@ Layers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.core.get_activation_fn
 
-:hidden:`get_constraint_fn`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.core.get_constraint_fn
-
-:hidden:`default_conv1d_kwargs`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.core.default_conv1d_kwargs
-
-:hidden:`default_dense_kwargs`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.core.default_dense_kwargs
-
 
 Optimization
 =============
@@ -91,45 +133,14 @@ Optimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.core.get_train_op
 
-:hidden:`get_optimizer_fn`
+:hidden:`get_scheduler`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.core.get_optimizer_fn
+.. autofunction:: texar.core.get_scheduler
 
 :hidden:`get_optimizer`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.core.get_optimizer
 
-:hidden:`get_learning_rate_decay_fn`
+:hidden:`get_grad_clip_fn`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.core.get_learning_rate_decay_fn
-
-:hidden:`get_gradient_clip_fn`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.core.get_gradient_clip_fn
-
-
-Exploration
-============
-
-:hidden:`EpsilonLinearDecayExploration`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.core.EpsilonLinearDecayExploration
-    :members:
-
-:hidden:`ExplorationBase`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.core.ExplorationBase
-    :members:
-
-Replay Memories
-================
-
-:hidden:`DequeReplayMemory`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.core.DequeReplayMemory
-    :members:
-
-:hidden:`ReplayMemoryBase`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.core.ReplayMemoryBase
-    :members:
+.. autofunction:: texar.core.get_grad_clip_fn

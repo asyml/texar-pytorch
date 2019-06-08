@@ -6,7 +6,7 @@ import torch
 def variance_scaling_initializer(inputs: torch.Tensor,
                                  factor: float = 2.0, mode: str = 'FAN_IN',
                                  uniform: bool = False):
-    """Returns an initializer that generates tensors without scaling variance.
+    r"""Returns an initializer that generates tensors without scaling variance.
     When initializing a deep network, it is in principle advantageous to keep
     the scale of the input variance constant, so it does not explode or diminish
     by reaching the final layer. This initializer use the following formula:

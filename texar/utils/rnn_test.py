@@ -11,8 +11,8 @@ import unittest
 import torch
 
 from texar.core.cell_wrappers import RNNCell, GRUCell, LSTMCell
-from texar.utils.rnn import dynamic_rnn, reverse_sequence, \
-    bidirectional_dynamic_rnn
+from texar.utils.rnn import (
+    dynamic_rnn, reverse_sequence, bidirectional_dynamic_rnn)
 
 
 class ReverseSequenceTest(unittest.TestCase):
@@ -80,8 +80,8 @@ class DynamicRNNTest(unittest.TestCase):
                                            time_major=False)
 
         self.assertEqual(outputs.shape, torch.Size([self._batch_size,
-                                                   self._max_time,
-                                                   self._hidden_size]))
+                                                    self._max_time,
+                                                    self._hidden_size]))
         self.assertEqual(final_state.shape, torch.Size([self._batch_size,
                                                         self._hidden_size]))
         # LSTM
@@ -108,8 +108,8 @@ class DynamicRNNTest(unittest.TestCase):
                                            time_major=False)
 
         self.assertEqual(outputs.shape, torch.Size([self._batch_size,
-                                                   self._max_time,
-                                                   self._hidden_size]))
+                                                    self._max_time,
+                                                    self._hidden_size]))
         self.assertEqual(final_state.shape, torch.Size([self._batch_size,
                                                         self._hidden_size]))
 

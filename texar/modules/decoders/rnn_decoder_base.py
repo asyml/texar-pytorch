@@ -24,7 +24,8 @@ from typing import Optional, Tuple, TypeVar
 import torch
 from torch import nn
 
-from texar.core import RNNCellBase, layers
+from texar.core import layers
+from texar.core.cell_wrappers import RNNCellBase
 from texar.hyperparams import HParams
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
@@ -43,7 +44,7 @@ class RNNDecoderBase(DecoderBase[State, Output]):
     r"""Base class inherited by all RNN decoder classes.
     See :class:`~texar.modules.BasicRNNDecoder` for the arguments.
 
-    See :meth:`_build` for the inputs and outputs of RNN decoders in general.
+    See :meth:`forward` for the inputs and outputs of RNN decoders in general.
     """
 
     def __init__(self,
@@ -74,7 +75,7 @@ class RNNDecoderBase(DecoderBase[State, Output]):
         The hyperparameters are the same as in
         :meth:`~texar.modules.BasicRNNDecoder.default_hparams` of
         :class:`~texar.modules.BasicRNNDecoder`, except that the default
-        "name" here is "rnn_decoder".
+        ``"name"`` here is ``"rnn_decoder"``.
         """
         return {
             'rnn_cell': layers.default_rnn_cell_hparams(),
@@ -99,30 +100,32 @@ class RNNDecoderBase(DecoderBase[State, Output]):
         :class:`~texar.modules.BasicRNNDecoder` and
         :class:`~texar.modules.AttentionRNNDecoder`.
 
-        Implementation calls initialize() once and step() repeatedly on the
-        Decoder object. Please refer to `tf.contrib.seq2seq.dynamic_decode`.
+        Implementation calls :meth:`initialize` once and :meth:`step`
+        repeatedly on the decoder object. Please refer to
+        `tf.contrib.seq2seq.dynamic_decode
+        <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/dynamic_decode>`_.
 
         See Also:
             Arguments of :meth:`create_helper`.
 
         Args:
             inputs (optional): Input tensors for teacher forcing decoding.
-                Used when `decoding_strategy` is set to "train_greedy", or
-                when `hparams`-configured helper is used.
+                Used when :attr:`decoding_strategy` is set to
+                ``"train_greedy"``, or when `hparams`-configured helper is used.
 
-                - If :attr:`embedding` is `None`, `inputs` is directly \
-                fed to the decoder. E.g., in `"train_greedy"` strategy, \
-                `inputs` must be a 3D Tensor of shape \
-                `[batch_size, max_time, emb_dim]` (or \
-                `[max_time, batch_size, emb_dim]` if `input_time_major`==True).
-                - If `embedding` is given, `inputs` is used as index \
-                to look up embeddings and feed in the decoder. \
-                E.g., if `embedding` is an instance of \
-                :class:`~texar.modules.WordEmbedder`, \
-                then :attr:`inputs` is usually a 2D int Tensor \
-                `[batch_size, max_time]` (or \
-                `[max_time, batch_size]` if `input_time_major`==True) \
-                containing the token indexes.
+                - If :attr:`embedding` is ``None``, :attr:`inputs` is directly
+                  fed to the decoder. E.g., in ``"train_greedy"`` strategy,
+                  :attr:`inputs` must be a 3D Tensor of shape
+                  ``[batch_size, max_time, emb_dim]`` (or
+                  ``[max_time, batch_size, emb_dim]`` if
+                  ``"input_time_major"`` is ``True``).
+                - If :attr:`embedding` is given, :attr:`inputs` is used as
+                  index to look up embeddings and feed in the decoder. E.g.,
+                  if `embedding` is an instance of
+                  :class:`~texar.modules.WordEmbedder`, then :attr:`inputs`
+                  is usually a 2D int Tensor `[batch_size, max_time]` (or
+                  `[max_time, batch_size]` if `input_time_major` == True)
+                  containing the token indexes.
             sequence_length (optional): A 1D int Tensor containing the
                 sequence length of :attr:`inputs`.
                 Used when `decoding_strategy="train_greedy"` or
@@ -141,24 +144,24 @@ class RNNDecoderBase(DecoderBase[State, Output]):
                 and outputs have the correct values and that backprop ignores
                 time steps that were marked as finished.
             helper (optional): An instance of
-                :tf_main:`Helper <contrib/seq2seq/Helper>`
+                :class:`texar.modules.decoders.Helper`
                 that defines the decoding strategy. If given,
-                `decoding_strategy`
-                and helper configs in :attr:`hparams` are ignored.
+                ``decoding_strategy`` and helper configs in :attr:`hparams`
+                are ignored.
             infer_mode (optional): If not `None`, overrides mode given by
                 `self.training`.
             **kwargs: Other keyword arguments for constructing helpers
-                defined by `hparams["helper_trainn"]` or
-                `hparams["helper_infer"]`.
+                defined by ``hparams["helper_train"]`` or
+                ``hparams["helper_infer"]``.
 
         Returns:
-            `(outputs, final_state, sequence_lengths)`, where
+            ``(outputs, final_state, sequence_lengths)``, where
 
-            - **`outputs`**: an object containing the decoder output on all \
-            time steps.
-            - **`final_state`**: is the cell state of the final time step.
-            - **`sequence_lengths`**: is an int Tensor of shape `[batch_size]` \
-            containing the length of each sample.
+            - `outputs`: an object containing the decoder output on all
+              time steps.
+            - `final_state`: the cell state of the final time step.
+            - `sequence_lengths`: a :tensor:`LongTensor` of shape
+              ``[batch_size]`` containing the length of each sample.
         """
         # TODO: Add faster code path for teacher-forcing training.
 
@@ -213,7 +216,8 @@ class RNNDecoderBase(DecoderBase[State, Output]):
 
     @property
     def cell(self):
-        r"""The RNN cell."""
+        r"""The RNN cell.
+        """
         return self._cell
 
     def zero_state(self, batch_size):
@@ -231,5 +235,6 @@ class RNNDecoderBase(DecoderBase[State, Output]):
 
     @property
     def output_layer(self):
-        r"""The output layer."""
+        r"""The output layer.
+        """
         return self._output_layer

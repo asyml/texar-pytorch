@@ -9,9 +9,11 @@ import unittest
 
 from texar.modules.embedders import embedder_utils
 
+
 class GetEmbeddingTest(unittest.TestCase):
     """Tests embedding creator.
     """
+
     def test_get_embedding(self):
         """Tests :func:`~texar.modules.embedder.embedder_utils.get_embedding`.
         """
@@ -28,7 +30,7 @@ class GetEmbeddingTest(unittest.TestCase):
             }
         }
         emb = embedder_utils.get_embedding(
-            hparams=hparams, num_embeds=vocab_size,)
+            hparams=hparams, num_embeds=vocab_size, )
         self.assertEqual(emb.shape[0], vocab_size)
         self.assertEqual(emb.shape[1],
                          embedder_utils.default_embedding_hparams()["dim"])

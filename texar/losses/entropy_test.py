@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 """
 Unit tests for entropy.
 """
@@ -7,9 +5,10 @@ Unit tests for entropy.
 # pylint: disable=invalid-name
 
 import unittest
-import torch
-import texar as tx
 
+import torch
+
+import texar as tx
 from texar.utils.shapes import get_rank
 
 

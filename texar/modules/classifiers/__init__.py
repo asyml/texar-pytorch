@@ -12,15 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Texar defined exceptions.
+Modules of Texar library classifiers.
 """
 
-__all__ = [
-    "TexarError",
-]
-
-
-class TexarError(Exception):
-    r"""
-    Texar error.
-    """
+from texar.modules.classifiers.classifier_base import *
+from texar.modules.classifiers.conv_classifiers import *

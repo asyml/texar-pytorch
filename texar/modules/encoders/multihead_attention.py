@@ -56,12 +56,11 @@ class MultiheadAttentionEncoder(EncoderBase):
 
     Args:
         hparams (dict or HParams, optional): Hyperparameters. Missing
-            hyperparamerter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameters will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
     .. document private functions
-    .. automethod:: _build
     """
 
     def __init__(self, input_size: int, hparams: Optional[HParams] = None):
@@ -92,6 +91,7 @@ class MultiheadAttentionEncoder(EncoderBase):
         r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
+
             {
                 "initializer": None,
                 'num_heads': 8,
@@ -117,7 +117,7 @@ class MultiheadAttentionEncoder(EncoderBase):
 
         "num_units" : int
             Hidden dimension of the unsplitted attention space.
-            Should be devisible by `num_heads`.
+            Should be divisible by ``num_heads``.
 
         "dropout_rate: : float
             Dropout rate in the attention.
@@ -148,15 +148,16 @@ class MultiheadAttentionEncoder(EncoderBase):
         r"""Encodes the inputs.
 
         Args:
-            queries: A 3d tensor with shape of [batch, length_query,
-                depth_query].
-            memory: A 3d tensor with shape of [batch, length_key, depth_key].
-            memory_attention_bias: A 3d tensor with shape of
-                [batch, length_key, num_units].
+            queries: A 3D tensor with shape of
+                ``[batch, length_query, depth_query]``.
+            memory: A 3D tensor with shape of
+                ``[batch, length_key, depth_key]``.
+            memory_attention_bias: A 3D tensor with shape of
+                ``[batch, length_key, num_units]``.
             cache: Memory cache only when inferring the sentence from scratch.
 
         Returns:
-            A Tensor of shape `[batch_size, max_time, dim]` containing the
+            A tensor of shape ``[batch_size, max_time, dim]`` containing the
             encoded vectors.
         """
 
@@ -234,7 +235,7 @@ class MultiheadAttentionEncoder(EncoderBase):
 
     def _split_heads(self, x: torch.Tensor) -> torch.Tensor:
         r"""Split channels (dimension 2) into multiple heads,
-        becomes dimension 1). Must ensure `x.shape[-1]` can be
+        becomes dimension 1). Must ensure ``x.shape[-1]`` can be
         divided by num_heads.
         """
         depth = x.size(-1)
@@ -247,9 +248,9 @@ class MultiheadAttentionEncoder(EncoderBase):
         r"""
 
         Args:
-            x: A Tensor of shape `[batch, num_heads, seq_len, dim]`
+            x: A Tensor of shape ``[batch, num_heads, seq_len, dim]``
         Returns:
-            A Tensor of shape `[batch, seq_len, num_heads * dim]`
+            A Tensor of shape ``[batch, seq_len, num_heads * dim]``
         """
         t = x.permute((0, 2, 1, 3))  # [batch, seq_len, num_heads, dim]
         num_heads, dim = t.size()[-2:]
@@ -260,5 +261,4 @@ class MultiheadAttentionEncoder(EncoderBase):
     def output_size(self):
         r"""Provides output dimension as property.
         """
-
         return self._hparams.output_dim

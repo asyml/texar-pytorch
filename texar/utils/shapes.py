@@ -15,7 +15,7 @@
 Utility functions related to tensor shapes.
 """
 
-from typing import List, Optional, Union, Any
+from typing import Any, List, Optional, Union
 
 import numpy as np
 import torch
@@ -29,8 +29,7 @@ __all__ = [
     "get_rank",
     "mask_sequences",
     "flatten",
-    "shape_list",
-    "pad_and_concat"
+    "pad_and_concat",
 ]
 
 
@@ -38,8 +37,8 @@ def transpose_batch_time(inputs: torch.Tensor) -> torch.Tensor:
     r"""Transposes inputs between time-major and batch-major.
 
     Args:
-        inputs: A Tensor of shape `[batch_size, max_time, ...]` (batch-major)
-            or `[max_time, batch_size, ...]` (time-major), or a (possibly
+        inputs: A Tensor of shape ``[batch_size, max_time, ...]`` (batch-major)
+            or ``[max_time, batch_size, ...]`` (time-major), or a (possibly
             nested) tuple of such elements.
 
     Returns:
@@ -50,22 +49,22 @@ def transpose_batch_time(inputs: torch.Tensor) -> torch.Tensor:
 
 
 def get_batch_size(tensor: torch.Tensor) -> int:
-    r"""Returns a scalar representing the batch size, i.e.,
+    r"""Returns an ``int`` representing the batch size, i.e.,
     the size of the 1st dimension of :attr:`tensor`.
     """
     return tensor.size(0)
 
 
 def get_rank(tensor: torch.Tensor) -> int:
-    r"""Returns the tensor rank as a Python `int`. The input tensor can also be
+    r"""Returns the tensor rank as a Python ``int``. The input tensor can also be
     a python array.
 
     Args:
         tensor: A Tensor or Python array.
 
     Returns:
-        A Python `int` representing the rank of :attr:`tensor`. Returns
-        `None` if the rank cannot be determined.
+        A Python ``int`` representing the rank of :attr:`tensor`. Returns
+        ``None`` if the rank cannot be determined.
     """
     if torch.is_tensor(tensor):
         rank = tensor.dim()
@@ -83,24 +82,24 @@ def mask_sequences(sequence: Union[torch.Tensor, List[int]],
     lengths. Masks along the time dimension.
 
     :attr:`sequence` and :attr:`sequence_length` can either be python
-    arrays or Tensors, respectively. If both are python arrays (or None), the
-    return will be a python array as well.
+    arrays or Tensors, respectively. If both are Python arrays (or None), the
+    return will be a Python array as well.
 
     Args:
         sequence: A Tensor or Python array of sequence values.
-            If `time_major==False` (default), this must be a Tensor of shape
-            `[batch_size, max_time, ...]`. The batch and time dimension is
-            exchanged if `time_major==True`.
-        sequence_length: A Tensor or python array of shape `[batch_size]`.
+            If ``time_major==False`` (default), this must be a Tensor of shape
+            ``[batch_size, max_time, ...]``. The batch and time dimension is
+            exchanged if ``time_major==True``.
+        sequence_length: A Tensor or python array of shape ``[batch_size]``.
             Time steps beyond the respective sequence lengths will be
             made zero.
-        dtype (dtype): Type of :attr:`sequence`. If `None`, infer from
+        dtype (dtype): Type of :attr:`sequence`. If ``None``, infer from
             :attr:`sequence` automatically.
-        time_major (bool): The shape format of the inputs. If `True`,
+        time_major (bool): The shape format of the inputs. If ``True``,
             :attr:`sequence` must have shape
-            `[max_time, batch_size, ...]`.
-            If `False` (default), :attr:`sequence` must have
-            shape `[batch_size, max_time, ...]`.
+            ``[max_time, batch_size, ...]``.
+            If ``False`` (default), :attr:`sequence` must have
+            shape ``[batch_size, max_time, ...]``.
 
     Returns:
         The masked sequence, i.e., a Tensor or python array of the same shape
@@ -109,6 +108,7 @@ def mask_sequences(sequence: Union[torch.Tensor, List[int]],
         If both :attr:`sequence` and :attr:`sequence_length` are python
         arrays, the returned value is a python array as well.
     """
+    # pylint: disable=not-callable
     if not torch.is_tensor(sequence):
         sequence = torch.tensor(sequence, dtype=dtype)
     sequence: torch.Tensor
@@ -144,7 +144,7 @@ def flatten(tensor: torch.Tensor, preserve_dims: int,
             dimension. If not given, infer automatically.
 
     Returns:
-        A Tensor with rank :attr:`preserve_dims`+1.
+        A Tensor with rank :attr:`preserve_dims` +1.
 
     Example:
         .. code-block:: python
@@ -162,21 +162,6 @@ def flatten(tensor: torch.Tensor, preserve_dims: int,
     return tensor_
 
 
-def shape_list(x: torch.Tensor) -> torch.Size:
-    r"""Returns **static** shape of the input Tensor whenever possible.
-
-    Args:
-        x: A Tensor.
-
-    Returns:
-        - If the rank of :attr:`x` is unknown, returns the dynamic shape: \
-        `tf.shape(x)`
-        - Otherwise, returns a list of dims, each of which is either an `int` \
-        whenever it can be statically determined, or a scalar Tensor otherwise.
-    """
-    return x.size()
-
-
 def pad_and_concat(values: List[torch.Tensor], axis: int,
                    pad_axis: Optional[MaybeList[int]] = None,
                    pad_constant_values: Any = 0) -> torch.Tensor:
@@ -188,18 +173,17 @@ def pad_and_concat(values: List[torch.Tensor], axis: int,
         axis (int): A Python int. Dimension along which to concatenate.
         pad_axis (int or list, optional): A Python int or a list of int.
             Dimensions to pad. Paddings are only added to the end of
-            corresponding dimensions. If `None`, all dimensions except the
+            corresponding dimensions. If ``None``, all dimensions except the
             :attr:`axis` dimension are padded.
         pad_constant_values: The scalar pad value to use. Must be same type
             as the tensors.
 
     Returns:
-        A `Tensor` resulting from padding and concatenation of the input
+        A ``Tensor`` resulting from padding and concatenation of the input
         tensors.
 
     Raises:
-        ValueError: If :attr:`rank` is `None` and cannot be inferred from
-            :attr:`values`.
+        ValueError: If ``rank`` of :attr:`values` are not consistant.
 
     Example:
 
@@ -227,7 +211,7 @@ def pad_and_concat(values: List[torch.Tensor], axis: int,
         pad_axis = [r for r in range(rank) if r != axis]
     elif isinstance(pad_axis, int):
         pad_axis = [pad_axis]
-
+    # pylint: disable=invalid-name
     for pad_dim in pad_axis:
         max_dim_size = max(v.size(pad_dim) for v in values)
         for i, v in enumerate(values):
@@ -239,4 +223,3 @@ def pad_and_concat(values: List[torch.Tensor], axis: int,
             values[i] = torch.cat((v, padding), dim=pad_dim)
 
     return torch.cat(values, dim=axis)
-

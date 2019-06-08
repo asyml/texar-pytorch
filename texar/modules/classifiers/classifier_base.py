@@ -23,12 +23,12 @@ from texar.hyperparams import HParams
 from texar.module_base import ModuleBase
 
 __all__ = [
-    "ClassifierBase"
+    "ClassifierBase",
 ]
 
 
 class ClassifierBase(ModuleBase):
-    """Base class inherited by all classifier classes.
+    r"""Base class inherited by all classifier classes.
     """
 
     def __init__(self,
@@ -37,7 +37,7 @@ class ClassifierBase(ModuleBase):
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
-        """Returns a dictionary of hyperparameters with default values.
+        r"""Returns a dictionary of hyperparameters with default values.
         """
         return {
             "name": "classifier"
@@ -45,4 +45,3 @@ class ClassifierBase(ModuleBase):
 
     def forward(self, *input: torch.Tensor):  # noqa: E501 pylint: disable=redefined-builtin
         raise NotImplementedError
-

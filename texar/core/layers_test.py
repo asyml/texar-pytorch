@@ -4,18 +4,19 @@ Unit tests for various layers.
 import unittest
 
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
 import texar as tx
 from texar.core import layers
 
 
 class GetActivationFnTest(unittest.TestCase):
-    """Tests :func:`texar.core.layers.get_activation_fn`.
+    r"""Tests :func:`texar.core.layers.get_activation_fn`.
     """
+
     def test_get_activation_fn(self):
-        """Tests.
+        r"""Tests.
         """
         fn = layers.get_activation_fn()
         self.assertEqual(fn, None)
@@ -38,10 +39,11 @@ class GetActivationFnTest(unittest.TestCase):
 
 
 class GetLayerTest(unittest.TestCase):
-    """Tests layer creator.
+    r"""Tests layer creator.
     """
+
     def test_get_layer(self):
-        """Tests :func:`texar.core.layers.get_layer`.
+        r"""Tests :func:`texar.core.layers.get_layer`.
         """
         hparams = {"type": "Conv1d",
                    "kwargs": {"in_channels": 16,
@@ -86,8 +88,9 @@ class GetLayerTest(unittest.TestCase):
 
 
 class ReducePoolingLayerTest(unittest.TestCase):
-    """Tests reduce pooling layer.
+    r"""Tests reduce pooling layer.
     """
+
     def setUp(self):
         unittest.TestCase.setUp(self)
 
@@ -96,7 +99,7 @@ class ReducePoolingLayerTest(unittest.TestCase):
         self._seq_length = 16
 
     def test_max_reduce_pooling_layer(self):
-        """Tests :class:`texar.core.MaxReducePool1d`."""
+        r"""Tests :class:`texar.core.MaxReducePool1d`."""
 
         pool_layer = layers.MaxReducePool1d()
         inputs = torch.randn(self._batch_size, self._emb_dim, self._seq_length)
@@ -107,7 +110,7 @@ class ReducePoolingLayerTest(unittest.TestCase):
         self.assertEqual(torch.all(torch.eq(output, output_reduce)), 1)
 
     def test_average_reduce_pooling_layer(self):
-        """Tests :class:`texar.core.AvgReducePool1d`."""
+        r"""Tests :class:`texar.core.AvgReducePool1d`."""
 
         pool_layer = layers.AvgReducePool1d()
         inputs = torch.randn(self._batch_size, self._emb_dim, self._seq_length)
@@ -119,11 +122,11 @@ class ReducePoolingLayerTest(unittest.TestCase):
 
 
 class MergeLayerTest(unittest.TestCase):
-    """Tests MergeLayer.
+    r"""Tests MergeLayer.
     """
 
     def test_layer_logics(self):
-        """Test the logic of MergeLayer.
+        r"""Test the logic of MergeLayer.
         """
         layers_ = list()
         layers_.append(nn.Conv1d(in_channels=32, out_channels=32,
@@ -143,4 +146,3 @@ class MergeLayerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

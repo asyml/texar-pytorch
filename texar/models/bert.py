@@ -48,12 +48,10 @@ class BertClassifier(ClassifierBase):
             and default values.
 
     .. document private functions
-    .. automethod:: _build
     """
 
     def __init__(self, hparams=None):
-
-        ClassifierBase.__init__(self, hparams)
+        super().__init__(hparams)
         self.word_embedder = tx.modules.WordEmbedder(
             vocab_size=self._hparams.vocab_size, hparams=self._hparams.embed)
 
@@ -219,7 +217,7 @@ class BertClassifier(ClassifierBase):
 
         return hparams
 
-    def forward(self, inputs: torch.Tensor,
+    def forward(self, inputs: torch.Tensor,  # type: ignore
                 sequence_length: Optional[torch.LongTensor] = None,
                 segment_ids: Optional[torch.LongTensor] = None,
                 labels: Optional[torch.LongTensor] = None) \
@@ -269,7 +267,6 @@ class BertClassifier(ClassifierBase):
         seq_length = seq_length.to(device=inputs.device)
         pos_embeds = self.position_embedder(sequence_length=seq_length)
         input_embeds = word_embeds + segment_embeds + pos_embeds
-
 
         enc_output = self.encoder(input_embeds, sequence_length)
 

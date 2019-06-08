@@ -22,5 +22,17 @@ script:
   # unit tests
   - pytest
 
+jobs:
+  include:
+    - stage: docs
+      python: "3.7"
+      install:
+        - pip install --upgrade pip
+        - pip install --progress-bar off -r requirements.txt
+        - pip install --progress-bar off -r docs/requirements.txt
+      script:
+        - cd docs
+        - sphinx-build -W -b html . _build/html
+
 notifications:
   email: false

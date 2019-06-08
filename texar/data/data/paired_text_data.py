@@ -72,53 +72,53 @@ class PairedTextData(TextDataBase[Tuple[str, str],
     batching and other pre-processing steps, and results in a Dataset
     whose element is a python `dict` including six fields:
 
-        - "source_text":
-            A list of [batch_size] elements each containing a list of **raw**
-            text tokens of source sequences. Short sequences in the batch are
-            padded with **empty string**. By default only EOS token is appended
-            to each sequence. Out-of-vocabulary tokens are **NOT** replaced with
-             UNK.
-        - "source_text_ids":
-            A list of [batch_size] elements each containing a list of token
-            indexes of source sequences in the batch
-        - "source_length":
-            A list of [batch_size] elements of ints containing the length of
-            each source sequence in the batch
-        - "target_text":
-            A list same as "source_text" but for target sequences. By
-            default both BOS and EOS are added.
-        - "target_text_ids":
-            A list same as "source_text_ids" but for target sequences.
-        - "target_length":
-            An list same as "source_length" but for target sequences.
+    "source_text":
+        A list of ``[batch_size]`` elements each containing a list of
+        **raw** text tokens of source sequences. Short sequences in the
+        batch are padded with **empty string**. By default only ``EOS``
+        token is appended to each sequence. Out-of-vocabulary tokens are
+        **NOT** replaced with ``UNK``.
+    "source_text_ids":
+        A list of ``[batch_size]`` elements each containing a list of token
+        indexes of source sequences in the batch.
+    "source_length":
+        A list of ``[batch_size]`` elements of ints containing the length
+        of each source sequence in the batch.
+    "target_text":
+        A list same as "source_text" but for target sequences. By default
+        both BOS and EOS are added.
+    "target_text_ids":
+        A list same as "source_text_ids" but for target sequences.
+    "target_length":
+        An list same as "source_length" but for target sequences.
 
     The above field names can be accessed through :attr:`source_text_name`,
     :attr:`source_text_id_name`, :attr:`source_length_name`, and those prefixed
-    with `target_`, respectively.
+    with ``target_``, respectively.
 
     Example:
 
-        .. code-block:: python
+    .. code-block:: python
 
-            hparams={
-                'source_dataset': {'files': 's', 'vocab_file': 'vs'},
-                'target_dataset': {'files': ['t1', 't2'], 'vocab_file': 'vt'},
-                'batch_size': 1
-            }
-            data = PairedTextData(hparams)
-            iterator = DataIterator(data)
+        hparams={
+            'source_dataset': {'files': 's', 'vocab_file': 'vs'},
+            'target_dataset': {'files': ['t1', 't2'], 'vocab_file': 'vt'},
+            'batch_size': 1
+        }
+        data = PairedTextData(hparams)
+        iterator = DataIterator(data)
 
-            for batch in iterator:
-                # batch contains the following
-                # batch_ == {
-                #    'source_text': [['source', 'sequence', '<EOS>']],
-                #    'source_text_ids': [[5, 10, 2]],
-                #    'source_length': [3]
-                #    'target_text': [['<BOS>', 'target', 'sequence', '1',
-                                    '<EOS>']],
-                #    'target_text_ids': [[1, 6, 10, 20, 2]],
-                #    'target_length': [5]
-                # }
+        for batch in iterator:
+            # batch contains the following
+            # batch_ == {
+            #    'source_text': [['source', 'sequence', '<EOS>']],
+            #    'source_text_ids': [[5, 10, 2]],
+            #    'source_length': [3]
+            #    'target_text': [['<BOS>', 'target', 'sequence', '1',
+                                '<EOS>']],
+            #    'target_text_ids': [[1, 6, 10, 20, 2]],
+            #    'target_length': [5]
+            # }
 
     """
 
@@ -282,36 +282,39 @@ class PairedTextData(TextDataBase[Tuple[str, str],
         Here:
 
         1. Hyperparameters in the :attr:`"source_dataset"` and
-        attr:`"target_dataset"` fields have the same definition as those
-        in :meth:`texar.data.MonoTextData.default_hparams`, for source and
-        target text, respectively.
+           attr:`"target_dataset"` fields have the same definition as those
+           in :meth:`texar.data.MonoTextData.default_hparams`, for source and
+           target text, respectively.
 
-        For the new hyperparameters in "target_dataset":
+           For the new hyperparameters in "target_dataset":
 
-            "vocab_share" : bool
-                Whether to share the vocabulary of source.
-                If `True`, the vocab file of target is ignored.
+           "vocab_share" : bool
+               Whether to share the vocabulary of source.
+               If `True`, the vocab file of target is ignored.
 
-            "embedding_init_share" : bool
-                Whether to share the embedding initial value of source. If
-                `True`, :attr:`"embedding_init"` of target is ignored.
+           "embedding_init_share" : bool
+               Whether to share the embedding initial value of source. If
+               `True`, :attr:`"embedding_init"` of target is ignored.
 
-                :attr:`"vocab_share"` must be true to share the embedding
-                initial value.
+              :attr:`"vocab_share"` must be true to share the embedding
+              initial value.
 
-            "processing_share" : bool
-                Whether to share the processing configurations of source,
-                including
-                "delimiter", "bos_token", "eos_token", and
-                "other_transformations".
+           "processing_share" : bool
+               Whether to share the processing configurations of source,
+               including
+               "delimiter", "bos_token", "eos_token", and
+               "other_transformations".
 
         2. For the **general** hyperparameters, see
-        :meth:`texar.data.DataBase.default_hparams` for details.
+           :meth:`texar.data.DataBase.default_hparams` for details.
 
         3. For **bucketing** hyperparameters, see
-        :meth:`texar.data.MonoTextData.default_hparams` for details, except
-        that the default bucket_length_fn is the maximum sequence length
-        of source and target sequences.
+           :meth:`texar.data.MonoTextData.default_hparams` for details, except
+           that the default bucket_length_fn is the maximum sequence length
+           of source and target sequences.
+
+           .. warning::
+               Bucketing is not yet supported. These options will be ignored.
 
         """
         hparams = TextDataBase.default_hparams()

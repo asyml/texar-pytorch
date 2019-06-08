@@ -22,7 +22,7 @@ from torch import nn
 from texar.hyperparams import HParams
 
 __all__ = [
-    'ModuleBase'
+    'ModuleBase',
 ]
 
 
@@ -30,7 +30,7 @@ class ModuleBase(nn.Module):
     r"""Base class inherited by modules that are configurable through
     hyperparameters.
 
-    This is a subclass of :torch_main:`torch.nn.Module <nn/modules/module>`.
+    This is a subclass of :torch_nn:`Module`.
 
     A Texar module inheriting :class:`~texar.ModuleBase` is
     **configurable through hyperparameters**. That is, each module defines

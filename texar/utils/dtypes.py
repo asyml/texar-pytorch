@@ -37,8 +37,8 @@ def get_numpy_dtype(dtype: Union[str, type]):
     r"""Returns equivalent NumPy dtype.
 
     Args:
-        dtype: A str, python numeric or string type, numpy data type, or
-            tf dtype.
+        dtype: A str, Python numeric or string type, NumPy data type, or
+            PyTorch dtype.
 
     Returns:
         The corresponding NumPy dtype.
@@ -75,14 +75,14 @@ def get_numpy_dtype(dtype: Union[str, type]):
 
 
 def is_callable(x):
-    r"""Return `True` if :attr:`x` is callable.
+    r"""Return ``True`` if :attr:`x` is callable.
     """
     return callable(x)
 
 
 def is_str(x):
-    r"""Returns `True` if :attr:`x` is either a str or unicode. Returns `False`
-    otherwise.
+    r"""Returns ``True`` if :attr:`x` is either a str or unicode.
+    Returns ``False`` otherwise.
     """
     return isinstance(x, str)
 
@@ -90,8 +90,14 @@ def is_str(x):
 def maybe_hparams_to_dict(hparams: Optional[Union[HParams, Dict[str, Any]]]) \
         -> Optional[Dict[str, Any]]:
     r"""If :attr:`hparams` is an instance of :class:`~texar.HParams`,
-    converts it to a `dict` and returns. If :attr:`hparams` is a `dict`,
+    converts it to a ``dict`` and returns. If :attr:`hparams` is a ``dict``,
     returns as is.
+
+    Args:
+        hparams: The :class:`~texar.HParams` instance to convert.
+
+    Returns:
+        dict: The corresponding ``dict`` instance
     """
     if hparams is None:
         return None
@@ -112,17 +118,17 @@ def _maybe_list_to_array(str_list, dtype_as):
 def _as_text(bytes_or_text, encoding='utf-8'):
     r"""Returns the given argument as a unicode string.
 
-    Adapted from `tensorflow.compat.as_text`.
+    Adapted from ``tensorflow.compat.as_text``.
 
     Args:
-        bytes_or_text: A `bytes`, `str`, or `unicode` object.
+        bytes_or_text: A ``bytes``, ``str``, or ``unicode`` object.
             encoding: A string indicating the charset for decoding unicode.
 
     Returns:
-        A `unicode` (Python 2) or `str` (Python 3) object.
+        A ``unicode`` (Python 2) or ``str`` (Python 3) object.
 
     Raises:
-        TypeError: If `bytes_or_text` is not a binary or unicode string.
+        TypeError: If ``bytes_or_text`` is not a binary or unicode string.
     """
     if isinstance(bytes_or_text, str):
         return bytes_or_text
@@ -134,10 +140,10 @@ def _as_text(bytes_or_text, encoding='utf-8'):
 
 
 def compat_as_text(str_):
-    """Converts strings into `unicode` (Python 2) or `str` (Python 3).
+    r"""Converts strings into ``unicode`` (Python 2) or ``str`` (Python 3).
 
     Args:
-        str_: A string or other data types convertible to string, or an
+        str\_: A string or other data types convertible to string, or an
             `n`-D numpy array or (possibly nested) list of such elements.
 
     Returns:

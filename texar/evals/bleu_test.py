@@ -12,7 +12,7 @@ import texar as tx
 
 
 class BLEUTest(unittest.TestCase):
-    """Tests bleu.
+    r"""Tests bleu.
     """
 
     def _test_sentence_bleu(self, references, hypothesis, lowercase,
@@ -23,7 +23,7 @@ class BLEUTest(unittest.TestCase):
         self.assertAlmostEqual(bleu, true_bleu, places=0)
 
     def test_sentence_strings(self):
-        """Tests hypothesis as strings.
+        r"""Tests hypothesis as strings.
         """
         hypothesis = \
             "this is a test sentence to evaluate the good bleu score . 词"
@@ -32,7 +32,7 @@ class BLEUTest(unittest.TestCase):
             references, hypothesis, lowercase=False, true_bleu=67.03)
 
     def test_sentence_list(self):
-        """Tests hypothesis as a list of tokens.
+        r"""Tests hypothesis as a list of tokens.
         """
         hypothesis = \
             "this is a test sentence to evaluate the good bleu score . 词"
@@ -43,7 +43,7 @@ class BLEUTest(unittest.TestCase):
             references, hypothesis, lowercase=False, true_bleu=67.03)
 
     def test_sentence_multi_references(self):
-        """Tests multiple references.
+        r"""Tests multiple references.
         """
         hypothesis = \
             "this is a test sentence to evaluate the good bleu score . 词"
@@ -53,7 +53,7 @@ class BLEUTest(unittest.TestCase):
             references, hypothesis, lowercase=False, true_bleu=76.12)
 
     def test_sentence_numpy(self):
-        """Tests with numpy format.
+        r"""Tests with numpy format.
         """
         hypothesis = \
             "this is a test sentence to evaluate the good bleu score . 词"
@@ -77,7 +77,7 @@ class BLEUTest(unittest.TestCase):
                 self.assertAlmostEqual(ret, true, places=0)
 
     def test_corpus_strings(self):
-        """Tests corpus level BLEU.
+        r"""Tests corpus level BLEU.
         """
         hypotheses = [
             "this is a test sentence to evaluate the good bleu score . 词",

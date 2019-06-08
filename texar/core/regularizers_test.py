@@ -10,7 +10,7 @@ from texar.core.regularizers import *
 
 
 class RegularizerTest(unittest.TestCase):
-    """Test regularizers.
+    r"""Test regularizers.
     """
 
     def setUp(self):
@@ -19,7 +19,7 @@ class RegularizerTest(unittest.TestCase):
         self.l2 = 0.2
 
     def test_l1(self):
-        """Tests l1."""
+        r"""Tests l1."""
         regularizer = l1(self.l1)
         self.assertEqual(regularizer.l1, 0.1)
         self.assertEqual(regularizer.l2, 0)
@@ -31,7 +31,7 @@ class RegularizerTest(unittest.TestCase):
         self.assertEqual(regularizer.get_config().get("l2"), 0)
 
     def test_l2(self):
-        """Tests l2."""
+        r"""Tests l2."""
         regularizer = l2(self.l2)
         self.assertEqual(regularizer.l1, 0)
         self.assertEqual(regularizer.l2, 0.2)
@@ -43,7 +43,7 @@ class RegularizerTest(unittest.TestCase):
         self.assertEqual(regularizer.get_config().get("l2"), 0.2)
 
     def test_l1_l2(self):
-        """Tests l1_l2."""
+        r"""Tests l1_l2."""
         regularizer = l1_l2(self.l1, self.l2)
         self.assertEqual(regularizer.l1, 0.1)
         self.assertEqual(regularizer.l2, 0.2)

@@ -13,7 +13,7 @@
 # limitations under the License.
 """RNN helpers for PyTorch models."""
 
-from typing import Optional, Tuple, List, Union
+from typing import List, Optional, Tuple, TypeVar, Union
 
 import torch
 
@@ -24,10 +24,10 @@ from texar.utils.types import MaybeTuple
 __all__ = [
     "reverse_sequence",
     "dynamic_rnn",
-    "bidirectional_dynamic_rnn"
+    "bidirectional_dynamic_rnn",
 ]
 
-State = torch.Tensor
+State = TypeVar('State')
 
 
 def reverse_sequence(inputs: torch.Tensor,
@@ -49,18 +49,20 @@ def reverse_sequence(inputs: torch.Tensor,
     Args:
         inputs: A Tensor. The input to reverse.
         seq_lengths: A Tensor. Must be one of the following types: int32,
-            int64. 1-D with length input.dims(batch_dim) and max(seq_lengths) <=
-            input.dims(seq_dim)
-        time_major: The shape format of the `inputs` and `outputs` Tensors.
-            If true, these `Tensors` must be shaped
-            `[max_time, batch_size, depth]`. If false, these `Tensors` must be
-            shaped `[batch_size, max_time, depth]`.
-            Using `time_major = True` is a bit more efficient because it avoids
-            transposes at the beginning and end of the RNN calculation.
-            However, most TensorFlow data is batch-major, so by default this
-            function accepts input and emits output in batch-major form.
+            int64. 1-D with length input.dims(batch_dim) and
+            max(seq_lengths) <= input.dims(seq_dim)
+        time_major: The shape format of the ``inputs`` and ``outputs`` Tensors.
+            If true, these ``Tensors`` must be shaped
+            ``[max_time, batch_size, depth]``. If false, these ``Tensors`` must
+            be shaped ``[batch_size, max_time, depth]``.
+            Using ``time_major = True`` is a bit more efficient because it
+            avoids transposes at the beginning and end of the RNN calculation.
+            However, most TensorFlow data is batch-major, so by
+            default this functionb accepts input and emits output
+            in batch-major form.
+
     Returns:
-        A Tensor. Has the same type as input.
+        A ``Tensor``. Has the same type as input.
     """
     if time_major:
         inputs = inputs.permute(1, 0, 2)
@@ -69,24 +71,24 @@ def reverse_sequence(inputs: torch.Tensor,
 
     outputs = inputs.clone()
     for i in range(batch_size):
-        outputs[i][0:seq_lengths[i]] = torch.flip(inputs[i][0:seq_lengths[i]],
-                                                  (0, ))
+        outputs[i][0:seq_lengths[i]] = torch.flip(
+            inputs[i][0:seq_lengths[i]], dims=(0,))
     if time_major:
         outputs = outputs.permute(1, 0, 2)
 
     return outputs
 
 
+# pylint: disable=too-many-arguments, too-many-locals
 def bidirectional_dynamic_rnn(
         cell_fw: RNNCellBase[State],
         cell_bw: RNNCellBase[State],
         inputs: torch.Tensor,
         sequence_length: Optional[Union[torch.LongTensor, List[int]]] = None,
-        initial_state_fw: Optional[MaybeTuple[torch.Tensor]] = None,
-        initial_state_bw: Optional[MaybeTuple[torch.Tensor]] = None,
+        initial_state_fw: Optional[State] = None,
+        initial_state_bw: Optional[State] = None,
         time_major: bool = False) -> Tuple[Tuple[torch.Tensor, torch.Tensor],
-                                           Tuple[MaybeTuple[torch.Tensor],
-                                                 MaybeTuple[torch.Tensor]]]:
+                                           Tuple[State, State]]:
     r"""Creates a dynamic version of bidirectional recurrent neural network.
 
     Takes input and builds independent forward and backward RNNs. The
@@ -101,51 +103,55 @@ def bidirectional_dynamic_rnn(
         cell_bw: An instance of RNNCell, to be used for backward direction.
         inputs: The RNN inputs.
             If time_major == False (default), this must be a tensor of shape:
-            `[batch_size, max_time, ...]`, or a nested tuple of such elements.
+            ``[batch_size, max_time, ...]``, or a nested tuple of such elements.
             If time_major == True, this must be a tensor of shape:
-            `[max_time, batch_size, ...]`, or a nested tuple of such elements.
-        sequence_length: (optional) An int32/int64 tensor, size `[batch_size]`,
-            containing the actual lengths for each of the sequences in the
-            batch. If not provided, all batch entries are assumed to be full
-            sequences; and time reversal is applied from time `0` to `max_time`
-            for each sequence.
+            ``[max_time, batch_size, ...]``, or a nested tuple of such elements.
+        sequence_length: (optional) An int32/int64 tensor, size
+            ``[batch_size]``, containing the actual lengths for each of the
+            sequences in
+            the batch. If not provided, all batch entries are assumed
+            to be full sequences; and time reversal is applied from time
+            ``0`` to ``max_time`` for each sequence.
         initial_state_fw: (optional) An initial state for the forward RNN.
             This must be a tensor of appropriate type and shape
-            `[batch_size, cell_fw.state_size]`.
-            If `cell_fw.state_size` is a tuple, this should be a tuple of
-            tensors having shapes `[batch_size, s] for s in cell_fw.state_size`.
-        initial_state_bw: (optional) Same as for `initial_state_fw`, but using
-            the corresponding properties of `cell_bw`.
-        time_major: The shape format of the `inputs` and `outputs` Tensors.
-            If true, these `Tensors` must be shaped
-            `[max_time, batch_size, depth]`.
-            If false, these `Tensors` must be shaped
-            `[batch_size, max_time, depth]`.
-            Using `time_major = True` is a bit more efficient because it avoids
-            transposes at the beginning and end of the RNN calculation.
-            However,most TensorFlow data is batch-major, so by default this
-            function accepts input and emits output in batch-major form.
+            ``[batch_size, cell_fw.state_size]``.
+            If ``cell_fw.state_size`` is a tuple, this should be a tuple of
+            tensors having shapes ``[batch_size, s]``
+            for ``s`` in ``cell_fw.state_size``.
+        initial_state_bw: (optional) Same as for ``initial_state_fw``, but using
+            the corresponding properties of ``cell_bw``.
+        time_major: The shape format of the ``inputs`` and ``outputs`` Tensors.
+            If true, these ``Tensors`` must be shaped
+            ``[max_time, batch_size, depth]``.
+            If false, these ``Tensors`` must be shaped
+            ``[batch_size, max_time, depth]``.
+            Using ``time_major = True`` is a bit more efficient because it
+            avoids transposes at the beginning and end of the RNN calculation.
+            However, most TensorFlow data is batch-major, so by
+            default this function accepts input and emits output
+            in batch-major form.
 
     Returns:
         A tuple (outputs, output_states) where:
+
         outputs: A tuple (output_fw, output_bw) containing the forward and
-            the backward rnn output `Tensor`.
+            the backward rnn output ``Tensor``.
             If time_major == False (default),
-            output_fw will be a `Tensor` shaped:
-            `[batch_size, max_time, cell_fw.output_size]`
-            and output_bw will be a `Tensor` shaped:
-            `[batch_size, max_time, cell_bw.output_size]`.
+                output_fw will be a ``Tensor`` shaped:
+                ``[batch_size, max_time, cell_fw.output_size]``
+                and output_bw will be a ``Tensor`` shaped:
+                ``[batch_size, max_time, cell_bw.output_size]``.
             If time_major == True,
-            output_fw will be a `Tensor` shaped:
-            `[max_time, batch_size, cell_fw.output_size]`
-            and output_bw will be a `Tensor` shaped:
-            `[max_time, batch_size, cell_bw.output_size]`.
-            It returns a tuple instead of a single concatenated `Tensor`,
-            unlike in the `bidirectional_rnn`. If the concatenated one is
-            preferred, the forward and backward outputs can be concatenated
-            as `tf.concat(outputs, 2)`.
+                output_fw will be a ``Tensor`` shaped:
+                ``[max_time, batch_size, cell_fw.output_size]``
+                and output_bw will be a ``Tensor`` shaped:
+                ``[max_time, batch_size, cell_bw.output_size]``.
+            It returns a tuple instead of a single concatenated ``Tensor``,
+            unlike in the ``bidirectional_rnn``. If the concatenated
+            one is preferred, the forward and backward outputs can
+            be concatenated as ``tf.concat(outputs, 2)``.
         output_states: A tuple (output_state_fw, output_state_bw) containing
-                the forward and the backward final states of bidirectional rnn.
+            the forward and the backward final states of bidirectional rnn.
     """
     output_fw, output_state_fw = dynamic_rnn(cell=cell_fw,
                                              inputs=inputs,
@@ -160,7 +166,8 @@ def bidirectional_dynamic_rnn(
         batch_size = inputs.shape[0]
 
     if sequence_length is None:
-        sequence_length = torch.tensor([time_steps]*batch_size,
+        # pylint: disable=not-callable
+        sequence_length = torch.tensor([time_steps] * batch_size,
                                        dtype=torch.int32)
 
     # Backward direction
@@ -187,75 +194,80 @@ def dynamic_rnn(
         cell: RNNCellBase[State],
         inputs: torch.Tensor,
         sequence_length: Optional[Union[torch.LongTensor, List[int]]] = None,
-        initial_state: Optional[MaybeTuple[torch.Tensor]] = None,
-        time_major: bool = False) -> Tuple[torch.Tensor,
-                                           MaybeTuple[torch.Tensor]]:
-    r"""Creates a recurrent neural network specified by RNNCell `cell`.
+        initial_state: Optional[State] = None,
+        time_major: bool = False) -> Tuple[torch.Tensor, State]:
+    r"""Creates a recurrent neural network specified by RNNCell ``cell``.
 
-    Performs fully dynamic unrolling of `inputs`.
+    Performs fully dynamic unrolling of ``inputs``.
 
     Args:
         cell: An instance of RNNCell.
         inputs: The RNN inputs.
-            If `time_major == False` (default), this must be a `Tensor` of
-            shape: `[batch_size, max_time, ...]`, or a nested tuple of such
-            elements.
-            If `time_major == True`, this must be a `Tensor` of shape:
-            `[max_time, batch_size, ...]`, or a nested tuple of such
+            If ``time_major == False`` (default), this must be a ``Tensor``
+            of shape: ``[batch_size, max_time, ...]``, or a nested
+            tuple of such elements.
+            If ``time_major == True``, this must be a ``Tensor`` of shape:
+            ``[max_time, batch_size, ...]``, or a nested tuple of such
             elements.
             This may also be a (possibly nested) tuple of Tensors satisfying
             this property.  The first two dimensions must match across all the
-            inputs, but otherwise the ranks and other shape components may
-            differ. In this case, input to `cell` at each time-step will
-            replicate the structure of these tuples, except for the time
-            dimension (from which the time is taken).
-            The input to `cell` at each time step will be a `Tensor` or
-            (possibly nested) tuple of Tensors each with dimensions
-            `[batch_size, ...]`.
-        sequence_length: (optional) An int32/int64 tensor sized `[batch_size]`.
-            Used to copy-through state and zero-out outputs when past a batch
-            element's sequence length.  So it's more for performance than
-            correctness.
+            inputs, but otherwise the ranks and other shape components
+            may differ. In this case, input to ``cell`` at each time-step
+            will replicate the structure of these tuples, except for the
+            time dimension (from which the time is taken).
+            The input to ``cell`` at each time step will be a
+            ``Tensor`` or (possibly nested) tuple of Tensors each with
+            dimensions ``[batch_size, ...]``.
+        sequence_length: (optional) An int32/int64 tensor sized
+            ``[batch_size]``. Used to copy-through state and
+            zero-out outputs when past a batch element's sequence length.
+            So it's more for performance than correctness.
         initial_state: (optional) An initial state for the RNN.
-            If `cell.state_size` is an integer, this must be
-            a `Tensor` of appropriate type and shape
-            `[batch_size, cell.state_size]`. If `cell.state_size` is a tuple,
-            this should be a tuple of tensors having shapes `[batch_size, s] for
-            s in cell.state_size`.
-        time_major: The shape format of the `inputs` and `outputs` Tensors.
-            If true, these `Tensors` must be shaped
-            `[max_time, batch_size, depth]`. If false, these `Tensors` must be
-            shaped `[batch_size, max_time, depth]`.
-            Using `time_major = True` is a bit more efficient because it avoids
-            transposes at the beginning and end of the RNN calculation. However,
-            most TensorFlow data is batch-major, so by default this function
-            accepts input and emits output in batch-major form.
+            If ``cell.state_size`` is an integer, this must be
+            a ``Tensor`` of appropriate type and shape
+            ``[batch_size, cell.state_size]``. If ``cell.state_size`` is
+            a tuple, this should be a tuple of tensors having shapes
+            ``[batch_size, s]`` for ``s`` in ``cell.state_size``.
+        time_major: The shape format of the ``inputs`` and ``outputs`` Tensors.
+            If true, these ``Tensors`` must be shaped
+            ``[max_time, batch_size, depth]``. If false, these ``Tensors``
+            must be shaped ``[batch_size, max_time, depth]``.
+            Using ``time_major = True`` is a bit more efficient because
+            it avoids transposes at the beginning and end of the
+            RNN calculation. However, most TensorFlow data is batch-major,
+            so by default this function accepts input and emits output in
+            batch-major form.
 
     Returns:
         A pair (outputs, state) where:
-        outputs: The RNN output `Tensor`.
-            If time_major == False (default), this will be a `Tensor` shaped:
-            `[batch_size, max_time, cell.output_size]`.
-            If time_major == True, this will be a `Tensor` shaped:
-            `[max_time, batch_size, cell.output_size]`.
 
-            Note, if `cell.output_size` is a (possibly nested) tuple of integers
-            or `TensorShape` objects, then `outputs` will be a tuple having the
-            same structure as `cell.output_size`, containing Tensors having
-            shapes corresponding to the shape data in `cell.output_size`.
+        outputs: The RNN output ``Tensor``.
 
-        state: The final state.  If `cell.state_size` is an int, this
-            will be shaped `[batch_size, cell.state_size]`.  If it is a
-            `TensorShape`, this will be shaped `[batch_size] + cell.state_size`.
-            If it is a (possibly nested) tuple of ints or `TensorShape`, this
-            will be a tuple having the corresponding shapes. If cells are
-            `LSTMCells` `state` will be a tuple containing a `LSTMStateTuple`
-            for each cell.
+            If time_major == False (default), this will be a ``Tensor`` shaped:
+            ``[batch_size, max_time, cell.output_size]``.
+
+            If time_major == True, this will be a ``Tensor`` shaped:
+            ``[max_time, batch_size, cell.output_size]``.
+
+            Note, if ``cell.output_size`` is a (possibly nested) tuple of
+            integers or ``TensorShape`` objects, then ``outputs``
+            will be a tuple having the same structure as ``cell.output_size``,
+            containing Tensors having shapes corresponding to the shape
+            data in ``cell.output_size``.
+
+        state: The final state.  If ``cell.state_size`` is an int, this
+            will be shaped ``[batch_size, cell.state_size]``.  If it is a
+            ``TensorShape``, this will be shaped
+            ``[batch_size] + cell.state_size``.
+            If it is a (possibly nested) tuple of ints or ``TensorShape``,
+            this will be a tuple having the corresponding shapes.
+            If cells are ``LSTMCells``, ``state`` will be a tuple containing
+            a ``LSTMStateTuple`` for each cell.
 
     Raises:
-        TypeError: If `cell` is not an instance of RNNCell.
+        TypeError: If ``cell`` is not an instance of RNNCell.
         ValueError: If inputs is None or an empty list.
-      """
+    """
     # By default, time_major==False and inputs are batch-major: shaped
     #   [batch, time, depth]
     # For internal calculations, we transpose to [time, batch, depth]
@@ -266,6 +278,7 @@ def dynamic_rnn(
     time_steps = inputs.shape[0]
     batch_size = inputs.shape[1]
 
+    # pylint: disable=not-callable
     if sequence_length is not None:
         if not isinstance(sequence_length, torch.Tensor):
             sequence_length = torch.tensor(sequence_length, dtype=torch.int32)
@@ -279,7 +292,7 @@ def dynamic_rnn(
                              % batch_size, " but saw shape: %s"
                              % sequence_length.shape)
     else:
-        sequence_length = torch.tensor([time_steps]*batch_size,
+        sequence_length = torch.tensor([time_steps] * batch_size,
                                        dtype=torch.int32)
 
     if initial_state is not None:
@@ -287,10 +300,8 @@ def dynamic_rnn(
     else:
         state = cell.zero_state(batch_size=batch_size)
 
-    (outputs, final_state) = _dynamic_rnn_loop(cell,
-                                               inputs,
-                                               state,
-                                               sequence_length=sequence_length)
+    (outputs, final_state) = _dynamic_rnn_loop(
+        cell, inputs, state, sequence_length=sequence_length)
 
     # Outputs of _dynamic_rnn_loop are always shaped [time, batch, depth].
     # If we are performing batch-major calculations, transpose output back
@@ -302,41 +313,43 @@ def dynamic_rnn(
     return outputs, final_state
 
 
+# pylint: disable=too-many-branches
 def _dynamic_rnn_loop(cell: RNNCellBase[State],
                       inputs: torch.Tensor,
-                      initial_state: MaybeTuple[torch.Tensor],
-                      sequence_length: torch.LongTensor) -> \
-        Tuple[torch.Tensor, MaybeTuple[torch.Tensor]]:
+                      initial_state: State,
+                      sequence_length: torch.LongTensor) \
+        -> Tuple[torch.Tensor, State]:
     r"""Internal implementation of Dynamic RNN.
 
     Args:
         cell: An instance of RNNCell.
-        inputs: A `Tensor` of shape [time, batch_size, input_size], or a nested
-            tuple of such elements.
-        initial_state: A `Tensor` of shape `[batch_size, state_size]`, or if
-            `cell.state_size` is a tuple, then this should be a tuple of
-            tensors having shapes `[batch_size, s] for s in cell.state_size`.
-        sequence_length: (optional) An `int32` `Tensor` of shape [batch_size].
+        inputs: A ``Tensor`` of shape ``[time, batch_size, input_size]``,
+            or a nested tuple of such elements.
+        initial_state: A ``Tensor`` of shape ``[batch_size, state_size]``,
+            or if ``cell.state_size`` is a tuple, then this should be a tuple
+            of tensors having shapes ``[batch_size, s]`` for ``s`` in
+            ``cell.state_size``.
+        sequence_length: (optional) An ``int32`` ``Tensor``
+            of shape ``[batch_size]``.
 
     Returns:
-        Tuple `(final_outputs, final_state)`.
+        Tuple ``(final_outputs, final_state)``.
         final_outputs:
-            A `Tensor` of shape `[time, batch_size, cell.output_size]`.  If
-            `cell.output_size` is a (possibly nested) tuple of ints or
-            `TensorShape` objects, then this returns a (possibly nested) tuple
-            of Tensors matching the corresponding shapes.
+            A ``Tensor`` of shape ``[time, batch_size, cell.output_size]``. If
+            ``cell.output_size`` is a (possibly nested) tuple of ints or
+            ``TensorShape`` objects, then this returns a
+            (possibly nested) tuple of Tensors matching the corresponding
+            shapes.
         final_state:
-            A `Tensor`, or possibly nested tuple of Tensors, matching in length
-            and shapes to `initial_state`.
+            A ``Tensor``, or possibly nested tuple of Tensors, matching
+            in length and shapes to ``initial_state``.
     """
     state = initial_state
     time_steps = inputs.shape[0]
-    is_tuple = isinstance(state, tuple)
-
     all_outputs = []
 
     all_state: MaybeTuple[List[torch.Tensor]]
-    if is_tuple:
+    if isinstance(state, tuple):
         all_state = ([], [])
     else:
         all_state = []
@@ -344,12 +357,12 @@ def _dynamic_rnn_loop(cell: RNNCellBase[State],
     for i in range(time_steps):
         output, state = cell(inputs[i], state)
         all_outputs.append(output)
-        if is_tuple:
+        if isinstance(state, tuple):
             all_state[0].append(state[0])
             all_state[1].append(state[1])
         else:
             all_state.append(state)  # type: ignore
-
+    # pylint: disable=fixme
     # TODO: Do not compute everything regardless of sequence_length
 
     final_outputs = torch.stack(all_outputs, dim=0)
@@ -359,27 +372,27 @@ def _dynamic_rnn_loop(cell: RNNCellBase[State],
                                    time_major=True)
 
     final_state: MaybeTuple[List[torch.Tensor]]
-    if is_tuple:
+    if isinstance(state, tuple):
         final_state = ([], [])
     else:
         final_state = []
 
     for batch_idx, time_idx in enumerate(sequence_length.tolist()):
         if time_idx > 0:
-            if is_tuple:
-                final_state[0].append(all_state[0][time_idx-1][batch_idx])
-                final_state[1].append(all_state[1][time_idx-1][batch_idx])
+            if isinstance(state, tuple):
+                final_state[0].append(all_state[0][time_idx - 1][batch_idx])
+                final_state[1].append(all_state[1][time_idx - 1][batch_idx])
             else:
                 final_state.append(  # type: ignore
-                    all_state[time_idx-1][batch_idx])
+                    all_state[time_idx - 1][batch_idx])
         else:
-            if is_tuple:
+            if isinstance(initial_state, tuple):
                 final_state[0].append(initial_state[0][batch_idx])
                 final_state[1].append(initial_state[1][batch_idx])
             else:
                 final_state.append(initial_state[batch_idx])  # type: ignore
 
-    if is_tuple:
+    if isinstance(state, tuple):
         final_state = (torch.stack(final_state[0], dim=0),
                        torch.stack(final_state[1], dim=0))
     else:

@@ -12,10 +12,6 @@ Frequent Use
 .. autoclass:: texar.utils.AverageRecorder
     :members:
 
-:hidden:`collect_trainable_variables`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.collect_trainable_variables
-
 :hidden:`compat_as_text`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.compat_as_text
@@ -28,26 +24,6 @@ Frequent Use
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.write_paired_text
 
-:hidden:`straight_through`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.straight_through
-
-
-Variables
-=========
-
-:hidden:`collect_trainable_variables`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.collect_trainable_variables
-
-:hidden:`get_unique_named_variable_scope`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.get_unique_named_variable_scope
-
-:hidden:`add_variable`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.add_variable
-
 
 IO
 ===
@@ -56,45 +32,25 @@ IO
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.write_paired_text
 
-:hidden:`load_config`
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.load_config
-
 :hidden:`maybe_create_dir`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.maybe_create_dir
-
-:hidden:`get_files`
-~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.get_files
 
 
 DType
 =====
 
+:hidden:`get_numpy_dtype`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.get_numpy_dtype
+
+:hidden:`maybe_hparams_to_dict`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.maybe_hparams_to_dict
+
 :hidden:`compat_as_text`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.compat_as_text
-
-:hidden:`get_tf_dtype`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.get_tf_dtype
-
-:hidden:`is_callable`
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_callable
-
-:hidden:`is_str`
-~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_str
-
-:hidden:`is_placeholder`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_placeholder
-
-:hidden:`maybe_hparams_to_dict`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.maybe_hparams_to_dict
 
 
 Shape
@@ -108,25 +64,14 @@ Shape
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.transpose_batch_time
 
-:hidden:`get_batch_size`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.get_batch_size
-
-:hidden:`get_rank`
-~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.get_rank
-
-:hidden:`shape_list`
-~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.shape_list
+:hidden:`flatten`
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.flatten
 
 :hidden:`pad_and_concat`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.pad_and_concat
 
-:hidden:`flatten`
-~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.flatten
 
 Dictionary
 ===========
@@ -150,6 +95,7 @@ Dictionary
 :hidden:`flatten_dict`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.flatten_dict
+
 
 String
 =======
@@ -231,41 +177,6 @@ Meta
 .. autofunction:: texar.utils.get_instance_kwargs
 
 
-Mode
-====
-
-:hidden:`switch_dropout`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.switch_dropout
-
-:hidden:`maybe_global_mode`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.maybe_global_mode
-
-:hidden:`is_train_mode`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_train_mode
-
-:hidden:`is_eval_mode`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_eval_mode
-
-:hidden:`is_predict_mode`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_predict_mode
-
-:hidden:`is_train_mode_py`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_train_mode_py
-
-:hidden:`is_eval_mode_py`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_eval_mode_py
-
-:hidden:`is_predict_mode_py`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.is_predict_mode_py
-
 Misc
 ====
 
@@ -273,9 +184,14 @@ Misc
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.ceildiv
 
-:hidden:`straight_through`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.straight_through
+:hidden:`map_structure`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.map_structure
+
+:hidden:`map_structure_zip`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.map_structure_zip
+
 
 
 AverageRecorder

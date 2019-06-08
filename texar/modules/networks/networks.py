@@ -18,26 +18,24 @@ Various neural networks and related utilities.
 from texar.modules.networks.network_base import FeedForwardNetworkBase
 from texar.modules.networks.network_base import _build_layers
 
-
 __all__ = [
     "FeedForwardNetwork",
 ]
 
 
 class FeedForwardNetwork(FeedForwardNetworkBase):
-    """Feed-forward neural network that consists of a sequence of layers.
+    r"""Feed-forward neural network that consists of a sequence of layers.
 
     Args:
-        layers (list, optional): A list of :tf_main:`Layer <layers/Layer>`
+        layers (list, optional): A list of :torch_nn:`Linear`
             instances composing the network. If not given, layers are created
             according to :attr:`hparams`.
         hparams (dict, optional): Embedder hyperparameters. Missing
-            hyperparamerter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameters will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
-    See :meth:`~texar.modules.RNNDecoderBase._build` of
-    :class:`~texar.modules.FeedForwardNetworkBase` for the inputs and outputs.
+    See :meth:`forward` for the inputs and outputs.
 
     Example:
 
@@ -51,7 +49,7 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
             }
             nn = FeedForwardNetwork(hparams=hparams)
 
-            inputs = tf.random_uniform([64, 100])
+            inputs = torch.randn([64, 100])
             outputs = nn(inputs)
             # outputs == Tensor of shape [64, 10]
     """
@@ -63,7 +61,7 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of hyperparameters with default values.
+        r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
 

@@ -46,17 +46,17 @@ def sequence_softmax_cross_entropy(
         sum_over_timesteps: bool = True,
         time_major: bool = False,
         stop_gradient_to_label: bool = False) -> torch.Tensor:
-    """Computes softmax cross entropy for each time step of sequence
+    r"""Computes softmax cross entropy for each time step of sequence
     predictions.
 
     Args:
         labels: Target class distributions.
 
-            - If :attr:`time_major` is `False` (default), this must be a\
-            Tensor of shape `[batch_size, max_time, num_classes]`.
+            - If :attr:`time_major` is `False` (default), this must be a
+              Tensor of shape `[batch_size, max_time, num_classes]`.
 
-            - If `time_major` is `True`, this must be a Tensor of shape\
-            `[max_time, batch_size, num_classes]`.
+            - If `time_major` is `True`, this must be a Tensor of shape
+              `[max_time, batch_size, num_classes]`.
 
             Each row of `labels` should be a valid probability
             distribution, otherwise, the computation of the gradient will be
@@ -91,11 +91,11 @@ def sequence_softmax_cross_entropy(
         arguments :attr:`{average_across}/{sum_over}_{timesteps}/{batch}`.
         For example:
 
-        - If :attr:`sum_over_timesteps` and :attr:`average_across_batch`  \
-        are `True` (default), the return Tensor is of rank 0.
+        - If :attr:`sum_over_timesteps` and :attr:`average_across_batch`
+          are `True` (default), the return Tensor is of rank 0.
 
-        - If :attr:`average_across_batch` is `True` and other arguments are \
-        `False`, the return Tensor is of shape `[max_time]`.
+        - If :attr:`average_across_batch` is `True` and other arguments are
+          `False`, the return Tensor is of shape `[max_time]`.
     """
     if stop_gradient_to_label:
         labels = labels.detach()
@@ -123,18 +123,18 @@ def sequence_sparse_softmax_cross_entropy(
         sum_over_batch: bool = False,
         sum_over_timesteps: bool = True,
         time_major: bool = False) -> torch.Tensor:
-    """Computes sparse softmax cross entropy for each time step of sequence
+    r"""Computes sparse softmax cross entropy for each time step of sequence
     predictions.
 
     Args:
         labels: Target class indexes. I.e., classes are mutually exclusive
             (each entry is in exactly one class).
 
-            - If :attr:`time_major` is `False` (default), this must be\
-            a Tensor of shape `[batch_size, max_time]`.
+            - If :attr:`time_major` is `False` (default), this must be
+              a Tensor of shape `[batch_size, max_time]`.
 
-            - If `time_major` is `True`, this must be a Tensor of shape\
-            `[max_time, batch_size].`
+            - If `time_major` is `True`, this must be a Tensor of shape
+              `[max_time, batch_size].`
         logits: Unscaled log probabilities. This must have the shape of
             `[max_time, batch_size, num_classes]` or
             `[batch_size, max_time, num_classes]` according to
@@ -163,11 +163,11 @@ def sequence_sparse_softmax_cross_entropy(
         arguments :attr:`{average_across}/{sum_over}_{timesteps}/{batch}`.
         For example:
 
-        - If :attr:`sum_over_timesteps` and :attr:`average_across_batch`  \
-        are `True` (default), the return Tensor is of rank 0.
+        - If :attr:`sum_over_timesteps` and :attr:`average_across_batch`
+          are `True` (default), the return Tensor is of rank 0.
 
-        - If :attr:`average_across_batch` is `True` and other arguments are \
-        `False`, the return Tensor is of shape `[max_time]`.
+        - If :attr:`average_across_batch` is `True` and other arguments are
+          `False`, the return Tensor is of shape `[max_time]`.
 
     Example:
 
@@ -213,17 +213,17 @@ def sequence_sigmoid_cross_entropy(
         sum_over_classes: bool = False,
         time_major: bool = False,
         stop_gradient_to_label: bool = False) -> torch.Tensor:
-    """Computes sigmoid cross entropy for each time step of sequence
+    r"""Computes sigmoid cross entropy for each time step of sequence
     predictions.
 
     Args:
         labels: Target class distributions.
 
-            - If :attr:`time_major` is `False` (default), this must be a\
-            Tensor of shape `[batch_size, max_time(, num_classes)]`.
+            - If :attr:`time_major` is `False` (default), this must be a
+              Tensor of shape `[batch_size, max_time(, num_classes)]`.
 
-            - If `time_major` is `True`, this must be a Tensor of shape\
-            `[max_time, batch_size(, num_classes)]`.
+            - If `time_major` is `True`, this must be a Tensor of shape
+              `[max_time, batch_size(, num_classes)]`.
 
             Each row of `labels` should be a valid probability
             distribution, otherwise, the computation of the gradient will be
@@ -265,11 +265,11 @@ def sequence_sigmoid_cross_entropy(
         :attr:`{average_across}/{sum_over}_{timesteps}/{batch}/{classes}`.
         For example, if the class dimension does not exist, and
 
-        - If :attr:`sum_over_timesteps` and :attr:`average_across_batch`  \
-        are `True` (default), the return Tensor is of rank 0.
+        - If :attr:`sum_over_timesteps` and :attr:`average_across_batch`
+          are `True` (default), the return Tensor is of rank 0.
 
-        - If :attr:`average_across_batch` is `True` and other arguments are \
-        `False`, the return Tensor is of shape `[max_time]`.
+        - If :attr:`average_across_batch` is `True` and other arguments are
+          `False`, the return Tensor is of shape `[max_time]`.
     """
     if stop_gradient_to_label:
         labels = labels.detach()
@@ -301,7 +301,7 @@ def binary_sigmoid_cross_entropy(
         sum_over_classes: bool = False,
         return_pos_neg_losses: bool = False) \
         -> Union[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
-    """Computes sigmoid cross entropy of binary predictions.
+    r"""Computes sigmoid cross entropy of binary predictions.
 
     Args:
         pos_logits: The logits of predicting positive on positive data. A
@@ -330,11 +330,11 @@ def binary_sigmoid_cross_entropy(
         on the arguments :attr:`{average_across}/{sum_over}_{batch}/{classes}`.
         For example:
 
-            - If :attr:`sum_over_batch` and :attr:`average_across_classes`  \
-            are `True` (default), the return Tensor is of rank 0.
+            - If :attr:`sum_over_batch` and :attr:`average_across_classes`
+              are `True` (default), the return Tensor is of rank 0.
 
-            - If  arguments are `False`, the return Tensor is of shape \
-            `[batch_size(, num_classes)]`.
+            - If  arguments are `False`, the return Tensor is of shape
+              `[batch_size(, num_classes)]`.
 
         If :attr:`return_pos_neg_losses` is `True`, returns a tuple
         `(loss, pos_loss, neg_loss)`, where `loss` is the loss above;
@@ -381,7 +381,7 @@ def binary_sigmoid_cross_entropy_with_clas(
         sum_over_classes: bool = False,
         return_pos_neg_losses: bool = False) \
         -> Union[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
-    """Computes sigmoid cross entropy of binary classifier.
+    r"""Computes sigmoid cross entropy of binary classifier.
 
     .. role:: python(code)
        :language: python
@@ -417,11 +417,11 @@ def binary_sigmoid_cross_entropy_with_clas(
         on the arguments :attr:`{average_across}/{sum_over}_{batch}/{classes}`.
         For example:
 
-            - If :attr:`sum_over_batch` and :attr:`average_across_classes`  \
-            are `True` (default), the return Tensor is of rank 0.
+            - If :attr:`sum_over_batch` and :attr:`average_across_classes`
+              are `True` (default), the return Tensor is of rank 0.
 
-            - If  arguments are `False`, the return Tensor is of shape \
-            `[batch_size(, num_classes)]`.
+            - If  arguments are `False`, the return Tensor is of shape
+              `[batch_size(, num_classes)]`.
 
         If :attr:`return_pos_neg_losses`=`True`, returns a tuple
         `(loss, pos_loss, neg_loss)`, where `loss` is the loss above;

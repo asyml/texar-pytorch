@@ -15,7 +15,7 @@
 Base class for encoders.
 """
 
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 import torch
 
@@ -48,10 +48,9 @@ class EncoderBase(ModuleBase):
         r"""Encodes the inputs.
 
         Args:
-          inputs: Inputs to the encoder.
-          *args: Other arguments.
-          **kwargs: Keyword arguments.
+            inputs: Inputs to the encoder.
+
         Returns:
-          Encoding results.
+            Encoding results.
         """
         raise NotImplementedError

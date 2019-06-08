@@ -9,6 +9,7 @@ ModuleBase
 
 .. autoclass:: texar.ModuleBase
     :members:
+    :exclude-members: forward
 
 Embedders
 =========
@@ -32,6 +33,7 @@ Embedders
 ~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.EmbedderBase
     :members:
+    :exclude-members: forward
 
 
 Encoders
@@ -45,11 +47,6 @@ Encoders
 :hidden:`BidirectionalRNNEncoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.BidirectionalRNNEncoder
-    :members:
-
-:hidden:`HierarchicalRNNEncoder`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.HierarchicalRNNEncoder
     :members:
 
 :hidden:`MultiheadAttentionEncoder`
@@ -88,15 +85,13 @@ Decoders
 ~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.RNNDecoderBase
     :members:
-    :inherited-members:
-    :exclude-members: initialize,step,finalize,tracks_own_finished,output_size,output_dtype
+    :exclude-members: initialize,step,finalize,output_size
 
 :hidden:`BasicRNNDecoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.BasicRNNDecoder
     :members:
-    :inherited-members:
-    :exclude-members: initialize,step,finalize,tracks_own_finished,output_size,output_dtype
+    :exclude-members: initialize,step,finalize,output_size
 
 :hidden:`BasicRNNDecoderOutput`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -107,17 +102,12 @@ Decoders
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.AttentionRNNDecoder
     :members:
-    :inherited-members:
-    :exclude-members: initialize,step,finalize,tracks_own_finished,output_size,output_dtype
+    :exclude-members: initialize,step,finalize,output_size
 
 :hidden:`AttentionRNNDecoderOutput`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.AttentionRNNDecoderOutput
     :members:
-
-:hidden:`beam_search_decode`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.modules.beam_search_decode
 
 :hidden:`TransformerDecoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -129,6 +119,35 @@ Decoders
 .. autoclass:: texar.modules.TransformerDecoderOutput
     :members:
 
+:hidden:`Helper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.Helper
+    :members:
+
+:hidden:`TrainingHelper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.TrainingHelper
+    :members:
+    :exclude-members: initialize,sample,next_inputs
+
+:hidden:`EmbeddingHelper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.EmbeddingHelper
+    :members:
+    :exclude-members: initialize
+
+:hidden:`GreedyEmbeddingHelper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.GreedyEmbeddingHelper
+    :members:
+    :exclude-members: sample
+
+:hidden:`SampleEmbeddingHelper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.SampleEmbeddingHelper
+    :members:
+    :exclude-members: sample
+    
 :hidden:`TopKSampleEmbeddingHelper`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.TopKSampleEmbeddingHelper
@@ -138,6 +157,7 @@ Decoders
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.SoftmaxEmbeddingHelper
     :members:
+    :exclude-members: sample_ids_shape,next_inputs
 
 :hidden:`GumbelSoftmaxEmbeddingHelper`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -149,46 +169,6 @@ Decoders
 .. autofunction:: texar.modules.get_helper
 
 
-Connectors
-==========
-
-:hidden:`ConnectorBase`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.ConnectorBase
-    :members:
-    :inherited-members:
-
-:hidden:`ConstantConnector`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.ConstantConnector
-    :members:
-    :inherited-members:
-
-:hidden:`ForwardConnector`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.ForwardConnector
-    :members:
-    :inherited-members:
-
-:hidden:`MLPTransformConnector`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.MLPTransformConnector
-    :members:
-    :inherited-members:
-
-:hidden:`ReparameterizedStochasticConnector`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.ReparameterizedStochasticConnector
-    :members:
-    :inherited-members:
-
-:hidden:`StochasticConnector`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.StochasticConnector
-    :members:
-    :inherited-members:
-
-
 Classifiers
 ============
 
@@ -196,13 +176,6 @@ Classifiers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.Conv1DClassifier
     :members:
-    :inherited-members:
-
-:hidden:`UnidirectionalRNNClassifier`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.UnidirectionalRNNClassifier
-    :members:
-    :inherited-members:
 
 Networks
 ========
@@ -211,66 +184,13 @@ Networks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.FeedForwardNetworkBase
     :members:
-    :inherited-members:
 
 :hidden:`FeedForwardNetwork`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.FeedForwardNetwork
-    :members:
-    :inherited-members:
+    :members: default_hparams,forward,append_layer,has_layer,layer_by_name,layers_by_name,layers,layer_names
 
 :hidden:`Conv1DNetwork`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.Conv1DNetwork
-    :members:
-    :inherited-members:
-
-Memory
-======
-
-:hidden:`MemNetBase`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.MemNetBase
-    :members:
-    :inherited-members:
-
-:hidden:`MemNetRNNLike`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.MemNetRNNLike
-    :members:
-    :inherited-members:
-    :exclude-members: get_default_embed_fn 
-
-:hidden:`default_memnet_embed_fn_hparams`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.modules.default_memnet_embed_fn_hparams
-
-Policy
-=========
-
-:hidden:`PolicyNetBase`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.PolicyNetBase
-    :members:
-    :inherited-members:
-
-:hidden:`CategoricalPolicyNet`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.CategoricalPolicyNet
-    :members:
-    :inherited-members:
-
-Q-Nets
-=========
-
-:hidden:`QNetBase`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.QNetBase
-    :members:
-    :inherited-members:
-
-:hidden:`CategoricalPolicyNet`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.CategoricalQNet
-    :members:
-    :inherited-members:
+    :members: default_hparams,forward,append_layer,has_layer,layer_by_name,layers_by_name,layers,layer_names

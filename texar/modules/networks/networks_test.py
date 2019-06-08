@@ -8,6 +8,7 @@ import torch
 
 from texar.modules.networks.networks import FeedForwardNetwork
 
+
 # pylint: disable=no-member, invalid-name
 
 

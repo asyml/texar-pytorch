@@ -8,8 +8,8 @@ import unittest
 
 import torch
 
-from texar.modules.encoders.rnn_encoders import UnidirectionalRNNEncoder, \
-    BidirectionalRNNEncoder
+from texar.modules.encoders.rnn_encoders import (
+    UnidirectionalRNNEncoder, BidirectionalRNNEncoder)
 
 
 class UnidirectionalRNNEncoderTest(unittest.TestCase):
@@ -47,12 +47,12 @@ class UnidirectionalRNNEncoderTest(unittest.TestCase):
 
         # case 3
         hparams = {"output_layer": {
-                "num_layers": 2,
-                "layer_size": [100, 6],
-                "activation": "ReLU",
-                "final_layer_activation": "Identity",
-                "dropout_layer_ids": [0, 1, 2],
-                "variational_dropout": False}}
+            "num_layers": 2,
+            "layer_size": [100, 6],
+            "activation": "ReLU",
+            "final_layer_activation": "Identity",
+            "dropout_layer_ids": [0, 1, 2],
+            "variational_dropout": False}}
 
         encoder = UnidirectionalRNNEncoder(input_size=self._input_size,
                                            hparams=hparams)
@@ -155,7 +155,7 @@ class BidirectionalRNNEncoderTest(unittest.TestCase):
         encoder = BidirectionalRNNEncoder(input_size=self._input_size,
                                           hparams=hparams)
         _, _ = encoder(inputs)
-        self.assertEqual(len(encoder.trainable_variables), 8+3+4)
+        self.assertEqual(len(encoder.trainable_variables), 8 + 3 + 4)
 
     def test_encode(self):
         """Tests encoding.

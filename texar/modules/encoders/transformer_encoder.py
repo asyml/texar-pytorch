@@ -22,15 +22,14 @@ from torch import nn
 
 from texar.core import layers
 from texar.modules.encoders.encoder_base import EncoderBase
-from texar.modules.encoders.multihead_attention import (
-    MultiheadAttentionEncoder)
+from texar.modules.encoders.multihead_attention import MultiheadAttentionEncoder
 from texar.modules.networks.networks import FeedForwardNetwork
 from texar.utils import transformer_attentions as attn
-from texar.utils.shapes import shape_list
 from texar.utils.utils import sequence_mask
 
 # pylint: disable=too-many-locals, invalid-name
 # pylint: disable=arguments-differ, too-many-branches, too-many-statements
+
 
 __all__ = [
     "default_transformer_poswise_net_hparams",
@@ -48,6 +47,7 @@ def default_transformer_poswise_net_hparams(input_dim: int,
     This is a 2-layer dense network with dropout in-between.
 
     .. code-block:: python
+
         {
             "layers": [
                 {
@@ -83,7 +83,8 @@ def default_transformer_poswise_net_hparams(input_dim: int,
         }
 
     Args:
-        output_dim (int): The size of output dense layer.
+        input_dim (int): The size of dense layer input.
+        output_dim (int): The size of dense layer output.
     """
     return {
         "layers": [
@@ -137,12 +138,11 @@ class TransformerEncoder(EncoderBase):
 
     Args:
         hparams (dict or HParams, optional): Hyperparameters. Missing
-            hyperparameter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameters will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
     .. document private functions
-    .. automethod:: _build
     """
 
     def __init__(self, hparams=None):
@@ -215,6 +215,7 @@ class TransformerEncoder(EncoderBase):
         r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
+
             {
                 "num_blocks": 6,
                 "dim": 512,
@@ -249,13 +250,15 @@ class TransformerEncoder(EncoderBase):
             If `True`, apply the Transformer Encoder architecture used in BERT
             `(Devlin et al.)` and the default setting of Tensorflow.
             The differences lie in:
-                1. The attention bias for padding tokens: \
-                   The standard arch uses `-1e8` for nagative attention mask. \
-                   BERT uses `-1e4` instead.
-                2. The residual connections between internal tensors: \
-                   In BERT, a residual layer connects the tensors *after* \
-                   layer normalization. In the standard arch, the tensors are \
-                   connected *before* layer normalization.
+
+            1. The standard arch restricts the word embedding of PAD token to
+               all zero. The BERT arch does not.
+            2. The attention bias for padding tokens: Standard architectures use
+               ``-1e8`` for negative attention mask. BERT uses ``-1e4`` instead.
+            3. The residual connections between internal tensors:
+               In BERT, a residual layer connects the tensors *after* layer
+               normalization. In standard architectures, the tensors are
+               connected *before* layer normalization.
 
         "embedding_dropout" : float
             Dropout rate of the input embedding.
@@ -266,14 +269,14 @@ class TransformerEncoder(EncoderBase):
         "poswise_feedforward" : dict
             Hyperparameters for a feed-forward network used in residual
             connections.
-            Make sure the dimension of the output tensor is equal to `dim`.
+            Make sure the dimension of the output tensor is equal to ``"dim"``.
             See :func:`~texar.modules.default_transformer_poswise_net_hparams`
             for details.
 
         "multihead_attention" : dict
             Hyperparameters for the multihead attention strategy.
-            Make sure the "output_dim" in this module is equal to "dim".
-            See :func:`~texar.modules.MultiheadAttentionEncoder.default_harams`
+            Make sure the ``"output_dim"`` in this module is equal to ``"dim"``.
+            See :func:`~texar.modules.MultiheadAttentionEncoder.default_hparams`
             for details.
 
         "initializer" : dict, optional
@@ -312,17 +315,17 @@ class TransformerEncoder(EncoderBase):
         r"""Encodes the inputs.
 
         Args:
-            inputs: A 3D Tensor of shape `[batch_size, max_time, dim]`,
+            inputs: A 3D Tensor of shape ``[batch_size, max_time, dim]``,
                 containing the embedding of input sequences. Note that
                 the embedding dimension `dim` must equal "dim" in
                 :attr:`hparams`. The input embedding is typically an
                 aggregation of word embedding and position embedding.
-            sequence_length: A 1D Tensor of shape `[batch_size]`. Input tokens
-                beyond respective sequence lengths are masked out
-                automatically.
+            sequence_length: A 1D :tensor:`LongTensor` of shape
+                ``[batch_size]``. Input tokens beyond respective sequence
+                lengths are masked out automatically.
 
         Returns:
-            A Tensor of shape `[batch_size, max_time, dim]` containing the
+            A Tensor of shape ``[batch_size, max_time, dim]`` containing the
             encoded vectors.
         """
         # Multiply input embedding with the sqrt of its dimension for
@@ -371,7 +374,7 @@ class TransformerEncoder(EncoderBase):
             else:
                 y = poswise_normalizer(x)
 
-            original_shape = shape_list(y)
+            original_shape = y.size()
 
             y = y.view(-1, self._hparams.dim)
 

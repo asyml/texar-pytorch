@@ -14,11 +14,11 @@ import texar as tx
 
 
 class MetricsTest(unittest.TestCase):
-    """Tests metrics.
+    r"""Tests metrics.
     """
 
     def test_accuracy(self):
-        """Tests :meth:`~texar.evals.accuracy`.
+        r"""Tests :meth:`~texar.evals.accuracy`.
         """
         labels = torch.tensor([1, 2, 3, 4, 5, 6, 7, 8])
         preds = torch.tensor([1.0, 2.1, 3.0, 4, 5.2, 6, 8, 8])
@@ -26,7 +26,7 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(accuracy, 0.625)
 
     def test_binary_clas_accuracy(self):
-        """Tests :meth:`~texar.evals.binary_clas_accuracy
+        r"""Tests :meth:`~texar.evals.binary_clas_accuracy
         """
         pos_preds = torch.tensor([1, 1, 0, 0, 0])
         neg_preds = torch.tensor([1, 1, 0, 0, 0])
