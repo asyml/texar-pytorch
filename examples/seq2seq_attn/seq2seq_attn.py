@@ -68,7 +68,7 @@ class Seq2Seq_Attn(ModuleBase):
         self.decoder = tx.modules.AttentionRNNDecoder(
             encoder_output_size=
             self.encoder.cell_fw.hidden_size+self.encoder.cell_bw.hidden_size,
-            input_size=self.target_embedder.dim + config_model.num_units,
+            input_size=self.target_embedder.dim + config_model.decoder['attention']['attention_layer_size'],
             vocab_size=self.target_vocab_size,
             hparams=config_model.decoder)
 

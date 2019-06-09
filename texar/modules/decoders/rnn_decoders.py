@@ -320,22 +320,21 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         attn_hparams = self._hparams['attention']
         attn_kwargs = attn_hparams['kwargs'].todict()
 
-        # Parse the 'probability_fn' argument
+        # Parse the `probability_fn` argument
         if 'probability_fn' in attn_kwargs:
             prob_fn = attn_kwargs['probability_fn']
             if prob_fn is not None and not callable(prob_fn):
-                prob_fn = get_function(prob_fn, ['torch.nn.functional'])
+                prob_fn = get_function(prob_fn, ['torch.nn.functional',
+                                                 'texar.core'])
             attn_kwargs['probability_fn'] = prob_fn
 
+        # Parse `encoder_output_size` and `decoder_output_size` arguments
         if attn_hparams['type'] in ['BahdanauAttention',
                                     'BahdanauMonotonicAttention']:
-            attn_kwargs.update({"cell_output_size": self._cell.hidden_size})
-
+            attn_kwargs.update({"decoder_output_size": self._cell.hidden_size})
         attn_kwargs.update({"encoder_output_size": encoder_output_size})
 
-        self._attn_kwargs = attn_kwargs
         attn_modules = ['texar.core']
-
         self.attention_mechanism: AttentionMechanism
         self.attention_mechanism = check_or_get_instance(
             attn_hparams["type"], attn_kwargs, attn_modules,
@@ -352,7 +351,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                 self.attention_mechanism is not None:
             if attn_hparams["attention_layer_size"] is None:
                 self._output_layer = nn.Linear(
-                    self.attention_mechanism.encoder_output_size,
+                    encoder_output_size,
                     vocab_size)
             else:
                 self._output_layer = nn.Linear(
@@ -367,8 +366,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             cell_input_fn=self._cell_input_fn,
             **self._attn_cell_kwargs)
 
-        self._cell = attn_cell
-        self._cell: AttentionWrapper
+        self._cell: AttentionWrapper = attn_cell
 
         self.memory: Optional[torch.Tensor] = None
         self.memory_sequence_length: Optional[torch.LongTensor] = None
@@ -628,8 +626,14 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             helper, inputs, sequence_length, initial_state,
             max_decoding_length, impute_finished)
 
+        # Release memory and memory_sequence_length in AttentionRNNDecoder
         self.memory = None
         self.memory_sequence_length = None
+
+        # Release memory and memory_sequence_length in AttentionMechanism
+        for attention_mechanism in self._cell._attention_mechanisms:
+            attention_mechanism._values = None
+            attention_mechanism._keys = None
 
         return outputs, final_state, sequence_lengths
 

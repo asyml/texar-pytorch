@@ -27,7 +27,7 @@ from torch import nn
 from texar.core.attention_mechanism import (
     AttentionMechanism, AttentionWrapperState, compute_attention)
 from texar.utils import utils
-from texar.utils.types import MaybeList
+from texar.utils.types import MaybeList, MaybeTuple
 
 __all__ = [
     'HiddenState',
@@ -469,19 +469,15 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                 Otherwise, feed the context and cell output into the attention
                 layer to generate attention at each time step. If
                 attention_mechanism is a list, attention_layer_size must be a
-                list of the same length. If attention_layer is set, this must be
-                None. If attention_fn is set, it must guaranteed that the
-                outputs of attention_fn also meet the above requirements.
+                list of the same length.
             alignment_history (bool): whether to store alignment
-                history from all time steps in the final output state (currently
-                stored as a time major `TensorArray` on which you must call
-                `stack()`).
+                history from all time steps in the final output state.
             cell_input_fn (optional): A `callable`.  The default is:
                 `lambda inputs, attention: array_ops.concat([inputs, attention],
                 -1)`.
             output_attention (bool): If `True` (default), the output at
                 each time step is the attention value.  This is the behavior of
-                Luong-style attention mechanisms.  If `False`, the output at
+                Luong-style attention mechanisms. If `False`, the output at
                 each time step is the output of `cell`.  This is the behavior
                 of Bahdanau-style attention mechanisms.  In both cases, the
                 `attention` tensor is propagated to the next time step via the
@@ -491,8 +487,8 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
 
         Raises:
             TypeError: :attr:`attention_layer_size` is not None and
-                (`attention_mechanism` is a list but
-                :attr:`attention_layer_size` is not; or vice versa).
+                `attention_mechanism` is a list but
+                :attr:`attention_layer_size` is not; or vice versa.
             ValueError: if `attention_layer_size` is not None,
                 :attr:`attention_mechanism` is a list, and its length does not
                 match that of :attr:`attention_layer_size`; if
@@ -500,6 +496,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                 simultaneously.
         """
         super().__init__(cell)
+
         self._is_multi: bool
         if isinstance(attention_mechanism, (list, tuple)):
             self._is_multi = True
@@ -529,6 +526,8 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                     "cell_input_fn must be callable, saw type: %s" %
                     type(cell_input_fn).__name__)
 
+        self._attention_layers: Optional[Tuple[nn.Linear, ...]]
+
         if attention_layer_size is not None:
             if isinstance(attention_layer_size, (list, tuple)):
                 attention_layer_sizes = tuple(attention_layer_size)
@@ -540,15 +539,17 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                     "If provided, attention_layer_size must contain exactly "
                     "one integer per attention_mechanism, saw: %d vs %d"
                     % (len(attention_layer_sizes), len(attention_mechanisms)))
-            self._attention_layers = tuple(nn.Linear(
-                attention_mechanisms[i]._encoder_output_size + cell.hidden_size,
-                attention_layer_sizes[i],
-                False) for i in range(len(attention_layer_sizes)))
+
+            self._attention_layers = tuple(
+                nn.Linear(attention_mechanisms[i].encoder_output_size +
+                          cell.hidden_size,
+                          attention_layer_sizes[i],
+                          False) for i in range(len(attention_layer_sizes)))
             self._attention_layer_size = sum(attention_layer_sizes)
         else:
-            self._attention_layers = None  # type: ignore
+            self._attention_layers = None
             self._attention_layer_size = sum(
-                attention_mechanism._encoder_output_size
+                attention_mechanism.encoder_output_size
                 for attention_mechanism in attention_mechanisms)
 
         self._cell = cell
@@ -596,19 +597,13 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                 :class:`~texar.modules.BeamSearchDecoder`.
 
         Args:
-            batch_size: `0D` integer tensor: the batch size.
+            batch_size: `0D` integer: the batch size.
 
         Returns:
             An :class:`~texar.core.AttentionWrapperState` tuple containing
             zeroed out tensors and, possibly, empty `TensorArray` objects.
-
-        Raises:
-            ValueError: (or, possibly at runtime, InvalidArgument), if
-                :attr:`batch_size` does not match the output size of the encoder
-                passed to the wrapper object at initialization time.
         """
-        cell_state: torch.Tensor = super().zero_state(  # type: ignore
-            batch_size)
+        cell_state: torch.Tensor = super().zero_state(batch_size)  # type:ignore
 
         initial_alignments = [None for _ in self._attention_mechanisms]
 
@@ -697,15 +692,17 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
         all_attention_states = []
         maybe_all_histories = []
         for i, attention_mechanism in enumerate(self._attention_mechanisms):
+            if previous_attention_state[i] is not None:
+                attention_state = previous_attention_state[i]
+            else:
+                attention_state = attention_mechanism.initial_state(
+                    memory.shape[0], memory.shape[1], self._param.dtype,
+                    self._param.device)
+
             attention, alignments, next_attention_state = compute_attention(
                 attention_mechanism=attention_mechanism,
                 cell_output=cell_output,
-                attention_state=previous_attention_state[i]
-                if previous_attention_state[i] is not None
-                else attention_mechanism.initial_state(memory.shape[0],
-                                                       memory.shape[1],
-                                                       self._param.dtype,
-                                                       self._param.device),
+                attention_state=attention_state,
                 attention_layer=self._attention_layers[i] if
                 self._attention_layers else None,
                 memory=memory,
@@ -715,7 +712,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                     previous_alignment_history is not None):
                 alignment_history = previous_alignment_history[i] + [alignments]
             else:
-                alignment_history = [torch.tensor(0.)]
+                alignment_history = previous_alignment_history[i]
 
             all_attention_states.append(next_attention_state)
             all_alignments.append(alignments)
