@@ -54,6 +54,18 @@ class AttentionMechanismUtilsTest(unittest.TestCase):
 
         self.assertEqual(outputs.tolist(), expected_outputs)
 
+    def test_safe_cumprod(self):
+        r"""Tests `texar.core.attention_mechanism_utils.safe_cumprod`.
+        """
+        x = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5])
+        outputs = texar.core.safe_cumprod(x, dim=0)
+
+        expected_outputs = [0.1, 0.02, 0.006, 0.0024, 0.0012]
+
+        outputs = outputs.tolist()
+        for i in range(5):
+            self.assertAlmostEqual(outputs[i], expected_outputs[i])
+
     def test_sparsemax(self):
         r"""Tests `texar.core.attention_mechanism_utils.sparsemax`.
         """

@@ -601,7 +601,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
 
         Returns:
             An :class:`~texar.core.AttentionWrapperState` tuple containing
-            zeroed out tensors and, possibly, empty `TensorArray` objects.
+            zeroed out tensors and Python lists.
         """
         cell_state: torch.Tensor = super().zero_state(batch_size)  # type:ignore
 
@@ -708,8 +708,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                 memory=memory,
                 memory_sequence_length=memory_sequence_length)
 
-            if (self._alignment_history and
-                    previous_alignment_history is not None):
+            if self._alignment_history:
                 alignment_history = previous_alignment_history[i] + [alignments]
             else:
                 alignment_history = previous_alignment_history[i]

@@ -77,12 +77,14 @@ class _BaseAttentionMechanism(AttentionMechanism):
     """
 
     def __init__(self,
+                 encoder_output_size: int,
                  memory_layer: nn.Module,
                  query_layer: Optional[nn.Module] = None,
                  score_mask_value: Optional[torch.Tensor] = None):
         r"""Construct base AttentionMechanism class.
 
         Args:
+            encoder_output_size: The output size of the encoder cell.
             memory_layer: Instance of `torch.nn.Linear`. The layer's depth must
                 match the depth of ``query_layer``.
             query_layer (optional): Instance of `torch.nn.Linear`. The layer's
@@ -110,9 +112,36 @@ class _BaseAttentionMechanism(AttentionMechanism):
             score_mask_value = torch.tensor(-np.inf)
         self.score_mask_value = score_mask_value
 
+        self._encoder_output_size = encoder_output_size
+
+        self._query: Optional[torch.Tensor] = None
         self._values: Optional[torch.Tensor] = None
         self._keys: Optional[torch.Tensor] = None
-        self._encoder_output_size: Optional[int] = None
+
+    def forward(self,  # type: ignore
+                query: torch.Tensor,
+                memory: torch.Tensor,
+                memory_sequence_length: Optional[torch.Tensor] = None):
+        r"""Preprocess the memory and query.
+
+        Args:
+            query: tensor, shaped ``[batch_size, query_depth]``.
+            memory: the memory to query; usually the output of an RNN encoder.
+                This tensor should be shaped ``[batch_size, max_time, ...]``.
+            memory_sequence_length (optional): sequence lengths for the batch
+                entries in memory.  If provided, the memory tensor rows are
+                masked with zeros for values past the respective sequence
+                lengths.
+        """
+        self._query = self.query_layer(query) if self.query_layer else query
+
+        if self._values is None and self._keys is None:
+            self._values = prepare_memory(memory, memory_sequence_length)
+
+            if self.memory_layer is not None:
+                self._keys = self.memory_layer(self._values)
+            else:
+                self._keys = self._values
 
     @property
     def memory_layer(self) -> nn.Module:
@@ -127,8 +156,16 @@ class _BaseAttentionMechanism(AttentionMechanism):
         return self._values
 
     @property
-    def encoder_output_size(self) -> Optional[int]:
+    def encoder_output_size(self) -> int:
         return self._encoder_output_size
+
+    def clear_cache(self):
+        r"""Clear the cached preprocessed ``memory`` in the attention mechanism.
+        This function should be called at the end of `forward()` in
+        `AttentionRNNDecoder`.
+        """
+        self._values = None
+        self._keys = None
 
     def initial_alignments(self,
                            batch_size: int,
@@ -281,10 +318,10 @@ class LuongAttention(_BaseAttentionMechanism):
         self.wrapped_probability_fn = lambda score, _: probability_fn(score)
 
         super(LuongAttention, self).__init__(
+            encoder_output_size=encoder_output_size,
             memory_layer=nn.Linear(encoder_output_size, num_units, False),
             query_layer=None,
             score_mask_value=score_mask_value)
-        self._encoder_output_size = encoder_output_size
 
         self.attention_g: Optional[torch.Tensor] = None
         if scale:
@@ -315,16 +352,12 @@ class LuongAttention(_BaseAttentionMechanism):
             ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
             ``max_time``).
         """
-        if self._values is None and self._keys is None:
-            self._values = prepare_memory(memory, memory_sequence_length)
+        super().forward(query=query,
+                        memory=memory,
+                        memory_sequence_length=memory_sequence_length)
 
-            self._keys: torch.Tensor
-            if self.memory_layer is not None:
-                self._keys = self.memory_layer(self._values)
-            else:
-                self._keys = self._values
-
-        score = _luong_score(query, self._keys, self.attention_g)
+        score = _luong_score(self._query,  # type: ignore
+                             self._keys, self.attention_g)
 
         alignments = self.wrapped_probability_fn(
             maybe_mask_score(score, self.score_mask_value,
@@ -421,10 +454,10 @@ class BahdanauAttention(_BaseAttentionMechanism):
         self.wrapped_probability_fn = lambda score, _: probability_fn(score)
 
         super(BahdanauAttention, self).__init__(
+            encoder_output_size=encoder_output_size,
             query_layer=nn.Linear(decoder_output_size, num_units, False),
             memory_layer=nn.Linear(encoder_output_size, num_units, False),
             score_mask_value=score_mask_value)
-        self._encoder_output_size = encoder_output_size
 
         limit = np.sqrt(3. / num_units)
         self.attention_v = 2 * limit * torch.rand(num_units) - limit
@@ -468,18 +501,11 @@ class BahdanauAttention(_BaseAttentionMechanism):
             ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
             ``max_time``).
         """
-        processed_query = self.query_layer(query) if self.query_layer else query
+        super().forward(query=query,
+                        memory=memory,
+                        memory_sequence_length=memory_sequence_length)
 
-        if self._values is None and self._keys is None:
-            self._values = prepare_memory(memory, memory_sequence_length)
-
-            self._keys: torch.Tensor
-            if self.memory_layer is not None:
-                self._keys = self.memory_layer(self._values)
-            else:
-                self._keys = self._values
-
-        score = _bahdanau_score(processed_query,
+        score = _bahdanau_score(self._query,  # type: ignore
                                 self._keys,
                                 self.attention_v,
                                 self.attention_g,
@@ -721,10 +747,10 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
             mode=mode)
 
         super(BahdanauMonotonicAttention, self).__init__(
+            encoder_output_size=encoder_output_size,
             query_layer=nn.Linear(decoder_output_size, num_units, False),
             memory_layer=nn.Linear(encoder_output_size, num_units, False),
             score_mask_value=score_mask_value)
-        self._encoder_output_size = encoder_output_size
 
         limit = np.sqrt(3. / num_units)
         self.attention_v = 2 * limit * torch.rand(num_units) - limit
@@ -772,18 +798,11 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
             ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
             ``max_time``).
         """
-        processed_query = self.query_layer(query) if self.query_layer else query
+        super().forward(query=query,
+                        memory=memory,
+                        memory_sequence_length=memory_sequence_length)
 
-        if self._values is None and self._keys is None:
-            self._values = prepare_memory(memory, memory_sequence_length)
-
-            self._keys: torch.Tensor
-            if self.memory_layer is not None:
-                self._keys = self.memory_layer(self._values)
-            else:
-                self._keys = self._values
-
-        score = _bahdanau_score(processed_query,
+        score = _bahdanau_score(self._query,  # type: ignore
                                 self._keys,
                                 self.attention_v,
                                 self.attention_g,
@@ -843,10 +862,10 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
             mode=mode)
 
         super(LuongMonotonicAttention, self).__init__(
+            encoder_output_size=encoder_output_size,
             query_layer=None,
             memory_layer=nn.Linear(encoder_output_size, num_units, False),
             score_mask_value=score_mask_value)
-        self._encoder_output_size = encoder_output_size
 
         self.attention_g: Optional[torch.Tensor]
         if scale:
@@ -883,16 +902,12 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
             ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
             ``max_time``).
         """
-        if self._values is None and self._keys is None:
-            self._values = prepare_memory(memory, memory_sequence_length)
+        super().forward(query=query,
+                        memory=memory,
+                        memory_sequence_length=memory_sequence_length)
 
-            self._keys: torch.Tensor
-            if self.memory_layer is not None:
-                self._keys = self.memory_layer(self._values)
-            else:
-                self._keys = self._values
-
-        score = _luong_score(query, self._keys, self.attention_g)
+        score = _luong_score(self._query,  # type: ignore
+                             self._keys, self.attention_g)
         score += self.attention_score_bias
 
         alignments = self.wrapped_probability_fn(
@@ -953,7 +968,7 @@ class AttentionWrapperState(NamedTuple):
     alignments: MaybeTuple[torch.Tensor]
     r"""A single or tuple of tensor(s) containing the alignments emitted at
     the previous time step for each attention mechanism."""
-    alignment_history: Optional[MaybeTuple[List[torch.Tensor]]]
+    alignment_history: MaybeTuple[List[torch.Tensor]]
     r"""(If enabled) A single or tuple of list(s) containing alignment matrices
     from all time steps for each attention mechanism. Call :torch:`stack` on
     each list to convert to a :tensor:`Tensor`."""

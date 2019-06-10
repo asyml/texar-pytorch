@@ -630,10 +630,9 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         self.memory = None
         self.memory_sequence_length = None
 
-        # Release memory and memory_sequence_length in AttentionMechanism
+        # Release the cached memory in AttentionMechanism
         for attention_mechanism in self._cell._attention_mechanisms:
-            attention_mechanism._values = None
-            attention_mechanism._keys = None
+            attention_mechanism.clear_cache()
 
         return outputs, final_state, sequence_lengths
 

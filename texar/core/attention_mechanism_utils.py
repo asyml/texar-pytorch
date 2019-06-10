@@ -23,7 +23,6 @@ The implementation of sparsemax adapted from:
 
 from typing import Optional, Tuple
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.autograd import Function
@@ -96,7 +95,8 @@ def prepare_memory(memory: torch.Tensor,
     if (memory_sequence_length is not None and
             not isinstance(memory_sequence_length, torch.Tensor)):
         memory_sequence_length = torch.tensor(memory_sequence_length,
-                                              dtype=torch.long)
+                                              dtype=torch.long,
+                                              device=memory.device)
 
     if memory_sequence_length is None:
         seq_len_mask = None
@@ -108,17 +108,13 @@ def prepare_memory(memory: torch.Tensor,
 
     # Mask the memory based on the memory mask.
     rank = memory.dim()
-    extra_ones = [1] * (rank - 2)
     m_batch_size = memory.shape[0]
 
     if seq_len_mask is not None:
         if seq_len_batch_size != m_batch_size:
             raise ValueError("memory_sequence_length and memory tensor "
                              "batch sizes do not match.")
-        seq_len_mask = torch.reshape(
-            seq_len_mask,
-            tuple(list(seq_len_mask.shape) + extra_ones))
-        return memory * seq_len_mask
+        return memory * seq_len_mask.view(seq_len_mask.size() + (1,)*(rank - 2))
     else:
         return memory
 
@@ -144,11 +140,8 @@ def safe_cumprod(x: torch.Tensor,
     if not isinstance(x, torch.Tensor):
         x = torch.tensor(x)
 
-    type_map = {torch.float16: np.float16,
-                torch.float32: np.float32,
-                torch.float64: np.float64}
+    tiny = torch.finfo(x.dtype).tiny
 
-    tiny = np.finfo(type_map[x.dtype]).tiny
     return torch.exp(torch.cumsum(torch.log(torch.clamp(x, tiny, 1)),
                                   *args, **kwargs))
 
@@ -157,9 +150,8 @@ def _make_ix_like(input: torch.Tensor,
                   dim: int = -1) -> torch.Tensor:
     d = input.size(dim)
     rho = torch.arange(1, d + 1, device=input.device, dtype=input.dtype)
-    view = [1] * input.dim()
-    view[0] = -1
-    return rho.view(tuple(view)).transpose(0, dim)
+    view = (-1,) + (1,) * (input.dim() - 1)
+    return rho.view(view).transpose(0, dim)
 
 
 def _threshold_and_support(input: torch.Tensor,
