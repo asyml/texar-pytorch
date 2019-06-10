@@ -19,6 +19,7 @@ import importlib
 import os
 import pickle
 import random
+from tqdm import tqdm
 
 import torch
 from torchtext import data
@@ -111,7 +112,7 @@ def main():
 
         references, hypotheses = [], []
         bsize = config_data.test_batch_size
-        for i in range(0, len(eval_data), bsize):
+        for i in tqdm(range(0, len(eval_data), bsize)):
             sources, targets = zip(*eval_data[i:i + bsize])
             with torch.no_grad():
                 x_block = data_utils.source_pad_concat_convert(
@@ -143,7 +144,8 @@ def main():
             hwords = tx.utils.str_join(hwords)
             rwords = tx.utils.str_join(rwords)
             hyp_fn, ref_fn = tx.utils.write_paired_text(
-                hwords, rwords, fname, mode='s')
+                hwords, rwords, fname, mode='s',
+                src_fname_suffix='hyp', tgt_fname_suffix='ref')
             eval_bleu = bleu_wrapper(ref_fn, hyp_fn, case_sensitive=True)
             eval_bleu = 100. * eval_bleu
             logger.info("epoch: %d, eval_bleu %.4f", epoch, eval_bleu)
@@ -181,6 +183,7 @@ def main():
             print(f"Test output written to file: {hyp_fn}")
 
     def _train_epoch(epoch: int):
+        # _eval_epoch(epoch, mode='eval')
         random.shuffle(train_data)
         train_iter = data.iterator.pool(
             train_data,
@@ -189,7 +192,7 @@ def main():
             batch_size_fn=utils.batch_size_fn,
             random_shuffler=data.iterator.RandomShuffler())
 
-        for _, train_batch in enumerate(train_iter):
+        for _, train_batch in tqdm(enumerate(train_iter)):
             optim.zero_grad()
             in_arrays = data_utils.seq2seq_pad_concat_convert(
                 train_batch, device=device)
@@ -216,7 +219,7 @@ def main():
         logger.info("Begin running with train_and_evaluate mode")
         model_path = os.path.join(args.model_dir, args.model_fn)
         if os.path.exists(model_path):
-            logger.info("Restore latest checkpoint in", model_path)
+            logger.info("Restore latest checkpoint in %s", model_path)
             ckpt = torch.load(model_path)
             model.load_state_dict(ckpt['model'])
             optim.load_state_dict(ckpt['optimizer'])
@@ -226,10 +229,18 @@ def main():
         for epoch in range(config_data.max_train_epoch):
             _train_epoch(epoch)
 
+    elif args.run_mode == 'eval':
+        logger.info("Begin running with evaluate mode")
+        model_path = os.path.join(args.model_dir, args.model_fn)
+        logger.info("Restore latest checkpoint in %s", model_path)
+        ckpt = torch.load(model_path)
+        model.load_state_dict(ckpt['model'])
+        _eval_epoch(0, mode='eval')
+
     elif args.run_mode == 'test':
         logger.info("Begin running with test mode")
         model_path = os.path.join(args.model_dir, args.model_fn)
-        logger.info("Restore latest checkpoint in", model_path)
+        logger.info("Restore latest checkpoint in %s", model_path)
         ckpt = torch.load(model_path)
         model.load_state_dict(ckpt['model'])
         _eval_epoch(0, mode='test')
