@@ -15,6 +15,8 @@
 Transformer decoder.
 """
 
+# USE_ALLEN_VERSION = True
+
 from typing import Dict, NamedTuple, Optional, Tuple, Union
 
 import torch
@@ -29,10 +31,11 @@ from texar.modules.encoders.multihead_attention import (
 from texar.modules.encoders.transformer_encoder import (
     default_transformer_poswise_net_hparams)
 from texar.modules.networks.networks import FeedForwardNetwork
-# from texar.utils import beam_search
+
 from texar.utils import transformer_attentions as attn
 from texar.utils.shapes import mask_sequences
 from texar.utils.utils import sequence_mask
+from texar.utils.beam_search import beam_search
 
 __all__ = [
     'TransformerDecoderOutput',
@@ -286,6 +289,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         return outputs, cache
 
     def _input_ids_to_outputs(self, input_ids: torch.LongTensor, step: int,
+                              embedding_fn,
                               cache: Cache) -> Tuple[torch.Tensor, Cache]:
         r"""The function is called in beam-search decoding.
 
@@ -297,7 +301,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         """
         _batch_size = input_ids.size(0)
         times = input_ids.new_full((_batch_size,), step)
-        inputs = self.embedding(input_ids, times)
+        inputs = embedding_fn(input_ids, times)
         return self._inputs_to_outputs(inputs, cache)
 
     def forward(self,  # type: ignore
@@ -577,6 +581,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             sample_id, log_prob = self._beam_decode(
                 start_tokens,
                 kwargs.get('end_token'),
+                embedding_fn=kwargs['embedding'],
                 beam_width=beam_width,
                 length_penalty=length_penalty,
                 decode_length=max_decoding_length)
@@ -645,9 +650,10 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             return []
 
         def _create_empty_tensor():
-            return torch.zeros(
+            ret = torch.zeros(
                 batch_size, 0, self._hparams.multihead_attention.num_units,
                 dtype=torch.float, device=device)
+            return ret
 
         _create_fn = (_create_empty_tensor if beam_search_decoding
                       else _create_ta)
@@ -666,29 +672,32 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
     def _beam_decode(self,
                      start_tokens,
                      end_token,
+                     embedding_fn,
                      decode_length=256,
                      beam_width=5,
                      length_penalty=0.6):
-        # def _symbols_to_logits_fn(ids, step, cache):
-        #     return self._inputs_to_outputs(
-        #         self._embedding(ids[:, -1]), step, cache)
-        #
-        # outputs, log_prob = beam_search.beam_search(
-        #     _symbols_to_logits_fn,
-        #     start_tokens,
-        #     beam_width,
-        #     decode_length,
-        #     self._vocab_size,
-        #     length_penalty,
-        #     states=self._state_cache,
-        #     eos_id=end_token)
-        #
-        # # Ignores <BOS>
-        # outputs = outputs[:, :, 1:]
-        # # shape = [batch_size, seq_length, beam_width]
-        # outputs = outputs.permute([0, 2, 1])
-        # return (outputs, log_prob)
-        raise NotImplementedError
+
+        def _symbols_to_logits_fn(ids, cache):
+            step = ids.size()[-1] - 1
+            return self._input_ids_to_outputs(
+                ids[:, -1], step, embedding_fn, cache)
+
+        outputs, log_prob = beam_search(
+            _symbols_to_logits_fn,
+            start_tokens,
+            beam_width,
+            decode_length,
+            self._vocab_size,
+            length_penalty,
+            states=self._state_cache,
+            eos_id=end_token)
+
+            # Ignores <BOS>
+        outputs = outputs[:, :, 1:]
+        # shape = [batch_size, seq_length, beam_width]
+        outputs = outputs.permute([0, 2, 1])
+        return outputs, log_prob
+
 
     @property
     def output_size(self) -> int:
@@ -703,7 +712,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         initial_finished, initial_inputs = helper.initialize(
             inputs, sequence_length)
         state = initial_state or self._state_cache
-        return (initial_finished, initial_inputs, state)
+        return initial_finished, initial_inputs, state
 
     def step(self, helper: Helper, time: int,
              inputs: torch.Tensor, state: Optional[Cache]) \
