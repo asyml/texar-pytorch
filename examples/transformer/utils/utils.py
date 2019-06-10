@@ -30,10 +30,16 @@ def set_random_seed(seed):
         torch.cuda.manual_seed(seed)
 
 
+global max_src_in_batch, max_tgt_in_batch
+
+
 def batch_size_fn(new, count, size_so_far):
-    max_src_in_batch, max_tgt_in_batch = 0, 0
-    max_src_in_batch = max(max_src_in_batch, len(new[0] + 1))
-    max_tgt_in_batch = max(max_tgt_in_batch, len(new[1] + 1))
+    global max_src_in_batch, max_tgt_in_batch
+    if count == 1:
+        max_src_in_batch = 0
+        max_tgt_in_batch = 0
+    max_src_in_batch = max(max_src_in_batch, len(new[0]) + 1)
+    max_tgt_in_batch = max(max_tgt_in_batch, len(new[1]) + 1)
     src_elements = count * max_src_in_batch
     tgt_elements = count * max_tgt_in_batch
     return max(src_elements, tgt_elements)
