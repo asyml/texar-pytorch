@@ -114,14 +114,14 @@ class _BaseAttentionMechanism(AttentionMechanism):
 
         self._encoder_output_size = encoder_output_size
 
-        self._query: Optional[torch.Tensor] = None
         self._values: Optional[torch.Tensor] = None
         self._keys: Optional[torch.Tensor] = None
 
     def forward(self,  # type: ignore
                 query: torch.Tensor,
                 memory: torch.Tensor,
-                memory_sequence_length: Optional[torch.Tensor] = None):
+                memory_sequence_length: Optional[torch.Tensor] = None
+                ) -> torch.Tensor:
         r"""Preprocess the memory and query.
 
         Args:
@@ -133,7 +133,7 @@ class _BaseAttentionMechanism(AttentionMechanism):
                 masked with zeros for values past the respective sequence
                 lengths.
         """
-        self._query = self.query_layer(query) if self.query_layer else query
+        query = self.query_layer(query) if self.query_layer else query
 
         if self._values is None and self._keys is None:
             self._values = prepare_memory(memory, memory_sequence_length)
@@ -142,6 +142,7 @@ class _BaseAttentionMechanism(AttentionMechanism):
                 self._keys = self.memory_layer(self._values)
             else:
                 self._keys = self._values
+        return query
 
     @property
     def memory_layer(self) -> nn.Module:
@@ -352,11 +353,11 @@ class LuongAttention(_BaseAttentionMechanism):
             ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
             ``max_time``).
         """
-        super().forward(query=query,
-                        memory=memory,
-                        memory_sequence_length=memory_sequence_length)
+        query = super().forward(query=query,
+                                memory=memory,
+                                memory_sequence_length=memory_sequence_length)
 
-        score = _luong_score(self._query,  # type: ignore
+        score = _luong_score(query,  # type: ignore
                              self._keys, self.attention_g)
 
         alignments = self.wrapped_probability_fn(
@@ -501,11 +502,11 @@ class BahdanauAttention(_BaseAttentionMechanism):
             ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
             ``max_time``).
         """
-        super().forward(query=query,
-                        memory=memory,
-                        memory_sequence_length=memory_sequence_length)
+        query = super().forward(query=query,
+                                memory=memory,
+                                memory_sequence_length=memory_sequence_length)
 
-        score = _bahdanau_score(self._query,  # type: ignore
+        score = _bahdanau_score(query,  # type: ignore
                                 self._keys,
                                 self.attention_v,
                                 self.attention_g,
@@ -798,11 +799,11 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
             ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
             ``max_time``).
         """
-        super().forward(query=query,
-                        memory=memory,
-                        memory_sequence_length=memory_sequence_length)
+        query = super().forward(query=query,
+                                memory=memory,
+                                memory_sequence_length=memory_sequence_length)
 
-        score = _bahdanau_score(self._query,  # type: ignore
+        score = _bahdanau_score(query,  # type: ignore
                                 self._keys,
                                 self.attention_v,
                                 self.attention_g,
@@ -902,11 +903,11 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
             ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
             ``max_time``).
         """
-        super().forward(query=query,
-                        memory=memory,
-                        memory_sequence_length=memory_sequence_length)
+        query = super().forward(query=query,
+                                memory=memory,
+                                memory_sequence_length=memory_sequence_length)
 
-        score = _luong_score(self._query,  # type: ignore
+        score = _luong_score(query,  # type: ignore
                              self._keys, self.attention_g)
         score += self.attention_score_bias
 
