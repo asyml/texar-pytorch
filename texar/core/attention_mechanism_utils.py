@@ -29,7 +29,6 @@ from torch.autograd import Function
 
 from texar.utils.utils import sequence_mask
 
-
 __all__ = [
     'hardmax',
     'maybe_mask_score',
@@ -114,7 +113,8 @@ def prepare_memory(memory: torch.Tensor,
         if seq_len_batch_size != m_batch_size:
             raise ValueError("memory_sequence_length and memory tensor "
                              "batch sizes do not match.")
-        return memory * seq_len_mask.view(seq_len_mask.size() + (1,)*(rank - 2))
+        return memory * seq_len_mask.view(
+            seq_len_mask.size() + (1,) * (rank - 2))
     else:
         return memory
 
@@ -183,15 +183,6 @@ class SparsemaxFunction(Function):
     def forward(ctx,  # type: ignore
                 input: torch.Tensor,
                 dim: int = -1) -> torch.Tensor:
-        r"""sparsemax: normalizing sparse transform (a la softmax)
-
-        Args:
-            input (Tensor): any shape
-            dim: dimension along which to apply sparsemax
-
-        Returns:
-            output (Tensor): same shape as input
-        """
         ctx.dim = dim
         max_val, _ = input.max(dim=dim, keepdim=True)
         input -= max_val  # same numerical stability trick as for softmax
@@ -214,4 +205,14 @@ class SparsemaxFunction(Function):
         return grad_input, None
 
 
-sparsemax = SparsemaxFunction.apply  # type: ignore
+def sparsemax(input: torch.Tensor, dim: int = -1) -> torch.Tensor:
+    r"""sparsemax: normalizing sparse transform (a la softmax)
+
+    Args:
+        input (Tensor): A batch tensor of logit values.
+        dim: Dimension along which to apply sparsemax.
+
+    Returns:
+        Tensor: output with the same shape as input.
+    """
+    return SparsemaxFunction.apply(input, dim)  # type: ignore

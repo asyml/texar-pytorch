@@ -703,8 +703,8 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                 attention_mechanism=attention_mechanism,
                 cell_output=cell_output,
                 attention_state=attention_state,
-                attention_layer=self._attention_layers[i] if
-                self._attention_layers else None,
+                attention_layer=(self._attention_layers[i]
+                                 if self._attention_layers else None),
                 memory=memory,
                 memory_sequence_length=memory_sequence_length)
 

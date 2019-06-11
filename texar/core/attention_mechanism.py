@@ -30,8 +30,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from texar.core.attention_mechanism_utils import maybe_mask_score, \
-    prepare_memory, safe_cumprod
+from texar.core.attention_mechanism_utils import (
+    maybe_mask_score, prepare_memory, safe_cumprod)
 from texar.module_base import ModuleBase
 from texar.utils.types import MaybeTuple
 
@@ -50,31 +50,26 @@ State = TypeVar('State')
 
 
 class AttentionMechanism(ModuleBase):
-
-    @property
-    def memory_layer(self):
-        raise NotImplementedError
-
-    @property
-    def query_layer(self):
-        raise NotImplementedError
-
-    @property
-    def values(self):
-        raise NotImplementedError
-
-    @property
-    def encoder_output_size(self):
-        raise NotImplementedError
-
-
-class _BaseAttentionMechanism(AttentionMechanism):
     r"""A base AttentionMechanism class providing common functionality.
 
     Common functionality includes:
-        1. Storing the query and memory layers.
-        2. Preparing the score mask value.
+
+    1. Storing the query and memory layers.
+    2. Preparing the score mask value.
+
+    Args:
+        encoder_output_size: The output size of the encoder cell.
+        memory_layer: Instance of `torch.nn.Linear`. The layer's depth must
+            match the depth of ``query_layer``.
+        query_layer (optional): Instance of `torch.nn.Linear`. The layer's
+            depth must  match the depth of ``memory_layer``.  If
+            ``query_layer`` is not provided, the shape of ``query`` must
+            match that of ``memory_layer``.
+        score_mask_value (optional): The mask value for score before
+            passing into `probability_fn`. The default is -inf. Only used
+            if `memory_sequence_length` is not None.
     """
+
     # Cached variables that are initialized by transforming the `memory` at
     # the first forward pass of each batch. `clear_cache` should be called when
     # the batch is finished to prevent holding references to variables in the
@@ -87,20 +82,6 @@ class _BaseAttentionMechanism(AttentionMechanism):
                  memory_layer: nn.Module,
                  query_layer: Optional[nn.Module] = None,
                  score_mask_value: Optional[torch.Tensor] = None):
-        r"""Construct base AttentionMechanism class.
-
-        Args:
-            encoder_output_size: The output size of the encoder cell.
-            memory_layer: Instance of `torch.nn.Linear`. The layer's depth must
-                match the depth of ``query_layer``.
-            query_layer (optional): Instance of `torch.nn.Linear`. The layer's
-                depth must  match the depth of ``memory_layer``.  If
-                ``query_layer`` is not provided, the shape of ``query`` must
-                match that of ``memory_layer``.
-            score_mask_value (optional): The mask value for score before
-                passing into `probability_fn`. The default is -inf. Only used
-                if `memory_sequence_length` is not None.
-        """
         super().__init__()
 
         if (query_layer is not None and
@@ -123,11 +104,10 @@ class _BaseAttentionMechanism(AttentionMechanism):
         self._values = None  # type: ignore
         self._keys = None  # type: ignore
 
-    def forward(self,  # type: ignore
-                query: torch.Tensor,
-                memory: torch.Tensor,
-                memory_sequence_length: Optional[torch.Tensor] = None
-                ) -> torch.Tensor:
+    def _process_query_and_memory(self, query: torch.Tensor,
+                                  memory: torch.Tensor,
+                                  memory_sequence_length: Optional[
+                                      torch.Tensor] = None) -> torch.Tensor:
         r"""Preprocess the memory and query.
 
         Args:
@@ -150,6 +130,32 @@ class _BaseAttentionMechanism(AttentionMechanism):
                 self._keys = self._values
         return query
 
+    def forward(self,  # type: ignore
+                query: torch.Tensor,
+                state: torch.Tensor,
+                memory: torch.Tensor,
+                memory_sequence_length: Optional[torch.LongTensor] = None) \
+            -> Tuple[torch.Tensor, torch.Tensor]:
+        r"""Score the query based on the keys and values.
+
+        Args:
+            query: tensor, shaped ``[batch_size, query_depth]``.
+            state: tensor, shaped ``[batch_size, alignments_size]``
+                (``alignments_size`` is memory's ``max_time``).
+            memory: the memory to query; usually the output of an RNN encoder.
+                This tensor should be shaped ``[batch_size, max_time, ...]``.
+            memory_sequence_length (optional): sequence lengths for the batch
+                entries in memory.  If provided, the memory tensor rows are
+                masked with zeros for values past the respective sequence
+                lengths.
+
+        Returns:
+            Tensor of dtype matching ``memory`` and shape
+            ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
+            ``max_time``).
+        """
+        raise NotImplementedError
+
     @property
     def memory_layer(self) -> nn.Module:
         return self._memory_layer
@@ -159,7 +165,7 @@ class _BaseAttentionMechanism(AttentionMechanism):
         return self._query_layer
 
     @property
-    def values(self) -> Optional[torch.Tensor]:
+    def values(self) -> torch.Tensor:
         return self._values
 
     @property
@@ -284,7 +290,7 @@ def _luong_score(query: torch.Tensor,
     return score
 
 
-class LuongAttention(_BaseAttentionMechanism):
+class LuongAttention(AttentionMechanism):
     r"""Implements Luong-style (multiplicative) attention scoring. This
     attention has two forms.
 
@@ -322,7 +328,7 @@ class LuongAttention(_BaseAttentionMechanism):
         # num_units must match expected the query depth.
         if probability_fn is None:
             probability_fn = lambda x: F.softmax(x, dim=-1)
-        self.wrapped_probability_fn = lambda score, _: probability_fn(score)
+        self._probability_fn = probability_fn
 
         super(LuongAttention, self).__init__(
             encoder_output_size=encoder_output_size,
@@ -339,35 +345,16 @@ class LuongAttention(_BaseAttentionMechanism):
                 query: torch.Tensor,
                 state: torch.Tensor,
                 memory: torch.Tensor,
-                memory_sequence_length: Optional[torch.LongTensor] = None
-                ) -> Tuple[torch.Tensor, torch.Tensor]:
-        r"""Score the query based on the keys and values.
-
-        Args:
-            query: tensor, shaped ``[batch_size, query_depth]``.
-            state: tensor, shaped ``[batch_size, alignments_size]``
-                (``alignments_size`` is memory's ``max_time``).
-            memory: the memory to query; usually the output of an RNN encoder.
-                This tensor should be shaped ``[batch_size, max_time, ...]``.
-            memory_sequence_length (optional): sequence lengths for the batch
-                entries in memory.  If provided, the memory tensor rows are
-                masked with zeros for values past the respective sequence
-                lengths.
-
-        Returns:
-            Tensor of dtype matching ``memory`` and shape
-            ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
-            ``max_time``).
-        """
-        query = super().forward(query=query,
-                                memory=memory,
-                                memory_sequence_length=memory_sequence_length)
+                memory_sequence_length: Optional[torch.LongTensor] = None) \
+            -> Tuple[torch.Tensor, torch.Tensor]:
+        query = self._process_query_and_memory(
+            query, memory, memory_sequence_length)
 
         score = _luong_score(query, self._keys, self.attention_g)
 
-        alignments = self.wrapped_probability_fn(
+        alignments = self._probability_fn(
             maybe_mask_score(score, self.score_mask_value,
-                             memory_sequence_length), state)
+                             memory_sequence_length))
 
         next_state = alignments
         return alignments, next_state
@@ -415,7 +402,7 @@ def _bahdanau_score(processed_query: torch.Tensor,
         return torch.sum(attention_v * torch.tanh(keys + processed_query), 2)
 
 
-class BahdanauAttention(_BaseAttentionMechanism):
+class BahdanauAttention(AttentionMechanism):
     r"""Implements Bahdanau-style (additive) attention.
     This attention has two forms.
 
@@ -457,7 +444,7 @@ class BahdanauAttention(_BaseAttentionMechanism):
                  score_mask_value: Optional[torch.Tensor] = None):
         if probability_fn is None:
             probability_fn = lambda x: F.softmax(x, dim=-1)
-        self.wrapped_probability_fn = lambda score, _: probability_fn(score)
+        self._probability_fn = probability_fn
 
         super(BahdanauAttention, self).__init__(
             encoder_output_size=encoder_output_size,
@@ -487,29 +474,10 @@ class BahdanauAttention(_BaseAttentionMechanism):
                 query: torch.Tensor,
                 state: torch.Tensor,
                 memory: torch.Tensor,
-                memory_sequence_length: Optional[torch.Tensor] = None,
-                ) -> Tuple[torch.Tensor, torch.Tensor]:
-        r"""Score the query based on the keys and values.
-
-        Args:
-            query: tensor, shaped ``[batch_size, query_depth]``.
-            state: tensor, shaped ``[batch_size, alignments_size]``
-                (``alignments_size`` is memory's ``max_time``).
-            memory: the memory to query; usually the output of an RNN encoder.
-                This tensor should be shaped ``[batch_size, max_time, ...]``.
-            memory_sequence_length (optional): sequence lengths for the batch
-                entries in memory.  If provided, the memory tensor rows are
-                masked with zeros for values past the respective sequence
-                lengths.
-
-        Returns:
-            Tensor of dtype matching ``memory`` and shape
-            ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
-            ``max_time``).
-        """
-        query = super().forward(query=query,
-                                memory=memory,
-                                memory_sequence_length=memory_sequence_length)
+                memory_sequence_length: Optional[torch.Tensor] = None) \
+            -> Tuple[torch.Tensor, torch.Tensor]:
+        query = self._process_query_and_memory(
+            query, memory, memory_sequence_length)
 
         score = _bahdanau_score(query,
                                 self._keys,
@@ -517,9 +485,9 @@ class BahdanauAttention(_BaseAttentionMechanism):
                                 self.attention_g,
                                 self.attention_b)
 
-        alignments = self.wrapped_probability_fn(
+        alignments = self._probability_fn(
             maybe_mask_score(score, self.score_mask_value,
-                             memory_sequence_length), state)
+                             memory_sequence_length))
 
         next_state = alignments
         return alignments, next_state
@@ -547,20 +515,21 @@ def monotonic_attention(p_choose_i: torch.Tensor,
             `[1, 0, 0, ..., 0] for all n in [0, ... batch_size - 1]`.
         mode: How to compute the attention distribution.
             Must be one of ``"recursive"``, ``"parallel"``, or ``"hard"``:
-                - ``"recursive"`` recursively computes the distribution.
-                  This is slowest but is exact, general, and does not suffer
-                  from numerical instabilities.
-                - ``"parallel"`` uses parallelized cumulative-sum and
-                  cumulative-product operations to compute a closed-form
-                  solution to the recurrence relation defining the attention
-                  distribution. This makes it more efficient than
-                  ``"recursive"``, but it requires numerical checks which make
-                  the distribution non-exact. This can be a problem in
-                  particular when input sequence is long and/or
-                  :attr:`p_choose_i` has entries very close to 0 or 1.
-                - ``"hard"`` requires that the probabilities in
-                  :attr:`p_choose_i` are all either 0 or 1, and subsequently
-                  uses a more efficient and exact solution.
+
+            - ``"recursive"`` recursively computes the distribution.
+              This is slowest but is exact, general, and does not suffer
+              from numerical instabilities.
+            - ``"parallel"`` uses parallelized cumulative-sum and
+              cumulative-product operations to compute a closed-form
+              solution to the recurrence relation defining the attention
+              distribution. This makes it more efficient than
+              ``"recursive"``, but it requires numerical checks which make
+              the distribution non-exact. This can be a problem in
+              particular when input sequence is long and/or
+              :attr:`p_choose_i` has entries very close to 0 or 1.
+            - ``"hard"`` requires that the probabilities in
+              :attr:`p_choose_i` are all either 0 or 1, and subsequently
+              uses a more efficient and exact solution.
 
     Returns:
         A tensor of shape (batch_size, input_sequence_length) representing the
@@ -568,7 +537,7 @@ def monotonic_attention(p_choose_i: torch.Tensor,
 
     Raises:
         ValueError: mode is not one of ``"recursive"``, ``"parallel"``,
-        ``"hard"``.
+            ``"hard"``.
     """
     # Force things to be tensors
     if not isinstance(p_choose_i, torch.Tensor):
@@ -669,7 +638,7 @@ def _monotonic_probability_fn(score: torch.Tensor,
     return monotonic_attention(p_choose_i, previous_alignments, mode)
 
 
-class _BaseMonotonicAttentionMechanism(_BaseAttentionMechanism):
+class MonotonicAttentionMechanism(AttentionMechanism):
     r"""Base attention mechanism for monotonic attention.
 
     Simply overrides the initial_alignments function to provide a dirac
@@ -704,7 +673,7 @@ class _BaseMonotonicAttentionMechanism(_BaseAttentionMechanism):
         return F.embedding(labels, one_hot)
 
 
-class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
+class BahdanauMonotonicAttention(MonotonicAttentionMechanism):
     r"""Monotonic attention mechanism with Bahdanau-style energy function.
     This type of attention enforces a monotonic constraint on the attention
     distributions; that is once the model attends to a given point in the
@@ -785,29 +754,10 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 query: torch.Tensor,
                 state: torch.Tensor,
                 memory: torch.Tensor,
-                memory_sequence_length: Optional[torch.Tensor] = None
-                ) -> Tuple[torch.Tensor, torch.Tensor]:
-        r"""Score the query based on the keys and values.
-
-        Args:
-            query: tensor, shaped ``[batch_size, query_depth]``.
-            state: tensor, shaped ``[batch_size, alignments_size]``
-                (``alignments_size`` is memory's ``max_time``).
-            memory: the memory to query; usually the output of an RNN encoder.
-                This tensor should be shaped ``[batch_size, max_time, ...]``.
-            memory_sequence_length (optional): sequence lengths for the batch
-                entries in memory.  If provided, the memory tensor rows are
-                masked with zeros for values past the respective sequence
-                lengths.
-
-        Returns:
-            Tensor of dtype matching ``memory`` and shape
-            ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
-            ``max_time``).
-        """
-        query = super().forward(query=query,
-                                memory=memory,
-                                memory_sequence_length=memory_sequence_length)
+                memory_sequence_length: Optional[torch.Tensor] = None) \
+            -> Tuple[torch.Tensor, torch.Tensor]:
+        query = self._process_query_and_memory(
+            query, memory, memory_sequence_length)
 
         score = _bahdanau_score(query,
                                 self._keys,
@@ -824,7 +774,7 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
         return alignments, next_state
 
 
-class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
+class LuongMonotonicAttention(MonotonicAttentionMechanism):
     r"""Monotonic attention mechanism with Luong-style energy function.
     This type of attention enforces a monotonic constraint on the attention
     distributions; that is once the model attends to a given point in the
@@ -889,29 +839,10 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
                 query: torch.Tensor,
                 state: torch.Tensor,
                 memory: torch.Tensor,
-                memory_sequence_length: Optional[torch.Tensor] = None,
-                ) -> Tuple[torch.Tensor, torch.Tensor]:
-        r"""Score the query based on the keys and values.
-
-        Args:
-            query: tensor, shaped ``[batch_size, query_depth]``.
-            state: tensor, shaped ``[batch_size, alignments_size]``
-                (``alignments_size`` is memory's ``max_time``).
-            memory: the memory to query; usually the output of an RNN encoder.
-                This tensor should be shaped ``[batch_size, max_time, ...]``.
-            memory_sequence_length (optional): sequence lengths for the batch
-                entries in memory.  If provided, the memory tensor rows are
-                masked with zeros for values past the respective sequence
-                lengths.
-
-        Returns:
-            Tensor of dtype matching ``memory`` and shape
-            ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
-            ``max_time``).
-        """
-        query = super().forward(query=query,
-                                memory=memory,
-                                memory_sequence_length=memory_sequence_length)
+                memory_sequence_length: Optional[torch.Tensor] = None) \
+            -> Tuple[torch.Tensor, torch.Tensor]:
+        query = self._process_query_and_memory(
+            query, memory, memory_sequence_length)
 
         score = _luong_score(query, self._keys, self.attention_g)
         score += self.attention_score_bias
@@ -932,6 +863,33 @@ def compute_attention(attention_mechanism: AttentionMechanism,
                       ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     r"""Computes the attention and alignments for a given
     :attr:`attention_mechanism`.
+
+    Args:
+        attention_mechanism: The :class:`~texar.core.AttentionMechanism`
+            instance used to compute attention.
+        cell_output (tensor): The decoder output (query tensor), shaped
+            ``[batch_size, query_depth]``.
+        attention_state (tensor): tensor, shaped
+            ``[batch_size, alignments_size]`` (``alignments_size`` is memory's
+            ``max_time``).
+        memory (tensor): the memory to query; usually the output of an RNN
+            encoder. This tensor should be shaped
+            ``[batch_size, max_time, ...]``.
+        attention_layer (:torch_nn:`Module`, optional): If specified, the
+            attention context is concatenated with :attr:`cell_output`, and
+            fed through this layer.
+        memory_sequence_length (tensor, optional): sequence lengths for the
+            batch entries in memory.  If provided, the memory tensor rows are
+            masked with zeros for values past the respective sequence lengths.
+
+    Returns:
+        A tuple of `(attention, alignments, next_attention_state)`, where
+
+        - ``attention``: The attention context (or the output of
+          :attr:`attention_layer`, if specified).
+        - ``alignments``: The computed attention alignments.
+        - ``next_attention_state``: The attention state after the current time
+          step.
     """
     alignments, next_attention_state = attention_mechanism(
         query=cell_output,
@@ -981,38 +939,3 @@ class AttentionWrapperState(NamedTuple):
     attention_state: MaybeTuple[torch.Tensor]
     r"""A single or tuple of nested objects containing attention mechanism
     states for each attention mechanism."""
-
-    def clone(self, **kwargs):
-        r"""Clone this object, overriding components provided by kwargs.
-        The new state fields' shape must match original state fields' shape.
-        This will be validated, and original fields' shape will be propagated
-        to new fields.
-
-        Example:
-        .. code-block:: python
-            initial_state = attention_wrapper.zero_state(dtype=...,
-            batch_size=...)
-            initial_state = initial_state.clone(cell_state=encoder_state)
-
-        Args:
-            **kwargs: Any properties of the state object to replace in the
-                returned :class:`~texar.core.AttentionWrapperState`.
-
-        Returns:
-            A new :class:`~texar.core.AttentionWrapperState` whose properties
-            are the same as this one, except any overridden properties as
-            provided in :attr:`kwargs`.
-        """
-
-        def with_same_shape(old, new):
-            r"""Check and set new tensor's shape."""
-            if isinstance(old, torch.Tensor) and isinstance(new, torch.Tensor):
-                if old.shape != new.shape:
-                    raise ValueError(
-                        f"The shape of the AttentionWrapperState is "
-                        f"expected to be same as the one to clone. "
-                        f"self.shape: {old.shape}, input.shape: {new.shape}")
-            return new
-
-        return with_same_shape(
-            self, super(AttentionWrapperState, self)._replace(**kwargs))

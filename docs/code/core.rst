@@ -5,6 +5,52 @@ Core
 ****
 
 
+Attention Mechanism
+===================
+
+:hidden:`AttentionWrapperState`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.AttentionWrapperState
+    :members:
+
+:hidden:`LuongAttention`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.LuongAttention
+    :members:
+
+:hidden:`BahdanauAttention`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.BahdanauAttention
+    :members:
+
+:hidden:`BahdanauMonotonicAttention`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.BahdanauMonotonicAttention
+    :members:
+
+:hidden:`LuongMonotonicAttention`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.core.LuongMonotonicAttention
+    :members:
+
+:hidden:`compute_attention`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.core.compute_attention
+
+:hidden:`monotonic_attention`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.core.monotonic_attention
+
+:hidden:`hardmax`
+~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.core.hardmax
+
+:hidden:`sparsemax`
+~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.core.sparsemax
+
+
+
 Cells
 =====
 
