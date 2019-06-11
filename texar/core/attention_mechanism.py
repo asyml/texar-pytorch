@@ -75,6 +75,12 @@ class _BaseAttentionMechanism(AttentionMechanism):
         1. Storing the query and memory layers.
         2. Preparing the score mask value.
     """
+    # Cached variables that are initialized by transforming the `memory` at
+    # the first forward pass of each batch. `clear_cache` should be called when
+    # the batch is finished to prevent holding references to variables in the
+    # computation graph.
+    _values: torch.Tensor
+    _keys: torch.Tensor
 
     def __init__(self,
                  encoder_output_size: int,
@@ -114,8 +120,8 @@ class _BaseAttentionMechanism(AttentionMechanism):
 
         self._encoder_output_size = encoder_output_size
 
-        self._values: Optional[torch.Tensor] = None
-        self._keys: Optional[torch.Tensor] = None
+        self._values = None  # type: ignore
+        self._keys = None  # type: ignore
 
     def forward(self,  # type: ignore
                 query: torch.Tensor,
@@ -357,8 +363,7 @@ class LuongAttention(_BaseAttentionMechanism):
                                 memory=memory,
                                 memory_sequence_length=memory_sequence_length)
 
-        score = _luong_score(query,  # type: ignore
-                             self._keys, self.attention_g)
+        score = _luong_score(query, self._keys, self.attention_g)
 
         alignments = self.wrapped_probability_fn(
             maybe_mask_score(score, self.score_mask_value,
@@ -506,7 +511,7 @@ class BahdanauAttention(_BaseAttentionMechanism):
                                 memory=memory,
                                 memory_sequence_length=memory_sequence_length)
 
-        score = _bahdanau_score(query,  # type: ignore
+        score = _bahdanau_score(query,
                                 self._keys,
                                 self.attention_v,
                                 self.attention_g,
@@ -579,6 +584,7 @@ def monotonic_attention(p_choose_i: torch.Tensor,
         # 1 - p_choose_i[-2]]
         shifted_1mp_choose_i = torch.cat((p_choose_i.new_ones(batch_size, 1),
                                           1 - p_choose_i[:, :-1]), 1)
+
         # Compute attention distribution recursively as
         # q[i] = (1 - p_choose_i[i - 1])*q[i - 1] + previous_attention[i]
         # attention[i] = p_choose_i[i]*q[i]
@@ -803,7 +809,7 @@ class BahdanauMonotonicAttention(_BaseMonotonicAttentionMechanism):
                                 memory=memory,
                                 memory_sequence_length=memory_sequence_length)
 
-        score = _bahdanau_score(query,  # type: ignore
+        score = _bahdanau_score(query,
                                 self._keys,
                                 self.attention_v,
                                 self.attention_g,
@@ -907,8 +913,7 @@ class LuongMonotonicAttention(_BaseMonotonicAttentionMechanism):
                                 memory=memory,
                                 memory_sequence_length=memory_sequence_length)
 
-        score = _luong_score(query,  # type: ignore
-                             self._keys, self.attention_g)
+        score = _luong_score(query, self._keys, self.attention_g)
         score += self.attention_score_bias
 
         alignments = self.wrapped_probability_fn(
