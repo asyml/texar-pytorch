@@ -169,23 +169,23 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                layers. Set to ``None`` to maintain a linear activation.
                See :func:`~texar.core.get_layer` for more details.
 
-           "conv_activation_kwargs" : dict, optional
+           "conv_activation_kwargs": dict, optional
                Keyword arguments for conv activation layer.
                See :func:`~texar.core.get_layer` for more details.
 
-           "other_conv_kwargs" : dict, optional
+           "other_conv_kwargs": dict, optional
                Other keyword arguments for
                :torch_docs:`torch.nn.Conv1d <nn.html#conv1d>` constructor,
                e.g., ``padding``.
 
         2. For **pooling** layers:
 
-           "pooling" : str or class or instance
+           "pooling": str or class or instance
                Pooling layer after each of the convolutional layer(s). Can be a
                pooling layer class, its name or module path, or a class
                instance.
 
-           "pool_size" : int or list, optional
+           "pool_size": int or list, optional
                Size of the pooling window. If an ``int``, all pooling layer
                will have the same pool size. If a list, the list length must
                equal ``"num_conv_layers"``. If ``None`` and the pooling type
@@ -194,18 +194,18 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                be set to input size. That is, the output of the pooling layer
                is a single unit.
 
-           "pool_stride" : int or list, optional
+           "pool_stride": int or list, optional
                Strides of the pooling operation. If an ``int``, all
                layers will have the same stride. If a list, the list length
                must equal ``"num_conv_layers"``.
 
-           "other_pool_kwargs" : dict, optional
+           "other_pool_kwargs": dict, optional
                Other keyword arguments for pooling layer class constructor.
 
         3. For **dense** layers (note that here dense layers always follow conv
            and pooling layers):
 
-           "num_dense_layers" : int
+           "num_dense_layers": int
                Number of dense layers.
 
            "out_features" int or list
@@ -214,29 +214,29 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                If a list of ``int``, the list length must equal
                ``"num_dense_layers"``.
 
-           "dense_activation" : str or callable
+           "dense_activation": str or callable
                Activation function applied to the output of the dense
                layers **except** the last dense layer output. Set to
                ``None`` to maintain a linear activation.
 
-           "dense_activation_kwargs" : dict, optional
+           "dense_activation_kwargs": dict, optional
                Keyword arguments for dense layer activation functions before
                the last dense layer.
 
-           "final_dense_activation" : str or callable
+           "final_dense_activation": str or callable
                Activation function applied to the output of the **last** dense
                layer. Set to ``None`` to maintain a linear activation.
 
-           "final_dense_activation_kwargs" : dict, optional
+           "final_dense_activation_kwargs": dict, optional
                Keyword arguments for the activation function of last
                dense layer.
 
-           "other_dense_kwargs" : dict, optional
+           "other_dense_kwargs": dict, optional
                Other keyword arguments for dense layer class constructor.
 
         4. For **dropouts**:
 
-           "dropout_conv" : int or list
+           "dropout_conv": int or list
                The indices of conv layers (starting from 0) whose **inputs**
                are applied with dropout. The index = :attr:`num_conv_layers`
                means dropout applies to the final conv layer output. E.g.,
@@ -254,17 +254,17 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                The dropout mode (training or not) is controlled
                by :attr:`self.training`.
 
-           "dropout_dense" : int or list
+           "dropout_dense": int or list
                Same as ``"dropout_conv"`` but applied to dense layers (index
                starting from 0).
 
-           "dropout_rate" : float
+           "dropout_rate": float
                The dropout rate, between 0 and 1. E.g.,
                ``"dropout_rate": 0.1`` would drop out 10% of elements.
 
         5. Others:
 
-           "name" : str
+           "name": str
                Name of the network.
         """
         return {

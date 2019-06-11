@@ -20,7 +20,7 @@ Users can construct their own models at a high conceptual level just like assemb
 * Interfaces with different functionality levels. Users can customize a model through 1) simple **Python/YAML configuration files** of provided model templates/examples; 2) programming with **Python Library APIs** for maximal customizability.
 * Easy-to-use APIs: 1) Convenient automatic variable re-use---no worry about the complicated TF variable scopes; 2) Pytorch-like callable modules; 3) Rich configuration options for each module, all with default values; ...
 * Well-structured high-quality code of uniform design patterns and consistent styles. 
-* Clean, detailed [documentation](https://texar.readthedocs.io) and rich [examples](https://github.com/asyml/texar/tree/master/examples).
+* Clean, detailed [documentation](https://texar-pytorch.readthedocs.io) and rich [examples](https://github.com/asyml/texar-pytorch/tree/master/examples).
 
 ### Library API Example
 Builds a (self-)attentional sequence encoder-decoder model, with different learning algorithms:
@@ -61,7 +61,7 @@ for batch in iterator:
                     logits=training_outputs.logits,
                     sequence_length=batch['target_length'] - 1)
 ```
-Many more examples are available [here](https://github.com/asyml/texar/tree/master/examples)
+Many more examples are available [here](https://github.com/asyml/texar-pytorch/tree/master/examples).
   
 ### Installation
 ```
@@ -71,9 +71,9 @@ pip install -e .
 ```
 
 ### Getting Started
-* [Examples](https://github.com/asyml/texar/tree/master/examples)
-* [Documentations](https://texar.readthedocs.io)
-* [GitHub](https://github.com/asyml/texar)
+* [Examples](https://github.com/asyml/texar-pytorch/tree/master/examples)
+* [Documentations](https://texar-pytorch.readthedocs.io)
+* [GitHub](https://github.com/asyml/texar-pytorch)
 
 ### Reference
 If you use Texar, please cite the [report](https://arxiv.org/abs/1809.00794) with the following BibTex entry:
@@ -90,4 +90,4 @@ Zhiting Hu, Haoran Shi, Zichao Yang, Bowen Tan, Tiancheng Zhao, Junxian He, Went
 ```
 
 ### License
-[Apache License 2.0](https://github.com/asyml/texar/blob/master/LICENSE)
+[Apache License 2.0](https://github.com/asyml/texar-pytorch/blob/master/LICENSE)

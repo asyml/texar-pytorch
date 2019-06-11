@@ -167,15 +167,12 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
         dtype: the desired data type of returned tensor. Default: if None,
             returns :torch:`ByteTensor`.
         device: the desired device of returned tensor. Default: if None, uses
-            the current device for the default tensor type (see
-            :meth:`torch.set_default_tensor_type()`). :attr:`device` will be CPU
-            for CPU tensor types and the current CUDA device for CUDA tensor
-            types.
+            the current device for the default tensor type.
     Returns:
-        A mask tensor of shape :python:`lengths.shape + (maxlen,)`, cast to
+        A mask tensor of shape :python:`lengths.shape + (max_len,)`, cast to
         specified dtype.
     Raises:
-        ValueError: if ``maxlen`` is not a scalar.
+        ValueError: if ``max_len`` is not a scalar.
     """
     if not isinstance(lengths, torch.Tensor):
         lengths = torch.tensor(lengths, device=device)
@@ -189,9 +186,9 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
     row_vector = torch.arange(max_len, device=device, dtype=lengths.dtype).view(
         *([1] * len(size)), -1).expand(*size, max_len)
     row_vector = row_vector
-    mask = (row_vector < lengths.unsqueeze(-1))
+    mask = (row_vector < lengths.unsqueeze(-1)).to(device=device)
     if dtype is not None:
-        mask = mask.to(dtype=dtype, device=row_vector.device)
+        mask = mask.to(dtype=dtype)
 
     return mask
 

@@ -44,14 +44,14 @@ def default_embedding_hparams():
 
         Here:
 
-        "name" : str
+        "name": str
             Name of the embedding variable.
 
-        "dim" : int or list
+        "dim": int or list
             Embedding dimension. Can be a list of integers to yield embeddings
             with dimensionality > 1.
 
-        "initializer" : dict or None
+        "initializer": dict or None
             Hyperparameters of the initializer for the embedding values. An
             example is:
 
@@ -84,11 +84,11 @@ def default_embedding_hparams():
                 where :attr:`initializer_class_or_fn` is specified in
                 :attr:`"type"`.
 
-        "dropout_rate" : float
+        "dropout_rate": float
             The dropout rate between 0 and 1. E.g., ``dropout_rate=0.1`` would
             drop out 10% of the embedding.
 
-        "dropout_strategy" : str
+        "dropout_strategy": str
             The dropout strategy. Can be one of the following
 
             - ``"element"``: The regular strategy that drops individual elements

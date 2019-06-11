@@ -412,10 +412,10 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
         1. For the hyperparameters in the :attr:`"dataset"` field:
 
-            "files" : str or list
+            "files": str or list
                 A (list of) TFRecord file path(s).
 
-            "feature_original_types" : dict
+            "feature_original_types": dict
                 The feature names (str) with their data types and length types,
                 key and value in pair
                 `feature_name: [dtype, feature_len_type, len]`,
@@ -442,7 +442,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
                         "name_lists": ["tf.string", "VarLenFeature"],
                     }
 
-            "feature_convert_types" : dict, optional
+            "feature_convert_types": dict, optional
                 Specifies dtype converting after reading the data files. This
                 `dict` maps feature names to desired data dtypes. For example,
                 you can first read a feature into dtype `tf.float64` by
@@ -466,7 +466,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
                         "label_ids": "tf.int32",
                     }
 
-            "image_options" : dict, optional
+            "image_options": dict, optional
                 Specifies the image feature name and performs image resizing,
                 includes three fields:
 
@@ -516,10 +516,10 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
                 Also refer to `examples/bert` for a use case.
 
-            "other_transformations" : list
+            "other_transformations": list
                 A list of transformation functions or function names/paths to
                 further transform each single data instance.
-            "data_name" : str
+            "data_name": str
                 Name of the dataset.
 
         2. For the **general** hyperparameters, see

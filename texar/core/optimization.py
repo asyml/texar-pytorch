@@ -67,7 +67,7 @@ def default_optimization_hparams() -> Dict[str, Any]:
 
     Here:
 
-    "optimizer" : dict
+    "optimizer": dict
         Hyperparameters of a
         :torch_docs:`torch.optim.Optimizer <optim.html#torch.optim.Optimizer>`.
 
@@ -93,7 +93,7 @@ def default_optimization_hparams() -> Dict[str, Any]:
           the optimizer class instance, with :python:`opt_class(**kwargs)`.
           Ignored if `"type"` is a class instance.
 
-    "learning_rate_decay" : dict
+    "learning_rate_decay": dict
         Hyperparameters of learning rate decay function. The learning rate
         starts decay from :attr:`"start_decay_step"` and keeps unchanged after
         :attr:`"end_decay_step"` or reaching :attr:`"min_learning_rate"`.
@@ -112,7 +112,7 @@ def default_optimization_hparams() -> Dict[str, Any]:
         :python:`lr = decay_fn(learning_rate=lr, global_step=offset_step,
         **kwargs)`, where `offset_step` is the global step offset as above.
 
-    "gradient_clip" : dict
+    "gradient_clip": dict
         Hyperparameters of gradient clipping. The gradient clipping function
         takes a list of `(gradients, variables)` tuples and returns a list
         of `(clipped_gradients, variables)` tuples. Typical examples include
@@ -127,7 +127,7 @@ def default_optimization_hparams() -> Dict[str, Any]:
         `"kwargs"` specifies keyword arguments to the function, except arguments
         named `"parameters"`.
 
-    "gradient_noise_scale" : float, optional
+    "gradient_noise_scale": float, optional
         Adds 0-mean normal noise scaled by this value to gradient.
     """
     return {
@@ -209,7 +209,8 @@ def get_scheduler(optimizer: Optimizer,
                 all hyperparameters and default values.
 
         Returns:
-            A torch.optim.lr_scheduler._LRScheduler instance.
+            A :torch_docs:`torch.optim.lr_scheduler._LRScheduler
+            <optim.html#how-to-adjust-learning-rate>` instance.
     """
     if hparams is None or isinstance(hparams, dict):
         hparams = HParams(hparams, default_optimization_hparams())

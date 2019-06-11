@@ -66,7 +66,7 @@ class Vocab(object):
     r"""Vocabulary class that loads vocabulary from file, and maintains mapping
     tables between token strings and indexes.
 
-    Each line of the vocab file should contains one vocabulary token, e.g.,::
+    Each line of the vocab file should contains one vocabulary token, e.g.::
 
         vocab_token_1
         vocab token 2

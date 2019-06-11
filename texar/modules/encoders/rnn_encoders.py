@@ -270,28 +270,28 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
 
         Here:
 
-        "rnn_cell" : dict
+        "rnn_cell": dict
             A dictionary of RNN cell hyperparameters. Ignored if
             :attr:`cell` is given to the encoder constructor.
 
             The default value is defined in
             :func:`~texar.core.default_rnn_cell_hparams`.
 
-        "output_layer" : dict
+        "output_layer": dict
             Output layer hyperparameters. Ignored if :attr:`output_layer`
             is given to the encoder constructor. Includes:
 
-            "num_layers" : int
+            "num_layers": int
                 The number of output (dense) layers. Set to 0 to avoid any
                 output layers applied to the cell outputs.
 
-            "layer_size" : int or list
+            "layer_size": int or list
                 The size of each of the output (dense) layers.
 
                 If an `int`, each output layer will have the same size. If
                 a list, the length must equal to :attr:`num_layers`.
 
-            "activation" : str or callable or None
+            "activation": str or callable or None
                 Activation function for each of the output (dense)
                 layer except for the final layer. This can be
                 a function, or its string name or module path.
@@ -307,10 +307,10 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
 
                 Default is ``None`` which results in an identity activation.
 
-            "final_layer_activation" : str or callable or None
+            "final_layer_activation": str or callable or None
                 The activation function for the final output layer.
 
-            "other_dense_kwargs" : dict or None
+            "other_dense_kwargs": dict or None
                 Other keyword arguments to construct each of the output
                 dense layers, e.g., ``bias``. See
                 :torch_nn:`Linear` for the keyword arguments.
@@ -333,14 +333,14 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
                 The dropout mode (training or not) is controlled
                 by :attr:`self.training`.
 
-            "dropout_rate" : float
+            "dropout_rate": float
                 The dropout rate, between 0 and 1. E.g.,
                 ``"dropout_rate": 0.1`` would drop out 10% of elements.
 
             "variational_dropout": bool
                 Whether the dropout mask is the same across all time steps.
 
-        "name" : str
+        "name": str
             Name of the encoder
         """
         hparams = RNNEncoderBase.default_hparams()
@@ -585,14 +585,14 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
 
         Here:
 
-        "rnn_cell_fw" : dict
+        "rnn_cell_fw": dict
             Hyperparameters of the forward RNN cell.
             Ignored if :attr:`cell_fw` is given to the encoder constructor.
 
             The default value is defined in
             :func:`~texar.core.default_rnn_cell_hparams`.
 
-        "rnn_cell_bw" : dict
+        "rnn_cell_bw": dict
             Hyperparameters of the backward RNN cell.
             Ignored if :attr:`cell_bw` is given to the encoder constructor,
             or if `"rnn_cell_share_config"` is ``True``.
@@ -600,31 +600,31 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             The default value is defined in
             :meth:`~texar.core.default_rnn_cell_hparams`.
 
-        "rnn_cell_share_config" : bool
+        "rnn_cell_share_config": bool
             Whether share hyperparameters of the backward cell with the
             forward cell. Note that the cell parameters (variables) are not
             shared.
 
-        "output_layer_fw" : dict
+        "output_layer_fw": dict
             Hyperparameters of the forward output layer. Ignored if
             ``output_layer_fw`` is given to the constructor.
             See the ``"output_layer"`` field of
             :meth:`~texar.modules.UnidirectionalRNNEncoder.default_hparams` for
             details.
 
-        "output_layer_bw" : dict
+        "output_layer_bw": dict
             Hyperparameters of the backward output layer. Ignored if
             :attr:`output_layer_bw` is given to the constructor. Have the
             same structure and defaults with :attr:`"output_layer_fw"`.
 
             Ignored if ``output_layer_share_config`` is ``True``.
 
-        "output_layer_share_config" : bool
+        "output_layer_share_config": bool
             Whether share hyperparameters of the backward output layer
             with the forward output layer. Note that the layer parameters
             (variables) are not shared.
 
-        "name" : str
+        "name": str
             Name of the encoder
         """
         hparams = RNNEncoderBase.default_hparams()

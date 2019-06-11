@@ -77,7 +77,7 @@ def default_rnn_cell_hparams():
 
     Here:
 
-    "type" : str or cell class or cell instance
+    "type": str or cell class or cell instance
         The RNN cell type. This can be
 
         - The string name or full module path of a cell class. If class name is
@@ -97,7 +97,7 @@ def default_rnn_cell_hparams():
             "type": LSTMCell(hidden_size=100)  # cell instance
             "type": MyCell(...)  # cell instance
 
-    "kwargs" : dict
+    "kwargs": dict
         Keyword arguments for the constructor of the cell class.
         A cell is created by :python:`cell_class(**kwargs)`, where
         `cell_class` is specified in "type" above.
@@ -112,11 +112,11 @@ def default_rnn_cell_hparams():
             Although PyTorch uses "hidden_size" to denote the hidden layer
             size, we follow TensorFlow conventions and use "num_units".
 
-    "num_layers" : int
+    "num_layers": int
         Number of cell layers. Each layer is a cell created as above, with
         the same hyperparameters specified in "kwargs".
 
-    "dropout" : dict
+    "dropout": dict
         Dropout applied to the cell in **each** layer. See
         :class:`~texar.core.cell_wrappers.DropoutWrapper` for details of
         the hyperparameters. If all "\*_keep_prob" = 1, no dropout is applied.
@@ -124,12 +124,12 @@ def default_rnn_cell_hparams():
         Specifically, if "variational_recurrent" = `True`,
         the same dropout mask is applied across all time steps per batch.
 
-    "residual" : bool
+    "residual": bool
         If `True`, apply residual connection on the inputs and
         outputs of cell in **each** layer except the first layer. Ignored
         if "num_layers" = 1.
 
-    "highway" : bool
+    "highway": bool
         If True, apply highway connection on the inputs and
         outputs of cell in each layer except the first layer. Ignored if
         "num_layers" = 1.
@@ -433,7 +433,7 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
 
             Here:
 
-            "type" : str or layer class or layer instance
+            "type": str or layer class or layer instance
                 The layer type. This can be
 
                 - The string name or full module path of a layer class. If
@@ -453,7 +453,7 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
                     "type": Conv1D(filters=10, kernel_size=2) # cell instance
                     "type": MyLayer(...)                      # cell instance
 
-            "kwargs" : dict
+            "kwargs": dict
                 A dictionary of keyword arguments for constructor of the
                 layer class. Ignored if :attr:`"type"` is a layer instance.
 

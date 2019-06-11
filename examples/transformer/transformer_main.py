@@ -243,7 +243,10 @@ def main():
         logger.info("Begin running with test mode")
         model_path = os.path.join(args.model_dir, args.model_fn)
         logger.info("Restore latest checkpoint in %s", model_path)
-        ckpt = torch.load(model_path)
+        if device is None:
+            ckpt = torch.load(model_path, map_location='cpu')
+        else:
+            ckpt = torch.load(model_path, map_location={'cpu': device})
         model.load_state_dict(ckpt['model'])
         _eval_epoch(0, mode='test')
 
