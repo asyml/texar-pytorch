@@ -82,7 +82,7 @@ class PairedTextData(TextDataBase[Tuple[str, str],
         A list of ``[batch_size]`` elements each containing a list of token
         indexes of source sequences in the batch.
     "source_length":
-        A list of ``[batch_size]`` elements of ints containing the length
+        A list of ``[batch_size]`` elements of integers containing the length
         of each source sequence in the batch.
     "target_text":
         A list same as "source_text" but for target sequences. By default
@@ -288,29 +288,28 @@ class PairedTextData(TextDataBase[Tuple[str, str],
 
            For the new hyperparameters in "target_dataset":
 
-           "vocab_share": bool
+           `"vocab_share"`: bool
                Whether to share the vocabulary of source.
                If `True`, the vocab file of target is ignored.
 
-           "embedding_init_share": bool
+           `"embedding_init_share"`: bool
                Whether to share the embedding initial value of source. If
                `True`, :attr:`"embedding_init"` of target is ignored.
 
               :attr:`"vocab_share"` must be true to share the embedding
               initial value.
 
-           "processing_share": bool
+           `"processing_share"`: bool
                Whether to share the processing configurations of source,
-               including
-               "delimiter", "bos_token", "eos_token", and
-               "other_transformations".
+               including `"delimiter"`, `"bos_token"`, `"eos_token"`, and
+               `"other_transformations"`.
 
         2. For the **general** hyperparameters, see
            :meth:`texar.data.DataBase.default_hparams` for details.
 
         3. For **bucketing** hyperparameters, see
            :meth:`texar.data.MonoTextData.default_hparams` for details, except
-           that the default bucket_length_fn is the maximum sequence length
+           that the default `"bucket_length_fn"` is the maximum sequence length
            of source and target sequences.
 
            .. warning::

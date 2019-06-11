@@ -28,7 +28,7 @@ __all__ = [
 # pylint: disable=too-many-locals
 def write_paired_text(src, tgt, fname, append=False, mode='h', sep='\t',
                       src_fname_suffix='src', tgt_fname_suffix='tgt'):
-    """Writes paired text to a file.
+    r"""Writes paired text to a file.
 
     Args:
         src: A list (or array) of ``str`` source text.
@@ -66,7 +66,7 @@ def write_paired_text(src, tgt, fname, append=False, mode='h', sep='\t',
             to the target output filename.
 
     Returns:
-        The fileanme(s). If ``mode`` == ``"h"`` or ``"v"``, returns
+        The filename(s). If ``mode`` == ``"h"`` or ``"v"``, returns
         :attr:`fname`. If ``mode`` == ``"s"``, returns a list of filenames
         ``["{fname}.src", "{fname}.tgt"]``.
     """
@@ -96,7 +96,7 @@ def write_paired_text(src, tgt, fname, append=False, mode='h', sep='\t',
 
 
 def maybe_create_dir(dirname: str) -> bool:
-    """Creates directory if doesn't exist.
+    r"""Creates directory if it does not exist.
 
     Args:
         dirname (str): Path to the directory.

@@ -113,12 +113,12 @@ class RNNDecoderBase(DecoderBase[State, Output]):
                 Used when :attr:`decoding_strategy` is set to
                 ``"train_greedy"``, or when `hparams`-configured helper is used.
 
-                - If :attr:`embedding` is ``None``, :attr:`inputs` is directly
+                - If :attr:`embedding` is `None`, :attr:`inputs` is directly
                   fed to the decoder. E.g., in ``"train_greedy"`` strategy,
                   :attr:`inputs` must be a 3D Tensor of shape
                   ``[batch_size, max_time, emb_dim]`` (or
                   ``[max_time, batch_size, emb_dim]`` if
-                  ``"input_time_major"`` is ``True``).
+                  ``"input_time_major"`` is `True`).
                 - If :attr:`embedding` is given, :attr:`inputs` is used as
                   index to look up embeddings and feed in the decoder. E.g.,
                   if `embedding` is an instance of
@@ -146,8 +146,8 @@ class RNNDecoderBase(DecoderBase[State, Output]):
             helper (optional): An instance of
                 :class:`texar.modules.decoders.Helper`
                 that defines the decoding strategy. If given,
-                ``decoding_strategy`` and helper configs in :attr:`hparams`
-                are ignored.
+                ``decoding_strategy`` and helper configurations in
+                :attr:`hparams` are ignored.
             infer_mode (optional): If not `None`, overrides mode given by
                 `self.training`.
             **kwargs: Other keyword arguments for constructing helpers

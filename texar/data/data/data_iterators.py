@@ -144,7 +144,7 @@ class RandomSampler(SamplerBase):
     Args:
         data: The :class:`~texar.data.data.DataBase` instance.
         num_samples (int): number of samples to draw, default=len(dataset)
-        replacement (bool): samples are drawn with replacement if ``True``,
+        replacement (bool): samples are drawn with replacement if `True`,
             default=False
     """
 

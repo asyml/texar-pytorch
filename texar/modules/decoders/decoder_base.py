@@ -50,7 +50,7 @@ def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
     types of output layers could be constructed:
 
     - If ``layer`` is a :torch_nn:`Module`, then the layer is returned as is.
-    - If ``layer`` is ``None``, then a :torch_nn:`Linear` layer is constructed
+    - If ``layer`` is `None`, then a :torch_nn:`Linear` layer is constructed
       with ``output_size`` and ``vocab_size`` as input and output dimensions.
     - If ``layer`` is a :tensor:`Tensor`, then a :torch_nn:`Linear` layer is
       constructed with the provided tensor as parameters. Note that this tensor
@@ -215,7 +215,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
            ``hparams["helper_train/infer"]["kwargs"]``.
 
            This means is used only when both :attr:`decoding_strategy` and
-           :attr:`helper` are ``None``.
+           :attr:`helper` are `None`.
 
            Example:
 
@@ -269,9 +269,9 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                 ``"infer_sample"``, or when `hparams`-configured helper is used.
             softmax_temperature (float, optional): Value to divide the logits
                 by before computing the softmax. Larger values (above 1.0)
-                result in more random samples. Must be > 0. If ``None``, 1.0 is
+                result in more random samples. Must be > 0. If `None`, 1.0 is
                 used. Used when ``decoding_strategy="infer_sample"``.
-            infer_mode (optional): If not ``None``, overrides mode given by
+            infer_mode (optional): If not `None`, overrides mode given by
                 :attr:`self.training`.
             **kwargs: Other keyword arguments for constructing helpers
                 defined by ``hparams["helper_train"]`` or
@@ -365,8 +365,8 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
 
         Returns:
             A tuple of output, final state, and sequence lengths. Note that
-            final state could be ``None``, when all sequences are of zero length
-            and :attr:`initial_state` is also ``None``.
+            final state could be `None`, when all sequences are of zero length
+            and :attr:`initial_state` is also `None`.
         """
 
         # Decode

@@ -41,9 +41,6 @@ def default_optimization_hparams() -> Dict[str, Any]:
     r"""Returns a `dict` of default hyperparameters of training op
     and their default values
 
-    .. role:: python(code)
-       :language: python
-
     .. code-block:: python
 
         {
@@ -67,11 +64,11 @@ def default_optimization_hparams() -> Dict[str, Any]:
 
     Here:
 
-    "optimizer": dict
+    `"optimizer"`: dict
         Hyperparameters of a
         :torch_docs:`torch.optim.Optimizer <optim.html#torch.optim.Optimizer>`.
 
-        - **"type"** specifies the optimizer class. This can be
+        - `"type"` specifies the optimizer class. This can be
 
           - The string name or full module path of an optimizer class.
             If the class name is provided, the class must be in module
@@ -89,16 +86,16 @@ def default_optimization_hparams() -> Dict[str, Any]:
               "type": texar.custom.BertAdam     # class
               "type": my_module.MyOptimizer     # class
 
-        - **"kwargs"** is a `dict` specifying keyword arguments for creating
+        - `"kwargs"` is a `dict` specifying keyword arguments for creating
           the optimizer class instance, with :python:`opt_class(**kwargs)`.
           Ignored if `"type"` is a class instance.
 
-    "learning_rate_decay": dict
+    `"learning_rate_decay"`: dict
         Hyperparameters of learning rate decay function. The learning rate
         starts decay from :attr:`"start_decay_step"` and keeps unchanged after
         :attr:`"end_decay_step"` or reaching :attr:`"min_learning_rate"`.
 
-        The decay function is specified in "type" and "kwargs".
+        The decay function is specified in `"type"` and `"kwargs"`.
 
         - `"type"` can be a decay function or its name or module path. If
           function name is provided, it must be from module
@@ -112,7 +109,7 @@ def default_optimization_hparams() -> Dict[str, Any]:
         :python:`lr = decay_fn(learning_rate=lr, global_step=offset_step,
         **kwargs)`, where `offset_step` is the global step offset as above.
 
-    "gradient_clip": dict
+    `"gradient_clip"`: dict
         Hyperparameters of gradient clipping. The gradient clipping function
         takes a list of `(gradients, variables)` tuples and returns a list
         of `(clipped_gradients, variables)` tuples. Typical examples include
@@ -120,14 +117,14 @@ def default_optimization_hparams() -> Dict[str, Any]:
         :torch_nn:`utils.clip_grad_value_`.
 
         "type" specifies the gradient clip function, and can be a function,
-        or its name or mudule path. If function name is provided, the
+        or its name or module path. If function name is provided, the
         function must be from module :mod:`torch.nn.utils`, :mod:`texar.custom`,
         or :mod:`texar.core.optimization`.
 
         `"kwargs"` specifies keyword arguments to the function, except arguments
         named `"parameters"`.
 
-    "gradient_noise_scale": float, optional
+    `"gradient_noise_scale"`: float, optional
         Adds 0-mean normal noise scaled by this value to gradient.
     """
     return {
@@ -157,16 +154,18 @@ def get_optimizer(
         Optimizer:
     r"""Creates a optimizer instance.
 
-        Args:
-            params: an iterable of :class:`torch.Tensor` s or
-                :class:`dict` s. Specifies what Tensors should be optimized.
-            hparams (dict or HParams, optional): hyperparameters. Missing
-                hyperparameters are set to default values automatically. See
-                :func:`~texar.core.default_optimization_hparams` for
-                all hyperparameters and default values.
+    Args:
+        params: an iterable of :class:`torch.Tensor` or
+            :class:`dict`. Specifies what Tensors should be optimized.
+        hparams (dict or HParams, optional): hyperparameters. Missing
+            hyperparameters are set to default values automatically. See
+            :func:`~texar.core.default_optimization_hparams` for
+            all hyperparameters and default values.
 
-        Returns:
-            optimizer: the torch.optim.Optimizer instance specified in hparams.
+    :return:
+        The :torch_docs:`torch.optim.Optimizer
+        <optim.html#torch.optim.Optimizer>` instance specified in
+        :attr:`hparams`.
     """
     if hparams is None or isinstance(hparams, dict):
         hparams = HParams(hparams, default_optimization_hparams())
@@ -201,16 +200,17 @@ def get_scheduler(optimizer: Optimizer,
         Optional[_LRScheduler]:
     r"""Creates a scheduler instance.
 
-        Args:
-            optimizer: A torch.optim.Optimizer instance.
-            hparams (dict or HParams, optional): hyperparameters. Missing
-                hyperparameters are set to default values automatically. See
-                :func:`~texar.core.default_optimization_hparams` for
-                all hyperparameters and default values.
+    Args:
+        optimizer: A :torch_docs:`torch.optim.Optimizer
+            <optim.html#torch.optim.Optimizer>` instance.
+        hparams (dict or HParams, optional): hyperparameters. Missing
+            hyperparameters are set to default values automatically. See
+            :func:`~texar.core.default_optimization_hparams` for
+            all hyperparameters and default values.
 
-        Returns:
-            A :torch_docs:`torch.optim.lr_scheduler._LRScheduler
-            <optim.html#how-to-adjust-learning-rate>` instance.
+    :return:
+        A :torch_docs:`torch.optim.lr_scheduler._LRScheduler
+        <optim.html#how-to-adjust-learning-rate>` instance.
     """
     if hparams is None or isinstance(hparams, dict):
         hparams = HParams(hparams, default_optimization_hparams())
@@ -245,16 +245,16 @@ def get_scheduler(optimizer: Optimizer,
 def get_grad_clip_fn(hparams: Optional[Union[HParams,
                                              Dict[str, Any]]] = None) -> \
         Optional[Callable[[torch.Tensor], Optional[torch.Tensor]]]:
-    r"""Create a clip_grad function.
+    r"""Create a gradient clipping function.
 
-        Args:
-            hparams (dict or HParams, optional): hyperparameters. Missing
-                hyperparameters are set to default values automatically. See
-                :func:`~texar.core.default_optimization_hparams` for
-                all hyperparameters and default values.
+    Args:
+        hparams (dict or HParams, optional): hyperparameters. Missing
+            hyperparameters are set to default values automatically. See
+            :func:`~texar.core.default_optimization_hparams` for
+            all hyperparameters and default values.
 
-        Returns:
-            A torch grad clip function.
+    Returns:
+        A gradient clipping function.
     """
     if hparams is None or isinstance(hparams, dict):
         hparams = HParams(hparams, default_optimization_hparams())
@@ -277,17 +277,18 @@ def get_grad_clip_fn(hparams: Optional[Union[HParams,
 def get_train_op(optimizer: Optimizer,
                  hparams: Optional[Union[HParams, Dict[str, Any]]] = None) -> \
         Callable[[], None]:
-    r"""Creates a training op..
+    r"""Creates a training op.
 
-        Args:
-            optimizer: A torch.optim.Optimizer instance to optimize the loss.
-            hparams (dict or HParams, optional): hyperparameters. Missing
-                hyperparameters are set to default values automatically. See
-                :func:`~texar.core.default_optimization_hparams` for
-                all hyperparameters and default values.
+    Args:
+        optimizer: A :torch_docs:`torch.optim.Optimizer
+            <optim.html#torch.optim.Optimizer>` instance.
+        hparams (dict or HParams, optional): hyperparameters. Missing
+            hyperparameters are set to default values automatically. See
+            :func:`~texar.core.default_optimization_hparams` for
+            all hyperparameters and default values.
 
-        Returns:
-            train_op: the operator used for variables optimization.
+    Returns:
+        The callable used for variable optimization.
     """
     hparams = HParams(hparams, default_optimization_hparams())
 

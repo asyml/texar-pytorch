@@ -53,9 +53,6 @@ __all__ = [
 def default_rnn_cell_hparams():
     r"""Returns a `dict` of RNN cell hyperparameters and their default values.
 
-    .. role:: python(code)
-       :language: python
-
     .. code-block:: python
 
         {
@@ -77,14 +74,14 @@ def default_rnn_cell_hparams():
 
     Here:
 
-    "type": str or cell class or cell instance
+    `"type"`: str or cell class or cell instance
         The RNN cell type. This can be
 
         - The string name or full module path of a cell class. If class name is
           provided, the class must be in module :mod:`torch.nn.modules.rnn`,
           :mod:`texar.core.cell_wrappers`, or :mod:`texar.custom`.
         - A cell class.
-        - An instance of a cell class. This is not valid if "num_layers" > 1.
+        - An instance of a cell class. This is not valid if `"num_layers"` > 1.
 
         For example
 
@@ -97,7 +94,7 @@ def default_rnn_cell_hparams():
             "type": LSTMCell(hidden_size=100)  # cell instance
             "type": MyCell(...)  # cell instance
 
-    "kwargs": dict
+    `"kwargs"`: dict
         Keyword arguments for the constructor of the cell class.
         A cell is created by :python:`cell_class(**kwargs)`, where
         `cell_class` is specified in "type" above.
@@ -105,34 +102,34 @@ def default_rnn_cell_hparams():
         Ignored if "type" is a cell instance.
 
         .. note::
-            It is unnecessary to specify "input_size" within "kwargs".
+            It is unnecessary to specify `"input_size"` within `"kwargs"`.
             This value will be automatically filled based on layer index.
 
         .. note::
-            Although PyTorch uses "hidden_size" to denote the hidden layer
-            size, we follow TensorFlow conventions and use "num_units".
+            Although PyTorch uses `"hidden_size"` to denote the hidden layer
+            size, we follow TensorFlow conventions and use `"num_units"`.
 
-    "num_layers": int
+    `"num_layers"`: int
         Number of cell layers. Each layer is a cell created as above, with
-        the same hyperparameters specified in "kwargs".
+        the same hyperparameters specified in `"kwargs"`.
 
-    "dropout": dict
+    `"dropout"`: dict
         Dropout applied to the cell in **each** layer. See
         :class:`~texar.core.cell_wrappers.DropoutWrapper` for details of
-        the hyperparameters. If all "\*_keep_prob" = 1, no dropout is applied.
+        the hyperparameters. If all `"\*_keep_prob"` = 1, no dropout is applied.
 
-        Specifically, if "variational_recurrent" = `True`,
+        Specifically, if `"variational_recurrent"` = `True`,
         the same dropout mask is applied across all time steps per batch.
 
-    "residual": bool
+    `"residual"`: bool
         If `True`, apply residual connection on the inputs and
         outputs of cell in **each** layer except the first layer. Ignored
-        if "num_layers" = 1.
+        if `"num_layers"` = 1.
 
-    "highway": bool
+    `"highway"`: bool
         If True, apply highway connection on the inputs and
         outputs of cell in each layer except the first layer. Ignored if
-        "num_layers" = 1.
+        `"num_layers"` = 1.
     """
     return {
         'type': 'LSTMCell',
@@ -193,8 +190,8 @@ def get_rnn_cell(input_size, hparams=None):
         A cell instance.
 
     Raises:
-        ValueError: If hparams["num_layers"]>1 and hparams["type"] is a class
-            instance.
+        ValueError: If ``hparams["num_layers"]``>1 and ``hparams["type"]`` is a
+            class instance.
     """
     if hparams is None or isinstance(hparams, dict):
         hparams = HParams(hparams, default_rnn_cell_hparams())
@@ -320,9 +317,6 @@ def get_initializer(hparams: Optional[HParams] = None) \
         -> Optional[Callable[[torch.Tensor], torch.Tensor]]:
     r"""Returns an initializer instance.
 
-    .. role:: python(code)
-       :language: python
-
     Args:
         hparams (dict or HParams, optional): Hyperparameters with the structure
 
@@ -331,19 +325,19 @@ def get_initializer(hparams: Optional[HParams] = None) \
                 {
                     "type": "initializer_class_or_function",
                     "kwargs": {
-                        #...
+                        # ...
                     }
                 }
 
-            The "type" field can be a function name or module path. If name is
+            The `"type"` field can be a function name or module path. If name is
             provided, it be must be from one the following modules:
-            :torch_docs:`torch.nn.init <nn.html\#torch-nn-init>` and
+            :torch_docs:`torch.nn.init <nn.html#torch-nn-init>` and
             :mod:`texar.custom`.
 
-            Besides, the "type" field can also be an initialization function
+            Besides, the `"type"` field can also be an initialization function
             called with :python:`initialization_fn(**kwargs)`. In this case
-            "type" can be the function, or its name or module path. If no
-            keyword argument is required, "kwargs" can be omitted.
+            `"type"` can be the function, or its name or module path. If no
+            keyword argument is required, `"kwargs"` can be omitted.
 
     Returns:
         An initializer instance. `None` if :attr:`hparams` is `None`.
@@ -384,7 +378,7 @@ def get_activation_fn(fn_name: Optional[Union[str,
               :torch_docs:`torch.nn.functional<nn.html#torch-nn-functional>`
             - User-defined activation functions in module :mod:`texar.custom`.
             - External activation functions. Must provide the full module path,
-              e.g., "my_module.my_activation_fn".
+              e.g., ``"my_module.my_activation_fn"``.
 
         kwargs (optional): A `dict` or instance of :class:`~texar.HParams`
             containing the keyword arguments of the activation function.
@@ -433,7 +427,7 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
 
             Here:
 
-            "type": str or layer class or layer instance
+            `"type"`: str or layer class or layer instance
                 The layer type. This can be
 
                 - The string name or full module path of a layer class. If
@@ -453,7 +447,7 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
                     "type": Conv1D(filters=10, kernel_size=2) # cell instance
                     "type": MyLayer(...)                      # cell instance
 
-            "kwargs": dict
+            `"kwargs"`: dict
                 A dictionary of keyword arguments for constructor of the
                 layer class. Ignored if :attr:`"type"` is a layer instance.
 
@@ -461,16 +455,16 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
                   the name or module path to the activation function.
                 - Arguments named "\*_regularizer" and "\*_initializer" can be a
                   class instance, or a `dict` of hyperparameters of respective
-                  regulari«zers and initializers. See
+                  regularizers and initializers. See
                 - Arguments named "\*_constraint" can be a callable, or a `str`
                   of the name or full path to the constraint function.
 
     Returns:
-        A layer instance. If hparams["type"] is a layer instance, returns it
+        A layer instance. If ``hparams["type"]`` is a layer instance, returns it
         directly.
 
     Raises:
-        ValueError: If :attr:`hparams` is ``None``.
+        ValueError: If :attr:`hparams` is `None`.
         ValueError: If the resulting layer is not an instance of
             :torch_nn:`Module`.
     """
@@ -541,7 +535,7 @@ class _ReducePool1d(nn.Module):
 
 
 class MaxReducePool1d(_ReducePool1d):
-    """A subclass of :torch_nn:`Module`.
+    r"""A subclass of :torch_nn:`Module`.
     Max Pool layer for 1D inputs. The same as
     :torch_nn:`MaxPool1d` except that the pooling
     dimension is entirely reduced (i.e., `pool_size=input_length`).
@@ -572,7 +566,7 @@ _POOLING_TO_REDUCE = {
 
 def get_pooling_layer_hparams(hparams: Union[HParams, Dict[str, Any]]) \
         -> Dict[str, Any]:
-    r"""Creates pooling layer hparams `dict` usable for :func:`get_layer`.
+    r"""Creates pooling layer hyperparameters `dict` for :func:`get_layer`.
 
     If the :attr:`hparams` sets `'pool_size'` to `None`, the layer will be
     changed to the respective reduce-pooling layer. For example,
@@ -603,9 +597,9 @@ class MergeLayer(nn.Module):
 
     Args:
         layers (list, optional): A list of :torch_docs:`torch.nn.Module
-            <nn.html#module>` instances, or a list of hyperparameter dicts
-            each of which specifies type and kwargs of each layer (see
-            the `hparams` argument of :func:`get_layer`).
+            <nn.html#module>` instances, or a list of hyperparameter
+            dictionaries each of which specifies `"type"` and `"kwargs"` of each
+            layer (see the `hparams` argument of :func:`get_layer`).
 
             If `None`, this layer degenerates to a merging operator that merges
             inputs directly.

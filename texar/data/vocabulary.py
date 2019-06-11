@@ -44,7 +44,7 @@ def _make_defaultdict(keys: Sequence[Union[int, str]],
                       values: Sequence[Union[int, str]],
                       default_value: Union[int, str]) -> \
         MutableMapping[Union[int, str], Union[int, str]]:
-    r"""Creates a python defaultdict.
+    r"""Creates a Python `defaultdict`.
 
     Args:
         keys (list): Keys of the dictionary.
@@ -53,7 +53,7 @@ def _make_defaultdict(keys: Sequence[Union[int, str]],
         default_value: default value returned when key is missing.
 
     Returns:
-        defaultdict: A python `defaultdict` instance that maps keys to values.
+        defaultdict: A Python `defaultdict` instance that maps keys to values.
     """
     dict_: MutableMapping[Union[int, str], Union[int, str]] = \
         defaultdict(lambda: default_value)

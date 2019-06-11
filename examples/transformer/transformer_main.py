@@ -220,7 +220,7 @@ def main():
         logger.info("Begin running with train_and_evaluate mode")
         model_path = os.path.join(args.model_dir, args.model_fn)
         if os.path.exists(model_path):
-            logger.info("Restore latest checkpoint in %s", model_path)
+            logger.info("Restore latest checkpoint in", model_path)
             ckpt = torch.load(model_path)
             model.load_state_dict(ckpt['model'])
             optim.load_state_dict(ckpt['optimizer'])
@@ -242,11 +242,8 @@ def main():
     elif args.run_mode == 'test':
         logger.info("Begin running with test mode")
         model_path = os.path.join(args.model_dir, args.model_fn)
-        logger.info("Restore latest checkpoint in %s", model_path)
-        if device is None:
-            ckpt = torch.load(model_path, map_location='cpu')
-        else:
-            ckpt = torch.load(model_path, map_location={'cpu': device})
+        logger.info("Restore latest checkpoint in", model_path)
+        ckpt = torch.load(model_path)
         model.load_state_dict(ckpt['model'])
         _eval_epoch(0, mode='test')
 

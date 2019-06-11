@@ -24,7 +24,7 @@ class StateDict(TypedDict):
 
 
 class BertAdam(Optimizer):
-    """Implements BERT version of Adam algorithm with weight decay fix.
+    r"""Implements BERT version of Adam algorithm with weight decay fix.
 
     Args:
         params (iterable): iterable of parameters to optimize or dicts defining
@@ -61,7 +61,7 @@ class BertAdam(Optimizer):
         super().__init__(params, defaults)  # type: ignore
 
     def step(self, closure: Optional[Callable[[], float]] = None):
-        """Performs a single optimization step.
+        r"""Performs a single optimization step.
         Arguments:
             closure (callable, optional): A closure that reevaluates the model
                 and returns the loss.

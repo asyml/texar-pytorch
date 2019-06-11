@@ -111,7 +111,7 @@ class ZipDataSource(DataSource[Tuple[RawExample, ...]]):
 class FilterDataSource(DataSource[RawExample]):
     r"""Data source for filtering raw example with user-specified filter
     function. Only those examples for which the filter functions returns
-    ``True`` are returned.
+    `True` are returned.
     """
 
     def __init__(self, source: DataSource[RawExample],
@@ -393,7 +393,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
         Here:
 
-        "num_epochs": int
+        `"num_epochs"`: int
             Number of times the dataset should be repeated.
 
             .. note::
@@ -401,11 +401,11 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 ignored. A warning will be generated is any value other than
                 1 is used.
 
-        "batch_size": int
+        `"batch_size"`: int
             Batch size, i.e., the number of consecutive elements of the
             dataset to combine in a single batch.
 
-        "allow_smaller_final_batch": bool
+        `"allow_smaller_final_batch"`: bool
            Whether to allow the final batch to be smaller if there are
            insufficient elements left. If `False`, the final batch is
            discarded if it is smaller than batch size. Note that,
@@ -413,10 +413,10 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
            will have a a **static** batch_size dimension equal to
            "batch_size".
 
-        "shuffle": bool
+        `"shuffle"`: bool
             Whether to randomly shuffle the elements of the dataset.
 
-        "shuffle_buffer_size": int
+        `"shuffle_buffer_size"`: int
             The buffer size for data shuffling. The larger, the better
             the resulting data is mixed.
 
@@ -424,7 +424,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             whole dataset (i.e., make the shuffling the maximally
             effective).
 
-        "shard_and_shuffle": bool
+        `"shard_and_shuffle"`: bool
             Whether to first shard the dataset and then shuffle each
             block respectively. Useful when the whole data is too large to
             be loaded efficiently into the memory.
@@ -435,14 +435,14 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             .. warning::
                 Sharding is not yet supported. This option will be ignored.
 
-        "num_parallel_calls": int
+        `"num_parallel_calls"`: int
             Number of elements from the datasets to process in parallel.
             When ``"num_parallel_calls"`` equals 1, no worker threads will
             be created; however, when the value is greater than 1, the
             number of worker threads will be equal to
             ``"num_parallel_calls"``.
 
-        "prefetch_buffer_size": int
+        `"prefetch_buffer_size"`: int
             The maximum number of elements that will be buffered when
             prefetching.
 
@@ -453,13 +453,13 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 internally by PyTorch :torch_docs:`DataLoader
                 <data.html#torch.utils.data.DataLoader>`.
 
-        "max_dataset_size": int
+        `"max_dataset_size"`: int
             Maximum number of instances to include in
             the dataset. If set to `-1` or greater than the size of
             dataset, all instances will be included. This constraint is
             imposed after data shuffling and filtering.
 
-        "seed": int, optional
+        `"seed"`: int, optional
             The random seed for shuffle.
 
             Note that if a seed is set, the shuffle order will be exact
@@ -469,10 +469,10 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 Manual seeding is not yet supported. This option will be
                 ignored.
 
-        "name": str
+        `"name"`: str
             Name of the data.
 
-        "lazy_strategy": str
+        `"lazy_strategy"`: str
             Lazy strategy for data examples. Lazy loading/processing defers
             data loading/processing until when it's being accessed.
             Non-lazy (eager) loading/processing would load/process all data
@@ -485,7 +485,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             Defaults to `all`. Note that currently, all eager operations
             are performed on a single process only.
 
-        "cache_strategy": str
+        `"cache_strategy"`: str
             Caching strategy for data examples. Available options are:
 
             - `none`: No data is cached. Data is always loaded from
@@ -504,7 +504,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             - When `lazy_strategy` is `process`, `none` is equivalent
               to `loaded`.
 
-        "parallelize_processing": bool
+        `"parallelize_processing"`: bool
             Whether to perform parallelized processing of data. Since
             multi-processing parallelism is utilized, this flag should be
             `False` if your process routine involves modifying a shared

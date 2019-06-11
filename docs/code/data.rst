@@ -22,6 +22,9 @@ Vocabulary
 Embedding
 ==========
 
+.. spelling::
+    vec
+
 :hidden:`Embedding`
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -83,8 +86,8 @@ Data Iterators
     :members:
 
 
-Data Utils
-==========
+Data Utilities
+===============
 
 :hidden:`maybe_download`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

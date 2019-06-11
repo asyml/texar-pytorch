@@ -1,7 +1,7 @@
 .. role:: hidden
     :class: hidden-section
 
-Utils
+Utilities
 **************
 
 Frequent Use

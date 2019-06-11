@@ -37,7 +37,7 @@ class _SingleAverageRecorder:
     records) of a single metric.
 
     Args:
-        size (int, optional): The window size of moving average. If ``None``,
+        size (int, optional): The window size of moving average. If `None`,
             the average of all added records is maintained.
         name (str, optional): name of the recorder. Used when printing.
     """
@@ -58,7 +58,7 @@ class _SingleAverageRecorder:
         Args:
             record: A scalar; the new record to append.
             weight (optional): A scalar, weight of the new record for
-                calculating a weighted average. If ``None``, weight is set to
+                calculating a weighted average. If `None`, weight is set to
                 ``1``.
                 For example, :attr:`weight` can be set to batch size and
                 :attr:`record` the average value of certain metric on the batch
@@ -134,7 +134,7 @@ class AverageRecorder:
     Fields are determined by the first call of :meth:`add`.
 
     Args:
-        size (int, optional): The window size of moving average. If ``None``,
+        size (int, optional): The window size of moving average. If `None`,
             the average of all added records is maintained.
 
     Example:
@@ -205,7 +205,7 @@ class AverageRecorder:
         Args:
             record: A single scalar, a list of scalars, or a dict of scalars.
             weight (optional): A scalar, weight of the new record for
-                calculating a weighted average. If ``None``, weight is set to
+                calculating a weighted average. If `None`, weight is set to
                 ``1``.
                 For example, :attr:`weight` can be set to batch size and
                 :attr:`record` the average value of certain metrics on the batch
@@ -281,7 +281,7 @@ class AverageRecorder:
             id_or_name (optional): A list or a single element. Each element is
                 the index (if the record type is ``list``) or name (if the
                 record type is ``dict``) of the field to reset.
-                If ``None``, all fields are reset.
+                If `None`, all fields are reset.
         """
         keys = id_or_name
         if keys is None:

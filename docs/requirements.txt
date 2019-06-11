@@ -5,3 +5,4 @@ torch >= 1.0.0
 pyyaml
 funcsigs
 recommonmark
+sphinxcontrib-spelling

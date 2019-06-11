@@ -38,6 +38,7 @@ extensions = [
     'sphinx.ext.extlinks',
     'sphinx.ext.napoleon',
     'recommonmark',
+    'sphinxcontrib.spelling',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -342,12 +343,19 @@ extlinks = {'torch_docs': (
 
 ##### Customize ######
 
+# Snippet to insert at beginning of each RST file.
+rst_prolog = r"""
+.. role:: python(code)
+    :language: python
+"""
+
 autodoc_member_order = 'bysource'
 autodoc_typehints = 'none'
 
 napoleon_numpy_docstring = False
-napoleon_use_param = True
-napoleon_use_rtype = False
+
+spelling_lang = 'en_US'
+spelling_word_list_filename = 'spelling_wordlist.txt'
 
 # Addresses import errors. Refer to:
 # https://docs.readthedocs.io/en/latest/faq.html#i-get-import-errors-on-libraries-that-depend-on-c-modules

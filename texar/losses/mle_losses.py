@@ -383,9 +383,6 @@ def binary_sigmoid_cross_entropy_with_clas(
         -> Union[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
     r"""Computes sigmoid cross entropy of binary classifier.
 
-    .. role:: python(code)
-       :language: python
-
     Args:
         clas_fn: A callable takes data (e.g., :attr:`pos_inputs` and
             :attr:`fake_inputs`) and returns the logits of being positive. The

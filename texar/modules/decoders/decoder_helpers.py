@@ -149,7 +149,7 @@ class TrainingHelper(Helper[torch.LongTensor]):
             respective embedding (e.g., an instance of subclass of
             :class:`~texar.modules.EmbedderBase`).
         time_major (bool):  Whether the tensors in ``inputs`` are time major.
-            If ``False`` (default), they are assumed to be batch major.
+            If `False` (default), they are assumed to be batch major.
     """
     _embedding: Optional[Embedding]
 
@@ -545,7 +545,7 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
         stop_gradient (bool): Whether to stop the gradient backpropagation
             when feeding softmax vector to the next step.
         use_finish (bool): Whether to stop decoding once :attr:`end_token`
-            is generated. If ``False``, decoding will continue until
+            is generated. If `False`, decoding will continue until
             :attr:`max_decoding_length` of the decoder is reached.
 
     Raises:
@@ -622,15 +622,15 @@ class GumbelSoftmaxEmbeddingHelper(SoftmaxEmbeddingHelper):
             token that marks end of decoding.
         tau: A float scalar tensor, the softmax temperature.
         straight_through (bool): Whether to use straight through gradient
-            between time steps. If ``True``, a single token with highest
+            between time steps. If `True`, a single token with highest
             probability (i.e., greedy sample) is fed to the next step and
-            gradient is computed using straight through. If ``False``
+            gradient is computed using straight through. If `False`
             (default), the soft Gumbel-softmax distribution is fed to the
             next step.
         stop_gradient (bool): Whether to stop the gradient backpropagation
             when feeding softmax vector to the next step.
         use_finish (bool): Whether to stop decoding once :attr:`end_token`
-            is generated. If ``False``, decoding will continue until
+            is generated. If `False`, decoding will continue until
             :attr:`max_decoding_length` of the decoder is reached.
 
     Raises:
@@ -650,9 +650,9 @@ class GumbelSoftmaxEmbeddingHelper(SoftmaxEmbeddingHelper):
 
     def sample(self, time: int, outputs: torch.Tensor) -> torch.Tensor:
         r"""Returns ``sample_id`` of shape ``[batch_size, vocab_size]``. If
-        :attr:`straight_through` is ``False``, this contains the Gumbel softmax
+        :attr:`straight_through` is `False`, this contains the Gumbel softmax
         distributions over vocabulary with temperature :attr:`tau`. If
-        :attr:`straight_through` is ``True``, this contains one-hot vectors of
+        :attr:`straight_through` is `True`, this contains one-hot vectors of
         the greedy samples.
         """
         gumbel_samples = self._gumbel.sample(outputs.size()).to(

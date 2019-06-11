@@ -40,7 +40,8 @@ class Regularizer:
         return cls(**config)
 
     def get_config(self) -> Dict[str, float]:
-        r"""Return a Dict with config for the current regularizer instance.
+        r"""Return a Dict with configurations for the current regularizer
+        instance.
         """
         raise NotImplementedError
 

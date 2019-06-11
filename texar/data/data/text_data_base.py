@@ -50,7 +50,7 @@ class TextLineDataSource(DataSource[str]):
             file_paths (str or list[str]): Paths to the text files.
             compression_type (str, optional): The compression type for the text
                 files, ``"gzip"`` and ``"zlib"`` are supported. Default is
-                ``None``, in which case files are treated as plain text files.
+                `None`, in which case files are treated as plain text files.
             encoding (str, optional): Encoding for the files. By default uses
                 the default locale of the system (usually UTF-8).
             delimiter (str, optional): Delimiter for tokenization purposes. This
@@ -61,8 +61,8 @@ class TextLineDataSource(DataSource[str]):
                 ``max_length`` tokens will be dropped.
 
                 .. note::
-                    ``delimiter`` and ``max_length`` should both be ``None`` or
-                    not ``None``.
+                    ``delimiter`` and ``max_length`` should both be `None` or
+                    not `None`.
         """
         if compression_type is not None:
             compression_type = compression_type.lower()
@@ -164,7 +164,7 @@ class TextLineDataSource(DataSource[str]):
 
 
 class TextDataBase(DataBase[RawExample, Example], ABC):  # noqa: E501 pylint: disable=too-few-public-methods
-    """Base class inherited by all text data classes.
+    r"""Base class inherited by all text data classes.
     """
 
     def __init__(self, source: DataSource[RawExample], hparams,
@@ -173,7 +173,7 @@ class TextDataBase(DataBase[RawExample, Example], ABC):  # noqa: E501 pylint: di
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of default hyperparameters.
+        r"""Returns a dictionary of default hyperparameters.
 
         See the specific subclasses for the details.
         """

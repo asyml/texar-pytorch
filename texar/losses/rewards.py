@@ -72,8 +72,8 @@ def discount_reward(reward: torch.Tensor,
         raise ValueError("The dimension of reward can only be 1 or 2.")
 
     if normalize:
-        mu = torch.mean(disc_reward, dim=(0, 1), keepdim=True)
-        var = torch.std(disc_reward, dim=(0, 1), keepdim=True)
+        mu = torch.mean(disc_reward)
+        var = torch.std(disc_reward)
         disc_reward = (disc_reward - mu) / (torch.sqrt(var) + 1e-8)
 
     return disc_reward

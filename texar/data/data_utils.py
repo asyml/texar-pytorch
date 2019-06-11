@@ -53,10 +53,10 @@ def maybe_download(urls: str, path: str, filenames: Optional[str] = None,
 
 
 def maybe_download(urls, path, filenames=None, extract=False):
-    """Downloads a set of files.
+    r"""Downloads a set of files.
 
     Args:
-        urls: A (list of) urls to download files.
+        urls: A (list of) URLs to download files.
         path (str): The destination path to save the files.
         filenames: A (list of) strings of the file names. If given,
             must have the same length with :attr:`urls`. If `None`,
@@ -144,7 +144,7 @@ def _extract_google_drive_file_id(url: str) -> str:
 
 
 def _download_from_google_drive(url: str, filename: str, path: str) -> str:
-    """Adapted from `https://github.com/saurabhshri/gdrive-downloader`
+    r"""Adapted from `https://github.com/saurabhshri/gdrive-downloader`
     """
 
     def _get_confirm_token(response):
@@ -177,13 +177,12 @@ def _download_from_google_drive(url: str, filename: str, path: str) -> str:
 
 
 def read_words(filename: str, newline_token: Optional[str] = None) -> List[str]:
-    """Reads word from a file.
+    r"""Reads word from a file.
 
     Args:
         filename (str): Path to the file.
         newline_token (str, optional): The token to replace the original newline
-            token "\\\\n". For example,
-            `newline_token=tx.data.SpecialTokens.EOS`.
+            token "\\n". For example, :python:`tx.data.SpecialTokens.EOS`.
             If `None`, no replacement is performed.
 
     Returns:
@@ -207,7 +206,7 @@ def make_vocab(filenames: MaybeList[str], max_vocab_size: int = -1,
                return_type: str = "list", return_count: bool = False) \
         -> Union[Union[List[str], Tuple[List[str], List[int]]],
                  MaybeTuple[Dict[str, int]]]:
-    """Builds vocab of the files.
+    r"""Builds vocab of the files.
 
     Args:
         filenames (str): A (list of) files.
@@ -215,16 +214,15 @@ def make_vocab(filenames: MaybeList[str], max_vocab_size: int = -1,
             words that exceeding the limit will be discarded.
             Set to `-1` (default) if no truncation is wanted.
         newline_token (str, optional): The token to replace the original newline
-            token "\\\\n". For example,
-            `newline_token=tx.data.SpecialTokens.EOS`.
+            token "\\n". For example, :python:`tx.data.SpecialTokens.EOS`.
             If `None`, no replacement is performed.
-        return_type (str): Either "list" or "dict". If "list" (default), this
-            function returns a list of words sorted by frequency. If "dict",
-            this function returns a dict mapping words to their index sorted
-            by frequency.
+        return_type (str): Either ``list`` or ``dict``. If ``list`` (default),
+            this function returns a list of words sorted by frequency. If
+            ``dict``, this function returns a dict mapping words to their index
+            sorted by frequency.
         return_count (bool): Whether to return word counts. If `True` and
-            :attr:`return_type` is "dict", then a count dict is returned, which
-            is a mapping from words to their frequency.
+            :attr:`return_type` is ``dict``, then a count dict is returned,
+            which is a mapping from words to their frequency.
 
     Returns:
         - If :attr:`return_count` is False, returns a list or dict containing
@@ -269,7 +267,7 @@ def make_vocab(filenames: MaybeList[str], max_vocab_size: int = -1,
 
 
 def count_file_lines(filenames: MaybeList[str]) -> int:
-    """Counts the number of lines in the file(s).
+    r"""Counts the number of lines in the file(s).
     """
 
     def _count_lines(fn):

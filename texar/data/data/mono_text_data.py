@@ -90,7 +90,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
         A list of ``[batch_size]`` elements each containing a list of token
         indexes of source sequences in the batch.
     "length":
-        A list of ``[batch_size]`` elements of ints containing the length
+        A list of ``[batch_size]`` elements of integers containing the length
         of each source sequence in the batch (including ``BOS`` and ``EOS``
         if added).
 
@@ -211,31 +211,31 @@ class MonoTextData(TextDataBase[str, List[str]]):
 
         1. For the hyperparameters in the :attr:`"dataset"` field:
 
-          "files": str or list
+          `"files"`: str or list
               A (list of) text file path(s).
 
               Each line contains a single text sequence.
 
-          "compression_type": str, optional
-              One of ``None`` (no compression), ``"ZLIB"``, or ``"GZIP"``.
+          `"compression_type"`: str, optional
+              One of `None` (no compression), ``"ZLIB"``, or ``"GZIP"``.
 
-          "vocab_file": str
+          `"vocab_file"`: str
               Path to vocabulary file. Each line of the file should contain
               one vocabulary token.
 
               Used to create an instance of :class:`~texar.data.Vocab`.
 
-          "embedding_init": dict
+          `"embedding_init"`: dict
               The hyperparameters for pre-trained embedding loading and
               initialization.
 
               The structure and default values are defined in
               :meth:`texar.data.Embedding.default_hparams`.
 
-          "delimiter": str
+          `"delimiter"`: str
               The delimiter to split each line of the text files into tokens.
 
-          "max_seq_length": int, optional
+          `"max_seq_length"`: int, optional
               Maximum length of output sequences. Data samples exceeding the
               length will be truncated or discarded according to
               :attr:`"length_filter_mode"`. The length does not include
@@ -243,35 +243,35 @@ class MonoTextData(TextDataBase[str, List[str]]):
               :attr:`"bos_token"` or :attr:`"eos_token"`. If `None` (default),
               no filtering is performed.
 
-          "length_filter_mode": str
+          `"length_filter_mode"`: str
               Either ``"truncate"`` or ``"discard"``. If ``"truncate"``
               (default), tokens exceeding :attr:`"max_seq_length"` will be
               truncated.
               If ``"discard"``, data samples longer than
               :attr:`"max_seq_length"` will be discarded.
 
-          "pad_to_max_seq_length": bool
+          `"pad_to_max_seq_length"`: bool
               If `True`, pad all data instances to length
               :attr:`"max_seq_length"`.
               Raises error if :attr:`"max_seq_length"` is not provided.
 
-          "bos_token": str
+          `"bos_token"`: str
               The Begin-Of-Sequence token prepended to each sequence.
 
               Set to an empty string to avoid prepending.
 
-          "eos_token": str
+          `"eos_token"`: str
               The End-Of-Sequence token appended to each sequence.
 
               Set to an empty string to avoid appending.
 
-          "other_transformations": list
+          `"other_transformations"`: list
               A list of transformation functions or function names/paths to
               further transform each single data instance.
 
               (More documentations to be added.)
 
-          "variable_utterance": bool
+          `"variable_utterance"`: bool
               If `True`, each line of the text file is considered to contain
               multiple sequences (utterances) separated by
               :attr:`"utterance_delimiter"`.
@@ -284,16 +284,16 @@ class MonoTextData(TextDataBase[str, List[str]]):
                   Variable utterances is not yet supported. This option (and
                   related ones below) will be ignored.
 
-          "utterance_delimiter": str
+          `"utterance_delimiter"`: str
               The delimiter to split over utterance level. Should not be the
               same with :attr:`"delimiter"`. Used only when
-              :attr:`"variable_utterance"` is ``True``.
+              :attr:`"variable_utterance"` is `True`.
 
-          "max_utterance_cnt": int
+          `"max_utterance_cnt"`: int
               Maximally allowed number of utterances in a data instance.
               Extra utterances are truncated out.
 
-          "data_name": str
+          `"data_name"`: str
               Name of the dataset.
 
         2. For the **general** hyperparameters, see
@@ -303,20 +303,20 @@ class MonoTextData(TextDataBase[str, List[str]]):
         together by length and then pad and batch. For bucketing
         hyperparameters:
 
-          "bucket_boundaries": list
+          `"bucket_boundaries"`: list
               An int list containing the upper length boundaries of the
               buckets.
 
               Set to an empty list (default) to disable bucketing.
 
-          "bucket_batch_sizes": list
+          `"bucket_batch_sizes"`: list
               An int list containing batch size per bucket. Length should be
               `len(bucket_boundaries) + 1`.
 
               If `None`, every bucket will have the same batch size specified
               in :attr:`batch_size`.
 
-          "bucket_length_fn": str or callable
+          `"bucket_length_fn"`: str or callable
               Function maps dataset element to ``int``, determines
               the length of the element.
 

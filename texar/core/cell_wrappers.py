@@ -59,7 +59,7 @@ def wrap_builtin_cell(cell: nn.RNNCellBase):
 
     Returns:
         The wrapped cell derived from
-        :class`texar.core.cell_wrappers.RNNCellBase`.
+        :class:`texar.core.cell_wrappers.RNNCellBase`.
     """
     # convert cls to corresponding derived wrapper class
     if isinstance(cell, nn.RNNCell):
@@ -344,8 +344,8 @@ class ResidualWrapper(RNNCellBase[State]):
 class HighwayWrapper(RNNCellBase[State]):
     r"""RNNCell wrapper that adds highway connection on cell input and output.
 
-    Based on: R. K. Srivastava, K. Greff, and J. Schmidhuber, "Highway
-    networks", arXiv preprint arXiv:1505.00387, 2015.
+    Based on: `R. K. Srivastava, K. Greff, and J. Schmidhuber, "Highway
+    networks", arXiv preprint arXiv:1505.00387, 2015.`
     https://arxiv.org/pdf/1505.00387.pdf
     """
 

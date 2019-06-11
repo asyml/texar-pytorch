@@ -1,6 +1,9 @@
 .. role:: hidden
     :class: hidden
 
+.. spelling::
+    HParams
+
 HParams
 *******
 

@@ -29,10 +29,15 @@ jobs:
       install:
         - pip install --upgrade pip
         - pip install --progress-bar off -r requirements.txt
+        # install library required for spellcheck
+        - sudo apt-get install libenchant1c2a myspell-en-us
         - pip install --progress-bar off -r docs/requirements.txt
       script:
         - cd docs
-        - sphinx-build -W -b html . _build/html
+        # build documents
+        - sphinx-build -W -b html -d _build/doctrees . _build/html
+        # check for typos
+        - sphinx-build -W -b spelling -d _build/doctrees . _build/spelling
 
 notifications:
   email: false

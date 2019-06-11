@@ -104,8 +104,8 @@ class FeedForwardNetworkBase(ModuleBase):
         self._layers_by_name[layer_name] = layer_
 
     def has_layer(self, layer_name: str) -> bool:
-        r"""Returns ``True`` if the network with the name exists. Returns
-        ``False`` otherwise.
+        r"""Returns `True` if the network with the name exists. Returns
+        `False` otherwise.
 
         Args:
             layer_name (str): Name of the layer.
@@ -113,7 +113,7 @@ class FeedForwardNetworkBase(ModuleBase):
         return layer_name in self._layers_by_name
 
     def layer_by_name(self, layer_name: str) -> Optional[nn.Module]:
-        r"""Returns the layer with the name. Returns ``None`` if the layer name
+        r"""Returns the layer with the name. Returns `None` if the layer name
         does not exist.
 
         Args:

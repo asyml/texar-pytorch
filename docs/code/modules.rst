@@ -81,6 +81,11 @@ Encoders
 Decoders
 ========
 
+.. spelling::
+    Luong
+    Bahdanau
+    Gumbel
+
 :hidden:`RNNDecoderBase`
 ~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.RNNDecoderBase

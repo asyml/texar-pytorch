@@ -38,7 +38,7 @@ def load_data_numpy(input_dir, prefix):
         encoding="latin1",
         allow_pickle=True,
     ).tolist()
-    print("train data size: {}".format(len(train_data)))
+    print("train data size:{}".format(len(train_data)))
     return train_data, dev_data, test_data
 
 

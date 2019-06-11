@@ -75,14 +75,14 @@ def get_numpy_dtype(dtype: Union[str, type]):
 
 
 def is_callable(x):
-    r"""Return ``True`` if :attr:`x` is callable.
+    r"""Return `True` if :attr:`x` is callable.
     """
     return callable(x)
 
 
 def is_str(x):
-    r"""Returns ``True`` if :attr:`x` is either a str or unicode.
-    Returns ``False`` otherwise.
+    r"""Returns `True` if :attr:`x` is either a str or unicode.
+    Returns `False` otherwise.
     """
     return isinstance(x, str)
 

@@ -26,7 +26,7 @@ def variance_scaling_initializer(inputs: torch.Tensor,
     * To get [Convolutional Architecture for Fast Feature Embedding](
         http://arxiv.org/abs/1408.5093), use:<br/>
         `factor=1.0 mode='FAN_IN' uniform=True`
-    * To get [Understanding the difficulty of training deep feedforward
+    * To get [Understanding the difficulty of training deep feed-forward
         neural networks](
         http://jmlr.org/proceedings/papers/v9/glorot10a/glorot10a.pdf),
         use:<br/>

@@ -62,7 +62,7 @@ def sentence_bleu_moses(references: List[MaybeList[str]],
                         lowercase: bool = False,
                         return_all: bool = False) -> MaybeList[float]:
     r"""Calculates BLEU score of a hypothesis sentence using the
-    **MOSES multi-bleu.perl** script.
+    **MOSES `multi-bleu.perl`** script.
 
     Args:
         references: A list of reference for the hypothesis.
@@ -71,16 +71,16 @@ def sentence_bleu_moses(references: List[MaybeList[str]],
         hypothesis: A hypothesis sentence.
             The hypothesis can be either a string, or a list of string tokens.
             List can also be numpy array.
-        lowercase (bool): If ``True``, pass the ``"-lc"`` flag to the
-            multi-bleu script.
-        return_all (bool): If ``True``, returns BLEU and all n-gram
+        lowercase (bool): If `True`, pass the ``"-lc"`` flag to the
+            `multi-bleu` script.
+        return_all (bool): If `True`, returns BLEU and all n-gram
             precisions.
 
     Returns:
-        If :attr:`return_all` is ``False`` (default), returns a ``float32``
+        If :attr:`return_all` is `False` (default), returns a ``float32``
         BLEU score.
 
-        If :attr:`return_all` is ``True``, returns a list of 5 ``float32``
+        If :attr:`return_all` is `True`, returns a list of 5 ``float32``
         scores: ``[BLEU, 1-gram precision, ..., 4-gram precision]``.
     """
     return corpus_bleu_moses(
@@ -92,7 +92,7 @@ def corpus_bleu_moses(list_of_references: List[List[MaybeList[str]]],
                       lowercase: bool = False,
                       return_all: bool = False) -> MaybeList[float]:
     r"""Calculates corpus-level BLEU score using the
-    **MOSES multi-bleu.perl** script.
+    **MOSES `multi-bleu.perl`** script.
 
     Args:
         list_of_references: A list of lists of references for each hypothesis.
@@ -101,16 +101,16 @@ def corpus_bleu_moses(list_of_references: List[List[MaybeList[str]]],
         hypotheses: A list of hypothesis sentences.
             Each hypothesis can be either a string, or a list of string tokens.
             List can also be numpy array.
-        lowercase (bool): If ``True``, pass the ``"-lc"`` flag to the
-            multi-bleu script.
-        return_all (bool): If ``True``, returns BLEU and all
+        lowercase (bool): If `True`, pass the ``"-lc"`` flag to the
+            `multi-bleu` script.
+        return_all (bool): If `True`, returns BLEU and all
             n-gram precisions.
 
     Returns:
-        If :attr:`return_all` is ``False`` (default), returns a ``float32``
+        If :attr:`return_all` is `False` (default), returns a ``float32``
         BLEU score.
 
-        If :attr:`return_all` is ``True``, returns a list of 5 ``float32``
+        If :attr:`return_all` is `True`, returns a list of 5 ``float32``
         scores: ``[BLEU, 1-gram precision, ..., 4-gram precision]``.
     """
     list_of_references = compat_as_text(list_of_references)

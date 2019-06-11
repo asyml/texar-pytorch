@@ -32,7 +32,7 @@ __all__ = [
 
 
 class Conv1DClassifier(ClassifierBase):
-    r"""Simple Conv-1D classifier.
+    r"""Simple `Conv-1D` classifier.
     This is a combination of the
     :class:`~texar.modules.Conv1DEncoder` with a classification layer.
 
@@ -107,11 +107,12 @@ class Conv1DClassifier(ClassifierBase):
 
         1. Same hyperparameters as in :class:`~texar.modules.Conv1DEncoder`.
            See the :meth:`~texar.modules.Conv1DEncoder.default_hparams`.
-           An instance of Conv1DEncoder is created for feature extraction.
+           An instance of :class:`~texar.modules.Conv1DEncoder` is created for
+           feature extraction.
 
         2. Additional hyperparameters:
 
-           "num_classes": int
+           `"num_classes"`: int
                Number of classes:
 
                - If `> 0`, an additional :torch_nn:`Linear`
@@ -122,13 +123,13 @@ class Conv1DClassifier(ClassifierBase):
                  classes is assumed to be equal to ``out_features`` of the
                  final dense layer size of the encoder.
 
-           "logit_layer_kwargs": dict
+           `"logit_layer_kwargs"`: dict
                Keyword arguments for the logit :torch_nn:`Linear` layer
                constructor, except for argument ``out_features`` which is set
                to ``"num_classes"``. Ignored if no extra logit layer is
                appended.
 
-           "name": str
+           `"name"`: str
                Name of the classifier.
         """
         hparams = Conv1DEncoder.default_hparams()
@@ -207,8 +208,8 @@ class Conv1DClassifier(ClassifierBase):
         return self._encoder
 
     def has_layer(self, layer_name) -> bool:
-        r"""Returns ``True`` if the network with the name exists. Returns
-        ``False`` otherwise.
+        r"""Returns `True` if the network with the name exists. Returns
+        `False` otherwise.
 
         Args:
             layer_name (str): Name of the layer.
@@ -216,7 +217,7 @@ class Conv1DClassifier(ClassifierBase):
         return self._encoder.has_layer(layer_name)
 
     def layer_by_name(self, layer_name) -> Optional[nn.Module]:
-        r"""Returns the layer with the name. Returns ``None`` if the layer name
+        r"""Returns the layer with the name. Returns `None` if the layer name
         does not exist.
 
         Args:

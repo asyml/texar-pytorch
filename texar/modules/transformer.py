@@ -150,18 +150,17 @@ class Transformer(ModuleBase):
 
 
 class LabelSmoothingLoss(nn.Module):
-    """
-    With label smoothing,
+    r"""With label smoothing,
     KL-divergence between q_{smoothed ground truth prob.}(w)
     and p_{prob. computed by model}(w) is minimized.
+
+    Args:
+        label_confidence: the confidence weight on the ground truth label.
+        tgt_vocab_size: the size of the final classification.
+        ignore_index: The index in the vocabulary to ignore weight.
     """
 
     def __init__(self, label_confidence, tgt_vocab_size, ignore_index=0):
-        """
-        :param label_confidence: the confidence weight on the ground truth label
-        :param tgt_vocab_size: the size of the final classification
-        :param ignore_index: The index in the vocabulary to ignore weight
-        """
         self.ignore_index = ignore_index
         self.tgt_vocab_size = tgt_vocab_size
         super(LabelSmoothingLoss, self).__init__()
@@ -180,10 +179,13 @@ class LabelSmoothingLoss(nn.Module):
         target: torch.Tensor,
         label_lengths: torch.LongTensor,
     ) -> torch.Tensor:
-        """
-        output (FloatTensor): batch_size x seq_length * n_classes
-        target (LongTensor): batch_size * seq_length, specify the label target
-        label_lengths(torch.LongTensor): specify the length of the labels
+        r"""
+
+        Args:
+            output (FloatTensor): batch_size x seq_length * n_classes
+            target (LongTensor): batch_size * seq_length, specify the label
+                target
+            label_lengths(torch.LongTensor): specify the length of the labels
         """
         ori_shapes = (output.size(), target.size())
         output = output.view(-1, self.tgt_vocab_size)
