@@ -60,7 +60,6 @@ def _assert_same_size(outputs: Inputs,
         output_size: Can be an Integer, a ``torch.Size``, or a (nested)
             ``tuple`` of Integers or ``torch.Size``.
     """
-    nest.assert_same_structure(outputs, output_size)
     flat_output_size = nest.flatten(output_size)
     flat_output = nest.flatten(outputs)
 
@@ -218,8 +217,6 @@ class ConstantConnector(ConnectorBase):
             lambda x: torch.full((batch_size, x), value_), # type: ignore
             self._output_size)
 
-        self._built = True
-
         return output
 
 
@@ -262,7 +259,6 @@ class ForwardConnector(ConnectorBase):
                  output_size: OutputSize,
                  hparams: HParamsType = None):
         ConnectorBase.__init__(self, output_size, hparams)
-        self._built = False
 
     @staticmethod
     def default_hparams() -> dict:
@@ -293,14 +289,9 @@ class ForwardConnector(ConnectorBase):
             the specified structure of `output_size`.
         """
         output = inputs
-        try:
-            nest.assert_same_structure(inputs, self._output_size)
-        except (ValueError, TypeError):
-            flat_input = nest.flatten(inputs)
-            output = nest.pack_sequence_as(
-                self._output_size, flat_input)
-
-        self._built = True
+        flat_input = nest.flatten(inputs)
+        output = nest.pack_sequence_as(
+            self._output_size, flat_input)
 
         return output
 
@@ -348,7 +339,6 @@ class MLPTransformConnector(ConnectorBase):
                  output_size: OutputSize,
                  hparams: HParamsType = None):
         ConnectorBase.__init__(self, output_size, hparams)
-        self._built = False
 
     @staticmethod
     def default_hparams() -> dict:
@@ -390,8 +380,6 @@ class MLPTransformConnector(ConnectorBase):
         output, linear_layer = _mlp_transform(
             inputs, self._output_size, activation_fn)
         self._linear_layers.append(linear_layer)
-
-        self._built = True
 
         return output
 

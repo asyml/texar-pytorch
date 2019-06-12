@@ -43,9 +43,6 @@ class TestConnectors(unittest.TestCase):
         decoder_initial_state_0 = connector(self._batch_size)
         decoder_initial_state_1 = connector(self._batch_size, value=1.)
 
-        nest.assert_same_structure(decoder_initial_state_0,
-                                   state_size)
-
         s_0 = decoder_initial_state_0
         s_1 = decoder_initial_state_1
         self.assertEqual(nest.flatten(s_0)[0][0, 0], 0.)
@@ -67,7 +64,6 @@ class TestConnectors(unittest.TestCase):
         state_size = namedtuple('LSTMStateTuple', ['c', 'h'])(256, 256)
         connector = MLPTransformConnector(state_size)
         output = connector(torch.zeros(5, 10))
-        nest.assert_same_structure(output, state_size)
 
     def test_reparameterized_stochastic_connector(self):
         """Tests the logic of
