@@ -19,10 +19,8 @@ The code structure adapted from:
     seq2seq/python/ops/attention_wrapper.py`
 """
 
-# pylint: disable=too-many-arguments, too-many-instance-attributes
-# pylint: disable=missing-docstring  # does not support generic classes
-
 import functools
+from abc import ABC
 from typing import Callable, List, NamedTuple, Optional, Tuple, TypeVar
 
 import numpy as np
@@ -49,7 +47,7 @@ __all__ = [
 State = TypeVar('State')
 
 
-class AttentionMechanism(ModuleBase):
+class AttentionMechanism(ModuleBase, ABC):
     r"""A base AttentionMechanism class providing common functionality.
 
     Common functionality includes:
@@ -119,13 +117,13 @@ class AttentionMechanism(ModuleBase):
                 masked with zeros for values past the respective sequence
                 lengths.
         """
-        query = self.query_layer(query) if self.query_layer else query
+        query = self._query_layer(query) if self._query_layer else query
 
         if self._values is None and self._keys is None:
             self._values = prepare_memory(memory, memory_sequence_length)
 
-            if self.memory_layer is not None:
-                self._keys = self.memory_layer(self._values)
+            if self._memory_layer is not None:
+                self._keys = self._memory_layer(self._values)
             else:
                 self._keys = self._values
         return query
@@ -158,18 +156,22 @@ class AttentionMechanism(ModuleBase):
 
     @property
     def memory_layer(self) -> nn.Module:
+        r"""The layer used to transform the attention memory."""
         return self._memory_layer
 
     @property
     def query_layer(self) -> Optional[nn.Module]:
+        r"""The layer used to transform the attention query."""
         return self._query_layer
 
     @property
     def values(self) -> torch.Tensor:
+        r"""Cached tensor of the attention values."""
         return self._values
 
     @property
     def encoder_output_size(self) -> int:
+        r"""Dimension of the encoder output."""
         return self._encoder_output_size
 
     def clear_cache(self):
@@ -180,7 +182,7 @@ class AttentionMechanism(ModuleBase):
         self._values = None
         self._keys = None
 
-    def initial_alignments(self,
+    def initial_alignments(self,  # pylint: disable=no-self-use
                            batch_size: int,
                            max_time: int,
                            dtype: torch.dtype,
@@ -330,7 +332,7 @@ class LuongAttention(AttentionMechanism):
             probability_fn = lambda x: F.softmax(x, dim=-1)
         self._probability_fn = probability_fn
 
-        super(LuongAttention, self).__init__(
+        super().__init__(
             encoder_output_size=encoder_output_size,
             memory_layer=nn.Linear(encoder_output_size, num_units, False),
             query_layer=None,
@@ -446,7 +448,7 @@ class BahdanauAttention(AttentionMechanism):
             probability_fn = lambda x: F.softmax(x, dim=-1)
         self._probability_fn = probability_fn
 
-        super(BahdanauAttention, self).__init__(
+        super().__init__(
             encoder_output_size=encoder_output_size,
             query_layer=nn.Linear(decoder_output_size, num_units, False),
             memory_layer=nn.Linear(encoder_output_size, num_units, False),
@@ -638,7 +640,7 @@ def _monotonic_probability_fn(score: torch.Tensor,
     return monotonic_attention(p_choose_i, previous_alignments, mode)
 
 
-class MonotonicAttentionMechanism(AttentionMechanism):
+class MonotonicAttentionMechanism(AttentionMechanism, ABC):
     r"""Base attention mechanism for monotonic attention.
 
     Simply overrides the initial_alignments function to provide a dirac
@@ -722,7 +724,7 @@ class BahdanauMonotonicAttention(MonotonicAttentionMechanism):
             sigmoid_noise=sigmoid_noise,
             mode=mode)
 
-        super(BahdanauMonotonicAttention, self).__init__(
+        super().__init__(
             encoder_output_size=encoder_output_size,
             query_layer=nn.Linear(decoder_output_size, num_units, False),
             memory_layer=nn.Linear(encoder_output_size, num_units, False),
@@ -818,7 +820,7 @@ class LuongMonotonicAttention(MonotonicAttentionMechanism):
             sigmoid_noise=sigmoid_noise,
             mode=mode)
 
-        super(LuongMonotonicAttention, self).__init__(
+        super().__init__(
             encoder_output_size=encoder_output_size,
             query_layer=None,
             memory_layer=nn.Linear(encoder_output_size, num_units, False),

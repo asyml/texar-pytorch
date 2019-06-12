@@ -22,8 +22,6 @@ import torch
 from texar.utils.shapes import mask_sequences
 from texar.utils.utils import sequence_mask
 
-# pylint: disable=invalid-name, too-many-arguments, no-member
-
 __all__ = [
     "discount_reward",
     "_discount_reward_tensor_1d",

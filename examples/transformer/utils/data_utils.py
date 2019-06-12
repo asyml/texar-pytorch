@@ -19,7 +19,7 @@ import six
 import numpy as np
 import torch
 
-# pylint: disable=no-member
+
 
 
 def load_data_numpy(input_dir, prefix):

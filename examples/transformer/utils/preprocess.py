@@ -25,7 +25,7 @@ import pickle
 import argparse
 from io import open
 
-# pylint:disable=invalid-name
+
 
 split_pattern = re.compile(r'([.,!?"\':;)(])')
 digit_pattern = re.compile(r"\d")

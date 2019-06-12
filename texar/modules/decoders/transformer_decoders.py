@@ -47,8 +47,8 @@ class TransformerDecoderOutput(NamedTuple):
     r"""A :tensor:`Tensor` of shape ``[batch_size, max_time, vocab_size]``
     containing the logits."""
     sample_id: torch.LongTensor
-    r"""A :tensor:`LongTensor` of shape ``[batch_size, max_time]`` containing the
-    sampled token indices."""
+    r"""A :tensor:`LongTensor` of shape ``[batch_size, max_time]`` containing
+    the sampled token indices."""
 
 
 class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
@@ -114,7 +114,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         else:
             eps = 1e-12
 
-        for i in range(self._hparams.num_blocks):
+        for _ in range(self._hparams.num_blocks):
             attn_module = MultiheadAttentionEncoder(
                 self._input_size, self._hparams.multihead_attention)
             if self._hparams.dim != attn_module.output_size:
@@ -137,7 +137,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
             poswise_network = FeedForwardNetwork(
                 hparams=self._hparams.poswise_feedforward)
-            if (poswise_network._hparams.layers[-1]['kwargs']['out_features']
+            if (poswise_network.hparams.layers[-1]['kwargs']['out_features']
                     != self._hparams.dim):
                 raise ValueError("The output dimension of "
                                  "FeedForwardNetwork should be equal "
@@ -537,6 +537,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 helper, inputs=None, sequence_length=None,
                 initial_state=None, max_decoding_length=max_decoding_length,
                 impute_finished=impute_finished)
+            del cache  # not used
 
             if context is not None:
                 # Here the length of sample_id will be larger than that

@@ -29,8 +29,6 @@ import requests
 from texar.utils import utils_io
 from texar.utils.types import MaybeList, MaybeTuple
 
-# pylint: disable=invalid-name, too-many-branches
-
 __all__ = [
     "maybe_download",
     "read_words",
@@ -40,6 +38,9 @@ __all__ = [
 
 Py3 = sys.version_info[0] == 3
 
+
+# TODO: Remove these once pylint supports function stubs.
+# pylint: disable=unused-argument,function-redefined,missing-docstring
 
 @overload
 def maybe_download(urls: List[str], path: str,
@@ -117,13 +118,13 @@ def maybe_download(urls, path, filenames=None, extract=False):
         return result[0]
     return result
 
+# pylint: enable=unused-argument,function-redefined,missing-docstring
+
 
 def _download(url: str, filename: str, path: str) -> str:
     def _progress_hook(count, block_size, total_size):
         percent = float(count * block_size) / float(total_size) * 100.
-        # pylint: disable=cell-var-from-loop
-        sys.stdout.write('\r>> Downloading %s %.1f%%' %
-                         (filename, percent))
+        sys.stdout.write(f'\r>> Downloading {filename} {percent:.1f}%%')
         sys.stdout.flush()
 
     filepath = os.path.join(path, filename)

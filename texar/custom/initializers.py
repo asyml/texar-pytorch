@@ -1,3 +1,7 @@
+"""
+Custom initializers used in various methods.
+"""
+
 import math
 
 import torch
@@ -20,7 +24,7 @@ def variance_scaling_initializer(inputs: torch.Tensor,
         truncated_normal(shape, 0.0, stddev=sqrt(factor / n))
     ```
     * To get [Delving Deep into Rectifiers](
-        http://arxiv.org/pdf/1502.01852v1.pdf) (also know as the "MSRA 
+        http://arxiv.org/pdf/1502.01852v1.pdf) (also know as the "MSRA
         initialization"), use (Default):<br/>
         `factor=2.0 mode='FAN_IN' uniform=False`
     * To get [Convolutional Architecture for Fast Feature Embedding](

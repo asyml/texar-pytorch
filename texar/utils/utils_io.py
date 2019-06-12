@@ -16,16 +16,12 @@ Utility functions related to input/output.
 """
 import os
 
-# pylint: disable=invalid-name, redefined-builtin, too-many-arguments
-
-
 __all__ = [
     "write_paired_text",
     "maybe_create_dir",
 ]
 
 
-# pylint: disable=too-many-locals
 def write_paired_text(src, tgt, fname, append=False, mode='h', sep='\t',
                       src_fname_suffix='src', tgt_fname_suffix='tgt'):
     r"""Writes paired text to a file.

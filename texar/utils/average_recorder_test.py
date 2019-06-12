@@ -7,7 +7,7 @@ import unittest
 from texar.utils.average_recorder import _SingleAverageRecorder, AverageRecorder
 
 
-# pylint: disable=invalid-name
+
 
 class AverageRecorderTest(unittest.TestCase):
     r"""Tests average recoder.

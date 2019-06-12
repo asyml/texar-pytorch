@@ -167,7 +167,6 @@ class WordEmbedder(EmbedderBase):
         hparams["name"] = "word_embedder"
         return hparams
 
-    # pylint: disable=W0221
     def forward(self, ids=None, soft_ids=None, **kwargs):
         r"""Embeds (soft) ids.
 

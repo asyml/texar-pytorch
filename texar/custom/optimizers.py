@@ -1,15 +1,20 @@
-from typing import Callable, Iterable, List, Optional, Tuple, Union, Dict
+"""
+Custom optimizers used in various methods.
+"""
+
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import torch
-from mypy_extensions import TypedDict
 from torch import nn
 from torch.nn.utils import clip_grad_norm_
 from torch.optim.optimizer import Optimizer
+from mypy_extensions import TypedDict
 
 from texar.utils.types import MaybeDict
 
 
 class BertAdamParamDict(TypedDict):
+    r"""The :attr:`param_groups` dictionary used in PyTorch optimizers."""
     params: List[nn.Parameter]
     lr: float
     betas: Tuple[float, float]
@@ -18,7 +23,8 @@ class BertAdamParamDict(TypedDict):
     max_grad_norm: float
 
 
-class StateDict(TypedDict):
+class BertAdamStateDict(TypedDict):
+    r"""The :attr:`state` dictionary used in :class:`BertAdam` optimizer."""
     next_m: torch.Tensor
     next_v: torch.Tensor
 
@@ -40,16 +46,16 @@ class BertAdam(Optimizer):
     """
 
     param_groups: List[BertAdamParamDict]
-    state: Dict[nn.Parameter, StateDict]
+    state: Dict[nn.Parameter, BertAdamStateDict]
 
     def __init__(self, params: Union[MaybeDict[Iterable[nn.Parameter]]],
                  lr: float = 0.001, betas: Tuple[float, float] = (0.9, 0.999),
                  eps: float = 1e-08, weight_decay: float = 0,
                  max_grad_norm: float = 1.0):
 
-        if not 0.0 <= lr:
+        if lr < 0.0:
             raise ValueError(f"Invalid learning rate: {lr}")
-        if not 0.0 <= eps:
+        if eps < 0.0:
             raise ValueError(f"Invalid epsilon value: {eps}")
         if not 0.0 <= betas[0] < 1.0:
             raise ValueError(f"Invalid beta parameter at index 0: {betas[0]}")

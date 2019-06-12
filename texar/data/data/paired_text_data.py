@@ -342,7 +342,7 @@ class PairedTextData(TextDataBase[Tuple[str, str],
 
         return src_embedding, tgt_embedding
 
-    def _process(self, raw_example: Tuple[str, str]) -> \
+    def process(self, raw_example: Tuple[str, str]) -> \
             Tuple[List[str], List[str]]:
         # `_process` truncates sentences and appends BOS/EOS tokens.
         src_words = raw_example[0].split(self._src_delimiter)
@@ -386,7 +386,7 @@ class PairedTextData(TextDataBase[Tuple[str, str],
                              "datasets cannot be the same.")
         return name_prefix
 
-    def _collate(self, examples: List[Tuple[List[str], List[str]]]) -> Batch:
+    def collate(self, examples: List[Tuple[List[str], List[str]]]) -> Batch:
         # For `PairedTextData`, each example is represented as a tuple of list
         # of strings.
         # `_collate` takes care of padding and numericalization.

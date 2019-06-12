@@ -15,18 +15,15 @@
 Various optimization related utilities.
 """
 
-from typing import Dict, Any, List, Optional, Union, Callable, Tuple
-
 import functools
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import torch
-from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.optimizer import Optimizer  # pylint: disable=no-name-in-module
 
 from texar.hyperparams import HParams
 from texar.utils import utils
-
-# pylint: disable=too-many-arguments, no-member
 
 __all__ = [
     "default_optimization_hparams",

@@ -2,8 +2,6 @@
 Unit tests for utility functions.
 """
 
-# pylint: disable=no-self-use
-
 import unittest
 
 import numpy as np

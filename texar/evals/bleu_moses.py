@@ -28,8 +28,6 @@ import numpy as np
 from texar.utils.dtypes import compat_as_text
 from texar.utils.types import MaybeList
 
-# pylint: disable=too-many-locals, no-member, redefined-variable-type
-
 __all__ = [
     "sentence_bleu_moses",
     "corpus_bleu_moses",
@@ -117,7 +115,7 @@ def corpus_bleu_moses(list_of_references: List[List[MaybeList[str]]],
     hypotheses = compat_as_text(hypotheses)
 
     if np.size(hypotheses) == 0:
-        return np.float32(0.)   # pylint: disable=no-member
+        return np.float32(0.)
 
     # Get multi-bleu.perl
     cur_dir = os.path.dirname(os.path.realpath(__file__))
@@ -137,7 +135,7 @@ def corpus_bleu_moses(list_of_references: List[List[MaybeList[str]]],
     max_nrefs = max([len(refs) for refs in list_of_references])
     rfile_path = os.path.join(result_path, 'ref')
     for rid in range(max_nrefs):
-        with open(rfile_path + '%d'%rid, 'w', encoding='utf-8') as rfile:
+        with open(rfile_path + str(rid), 'w', encoding='utf-8') as rfile:
             for refs in list_of_references:
                 if rid < len(refs):
                     ref = _maybe_list_to_str(refs[rid])

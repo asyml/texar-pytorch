@@ -15,10 +15,7 @@
 Various RNN decoders.
 """
 
-# pylint: disable=no-name-in-module, too-many-arguments, too-many-locals
-# pylint: disable=not-context-manager, protected-access, invalid-name
-
-from typing import Callable, NamedTuple, Optional, Tuple, TypeVar, Union
+from typing import Callable, NamedTuple, Optional, Tuple, Union
 
 import torch
 from torch import nn
@@ -631,7 +628,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         self.memory_sequence_length = None
 
         # Release the cached memory in AttentionMechanism
-        for attention_mechanism in self._cell._attention_mechanisms:
+        for attention_mechanism in self._cell._attention_mechanisms:  # noqa: E501; pylint: disable=protected-access
             attention_mechanism.clear_cache()
 
         return outputs, final_state, sequence_lengths

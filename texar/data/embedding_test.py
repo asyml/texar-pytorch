@@ -24,7 +24,7 @@ import numpy as np
 
 from texar.data import embedding
 
-Py3 = sys.version_info[0] == 3  # pylint: disable=invalid-name
+Py3 = sys.version_info[0] == 3
 
 
 class EmbeddingTest(unittest.TestCase):

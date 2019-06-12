@@ -27,8 +27,6 @@ from texar.data.vocabulary import SpecialTokens, Vocab
 from texar.hyperparams import HParams
 from texar.utils import utils
 
-# pylint: disable=invalid-name, arguments-differ, protected-access, no-member
-
 __all__ = [
     "_default_mono_text_dataset_hparams",
     "MonoTextData",
@@ -348,7 +346,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
             embedding = Embedding(token_to_id_map, emb_hparams)
         return embedding
 
-    def _process(self, raw_example: str) -> List[str]:
+    def process(self, raw_example: str) -> List[str]:
         # `_process` truncates sentences and appends BOS/EOS tokens.
         words = raw_example.split(self._delimiter)
         if (self._max_seq_length is not None and
@@ -367,7 +365,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
 
         return words
 
-    def _collate(self, examples: List[List[str]]) -> Batch:
+    def collate(self, examples: List[List[str]]) -> Batch:
         # For `MonoTextData`, each example is represented as a list of strings.
         # `_collate` takes care of padding and numericalization.
 

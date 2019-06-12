@@ -26,8 +26,6 @@ from texar.modules.embedders.embedder_base import (
     EmbedderBase, EmbeddingDropout)
 from texar.utils.shapes import mask_sequences
 
-# pylint: disable=arguments-differ, invalid-name
-
 __all__ = [
     "PositionEmbedder",
     "SinusoidsPositionEmbedder",

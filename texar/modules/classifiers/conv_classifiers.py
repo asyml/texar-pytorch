@@ -14,7 +14,6 @@
 """
 Various classifier classes.
 """
-# pylint: disable=not-context-manager, too-many-arguments, too-many-locals
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 

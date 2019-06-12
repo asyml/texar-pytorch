@@ -46,12 +46,12 @@ import unicodedata
 import numpy as np
 import six
 
-# pylint: disable=redefined-builtin
+
 from six.moves import xrange
 from six.moves import zip
 
 
-# pylint: enable=redefined-builtin
+
 
 
 def _get_ngrams(segment, max_order):
@@ -141,15 +141,14 @@ def compute_bleu(reference_corpus, translation_corpus, max_order=4, use_bp=True)
 class UnicodeRegex(object):
     """Ad-hoc hack to recognize all punctuation and symbols."""
 
-    # pylint:disable=too-few-public-methods
     def __init__(self):
         punctuation = self.property_chars("P")
         self.nondigit_punct_re = re.compile(r"([^\d])([" + punctuation + r"])")
         self.punct_nondigit_re = re.compile(r"([" + punctuation + r"])([^\d])")
         self.symbol_re = re.compile("([" + self.property_chars("S") + "])")
 
-    def property_chars(self, prefix):
-        # pylint:disable=no-self-use
+    @staticmethod
+    def property_chars(prefix):
         return "".join(
             six.unichr(x)
             for x in range(sys.maxunicode)

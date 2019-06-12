@@ -17,7 +17,7 @@ Base text data class that is inherited by all text data classes.
 import io
 import locale
 from abc import ABC
-from typing import IO, Iterator, Optional, TypeVar, AnyStr, BinaryIO
+from typing import IO, Iterator, Optional, TypeVar
 
 import torch
 from texar.data.data.data_base import DataBase, DataSource
@@ -163,7 +163,7 @@ class TextLineDataSource(DataSource[str]):
                     yield line.rstrip('\n')
 
 
-class TextDataBase(DataBase[RawExample, Example], ABC):  # noqa: E501 pylint: disable=too-few-public-methods
+class TextDataBase(DataBase[RawExample, Example], ABC):
     r"""Base class inherited by all text data classes.
     """
 

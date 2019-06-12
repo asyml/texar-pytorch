@@ -36,9 +36,9 @@ class Conv1DEncoder(Conv1DNetwork, EncoderBase):  # type: ignore
 
     def __init__(self, in_channels: int, in_features: Optional[int] = None,
                  hparams=None):
-        super(Conv1DEncoder, self).__init__(in_channels=in_channels,
-                                            in_features=in_features,
-                                            hparams=hparams)
+        super().__init__(in_channels=in_channels,
+                         in_features=in_features,
+                         hparams=hparams)
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:

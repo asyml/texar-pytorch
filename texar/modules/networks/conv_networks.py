@@ -20,8 +20,7 @@ import torch
 
 from texar.core.layers import get_pooling_layer_hparams
 from texar.hyperparams import HParams
-from texar.modules.networks.network_base import (
-    FeedForwardNetworkBase, _build_layers)
+from texar.modules.networks.network_base import FeedForwardNetworkBase
 from texar.utils.shapes import mask_sequences
 from texar.utils.utils import uniquify_str
 
@@ -80,7 +79,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
     def __init__(self, in_channels: int, in_features: Optional[int] = None,
                  hparams=None):
-        super(Conv1DNetwork, self).__init__(hparams)
+        super().__init__(hparams)
         if self.hparams.num_dense_layers > 0 and in_features is None:
             raise ValueError("\"in_features\" cannot be None "
                              "if \"num_dense_layers\" > 0")
@@ -88,7 +87,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         # construct only non-dense layers first
         layer_hparams = self._build_non_dense_layer_hparams(in_channels=
                                                             in_channels)
-        _build_layers(self, layers=None, layer_hparams=layer_hparams)
+        self._build_layers(layers=None, layer_hparams=layer_hparams)
         if self.hparams.num_dense_layers > 0:
             if in_features is None:
                 raise ValueError("\"in_features\" cannot be None "
@@ -98,7 +97,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             layer_hparams = self._build_dense_hparams(in_features=input_size[1],
                                                       layer_hparams=
                                                       layer_hparams)
-            _build_layers(self, layers=None, layer_hparams=layer_hparams)
+            self._build_layers(layers=None, layer_hparams=layer_hparams)
 
     @staticmethod
     def default_hparams():
@@ -525,11 +524,11 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         if sequence_length is not None:
             input = mask_sequences(input, sequence_length,
                                    dtype=dtype, time_major=False)
-        return super(Conv1DNetwork, self).forward(input)
+        return super().forward(input)
 
     def _infer_dense_layer_input_size(self, input: torch.Tensor) -> torch.Size:
         # feed forward the input on the conv part of the network to infer
         # input shape for dense layers
         with torch.no_grad():
-            output = super(Conv1DNetwork, self).forward(input)
+            output = super().forward(input)
         return output.view(output.size()[0], -1).size()

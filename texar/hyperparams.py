@@ -161,10 +161,10 @@ class HParams:
                 hparams, default_hparams, allow_new_hparam)
         else:
             parsed_hparams = self._parse(hparams, hparams)
-        super(HParams, self).__setattr__('_hparams', parsed_hparams)
+        super().__setattr__('_hparams', parsed_hparams)
 
     @staticmethod
-    def _parse(hparams: Optional[Dict[str, Any]],  # noqa: E501 pylint: disable=too-many-branches, too-many-statements
+    def _parse(hparams: Optional[Dict[str, Any]],
                default_hparams: Optional[Dict[str, Any]],
                allow_new_hparam: bool = False):
         r"""Parses hyperparameters.
@@ -296,7 +296,7 @@ class HParams:
         r"""Retrieves the value of the hyperparameter.
         """
         if name == '_hparams':
-            return super(HParams, self).__getattribute__('_hparams')
+            return super().__getattribute__('_hparams')
         if name not in self._hparams:
             # Raise AttributeError to allow copy.deepcopy, etc
             raise AttributeError("Unknown hyperparameter: %s" % name)

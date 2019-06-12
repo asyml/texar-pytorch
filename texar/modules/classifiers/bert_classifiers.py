@@ -20,12 +20,11 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-import texar as tx
 from texar.hyperparams import HParams
 from texar.modules.classifiers.classifier_base import ClassifierBase
-
-# pylint: disable=too-many-arguments, invalid-name, no-member,
-# pylint: disable=too-many-branches, too-many-locals, too-many-statements
+from texar.modules.embedders.embedders import WordEmbedder
+from texar.modules.embedders.position_embedders import PositionEmbedder
+from texar.modules.encoders.transformer_encoder import TransformerEncoder
 
 __all__ = ["BertClassifier"]
 
@@ -48,22 +47,21 @@ class BertClassifier(ClassifierBase):
 
     def __init__(self, hparams=None):
         super().__init__(hparams)
-        self.word_embedder = tx.modules.WordEmbedder(
+        self.word_embedder = WordEmbedder(
             vocab_size=self._hparams.vocab_size, hparams=self._hparams.embed)
 
         # Segment embedding for each type of tokens
-        self.segment_embedder = tx.modules.WordEmbedder(
+        self.segment_embedder = WordEmbedder(
             vocab_size=self._hparams.type_vocab_size,
             hparams=self._hparams.segment_embed)
 
         # Position embedding
-        self.position_embedder = tx.modules.PositionEmbedder(
+        self.position_embedder = PositionEmbedder(
             position_size=self._hparams.position_size,
             hparams=self._hparams.position_embed)
 
         # The BERT encoder (a TransformerEncoder)
-        self.encoder = tx.modules.TransformerEncoder(
-            hparams=self._hparams.encoder)
+        self.encoder = TransformerEncoder(hparams=self._hparams.encoder)
 
         self.pooler = nn.Sequential(
             nn.Linear(self._hparams.hidden_size, self._hparams.hidden_size),

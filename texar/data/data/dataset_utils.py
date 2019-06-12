@@ -1,6 +1,10 @@
+"""
+Various utilities for data module
+"""
+
 from enum import Enum
-from typing import Any, Dict, ItemsView, KeysView, List, Optional, Tuple, \
-    Union, ValuesView
+from typing import (
+    Any, Dict, ItemsView, KeysView, List, Optional, Tuple, Union, ValuesView)
 
 import numpy as np
 

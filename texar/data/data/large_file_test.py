@@ -40,13 +40,13 @@ class ParallelData(DataBase[RawExample, Example]):
         self.device = device
         super().__init__(source, hparams)
 
-    def _process(self, raw_example: RawExample) -> Example:
+    def process(self, raw_example: RawExample) -> Example:
         src, tgt = raw_example.strip().split('\t')
         src = self.src_vocab.map_tokens_to_ids_py(src.split())
         tgt = self.tgt_vocab.map_tokens_to_ids_py(tgt.split())
         return src, tgt
 
-    def _collate(self, examples: List[Example]) -> Batch:
+    def collate(self, examples: List[Example]) -> Batch:
         src_pad_length = max(len(src) for src, _ in examples)
         tgt_pad_length = max(len(tgt) for _, tgt in examples)
         batch_size = len(examples)

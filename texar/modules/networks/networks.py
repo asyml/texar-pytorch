@@ -16,7 +16,6 @@ Various neural networks and related utilities.
 """
 
 from texar.modules.networks.network_base import FeedForwardNetworkBase
-from texar.modules.networks.network_base import _build_layers
 
 __all__ = [
     "FeedForwardNetwork",
@@ -55,9 +54,9 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
     """
 
     def __init__(self, layers=None, hparams=None):
-        super(FeedForwardNetwork, self).__init__(hparams)
+        super().__init__(hparams)
 
-        _build_layers(self, layers=layers, layer_hparams=self._hparams.layers)
+        self._build_layers(layers=layers, layer_hparams=self._hparams.layers)
 
     @staticmethod
     def default_hparams():

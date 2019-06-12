@@ -33,9 +33,6 @@ from typing import Counter, List, Tuple, Union
 from texar.utils.dtypes import compat_as_text
 from texar.utils.types import MaybeList
 
-# pylint: disable=invalid-name, too-many-branches, too-many-locals
-# pylint: disable=too-many-arguments
-
 __all__ = [
     "sentence_bleu",
     "corpus_bleu",

@@ -27,10 +27,6 @@ from texar.modules.networks.networks import FeedForwardNetwork
 from texar.utils import transformer_attentions as attn
 from texar.utils.utils import sequence_mask
 
-# pylint: disable=too-many-locals, invalid-name
-# pylint: disable=arguments-differ, too-many-branches, too-many-statements
-
-
 __all__ = [
     "default_transformer_poswise_net_hparams",
     "TransformerEncoder",
@@ -121,7 +117,6 @@ def default_transformer_poswise_net_hparams(input_dim: int,
     }
 
 
-# pylint: disable=too-many-instance-attributes
 class TransformerEncoder(EncoderBase):
     r"""Transformer encoder that applies multi-head self attention for encoding
     sequences.
@@ -146,7 +141,6 @@ class TransformerEncoder(EncoderBase):
     """
 
     def __init__(self, hparams=None):
-        # pylint: disable=too-many-instance-attributes
         EncoderBase.__init__(self, hparams)
         self._input_size = self._hparams.dim
         self.self_attns = nn.ModuleList()
@@ -307,8 +301,7 @@ class TransformerEncoder(EncoderBase):
             'name': 'transformer_encoder',
         }
 
-    # pylint: disable=arguments-differ
-    def forward(self,  # type: ignore
+    def forward(self,  # type: ignore # pylint: disable=arguments-differ
                 inputs: torch.Tensor,
                 sequence_length: torch.LongTensor) \
             -> torch.Tensor:

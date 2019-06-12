@@ -28,8 +28,6 @@ from texar.modules.networks.conv_networks import _to_list
 from texar.utils.rnn import bidirectional_dynamic_rnn, dynamic_rnn
 from texar.utils.shapes import mask_sequences
 
-# pylint: disable=too-many-arguments, too-many-locals, invalid-name, no-member
-
 __all__ = [
     "_forward_output_layers",
     "RNNEncoderBase",
@@ -168,9 +166,6 @@ class RNNEncoderBase(EncoderBase, Generic[State]):
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
     """
-
-    def __init__(self, hparams: Optional[HParams] = None):
-        super().__init__(hparams)
 
     @staticmethod
     def default_hparams():

@@ -15,8 +15,6 @@
 Utility functions related to data types.
 """
 
-# pylint: disable=invalid-name, no-member, protected-access
-
 from typing import Any, Dict, Optional, Union
 
 import numpy as np
@@ -149,6 +147,7 @@ def compat_as_text(str_):
     Returns:
         The converted strings of the same structure/shape as :attr:`str_`.
     """
+
     def _recur_convert(s):
         if isinstance(s, (list, tuple, np.ndarray)):
             s_ = [_recur_convert(si) for si in s]

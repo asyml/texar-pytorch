@@ -1,3 +1,7 @@
+"""
+Custom activation functions used in various methods.
+"""
+
 import math
 
 import torch

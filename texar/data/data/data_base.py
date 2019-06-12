@@ -305,7 +305,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 self._lazy_strategy is _LazyStrategy.ALL and
                 self._cache_strategy is not _CacheStrategy.LOADED):
             self._transformed_source = _TransformedDataSource[
-                RawExample, Example](self._source, self._process)
+                RawExample, Example](self._source, self.process)
             self._source = self._transformed_source  # type: ignore
 
         # Check whether data source supports random access, and obtain dataset
@@ -330,7 +330,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         if (not self._parallelize_processing and
                 self._cache_strategy is _CacheStrategy.LOADED):
             self._transformed_source = _TransformedDataSource[
-                RawExample, Example](self._source, self._process)
+                RawExample, Example](self._source, self.process)
             self._source = self._transformed_source  # type: ignore
 
         # Simplify some logic-heavy checks.
@@ -355,7 +355,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         # Perform eager loading/processing if required.
         if self._lazy_strategy is _LazyStrategy.NONE:
             # Process entire dataset and cache.
-            self._processed_cache = [self._process(raw_example)
+            self._processed_cache = [self.process(raw_example)
                                      for raw_example in self._source]
             self._dataset_size = len(self._processed_cache)
             self._fully_cached = True
@@ -552,7 +552,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         `parallelize_processing` is `False`."""
         if len(self._processed_cache) <= index:
             self._processed_cache.extend(
-                self._process(self._source[x])
+                self.process(self._source[x])
                 for x in range(len(self._processed_cache), index + 1))
             if len(self._processed_cache) == self._dataset_size:
                 self._fully_cached = True
@@ -616,7 +616,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             assert self._dataset_size is not None
         return self._dataset_size
 
-    def _process(self, raw_example: RawExample) -> Example:
+    def process(self, raw_example: RawExample) -> Example:
         r"""The process routine. Subclasses must implement this method.
 
         The process routine would take raw examples loaded from the data source
@@ -639,13 +639,13 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             elif not self._parallelize_processing:
                 return self._transformed_source[index]
             else:
-                return self._process(self._source[index])
+                return self.process(self._source[index])
         else:
             # `index` is a tuple of (index, example).
             if not self._parallelize_processing:
                 return index[1]  # type: ignore
             else:
-                return self._process(index[1])
+                return self.process(index[1])
 
     def _add_cached_examples(self, indices: List[int], examples: List[Example]):
         r"""Called by :class:`texar.data.data._CacheDataLoaderIter` to cache
@@ -661,7 +661,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             # deleted. Thus, we move deletion to
             # `_add_cached_examples`.
             for index in indices:
-                del self._cached_source._cache[index]
+                del self._cached_source._cache[index]  # noqa: E501; pylint: disable=protected-access
         for index, example in zip(indices, examples):
             if index == len(self._processed_cache):
                 self._processed_cache.append(example)
@@ -714,7 +714,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         """
         return self._source
 
-    def _collate(self, examples: List[Example]) -> Batch:
+    def collate(self, examples: List[Example]) -> Batch:
         r"""The collate routine. Subclasses must implement this method.
 
         The collate routine is called to collate (combine) examples into
@@ -746,7 +746,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         Returns:
             The collated batch.
         """
-        batch = self._collate(examples)
+        batch = self.collate(examples)
         if self._should_return_processed_examples:
             return examples, batch
         return batch

@@ -14,7 +14,7 @@
 """
 Base class for modules.
 """
-
+from abc import ABC
 from typing import Any, Dict, List, Optional, Union
 
 from torch import nn
@@ -26,7 +26,7 @@ __all__ = [
 ]
 
 
-class ModuleBase(nn.Module):
+class ModuleBase(nn.Module, ABC):
     r"""Base class inherited by modules that are configurable through
     hyperparameters.
 

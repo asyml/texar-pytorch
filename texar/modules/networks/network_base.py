@@ -25,12 +25,8 @@ from texar.hyperparams import HParams
 from texar.module_base import ModuleBase
 from texar.utils.utils import uniquify_str
 
-# pylint: disable=too-many-instance-attributes, arguments-differ
-# pylint: disable=protected-access
-
 __all__ = [
     "FeedForwardNetworkBase",
-    "_build_layers",
 ]
 
 
@@ -81,10 +77,9 @@ class FeedForwardNetworkBase(ModuleBase):
         Returns:
             The output of the network.
         """
-        prev_outputs = input
-        for layer_id, layer in enumerate(self._layers):
-            outputs = layer(prev_outputs)
-            prev_outputs = outputs
+        outputs = input
+        for layer in self._layers:
+            outputs = layer(outputs)
 
         return outputs
 
@@ -139,36 +134,33 @@ class FeedForwardNetworkBase(ModuleBase):
         """
         return self._layer_names
 
+    def _build_layers(self,
+                      layers: Optional[nn.ModuleList] = None,
+                      layer_hparams: Optional[List[
+                          Union[HParams, Dict[str, Any]]]] = None):
+        r"""Builds layers.
 
-def _build_layers(network: FeedForwardNetworkBase,
-                  layers: Optional[nn.ModuleList] = None,
-                  layer_hparams: Optional[List[
-                      Union[HParams, Dict[str, Any]]]] = None):
-    r"""Builds layers.
+        Either :attr:`layer_hparams` or :attr:`layers` must be
+        provided. If both are given, :attr:`layers` will be used.
 
-    Either :attr:`layer_hparams` or :attr:`layers` must be
-    provided. If both are given, :attr:`layers` will be used.
+        Args:
+            layers (optional): A list of layer instances supplied as an instance
+                of :torch_nn:`ModuleList`.
+            layer_hparams (optional): A list of layer hparams, each to which
+                is fed to :func:`~texar.core.layers.get_layer` to create the
+                layer instance.
+        """
+        if layers is not None:
+            self._layers = layers
+        else:
+            if layer_hparams is None:
+                raise ValueError(
+                    'Either `layer` or `layer_hparams` is required.')
+            self._layers = nn.ModuleList()
+            for _, hparams in enumerate(layer_hparams):
+                self._layers.append(get_layer(hparams=hparams))
 
-    Args:
-        network: An instance of a subclass of
-            :class:`~texar.modules.networks.FeedForwardNetworkBase`.
-        layers (optional): A list of layer instances supplied as an instance of
-            :torch_nn:`ModuleList`.
-        layer_hparams (optional): A list of layer hparams, each to which
-            is fed to :func:`~texar.core.layers.get_layer` to create the
-            layer instance.
-    """
-    if layers is not None:
-        network._layers = layers
-    else:
-        if layer_hparams is None:
-            raise ValueError(
-                'Either `layer` or `layer_hparams` is required.')
-        network._layers = nn.ModuleList()
-        for _, hparams in enumerate(layer_hparams):
-            network._layers.append(get_layer(hparams=hparams))
-
-    for layer in network._layers:
-        layer_name = uniquify_str(layer._get_name(), network._layer_names)
-        network._layer_names.append(layer_name)
-        network._layers_by_name[layer_name] = layer
+        for layer in self._layers:
+            layer_name = uniquify_str(layer._get_name(), self._layer_names)
+            self._layer_names.append(layer_name)
+            self._layers_by_name[layer_name] = layer

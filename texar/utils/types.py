@@ -23,7 +23,7 @@ __all__ = [
     'MaybeSeq',
 ]
 
-T = TypeVar('T')  # pylint: disable=invalid-name
+T = TypeVar('T')
 MaybeTuple = Union[T, Tuple[T, ...]]
 MaybeList = Union[T, List[T]]
 MaybeSeq = Union[T, Sequence[T]]

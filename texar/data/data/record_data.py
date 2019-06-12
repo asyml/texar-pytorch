@@ -28,8 +28,6 @@ from texar.hyperparams import HParams
 from texar.utils.dtypes import get_numpy_dtype
 from texar.utils.types import MaybeList
 
-# pylint: disable=invalid-name
-
 __all__ = [
     "_default_record_dataset_hparams",
     "PickleDataSource",
@@ -70,27 +68,25 @@ class PickleDataSource(DataSource[RawExample]):
     example.
 
     This data source does not support indexing.
+
+    Args:
+        file_paths (str or list[str]): Paths to pickled binary files.
+        lists_are_examples (bool): If `True`, lists will be treated as
+            a single example; if `False`, each element in the list will be
+            treated as separate examples. Default is `True`. Set this to
+            `False` if the entire pickled binary file is a list.
+
+            .. note::
+                It is recommended against storing all examples as a list,
+                because in this case, all examples can only be accessed
+                after the whole list is parsed.
+
+        pickle_kwargs: Additional keyword arguments to pass to
+            :meth:`pickle.load`.
     """
 
     def __init__(self, file_paths: MaybeList[str],
                  lists_are_examples: bool = True, **pickle_kwargs):
-        r"""Construct a :class:`PickleDataSource` instance.
-
-        Args:
-            file_paths (str or list[str]): Paths to pickled binary files.
-            lists_are_examples (bool): If `True`, lists will be treated as
-                a single example; if `False`, each element in the list will be
-                treated as separate examples. Default is `True`. Set this to
-                `False` if the entire pickled binary file is a list.
-
-                .. note::
-                    It is recommended against storing all examples as a list,
-                    because in this case, all examples can only be accessed
-                    after the whole list is parsed.
-
-            pickle_kwargs: Additional keyword arguments to pass to
-                :meth:`pickle.load`.
-        """
         if isinstance(file_paths, str):
             file_paths = [file_paths]
         self._file_paths = file_paths
@@ -196,6 +192,7 @@ def _create_image_transform(height: Optional[int], width: Optional[int],
 
 
 class FeatureDescription(NamedTuple):
+    r"""Description of a feature."""
     dtype: np.dtype
     shape: Optional[Tuple[int, ...]]
 
@@ -372,7 +369,32 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
     @classmethod
     def writer(cls, file_path: str,
                feature_original_types: Dict[str, Tuple[Any, ...]]) \
-            -> _RecordWriter:  # noqa: F821
+            -> '_RecordWriter':
+        r"""Construct a file writer object that saves records in pickled format.
+
+        Example:
+            .. code-block:: python
+
+                output_file = "data/train.record"
+                feature_original_types = {
+                    "input_ids": ["int64", "FixedLenFeature", 128],
+                    "label_ids": ["int64", "FixedLenFeature"],
+                }
+                with tx.data.RecordData.writer(
+                        output_file, feature_original_types) as writer:
+                    writer.write({
+                        "input_ids": np.randint(0, 100, size=128),
+                        "label_ids": np.randint(0, 100),
+                    })
+
+        Args:
+            file_path (str): Path to save the dataset.
+            feature_original_types: Feature names and types. Please refer to
+                :meth:`default_hparams` for details.
+
+        Returns:
+            A file writer object.
+        """
         feature_types = _convert_feature_hparams(feature_original_types)
         return cls._RecordWriter(file_path, feature_types)
 
@@ -537,7 +559,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
         })
         return hparams
 
-    def _process(self, raw_example: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, raw_example: Dict[str, Any]) -> Dict[str, Any]:
         example = raw_example
         for key, dtype in self._convert_types.items():
             example[key] = np.asarray(example[key], dtype=dtype)
@@ -547,7 +569,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
             example = transform(example)
         return example
 
-    def _collate(self, examples: List[Dict[str, Any]]) -> Batch:
+    def collate(self, examples: List[Dict[str, Any]]) -> Batch:
         batch = {}
         for key, descriptor in self._features.items():
             values = [ex[key] for ex in examples]

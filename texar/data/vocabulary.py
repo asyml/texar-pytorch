@@ -17,19 +17,21 @@ Helper functions and classes for vocabulary processing.
 """
 import warnings
 from collections import defaultdict
-from typing import List, MutableMapping, Sequence, Tuple, Union
+from typing import List, MutableMapping, Sequence, Tuple, Union, Optional
 
 import numpy as np
 
-from texar.utils.utils import dict_lookup
+from texar.utils.utils import (
+    dict_lookup, str_join, strip_special_tokens, _recur_split)
 
 __all__ = [
     "SpecialTokens",
     "Vocab",
+    "map_ids_to_strs",
 ]
 
 
-class SpecialTokens(object):
+class SpecialTokens:
     r"""Special tokens, including :attr:`PAD`, :attr:`BOS`, :attr:`EOS`,
     :attr:`UNK`. These tokens will by default have token ids 0, 1, 2, 3,
     respectively.
@@ -62,7 +64,7 @@ def _make_defaultdict(keys: Sequence[Union[int, str]],
     return dict_
 
 
-class Vocab(object):
+class Vocab:
     r"""Vocabulary class that loads vocabulary from file, and maintains mapping
     tables between token strings and indexes.
 
@@ -255,3 +257,69 @@ class Vocab(object):
         """
         return [self._pad_token, self._bos_token, self._eos_token,
                 self._unk_token]
+
+
+def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]],
+                    vocab: Vocab,  # type: ignore
+                    # TODO: Remove the ignored type after Vocab is implemented.
+                    join: bool = True, strip_pad: Optional[str] = '<PAD>',
+                    strip_bos: Optional[str] = '<BOS>',
+                    strip_eos: Optional[str] = '<EOS>') \
+        -> Union[np.ndarray, List[str]]:
+    r"""Transforms ``int`` indexes to strings by mapping ids to tokens,
+    concatenating tokens into sentences, and stripping special tokens, etc.
+
+    Args:
+        ids: An n-D numpy array or (possibly nested) list of ``int`` indexes.
+        vocab: An instance of :class:`~texar.data.Vocab`.
+        join (bool): Whether to concatenate along the last dimension of the
+            the tokens into a string separated with a space character.
+        strip_pad (str): The PAD token to strip from the strings (i.e., remove
+            the leading and trailing PAD tokens of the strings). Default
+            is ``"<PAD>"`` as defined in
+            :class:`~texar.data.SpecialTokens`.PAD.
+            Set to `None` or `False` to disable the stripping.
+        strip_bos (str): The BOS token to strip from the strings (i.e., remove
+            the leading BOS tokens of the strings).
+            Default is ``"<BOS>"`` as defined in
+            :class:`~texar.data.SpecialTokens`.BOS.
+            Set to `None` or `False` to disable the stripping.
+        strip_eos (str): The EOS token to strip from the strings (i.e., remove
+            the EOS tokens and all subsequent tokens of the strings).
+            Default is ``"<EOS>"`` as defined in
+            :class:`~texar.data.SpecialTokens`.EOS.
+            Set to `None` or `False` to disable the stripping.
+
+    Returns:
+        If :attr:`join` is True, returns a `(n-1)`-D numpy array (or list) of
+        concatenated strings. If :attr:`join` is False, returns an `n`-D numpy
+        array (or list) of str tokens.
+
+    Example:
+
+        .. code-block:: python
+
+            text_ids = [[1, 9, 6, 2, 0, 0], [1, 28, 7, 8, 2, 0]]
+
+            text = map_ids_to_strs(text_ids, data.vocab)
+            # text == ['a sentence', 'parsed from ids']
+
+            text = map_ids_to_strs(
+                text_ids, data.vocab, join=False,
+                strip_pad=None, strip_bos=None, strip_eos=None)
+            # text == [['<BOS>', 'a', 'sentence', '<EOS>', '<PAD>', '<PAD>'],
+            #          ['<BOS>', 'parsed', 'from', 'ids', '<EOS>', '<PAD>']]
+    """
+    tokens = vocab.map_ids_to_tokens_py(ids)
+    if isinstance(ids, (list, tuple)):
+        tokens = tokens.tolist()
+
+    str_ = str_join(tokens)
+
+    str_ = strip_special_tokens(
+        str_, strip_pad=strip_pad, strip_bos=strip_bos, strip_eos=strip_eos)
+
+    if join:
+        return str_
+    else:
+        return _recur_split(str_, ids)  # type: ignore

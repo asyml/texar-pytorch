@@ -15,8 +15,6 @@
 Utilities for maintaining moving average.
 """
 
-# pylint: disable=invalid-name
-
 from collections import deque
 from typing import Deque, Dict, Optional, Union, no_type_check
 
@@ -316,10 +314,9 @@ class AverageRecorder:
         strs = {name: rec.to_str(precision=precision)
                 for name, rec in self._recorders.items()}
         str_list = []
-        if self._record_type in {list, tuple}:
-            for i in range(len(strs)):  # noqa: E501 pylint: disable=consider-using-enumerate
-                # Enumerates the keys in order, which are the indexes
-                str_list.append(strs[i])
+        if self._record_type in [list, tuple]:
+            # Enumerates the keys in order, which are the indexes
+            str_list.extend(strs[i] for i in range(len(strs)))
         elif self._record_type == dict:
             str_list = list(strs.values())
         else:

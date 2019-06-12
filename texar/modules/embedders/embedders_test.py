@@ -3,8 +3,6 @@
 Unit tests for embedders.
 """
 
-# pylint: disable=no-member
-
 import unittest
 
 import numpy as np

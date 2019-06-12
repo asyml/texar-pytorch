@@ -15,10 +15,6 @@
 Base class for RNN decoders.
 """
 
-# pylint: disable=too-many-arguments, no-name-in-module, too-many-statements
-# pylint: disable=too-many-branches, protected-access, too-many-locals
-# pylint: disable=arguments-differ, too-many-instance-attributes
-
 from typing import Optional, Tuple, TypeVar
 
 import torch

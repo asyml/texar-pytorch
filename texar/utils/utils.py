@@ -15,15 +15,13 @@
 Miscellaneous Utility functions.
 """
 
-# pylint: disable=invalid-name, no-member, no-name-in-module, protected-access
-# pylint: disable=redefined-outer-name, too-many-arguments, too-many-lines
-# pylint: disable=wildcard-import,unused-wildcard-import
-
 import collections
 import copy
 import inspect
 from pydoc import locate
-from typing import *
+from typing import (
+    Any, Callable, Collection, Dict, List, MutableMapping, Optional, Sequence,
+    Tuple, Type, TypeVar, Union, cast, no_type_check)
 
 import funcsigs
 import numpy as np
@@ -60,7 +58,6 @@ __all__ = [
     'strip_bos',
     'strip_special_tokens',
     'str_join',
-    'map_ids_to_strs',
     'default_str',
     'uniquify_str',
     'ceildiv',
@@ -911,6 +908,8 @@ def strip_bos(str_: MaybeSeq[str], bos_token: str = '<BOS>',
 _strip_bos_ = strip_bos
 
 
+# pylint: disable=redefined-outer-name
+
 def strip_special_tokens(str_: MaybeSeq[str],
                          strip_pad: Optional[str] = '<PAD>',
                          strip_bos: Optional[str] = '<BOS>',
@@ -999,72 +998,7 @@ def str_join(tokens: Sequence[List], sep: str = ' ') -> Sequence[str]:
     return str_
 
 
-def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]],
-                    vocab: 'Vocab',  # type: ignore
-                    # pylint: disable=fixme
-                    # TODO: Remove the ignored type after Vocab is implemented.
-                    join: bool = True, strip_pad: Optional[str] = '<PAD>',
-                    strip_bos: Optional[str] = '<BOS>',
-                    strip_eos: Optional[str] = '<EOS>') \
-        -> Union[np.ndarray, List[str]]:
-    r"""Transforms ``int`` indexes to strings by mapping ids to tokens,
-    concatenating tokens into sentences, and stripping special tokens, etc.
-
-    Args:
-        ids: An n-D numpy array or (possibly nested) list of ``int`` indexes.
-        vocab: An instance of :class:`~texar.data.Vocab`.
-        join (bool): Whether to concatenate along the last dimension of the
-            the tokens into a string separated with a space character.
-        strip_pad (str): The PAD token to strip from the strings (i.e., remove
-            the leading and trailing PAD tokens of the strings). Default
-            is ``"<PAD>"`` as defined in
-            :class:`~texar.data.SpecialTokens`.PAD.
-            Set to `None` or `False` to disable the stripping.
-        strip_bos (str): The BOS token to strip from the strings (i.e., remove
-            the leading BOS tokens of the strings).
-            Default is ``"<BOS>"`` as defined in
-            :class:`~texar.data.SpecialTokens`.BOS.
-            Set to `None` or `False` to disable the stripping.
-        strip_eos (str): The EOS token to strip from the strings (i.e., remove
-            the EOS tokens and all subsequent tokens of the strings).
-            Default is ``"<EOS>"`` as defined in
-            :class:`~texar.data.SpecialTokens`.EOS.
-            Set to `None` or `False` to disable the stripping.
-
-    Returns:
-        If :attr:`join` is True, returns a `(n-1)`-D numpy array (or list) of
-        concatenated strings. If :attr:`join` is False, returns an `n`-D numpy
-        array (or list) of str tokens.
-
-    Example:
-
-        .. code-block:: python
-
-            text_ids = [[1, 9, 6, 2, 0, 0], [1, 28, 7, 8, 2, 0]]
-
-            text = map_ids_to_strs(text_ids, data.vocab)
-            # text == ['a sentence', 'parsed from ids']
-
-            text = map_ids_to_strs(
-                text_ids, data.vocab, join=False,
-                strip_pad=None, strip_bos=None, strip_eos=None)
-            # text == [['<BOS>', 'a', 'sentence', '<EOS>', '<PAD>', '<PAD>'],
-            #          ['<BOS>', 'parsed', 'from', 'ids', '<EOS>', '<PAD>']]
-    """
-    tokens = vocab.map_ids_to_tokens_py(ids)
-    if isinstance(ids, (list, tuple)):
-        tokens = tokens.tolist()
-
-    str_ = str_join(tokens)
-
-    str_ = strip_special_tokens(
-        str_, strip_pad=strip_pad, strip_bos=strip_bos, strip_eos=strip_eos)
-
-    if join:
-        return str_
-    else:
-        return _recur_split(str_, ids)  # type: ignore
-
+# pylint: enable=redefined-outer-name
 
 def ceildiv(a: int, b: int) -> int:
     r"""Compute division with results rounding up.

@@ -15,6 +15,8 @@
 Regularizers
 """
 
+# pylint: disable=redefined-outer-name
+
 from typing import Dict, Union
 
 import torch
@@ -37,6 +39,8 @@ class Regularizer:
 
     @classmethod
     def from_config(cls, config):
+        r"""Construct a :class:`Regularizer` instance given configurations.
+        """
         return cls(**config)
 
     def get_config(self) -> Dict[str, float]:
@@ -54,10 +58,7 @@ class L1L2(Regularizer):
         l2: Float or Int; L2 regularization factor.
     """
 
-    def __init__(
-            self,
-            l1: Union[int, float] = 0.,
-            l2: Union[int, float] = 0.):  # pylint: disable=redefined-outer-name
+    def __init__(self, l1: Union[int, float] = 0., l2: Union[int, float] = 0.):
         self.l1 = float(l1)
         self.l2 = float(l2)
 
@@ -73,7 +74,6 @@ class L1L2(Regularizer):
         return {'l1': float(self.l1), 'l2': float(self.l2)}
 
 
-# Aliases.
 def l1(l: Union[int, float] = 0.01) -> Regularizer:
     r"""
     Construct an L1 regularizer.
@@ -100,7 +100,7 @@ def l2(l: Union[int, float] = 0.01) -> Regularizer:
     return L1L2(l2=l)
 
 
-def l1_l2(l1: Union[int, float] = 0.01,  # pylint: disable=redefined-outer-name
+def l1_l2(l1: Union[int, float] = 0.01,
           l2: Union[int, float] = 0.01) -> Regularizer:
     r"""
     Construct a regularizer with both L1 and L2 components.

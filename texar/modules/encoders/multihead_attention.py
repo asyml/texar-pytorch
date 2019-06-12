@@ -15,14 +15,12 @@
 Transformer encoders with multi-head self attention.
 """
 
-# pylint: disable=invalid-name
-
 from typing import List, Optional
 
 import torch
 import torch.nn.functional as F
-from mypy_extensions import TypedDict
 from torch import nn
+from mypy_extensions import TypedDict
 
 from texar.core import layers
 from texar.hyperparams import HParams
@@ -36,11 +34,16 @@ __all__ = [
 
 
 class LayerCache(TypedDict):
+    r"""Cache (state) for a single self-attention layer in
+    :class:`MultiheadAttentionEncoder`.
+    """
     keys: MaybeList[torch.Tensor]
     values: MaybeList[torch.Tensor]
 
 
 class Cache(TypedDict):
+    r"""Cache (state) for the entire :class:`MultiheadAttentionEncoder`.
+    """
     memory: Optional[torch.Tensor]
     memory_attention_bias: Optional[torch.Tensor]
     layers: List[LayerCache]
@@ -133,8 +136,7 @@ class MultiheadAttentionEncoder(EncoderBase):
             'name': 'multihead_attention',
         }
 
-    # pylint: disable=arguments-differ, too-many-locals
-    def forward(self,  # type: ignore
+    def forward(self,  # type: ignore # pylint: disable=arguments-differ
                 queries: torch.Tensor,
                 memory: torch.Tensor,
                 memory_attention_bias: torch.Tensor,

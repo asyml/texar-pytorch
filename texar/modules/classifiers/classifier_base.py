@@ -14,12 +14,11 @@
 """
 Base class for encoders.
 """
-
-from typing import Any, Dict, Optional, Union
+from abc import ABC
+from typing import Any, Dict
 
 import torch
 
-from texar.hyperparams import HParams
 from texar.module_base import ModuleBase
 
 __all__ = [
@@ -27,13 +26,9 @@ __all__ = [
 ]
 
 
-class ClassifierBase(ModuleBase):
+class ClassifierBase(ModuleBase, ABC):
     r"""Base class inherited by all classifier classes.
     """
-
-    def __init__(self,
-                 hparams: Optional[Union[HParams, Dict[str, Any]]] = None):
-        super(ClassifierBase, self).__init__(hparams)
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:

@@ -15,8 +15,6 @@
 Various neural network layers
 """
 
-# pylint: disable=too-many-branches
-
 import copy
 import functools
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -46,7 +44,6 @@ __all__ = [
     'MergeLayer',
     'Flatten',
     'Identity',
-    'default_linear_kwargs',
 ]
 
 
@@ -486,8 +483,8 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
                   "in_channels" not in hparams["kwargs"]):
                 raise ValueError("\"in_channels\" should be specified for "
                                  "\"torch.nn.{}\"".format(layer_class.__name__))
-            default_kwargs = _layer_class_to_default_kwargs_map.get(layer_class,
-                                                                    {})
+            default_kwargs = _layer_class_to_default_kwargs_map.get(
+                layer_class, {})
             default_hparams = {"type": layer_type, "kwargs": default_kwargs}
             hparams = HParams(hparams, default_hparams)
 
@@ -520,7 +517,7 @@ class _ReducePool1d(nn.Module):
     """
 
     def __init__(self, reduce_function):
-        super(_ReducePool1d, self).__init__()
+        super().__init__()
         self._reduce_function = reduce_function
 
     def forward(self, input: Tuple) -> torch.Tensor:  # type: ignore
@@ -542,7 +539,7 @@ class MaxReducePool1d(_ReducePool1d):
     """
 
     def __init__(self):
-        super(MaxReducePool1d, self).__init__(torch.max)
+        super().__init__(torch.max)
 
 
 class AvgReducePool1d(_ReducePool1d):
@@ -553,7 +550,7 @@ class AvgReducePool1d(_ReducePool1d):
     """
 
     def __init__(self):
-        super(AvgReducePool1d, self).__init__(torch.mean)
+        super().__init__(torch.mean)
 
 
 _POOLING_TO_REDUCE = {
@@ -634,7 +631,7 @@ class MergeLayer(nn.Module):
 
     def __init__(self, layers: Optional[List[nn.Module]] = None,
                  mode: str = 'concat', dim: int = 2):
-        super(MergeLayer, self).__init__()
+        super().__init__()
         self._mode = mode
         self._dim = dim
 
@@ -716,9 +713,6 @@ class MergeLayer(nn.Module):
 class Flatten(nn.Module):
     r"""Flatten layer to flatten a tensor after convolution."""
 
-    def __init__(self):
-        super(Flatten, self).__init__()
-
     def forward(self, input: torch.Tensor) -> torch.Tensor:  # type: ignore
         return input.view(input.size()[0], -1)
 
@@ -726,19 +720,8 @@ class Flatten(nn.Module):
 class Identity(nn.Module):
     r"""Identity activation layer."""
 
-    def __init__(self):
-        super(Identity, self).__init__()
-
     def forward(self, input: torch.Tensor) -> torch.Tensor:  # type: ignore
         return input
-
-
-def default_linear_kwargs() -> Dict[str, int]:
-    kwargs = {
-        "out_features": 64
-    }
-
-    return kwargs
 
 
 def default_conv1d_kwargs() -> Dict[str, Any]:
@@ -832,7 +815,6 @@ def default_avg_pool3d_kwargs() -> Dict[str, Any]:
 
 
 _layer_class_to_default_kwargs_map = {
-    nn.Linear: default_linear_kwargs(),
     nn.Conv1d: default_conv1d_kwargs(),
     nn.Conv2d: default_conv2d_kwargs(),
     nn.Conv3d: default_conv3d_kwargs(),

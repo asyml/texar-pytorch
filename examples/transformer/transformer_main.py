@@ -30,7 +30,7 @@ from texar.modules import Transformer
 from utils import data_utils, utils
 from utils.preprocess import eos_token_id
 
-# pylint: disable=invalid-name, too-many-locals
+
 
 parser = argparse.ArgumentParser()
 

@@ -56,8 +56,8 @@ def get_batch_size(tensor: torch.Tensor) -> int:
 
 
 def get_rank(tensor: torch.Tensor) -> int:
-    r"""Returns the tensor rank as a Python ``int``. The input tensor can also be
-    a python array.
+    r"""Returns the tensor rank as a Python ``int``. The input tensor can also
+    be a Python array.
 
     Args:
         tensor: A Tensor or Python array.
@@ -108,7 +108,6 @@ def mask_sequences(sequence: Union[torch.Tensor, List[int]],
         If both :attr:`sequence` and :attr:`sequence_length` are python
         arrays, the returned value is a python array as well.
     """
-    # pylint: disable=not-callable
     if not torch.is_tensor(sequence):
         sequence = torch.tensor(sequence, dtype=dtype)
     sequence: torch.Tensor
@@ -211,7 +210,6 @@ def pad_and_concat(values: List[torch.Tensor], axis: int,
         pad_axis = [r for r in range(rank) if r != axis]
     elif isinstance(pad_axis, int):
         pad_axis = [pad_axis]
-    # pylint: disable=invalid-name
     for pad_dim in pad_axis:
         max_dim_size = max(v.size(pad_dim) for v in values)
         for i, v in enumerate(values):

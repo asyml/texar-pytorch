@@ -8,8 +8,6 @@ import torch
 from texar.modules.encoders import TransformerEncoder
 
 
-# pylint: disable=too-many-instance-attributes
-
 class TransformerEncoderTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.TransformerDecoder`
     """

@@ -14,16 +14,14 @@
 """Attentional Seq2seq.
 """
 
-# pylint: disable=invalid-name, too-many-arguments, too-many-locals
-
 import argparse
 import importlib
+
 import torch
 
 import texar as tx
 from texar.core.optimization import *
 from texar.module_base import ModuleBase
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_model',
@@ -35,7 +33,6 @@ parser.add_argument('--config_data',
                     default="config_iwslt14",
                     help="The dataset config.")
 args = parser.parse_args()
-
 
 config_model = importlib.import_module(args.config_model)
 config_data = importlib.import_module(args.config_data)
@@ -67,7 +64,7 @@ class Seq2Seq_Attn(ModuleBase):
 
         self.decoder = tx.modules.AttentionRNNDecoder(
             encoder_output_size=
-            self.encoder.cell_fw.hidden_size+self.encoder.cell_bw.hidden_size,
+            self.encoder.cell_fw.hidden_size + self.encoder.cell_bw.hidden_size,
             input_size=self.target_embedder.dim + config_model.decoder
             ['attention']['attention_layer_size'],
             vocab_size=self.target_vocab_size,
@@ -160,7 +157,7 @@ def main():
             target_texts_ori = [text[1:] for text in batch['target_text']]
             target_texts = tx.utils.strip_special_tokens(
                 target_texts_ori, is_token_list=True)
-            output_texts = tx.utils.map_ids_to_strs(
+            output_texts = tx.data.vocabulary.map_ids_to_strs(
                 ids=output_ids, vocab=val_data.target_vocab)
 
             for hypo, ref in zip(output_texts, target_texts):

@@ -15,10 +15,6 @@
 Base class for decoders.
 """
 
-# pylint: disable=too-many-arguments, no-name-in-module, too-many-statements
-# pylint: disable=too-many-branches, protected-access, too-many-locals
-# pylint: disable=arguments-differ, too-many-instance-attributes
-
 import copy
 from abc import ABC
 from typing import Generic, Optional, Tuple, TypeVar, Union, overload
@@ -485,6 +481,10 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         """
         raise NotImplementedError
 
+    # TODO: Remove these once pylint supports function stubs.
+    # pylint: disable=missing-docstring,unused-argument,no-self-use
+    # pylint: disable=function-redefined
+
     @overload
     def finalize(self, outputs: Output, final_state: State,
                  sequence_lengths: torch.LongTensor) -> Tuple[Output, State]:
@@ -496,9 +496,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             -> Tuple[Output, Optional[State]]:
         ...
 
-    def finalize(self, outputs: Output, final_state: Optional[State],
-                 sequence_lengths: torch.LongTensor) \
-            -> Tuple[Output, Optional[State]]:
+    def finalize(self, outputs, final_state, sequence_lengths):
         r"""Called after all decoding iterations have finished.
 
         Args:
@@ -513,6 +511,9 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             - ``final_state`` is the final decoder state.
         """
         return outputs, final_state
+
+    # pylint: enable=missing-docstring,unused-argument,no-self-use
+    # pylint: enable=function-redefined
 
     @property
     def vocab_size(self):
