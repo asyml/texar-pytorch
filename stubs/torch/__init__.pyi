@@ -40,6 +40,26 @@ def set_grad_enabled(mode: bool) -> ContextManager[None]:
 class device: ...
 
 
+class finfo:
+
+    def __init__(self, type: torch.dtype): ...
+
+    @property
+    def bits(self) -> builtins.int: ...
+
+    @property
+    def eps(self) -> builtins.float: ...
+
+    @property
+    def max(self) -> builtins.float: ...
+
+    @property
+    def min(self) -> builtins.float: ...
+
+    @property
+    def tiny(self) -> builtins.float: ...
+
+
 class layout: ...
 
 
