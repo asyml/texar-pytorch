@@ -39,10 +39,9 @@ class TestConnectors(unittest.TestCase):
         """
 
         state_size = namedtuple('LSTMStateTuple', ['c', 'h'])(256, 256)
-        connector_0 = ConstantConnector(state_size)
-        decoder_initial_state_0 = connector_0(self._batch_size)
-        connector_1 = ConstantConnector(state_size, hparams={"value": 1.})
-        decoder_initial_state_1 = connector_1(self._batch_size)
+        connector = ConstantConnector(state_size)
+        decoder_initial_state_0 = connector(self._batch_size)
+        decoder_initial_state_1 = connector(self._batch_size, value=1.)
 
         s_0 = decoder_initial_state_0
         s_1 = decoder_initial_state_1
