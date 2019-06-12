@@ -116,61 +116,6 @@ def pack_sequence_as(structure: NestedStructure,
                  flat_sequence))
     return _sequence_like(structure, packed)
 
-def _assert_same_structure_helper(st1: NestedStructure,
-                                  st2: NestedStructure):
-    r"""Recursively check if two structures are nested in the same way.
-    Helper for the `assert_same_structure`
-    Args:
-        st1: an arbitrarily nested structure.
-        st2: an arbitrarily nested structure.
-    Raises:
-        ValueError: If the two structures do not have the same number of
-        elements or if the two structures are not nested in the same way.
-    """
-    if is_sequence(st1) != is_sequence(st2):
-        raise ValueError(
-            "The two structures don't have the same nested structure.\n\n"
-            "First structure: %s\n\nSecond structure: %s." % (st1, st2))
-
-    if not is_sequence(st1):
-        return
-
-    st1_as_sequence = [n for n in _yield_value(st1)]
-    st2_as_sequence = [n for n in _yield_value(st2)]
-    for item1, item2 in zip(st1_as_sequence, st2_as_sequence):
-        _assert_same_structure_helper(item1, item2)
-
-def assert_same_structure(st1: NestedStructure,
-                          st2: NestedStructure):
-    r"""Asserts that two structures are nested in the same way.
-    For instance, this code will print `True`:
-    ```python
-    def nt(a, b):
-        return collections.namedtuple('foo', 'a b')(a, b)
-    print(assert_same_structure(nt(0, 1), nt(2, 3)))
-    ```
-    Args:
-        st1: an arbitrarily nested structure.
-        st2: an arbitrarily nested structure.
-    Raises:
-        ValueError: If the two structures do not have the same number of
-        elements or if the two structures are not nested in the same way.
-    """
-    len_st1 = 1
-    if is_sequence(st1):
-        len_st1 = len(flatten(st1))
-
-    len_st2 = 1
-    if is_sequence(st2):
-        len_st2 = len(flatten(st2))
-
-    if len_st1 != len_st2:
-        raise ValueError("The two structures don't have the same number of "
-                         "elements.\n\nFirst structure (%i elements): %s\n\n"
-                         "Second structure (%i elements): %s"
-                         % (len_st1, st1, len_st2, st2))
-    _assert_same_structure_helper(st1, st2)
-
 def _sorted(dict_: Mapping[Any, Any]) -> List[TypeArg]:
     r"""Returns a sorted list of the dict keys, with error if keys not
     sortable.
