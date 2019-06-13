@@ -19,7 +19,7 @@
 Implemetation of beam seach with penalties.
 Adapted from tensor2tensor repositor.
 """
-from typing import Optional, Dict
+from typing import Optional, Dict, Callable
 import torch
 
 from texar.utils import map_structure
@@ -28,7 +28,7 @@ from texar.utils import map_structure
 INF = 1.0 * 1e7
 
 
-def gather_nd(params, indices):
+def gather_nd(params: torch.Tensor, indices: torch.Tensor):
 
     assert len(indices.size()) == 3
     orig_size = params.size()
@@ -72,7 +72,7 @@ def _unmerge_beam_dim(tensor: torch.Tensor, batch_size: int, beam_size: int):
     return tensor.view(tuple(new_shape))
 
 
-def _expand_to_beam_size(tensor, beam_size):
+def _expand_to_beam_size(tensor: torch.Tensor, beam_size: int):
     """Tiles a given tensor by beam_size.
 
     Args:
@@ -86,10 +86,10 @@ def _expand_to_beam_size(tensor, beam_size):
     tile_dims = [1] * len(tensor.size())
     tile_dims[1] = beam_size
 
-    return tensor.repeat(tile_dims)
+    return tensor.repeat(tuple(tile_dims))
 
 
-def log_prob_from_logits(logits):
+def log_prob_from_logits(logits: torch.Tensor):
     return logits - torch.logsumexp(logits, dim=-1, keepdim=True)
 
 
@@ -114,13 +114,13 @@ def compute_batch_indices(batch_size: int, beam_size: int):
 
 
 def compute_topk_scores_and_seq(
-    sequences,
-    scores,
-    scores_to_gather,
-    flags,
-    beam_size,
-    batch_size,
-    states_to_gather=None,
+    sequences: torch.Tensor,
+    scores: torch.Tensor,
+    scores_to_gather: torch.Tensor,
+    flags: torch.Tensor,
+    beam_size: int,
+    batch_size: int,
+    states_to_gather= Optional[Dict],
 ):
     """Given sequences and scores, will gather the top k=beam size
     sequences.
@@ -193,15 +193,15 @@ def compute_topk_scores_and_seq(
 
 
 def beam_search(
-    symbols_to_logits_fn,
-    initial_ids,
-    beam_size,
-    decode_length,
-    vocab_size,
+    symbols_to_logits_fn: Callable,
+    initial_ids: torch.Tensor,
+    beam_size: int,
+    decode_length: int,
+    vocab_size: int,
     alpha: float,
-    eos_id,
-    states=None,
-    stop_early=True,
+    eos_id: int,
+    states: Optional[Dict] = None,
+    stop_early: bool = True,
 ):
     """Beam search with length penalties.
 
@@ -344,7 +344,9 @@ def beam_search(
         )
 
     def grow_alive(
-        curr_seq, curr_scores, curr_log_probs, curr_finished, states
+        curr_seq: torch.Tensor, curr_scores: torch.Tensor,
+            curr_log_probs: torch.Tensor, curr_finished: torch.Tensor,
+            states: Optional[Dict]
     ):
         """Given sequences and scores, will gather the top k=beam size
         sequences.
@@ -381,7 +383,8 @@ def beam_search(
         )
 
     def grow_topk(
-        i, alive_seq, alive_log_probs: torch.Tensor, states: Optional[Dict]
+        i: int, alive_seq: torch.Tensor, alive_log_probs: torch.Tensor,
+        states: Optional[Dict]
     ):
         r"""Inner beam seach loop.
 
@@ -478,13 +481,13 @@ def beam_search(
         return topk_seq, topk_log_probs, topk_scores, topk_finished, states
 
     def inner_loop(
-        i,
-        alive_seq,
-        alive_log_probs,
-        finished_seq,
-        finished_scores,
-        finished_flags,
-        states,
+        i: int,
+        alive_seq: torch.Tensor,
+        alive_log_probs: torch.Tensor,
+        finished_seq: torch.Tensor,
+        finished_scores: torch.Tensor,
+        finished_flags: torch.Tensor,
+        states: Optional[Dict],
     ):
         """Inner beam seach loop.
 
@@ -564,13 +567,13 @@ def beam_search(
         )
 
     def _is_finished(
-        i,
-        unused_alive_seq,
-        alive_log_probs,
-        unused_finished_seq,
-        finished_scores,
-        finished_in_finished,
-        unused_states,
+        i: int,
+        unused_alive_seq: torch.Tensor,
+        alive_log_probs: torch.Tensor,
+        unused_finished_seq: torch.Tensor,
+        finished_scores: torch.Tensor,
+        finished_in_finished: torch.Tensor,
+        unused_states: Optional[Dict],
     ):
         """Checking termination condition.
 
@@ -602,8 +605,8 @@ def beam_search(
         # since scores are all -ve, taking the min will give us the score
         # of the lowest finished item.
         lowest_score_of_fininshed_in_finished = torch.min(
-            finished_scores * finished_in_finished.float(), dim=1
-        ).values
+            finished_scores * finished_in_finished.float(), dim=1,
+            keepdim=False, out=None)[0]
 
         # If none of the sequences have finished, then the min will be 0
         # and we have to replace it by -ve INF if it is. The score of any

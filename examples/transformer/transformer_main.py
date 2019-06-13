@@ -183,12 +183,13 @@ def main():
             print(f"Test output written to file: {hyp_fn}")
 
     def _train_epoch(epoch: int):
-        # _eval_epoch(epoch, mode='eval')
+        torch.cuda.empty_cache()
         random.shuffle(train_data)
         train_iter = data.iterator.pool(
             train_data,
             config_data.batch_size,
             key=lambda x: (len(x[0]), len(x[1])),
+            # key is not used if sort_within_batch is False by default
             batch_size_fn=utils.batch_size_fn,
             random_shuffler=data.iterator.RandomShuffler())
 
@@ -228,6 +229,7 @@ def main():
 
         for epoch in range(config_data.max_train_epoch):
             _train_epoch(epoch)
+            _eval_epoch(epoch, mode='eval')
 
     elif args.run_mode == 'eval':
         logger.info("Begin running with evaluate mode")
