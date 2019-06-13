@@ -28,19 +28,20 @@ OutputSize = TypeVar('OutputSize')
 HParamsType = Optional[HParams]
 
 class ConnectorBase(ModuleBase, Generic[OutputSize], ABC):
-    """Base class inherited by all connector classes. A connector is to
+    r"""Base class inherited by all connector classes. A connector is to
     transform inputs into outputs with any specified structure and shape.
     For example, tranforming the final state of an encoder to the initial
     state of a decoder, and performing stochastic sampling in between as
     in Variational Autoencoders (VAEs).
+
     Args:
         output_size: Size of output **excluding** the batch dimension. For
-            example, set `output_size` to `dim` to generate output of
-            shape `[batch_size, dim]`.
+            example, set ``output_size`` to ``dim`` to generate output of
+            shape ``[batch_size, dim]``.
             Can be an `int`, a tuple of `int`, a Tensorshape, or a tuple of
             TensorShapes.
             For example, to transform inputs to have decoder state size, set
-            `output_size=decoder.state_size`.
+            :python:`output_size=decoder.state_size`.
         hparams (dict, optional): Hyperparameters. Missing
             hyperparamerter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter sturcture and
@@ -54,19 +55,19 @@ class ConnectorBase(ModuleBase, Generic[OutputSize], ABC):
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of hyperparameters with default values.
+        r"""Returns a dictionary of hyperparameters with default values.
         """
         return {
             "name": "connector"
         }
 
     def forward(self, *args, **kwargs):
-        """Transforms inputs to outputs with specified shape.
+        r"""Transforms inputs to outputs with specified shape.
         """
         raise NotImplementedError
 
     @property
     def output_size(self):
-        """The output size.
+        r"""The output size.
         """
         return self._output_size
