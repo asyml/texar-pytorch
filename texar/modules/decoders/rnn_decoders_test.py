@@ -230,8 +230,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
             },
             "attention": {
                 "kwargs": {
-                    "num_units": self._attention_dim,
-                    "encoder_output_size": 64
+                    "num_units": self._attention_dim
                 },
             }
         }
@@ -247,8 +246,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
             },
             "attention": {
                 "kwargs": {
-                    "num_units": self._attention_dim,
-                    "encoder_output_size": 64
+                    "num_units": self._attention_dim
                 },
             }
         }
@@ -265,8 +263,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
             },
             "attention": {
                 "kwargs": {
-                    "num_units": self._attention_dim,
-                    "encoder_output_size": 64
+                    "num_units": self._attention_dim
                 },
             }
         }

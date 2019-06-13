@@ -18,6 +18,7 @@ Modules of texar core.
 # pylint: disable=wildcard-import
 
 from texar.core.attention_mechanism import *
+from texar.core.attention_mechanism_utils import *
 from texar.core.cell_wrappers import *
 from texar.core.layers import *
 from texar.core.optimization import *

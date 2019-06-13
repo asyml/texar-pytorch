@@ -5,8 +5,8 @@
  
 -----------------
 
-[![Build Status](https://travis-ci.com/ZhitingHu/texar-pytorch.svg?token=jLMuFgZqHJTkobCG4qaR&branch=master)](https://travis-ci.com/ZhitingHu/texar-pytorch)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/asyml/texar/blob/master/LICENSE)
+[![Build Status](https://travis-ci.org/asyml/texar-pytorch.svg?branch=master)](https://travis-ci.org/asyml/texar-pytorch)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/asyml/texar-pytorch/blob/master/LICENSE)
  
 *(Note: This is the alpha release of Texar-PyTorch.)* 
  
