@@ -28,9 +28,6 @@ from texar.modules.embedders.position_embedders import PositionEmbedder
 from texar.modules.decoders.transformer_decoders import TransformerDecoder
 from utils import model_utils, processor
 
-
-
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint',
                     type=str,

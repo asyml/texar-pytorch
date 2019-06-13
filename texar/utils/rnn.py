@@ -79,7 +79,6 @@ def reverse_sequence(inputs: torch.Tensor,
     return outputs
 
 
-
 def bidirectional_dynamic_rnn(
         cell_fw: RNNCellBase[State],
         cell_bw: RNNCellBase[State],
@@ -309,7 +308,6 @@ def dynamic_rnn(
         outputs = outputs.permute(1, 0, 2)
 
     return outputs, final_state
-
 
 
 def _dynamic_rnn_loop(cell: RNNCellBase[State],

@@ -44,8 +44,8 @@ class SpecialTokens:
 
 def _make_defaultdict(keys: Sequence[Union[int, str]],
                       values: Sequence[Union[int, str]],
-                      default_value: Union[int, str]) -> \
-        MutableMapping[Union[int, str], Union[int, str]]:
+                      default_value: Union[int, str]) \
+        -> MutableMapping[Union[int, str], Union[int, str]]:
     r"""Creates a Python `defaultdict`.
 
     Args:
@@ -102,8 +102,8 @@ class Vocab:
         self._id_to_token_map_py, self._token_to_id_map_py \
             = self.load(self._filename)
 
-    def load(self, filename: str) -> \
-            Tuple[MutableMapping[int, str], MutableMapping[str, int]]:
+    def load(self, filename: str) \
+            -> Tuple[MutableMapping[int, str], MutableMapping[str, int]]:
         r"""Loads the vocabulary from the file.
 
         Args:
@@ -260,8 +260,7 @@ class Vocab:
 
 
 def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]],
-                    vocab: Vocab,  # type: ignore
-                    # TODO: Remove the ignored type after Vocab is implemented.
+                    vocab: Vocab,
                     join: bool = True, strip_pad: Optional[str] = '<PAD>',
                     strip_bos: Optional[str] = '<BOS>',
                     strip_eos: Optional[str] = '<EOS>') \

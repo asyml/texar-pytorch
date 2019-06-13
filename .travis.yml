@@ -10,13 +10,14 @@ python:
 install:
   - pip install --upgrade pip
   - pip install --progress-bar off .[torch,extras]
-  - pip install flake8
+  - pip install pylint flake8
   - pip install mypy
   - pip install pytest
 
 script:
   # linting
-  - flake8 . --count --select=E501,E901,E999,F821,F822,F823 --max-complexity=10 --max-line-length=80 --show-source --statistics
+  - pylint texar/ examples/
+  - flake8 texar/ examples/
   # type-checking
   - mypy .
   # unit tests

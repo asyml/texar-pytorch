@@ -33,7 +33,7 @@ def set_random_seed(seed):
 global max_src_in_batch, max_tgt_in_batch
 
 
-def batch_size_fn(new, count, size_so_far):
+def batch_size_fn(new, count, size_so_far):  # pylint: disable=unused-argument
     global max_src_in_batch, max_tgt_in_batch
     if count == 1:
         max_src_in_batch = 0

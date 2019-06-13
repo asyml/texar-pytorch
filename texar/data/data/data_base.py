@@ -661,7 +661,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             # deleted. Thus, we move deletion to
             # `_add_cached_examples`.
             for index in indices:
-                del self._cached_source._cache[index]  # noqa: E501; pylint: disable=protected-access
+                del self._cached_source._cache[index]  # pylint: disable=protected-access
         for index, example in zip(indices, examples):
             if index == len(self._processed_cache):
                 self._processed_cache.append(example)

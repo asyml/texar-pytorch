@@ -184,9 +184,8 @@ class PairedTextData(TextDataBase[Tuple[str, str],
                                         for x in [src_hparams.bos_token,
                                                   src_hparams.eos_token])
 
-        src_data_source = TextLineDataSource(src_hparams.files,
-                                             compression_type=
-                                             src_hparams.compression_type)
+        src_data_source = TextLineDataSource(
+            src_hparams.files, compression_type=src_hparams.compression_type)
 
         self._tgt_transforms = tgt_hparams["other_transformations"]
         self._tgt_delimiter = tgt_hparams.delimiter
@@ -199,9 +198,8 @@ class PairedTextData(TextDataBase[Tuple[str, str],
                                         for x in [tgt_hparams.bos_token,
                                                   tgt_hparams.eos_token])
 
-        tgt_data_source = TextLineDataSource(tgt_hparams.files,
-                                             compression_type=
-                                             tgt_hparams.compression_type)
+        tgt_data_source = TextLineDataSource(
+            tgt_hparams.files, compression_type=tgt_hparams.compression_type)
 
         data_source: DataSource[Tuple[str, str]]
         data_source = ZipDataSource(  # type: ignore

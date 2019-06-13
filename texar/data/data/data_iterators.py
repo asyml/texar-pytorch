@@ -231,7 +231,7 @@ class _DataLoaderIter(torch_DataLoaderIter):  # pylint: disable=abstract-method
         return batch
 
 
-class _CacheDataLoaderIter(torch_DataLoaderIter):  # noqa: E501; pylint: disable=abstract-method
+class _CacheDataLoaderIter(torch_DataLoaderIter):  # pylint: disable=abstract-method
     r"""Iterates once over the DataLoader's dataset. This class is used when
     examples are processed and returned by worker processes. We need to record
     the corresponding indices of each batch, call

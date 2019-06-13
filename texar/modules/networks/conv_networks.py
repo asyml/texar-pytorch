@@ -85,8 +85,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                              "if \"num_dense_layers\" > 0")
 
         # construct only non-dense layers first
-        layer_hparams = self._build_non_dense_layer_hparams(in_channels=
-                                                            in_channels)
+        layer_hparams = self._build_non_dense_layer_hparams(
+            in_channels=in_channels)
         self._build_layers(layers=None, layer_hparams=layer_hparams)
         if self.hparams.num_dense_layers > 0:
             if in_features is None:
@@ -94,9 +94,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                                  "if \"num_dense_layers\" > 0")
             ones = torch.ones(1, in_channels, in_features)
             input_size = self._infer_dense_layer_input_size(ones)
-            layer_hparams = self._build_dense_hparams(in_features=input_size[1],
-                                                      layer_hparams=
-                                                      layer_hparams)
+            layer_hparams = self._build_dense_hparams(
+                in_features=input_size[1], layer_hparams=layer_hparams)
             self._build_layers(layers=None, layer_hparams=layer_hparams)
 
     @staticmethod

@@ -157,8 +157,8 @@ class TextLineDataSource(DataSource[str]):
                         # A very brute way to filter out overly long lines at
                         # this stage, but still better than actually performing
                         # tokenization.
-                        if (line.count(self._delimiter) + 1  # type: ignore
-                                > self._max_length):
+                        if (line.count(self._delimiter) + 1 >  # type: ignore
+                                self._max_length):
                             continue
                     yield line.rstrip('\n')
 

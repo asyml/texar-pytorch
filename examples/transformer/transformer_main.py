@@ -25,12 +25,10 @@ import torch
 from torchtext import data
 
 import texar as tx
-from bleu_tool import bleu_wrapper
 from texar.modules import Transformer
+from bleu_tool import bleu_wrapper
 from utils import data_utils, utils
 from utils.preprocess import eos_token_id
-
-
 
 parser = argparse.ArgumentParser()
 
@@ -71,7 +69,6 @@ def main():
         config_data.input_dir, config_data.filename_prefix)
     with open(config_data.vocab_file, 'rb') as f:
         id2w = pickle.load(f)
-    vocab_size = len(id2w)
 
     beam_width = getattr(config_model, "beam_width", 1)
 
@@ -136,6 +133,7 @@ def main():
             # For 'eval' mode, the BLEU is based on token ids (rather than
             # text tokens) and serves only as a surrogate metric to monitor
             # the training process
+            # TODO: Use texar.evals.bleu
             fname = os.path.join(args.model_dir, 'tmp.eval')
             hwords, rwords = [], []
             for hyp, ref in zip(hypotheses, references):

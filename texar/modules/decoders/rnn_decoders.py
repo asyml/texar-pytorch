@@ -628,7 +628,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         self.memory_sequence_length = None
 
         # Release the cached memory in AttentionMechanism
-        for attention_mechanism in self._cell._attention_mechanisms:  # noqa: E501; pylint: disable=protected-access
+        for attention_mechanism in self._cell._attention_mechanisms:  # pylint: disable=protected-access
             attention_mechanism.clear_cache()
 
         return outputs, final_state, sequence_lengths

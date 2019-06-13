@@ -67,7 +67,7 @@ def wrap_builtin_cell(cell: nn.RNNCellBase):
         self = RNNCellBase.__new__(LSTMCell)
     else:
         raise TypeError(f"Unrecognized class {type(cell)}.")
-    self._cell = cell  # noqa: E501 pylint: disable=protected-access,attribute-defined-outside-init
+    self._cell = cell  # pylint: disable=protected-access,attribute-defined-outside-init
     return self
 
 

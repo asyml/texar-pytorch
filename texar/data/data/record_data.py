@@ -134,7 +134,7 @@ def _create_image_transform(height: Optional[int], width: Optional[int],
 
     Returns:
         The created transformation function.
-    """  # noqa
+    """
     try:
         import PIL.Image
     except ImportError:

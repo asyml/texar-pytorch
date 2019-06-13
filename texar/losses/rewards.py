@@ -51,8 +51,8 @@ def discount_reward(reward: torch.Tensor,
     """
     if not isinstance(reward, torch.Tensor):
         reward = torch.tensor(reward)
-    if (sequence_length is not None
-            and not isinstance(sequence_length, torch.Tensor)):
+    if (sequence_length is not None and
+            not isinstance(sequence_length, torch.Tensor)):
         sequence_length = torch.tensor(sequence_length,
                                        dtype=torch.int64,
                                        device=reward.device)

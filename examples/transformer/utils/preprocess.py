@@ -15,17 +15,14 @@
 preprocessing text data. Generally it's to generate plain text vocab file,
 truncate sequence by length, generate the preprocessed dataset.
 """
-from __future__ import unicode_literals
+import argparse
 import collections
-import re
 import json
 import os
-import numpy as np
 import pickle
-import argparse
-from io import open
+import re
 
-
+import numpy as np
 
 split_pattern = re.compile(r'([.,!?"\':;)(])')
 digit_pattern = re.compile(r"\d")
@@ -157,7 +154,7 @@ def get_preprocess_args():
     return config
 
 
-if __name__ == "__main__":
+def main():
     args = get_preprocess_args()
 
     print(json.dumps(args.__dict__, indent=4))
@@ -189,10 +186,7 @@ if __name__ == "__main__":
     train_npy = [
         (s, t)
         for s, t in zip(source_npy, target_npy)
-        if len(s) > 0
-        and len(s) < args.max_seq_length
-        and len(t) > 0
-        and len(t) < args.max_seq_length
+        if 0 < len(s) < args.max_seq_length and 0 < len(t) < args.max_seq_length
     ]
     assert len(train_data) == len(train_npy)
 
@@ -259,31 +253,27 @@ if __name__ == "__main__":
                            args.save_data + "vocab.pickle"), "wb") as f:
         pickle.dump(id2w, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    with open(train_src_output, "w+", encoding="utf-8") as fsrc, open(
-        train_tgt_output, "w+", encoding="utf-8"
-    ) as ftgt:
+    with open(train_src_output, "w+", encoding="utf-8") as fsrc, \
+            open(train_tgt_output, "w+", encoding="utf-8") as ftgt:
         for words in train_data:
             fsrc.write("{}\n".format(" ".join(words[0])))
             ftgt.write("{}\n".format(" ".join(words[1])))
-    with open(dev_src_output, "w+", encoding="utf-8") as fsrc, open(
-        dev_tgt_output, "w+", encoding="utf-8"
-    ) as ftgt:
+    with open(dev_src_output, "w+", encoding="utf-8") as fsrc, \
+            open(dev_tgt_output, "w+", encoding="utf-8") as ftgt:
         for words in valid_data:
             fsrc.write("{}\n".format(" ".join(words[0])))
             ftgt.write("{}\n".format(" ".join(words[1])))
-    with open(test_src_output, "w+", encoding="utf-8") as fsrc, open(
-        test_tgt_output, "w+", encoding="utf-8"
-    ) as ftgt:
+    with open(test_src_output, "w+", encoding="utf-8") as fsrc, \
+            open(test_tgt_output, "w+", encoding="utf-8") as ftgt:
         for words in test_data:
             fsrc.write("{}\n".format(" ".join(words[0])))
             ftgt.write("{}\n".format(" ".join(words[1])))
-    with open(
-        os.path.join(
-            args.input_dir, args.save_data + args.pre_encoding + ".vocab.text"
-        ),
-        "w+",
-        encoding="utf-8",
-    ) as f:
+    vocab_path = (args.save_data + args.pre_encoding + ".vocab.text")
+    with open(os.path.join(args.input_dir, vocab_path), "w+") as f:
         max_size = len(id2w)
         for idx in range(4, max_size):
             f.write("{}\n".format(id2w[idx]))
+
+
+if __name__ == "__main__":
+    main()

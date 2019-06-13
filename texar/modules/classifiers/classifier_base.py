@@ -38,5 +38,5 @@ class ClassifierBase(ModuleBase, ABC):
             "name": "classifier"
         }
 
-    def forward(self, *input: torch.Tensor):  # noqa: E501 pylint: disable=redefined-builtin
+    def forward(self, *input: torch.Tensor):  # pylint: disable=redefined-builtin
         raise NotImplementedError

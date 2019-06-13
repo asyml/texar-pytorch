@@ -25,7 +25,7 @@ class RegularizerTest(unittest.TestCase):
         self.assertEqual(regularizer.l2, 0)
 
         regularization = regularizer(self.x)
-        self.assertEqual(regularization.item(), self.l1*(1+2+3+4+5))
+        self.assertEqual(regularization.item(), self.l1 * (1 + 2 + 3 + 4 + 5))
 
         self.assertEqual(regularizer.get_config().get("l1"), 0.1)
         self.assertEqual(regularizer.get_config().get("l2"), 0)
@@ -37,7 +37,7 @@ class RegularizerTest(unittest.TestCase):
         self.assertEqual(regularizer.l2, 0.2)
 
         regularization = regularizer(self.x)
-        self.assertEqual(regularization.item(), self.l2*(1+4+9+16+25))
+        self.assertEqual(regularization.item(), self.l2 * (1 + 4 + 9 + 16 + 25))
 
         self.assertEqual(regularizer.get_config().get("l1"), 0)
         self.assertEqual(regularizer.get_config().get("l2"), 0.2)
@@ -49,8 +49,8 @@ class RegularizerTest(unittest.TestCase):
         self.assertEqual(regularizer.l2, 0.2)
 
         regularization = regularizer(self.x)
-        self.assertEqual(regularization.item(), self.l1*(1+2+3+4+5) +
-                         self.l2*(1+4+9+16+25))
+        self.assertEqual(regularization.item(), self.l1 * (1 + 2 + 3 + 4 + 5) +
+                         self.l2 * (1 + 4 + 9 + 16 + 25))
 
         self.assertEqual(regularizer.get_config().get("l1"), 0.1)
         self.assertEqual(regularizer.get_config().get("l2"), 0.2)

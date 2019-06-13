@@ -16,7 +16,7 @@ Utilities for maintaining moving average.
 """
 
 from collections import deque
-from typing import Deque, Dict, Optional, Union, no_type_check
+from typing import Deque, Dict, List, Optional, Union, no_type_check
 
 from texar.utils.types import MaybeList, MaybeSeq
 
@@ -313,7 +313,7 @@ class AverageRecorder:
         """
         strs = {name: rec.to_str(precision=precision)
                 for name, rec in self._recorders.items()}
-        str_list = []
+        str_list: List[str] = []
         if self._record_type in [list, tuple]:
             # Enumerates the keys in order, which are the indexes
             str_list.extend(strs[i] for i in range(len(strs)))

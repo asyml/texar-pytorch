@@ -3,7 +3,6 @@ Model utility functions
 """
 import json
 
-import tensorflow as tf
 import torch
 
 
@@ -96,10 +95,9 @@ def init_bert_checkpoint(model, init_checkpoint):
     Google.
     """
     try:
-        import re
+        import os
         import numpy as np
         import tensorflow as tf
-        import os
     except ImportError:
         print("Loading a TensorFlow models in PyTorch, requires TensorFlow to "
               "be installed. Please see https://www.tensorflow.org/install/ "
@@ -145,7 +143,7 @@ def init_bert_checkpoint(model, init_checkpoint):
     # Load weights from TF model
     init_vars = tf.train.list_variables(tf_path)
     tfnames, arrays = [], []
-    for name, shape in init_vars:
+    for name, _ in init_vars:
         array = tf.train.load_variable(tf_path, name)
         tfnames.append(name)
         arrays.append(array.squeeze())
@@ -153,8 +151,6 @@ def init_bert_checkpoint(model, init_checkpoint):
 
     idx = 0
     for name, array in zip(tfnames, arrays):
-        processing = (idx + 1.0) / len(tfnames)
-
         if name.startswith('cls'):
             # ignore those variables begin with cls
             continue
