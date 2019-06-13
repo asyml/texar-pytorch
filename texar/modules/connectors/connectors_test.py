@@ -23,7 +23,7 @@ from texar.utils import nest
 # pylint: disable=too-many-locals, invalid-name
 
 class TestConnectors(unittest.TestCase):
-    """Tests various connectors.
+    r"""Tests various connectors.
     """
     def __init__(self, *args, **kwargs):
         super(TestConnectors, self).__init__(*args, **kwargs)
@@ -34,7 +34,7 @@ class TestConnectors(unittest.TestCase):
             256, layers.default_rnn_cell_hparams())
 
     def test_constant_connector(self):
-        """Tests the logic of
+        r"""Tests the logic of
         :class:`~texar.modules.connectors.ConstantConnector`.
         """
 
@@ -61,22 +61,18 @@ class TestConnectors(unittest.TestCase):
         tuple_size_tensor = connector_size_1(self._batch_size)
         tuple_size_tensor_0 = tuple_size_tensor[0]
         tuple_size_tensor_1 = tuple_size_tensor[1]
-        self.assertEqual(
-            torch.Size([self._batch_size]) + torch.Size([1, 2, 3]),
-                       tuple_size_tensor_0.size())
+        self.assertEqual(torch.Size(
+            [self._batch_size]) + torch.Size([1, 2, 3]),
+                tuple_size_tensor_0.size())
         self.assertEqual(tuple_size_tensor_0[0][0, 0, 0], 3.)
-        self.assertEqual(
-            torch.Size([self._batch_size]) + torch.Size([4, 5, 6]),
-                       tuple_size_tensor_1.size())
+        self.assertEqual(torch.Size(
+            [self._batch_size]) + torch.Size([4, 5, 6]),
+                tuple_size_tensor_1.size())
         self.assertEqual(tuple_size_tensor_1[0][0, 0, 0], 3.)
-
-
-
-
 
     # pylint: disable=fixme, unnecessary-pass
     def test_forward_connector(self):
-        """Tests the logic of
+        r"""Tests the logic of
         :class:`~texar.modules.connectors.ForwardConnector`.
         """
         # TODO(zhiting)
@@ -84,7 +80,7 @@ class TestConnectors(unittest.TestCase):
 
     # pylint: disable=no-self-use
     def test_mlp_transform_connector(self):
-        """Tests the logic of
+        r"""Tests the logic of
         :class:`~texar.modules.connectors.MLPTransformConnector`.
         """
         state_size = namedtuple('LSTMStateTuple', ['c', 'h'])(256, 256)
@@ -92,7 +88,7 @@ class TestConnectors(unittest.TestCase):
         output = connector(torch.zeros(5, 10))
 
     def test_reparameterized_stochastic_connector(self):
-        """Tests the logic of
+        r"""Tests the logic of
         :class:`~texar.modules.ReparameterizedStochasticConnector`.
         """
         self._batch_size = 16
@@ -157,7 +153,7 @@ class TestConnectors(unittest.TestCase):
             # self.assertAlmostEqual(1, sample_var[i], delta=0.2)
 
     #def test_concat_connector(self): # pylint: disable=too-many-locals
-    #    """Tests the logic of
+    #    r"""Tests the logic of
     #    :class:`~texar.modules.connectors.ConcatConnector`.
     #    """
     #    gauss_size = 5

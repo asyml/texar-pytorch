@@ -15,8 +15,9 @@
 Base class for connectors that transform inputs into specified output shape.
 """
 
+# pylint: disable=arguments-differ
 from abc import ABC
-from typing import Union, Generic, Optional, Tuple, TypeVar, Dict, Any
+from typing import Generic, Optional, TypeVar, List
 from texar.hyperparams import HParams
 from texar.module_base import ModuleBase
 
@@ -51,7 +52,7 @@ class ConnectorBase(ModuleBase, Generic[OutputSize], ABC):
     def __init__(self, output_size: OutputSize, hparams: HParamsType = None):
         ModuleBase.__init__(self, hparams)
         self._output_size = output_size
-        self._linear_layers = list()
+        self._linear_layers: List = list()
 
     @staticmethod
     def default_hparams():
