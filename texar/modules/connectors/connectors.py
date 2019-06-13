@@ -148,7 +148,7 @@ def _mlp_transform(inputs: Inputs,
 
 class ConstantConnector(ConnectorBase):
     r"""Creates a constant ``Tensor`` or (nested) ``tuple`` of Tensors that
-    contains a constant value. 
+    contains a constant value.
 
     Args:
         output_size: Size of output **excluding** the batch dimension. For
