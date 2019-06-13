@@ -39,9 +39,10 @@ class TestConnectors(unittest.TestCase):
         """
 
         state_size = namedtuple('LSTMStateTuple', ['c', 'h'])(256, 256)
-        connector = ConstantConnector(state_size)
-        decoder_initial_state_0 = connector(self._batch_size)
-        decoder_initial_state_1 = connector(self._batch_size, value=1.)
+        connector_0 = ConstantConnector(state_size)
+        decoder_initial_state_0 = connector_0(self._batch_size)
+        connector_1 = ConstantConnector(state_size, hparams={"value": 1.})
+        decoder_initial_state_1 = connector_1(self._batch_size)
 
         s_0 = decoder_initial_state_0
         s_1 = decoder_initial_state_1
@@ -60,14 +61,18 @@ class TestConnectors(unittest.TestCase):
         tuple_size_tensor = connector_size_1(self._batch_size)
         tuple_size_tensor_0 = tuple_size_tensor[0]
         tuple_size_tensor_1 = tuple_size_tensor[1]
-        self.assertEqual(torch.Size(
-            [self._batch_size]) + torch.Size([1, 2, 3]),
-                tuple_size_tensor_0.size())
+        self.assertEqual(
+            torch.Size([self._batch_size]) + torch.Size([1, 2, 3]),
+                       tuple_size_tensor_0.size())
         self.assertEqual(tuple_size_tensor_0[0][0, 0, 0], 3.)
-        self.assertEqual(torch.Size(
-            [self._batch_size]) + torch.Size([4, 5, 6]),
-                tuple_size_tensor_1.size())
+        self.assertEqual(
+            torch.Size([self._batch_size]) + torch.Size([4, 5, 6]),
+                       tuple_size_tensor_1.size())
         self.assertEqual(tuple_size_tensor_1[0][0, 0, 0], 3.)
+
+
+
+
 
     # pylint: disable=fixme, unnecessary-pass
     def test_forward_connector(self):
