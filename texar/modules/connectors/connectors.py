@@ -148,7 +148,7 @@ def _mlp_transform(inputs: Inputs,
 
 class ConstantConnector(ConnectorBase):
     r"""Creates a constant ``Tensor`` or (nested) ``tuple`` of Tensors that
-    contains a constant value. 
+    contains a constant value.
 
     Args:
         output_size: Size of output **excluding** the batch dimension. For
@@ -241,7 +241,7 @@ class ConstantConnector(ConnectorBase):
                 return torch.full((batch_size, x), value_)
 
         output = utils.map_structure(
-            full_tensor,
+            full_tensor, # type: ignore
             self._output_size)
 
         return output
@@ -678,7 +678,7 @@ class StochasticConnector(ConnectorBase):
         else:
             output = self._dstr.sample() # type: ignore
 
-        if self._dstr.event_shape == []: # type: ignore
+        if self._dstr.event_shape == []:
             output = torch.reshape(
                 input=output, shape=output.size() + torch.Size([1]))
         # Disable gradients through samples
