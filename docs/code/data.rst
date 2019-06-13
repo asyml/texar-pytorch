@@ -19,6 +19,10 @@ Vocabulary
 .. autoclass:: texar.data.Vocab
     :members:
 
+:hidden:`map_ids_to_strs`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.data.map_ids_to_strs
+
 Embedding
 ==========
 
@@ -49,9 +53,9 @@ Data
 .. autoclass:: texar.data.DataBase
     :members:
 
-    .. automethod:: _process
+    .. automethod:: process
 
-    .. automethod:: _collate
+    .. automethod:: collate
 
 :hidden:`MonoTextData`
 ~~~~~~~~~~~~~~~~~~~~~~~~

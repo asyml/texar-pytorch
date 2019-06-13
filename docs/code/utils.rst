@@ -16,10 +16,6 @@ Frequent Use
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.compat_as_text
 
-:hidden:`map_ids_to_strs`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.map_ids_to_strs
-
 :hidden:`write_paired_text`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.write_paired_text
@@ -99,10 +95,6 @@ Dictionary
 
 String
 =======
-
-:hidden:`map_ids_to_strs`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.map_ids_to_strs
 
 :hidden:`strip_token`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
