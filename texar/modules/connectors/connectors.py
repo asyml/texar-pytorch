@@ -22,6 +22,7 @@ import numpy as np
 import torch
 from torch import nn, split
 from torch.distributions.multivariate_normal import MultivariateNormal
+from torch.distributions.distribution import Distribution
 
 from texar.hyperparams import HParams
 from texar.modules.connectors.connector_base import ConnectorBase
@@ -49,7 +50,7 @@ D = MultivariateNormal
 OutputSize = Union[MaybeTuple[int], MaybeTuple[torch.Size], Tuple]
 HParamsType = Optional[HParams]
 #Optional[Union[HParams, dict]]
-ActivationFn = Callable[[torch.Tensor], torch.Tensor]
+ActivationFn = Optional[Callable[[torch.Tensor], torch.Tensor]]
 LinearLayer = Callable[[torch.Tensor], torch.Tensor]
 
 def _assert_same_size(outputs: Inputs,
@@ -130,7 +131,8 @@ def _mlp_transform(inputs: Inputs,
         concat_input.size()[-1], sum_output_size)
 
     fc_output = linear_layer(concat_input)
-    fc_output = activation_fn(fc_output)
+    if activation_fn:
+        fc_output = activation_fn(fc_output)
 
     flat_output = split(fc_output, size_list, dim=1) # type: ignore
     flat_output = list(flat_output)
@@ -484,11 +486,11 @@ class ReparameterizedStochasticConnector(ConnectorBase):
                  output_size: OutputSize,
                  hparams: HParamsType = None,
                  distribution: Union[Type[T], T, str] = 'MultivariateNormal',
-                 distribution_kwargs: Dict[str, Any] = None,):
+                 distribution_kwargs: Optional[Dict[str, Any]] = None,):
         ConnectorBase.__init__(self, output_size, hparams)
         if distribution_kwargs is None:
             distribution_kwargs = {}
-        self._dstr = utils.check_or_get_instance(
+        self._dstr = utils.check_or_get_instance( # type: ignore
             distribution, distribution_kwargs,
             ["torch.distributions", "torch.distributions.multivariate_normal",
              "texar.custom"])
@@ -550,11 +552,11 @@ class ReparameterizedStochasticConnector(ConnectorBase):
         """
 
         if num_samples:
-            sample = self._dstr.sample([num_samples])
+            sample = self._dstr.sample([num_samples]) # type: ignore
         else:
-            sample = self._dstr.sample()
+            sample = self._dstr.sample() # type: ignore
 
-        if self._dstr.event_shape == []:
+        if self._dstr.event_shape == []: # type: ignore
             sample = torch.reshape(
                 sample,
                 sample.size() + torch.Size([1]))
@@ -605,11 +607,11 @@ class StochasticConnector(ConnectorBase):
                  output_size: OutputSize,
                  hparams: HParamsType = None,
                  distribution: Union[Type[T], T, str] = 'MultivariateNormal',
-                 distribution_kwargs: Dict[str, Any] = None,):
+                 distribution_kwargs: Optional[Dict[str, Any]] = None,):
         ConnectorBase.__init__(self, output_size, hparams)
         if distribution_kwargs is None:
             distribution_kwargs = {}
-        self._dstr = utils.check_or_get_instance(
+        self._dstr = utils.check_or_get_instance( # type: ignore
             distribution, distribution_kwargs,
             ["torch.distributions", "torch.distributions.multivariate_normal",
              "texar.custom"])
@@ -672,11 +674,11 @@ class StochasticConnector(ConnectorBase):
         """
 
         if num_samples:
-            output = self._dstr.sample([num_samples])
+            output = self._dstr.sample([num_samples]) # type: ignore
         else:
-            output = self._dstr.sample()
+            output = self._dstr.sample() # type: ignore
 
-        if self._dstr.event_shape == []:
+        if self._dstr.event_shape == []: # type: ignore
             output = torch.reshape(
                 input=output, shape=output.size() + torch.Size([1]))
         # Disable gradients through samples
