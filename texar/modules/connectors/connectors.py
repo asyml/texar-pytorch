@@ -490,7 +490,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
         ConnectorBase.__init__(self, output_size, hparams)
         if distribution_kwargs is None:
             distribution_kwargs = {}
-        self._dstr = utils.check_or_get_instance(
+        self._dstr = utils.check_or_get_instance( # type: ignore
             distribution, distribution_kwargs,
             ["torch.distributions", "torch.distributions.multivariate_normal",
              "texar.custom"])
@@ -611,7 +611,7 @@ class StochasticConnector(ConnectorBase):
         ConnectorBase.__init__(self, output_size, hparams)
         if distribution_kwargs is None:
             distribution_kwargs = {}
-        self._dstr = utils.check_or_get_instance(
+        self._dstr = utils.check_or_get_instance( # type: ignore
             distribution, distribution_kwargs,
             ["torch.distributions", "torch.distributions.multivariate_normal",
              "texar.custom"])
@@ -678,7 +678,7 @@ class StochasticConnector(ConnectorBase):
         else:
             output = self._dstr.sample() # type: ignore
 
-        if self._dstr.event_shape == []:
+        if self._dstr.event_shape == []: # type: ignore
             output = torch.reshape(
                 input=output, shape=output.size() + torch.Size([1]))
         # Disable gradients through samples
