@@ -61,18 +61,14 @@ class TestConnectors(unittest.TestCase):
         tuple_size_tensor = connector_size_1(self._batch_size)
         tuple_size_tensor_0 = tuple_size_tensor[0]
         tuple_size_tensor_1 = tuple_size_tensor[1]
-        self.assertEqual(
-            torch.Size([self._batch_size]) + torch.Size([1, 2, 3]),
-                       tuple_size_tensor_0.size())
+        self.assertEqual(torch.Size(
+            [self._batch_size]) + torch.Size([1, 2, 3]),
+                tuple_size_tensor_0.size())
         self.assertEqual(tuple_size_tensor_0[0][0, 0, 0], 3.)
-        self.assertEqual(
-            torch.Size([self._batch_size]) + torch.Size([4, 5, 6]),
-                       tuple_size_tensor_1.size())
+        self.assertEqual(torch.Size(
+            [self._batch_size]) + torch.Size([4, 5, 6]),
+                tuple_size_tensor_1.size())
         self.assertEqual(tuple_size_tensor_1[0][0, 0, 0], 3.)
-
-
-
-
 
     # pylint: disable=fixme, unnecessary-pass
     def test_forward_connector(self):
