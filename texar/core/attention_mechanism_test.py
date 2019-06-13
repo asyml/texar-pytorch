@@ -30,6 +30,7 @@ class AttentionMechanismTest(unittest.TestCase):
     def test_LuongAttention(self):
         r"""Tests `LuongAttention`
         """
+        # Case 1
         attention_mechanism = LuongAttention(
             num_units=self._attention_dim,
             encoder_output_size=self._encoder_output_size)
@@ -53,6 +54,7 @@ class AttentionMechanismTest(unittest.TestCase):
             [self._batch_size, self._max_time]))
         self.assertEqual(len(attention_mechanism.trainable_variables), 1)
 
+        # Case 2
         attention_mechanism = LuongAttention(
             num_units=self._attention_dim,
             encoder_output_size=self._encoder_output_size,
@@ -80,9 +82,10 @@ class AttentionMechanismTest(unittest.TestCase):
     def test_BahdanauAttention(self):
         r"""Tests BahdanauAttention
         """
+        # Case 1
         attention_mechanism = BahdanauAttention(
             num_units=self._attention_dim,
-            cell_output_size=128,
+            decoder_output_size=128,
             encoder_output_size=self._encoder_output_size)
 
         cell_output = torch.rand(self._batch_size, 128)
@@ -104,9 +107,10 @@ class AttentionMechanismTest(unittest.TestCase):
             [self._batch_size, self._max_time]))
         self.assertEqual(len(attention_mechanism.trainable_variables), 3)
 
+        # Case 2
         attention_mechanism = BahdanauAttention(
             num_units=self._attention_dim,
-            cell_output_size=128,
+            decoder_output_size=128,
             encoder_output_size=self._encoder_output_size,
             normalize=True)
 
@@ -132,6 +136,7 @@ class AttentionMechanismTest(unittest.TestCase):
     def test_LuongMonotonicAttention(self):
         r"""Tests LuongMonotonicAttention
         """
+        # Case 1
         attention_mechanism = LuongMonotonicAttention(
             num_units=self._attention_dim,
             encoder_output_size=self._encoder_output_size)
@@ -155,6 +160,7 @@ class AttentionMechanismTest(unittest.TestCase):
             [self._batch_size, self._max_time]))
         self.assertEqual(len(attention_mechanism.trainable_variables), 2)
 
+        # Case 2
         attention_mechanism = LuongMonotonicAttention(
             num_units=self._attention_dim,
             encoder_output_size=self._encoder_output_size,
@@ -182,9 +188,10 @@ class AttentionMechanismTest(unittest.TestCase):
     def test_BahdanauMonotonicAttention(self):
         r"""Tests BahdanauMonotonicAttention
         """
+        # Case 1
         attention_mechanism = BahdanauMonotonicAttention(
             num_units=self._attention_dim,
-            cell_output_size=128,
+            decoder_output_size=128,
             encoder_output_size=self._encoder_output_size)
 
         cell_output = torch.rand(self._batch_size, 128)
@@ -206,9 +213,10 @@ class AttentionMechanismTest(unittest.TestCase):
             [self._batch_size, self._max_time]))
         self.assertEqual(len(attention_mechanism.trainable_variables), 4)
 
+        # Case 2
         attention_mechanism = BahdanauMonotonicAttention(
             num_units=self._attention_dim,
-            cell_output_size=128,
+            decoder_output_size=128,
             encoder_output_size=self._encoder_output_size,
             normalize=True)
 
