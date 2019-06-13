@@ -241,7 +241,7 @@ class ConstantConnector(ConnectorBase):
                 return torch.full((batch_size, x), value_)
 
         output = utils.map_structure(
-            full_tensor, # type: ignore
+            full_tensor,
             self._output_size)
 
         return output
@@ -490,7 +490,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
         ConnectorBase.__init__(self, output_size, hparams)
         if distribution_kwargs is None:
             distribution_kwargs = {}
-        self._dstr = utils.check_or_get_instance( # type: ignore
+        self._dstr = utils.check_or_get_instance(
             distribution, distribution_kwargs,
             ["torch.distributions", "torch.distributions.multivariate_normal",
              "texar.custom"])
@@ -611,7 +611,7 @@ class StochasticConnector(ConnectorBase):
         ConnectorBase.__init__(self, output_size, hparams)
         if distribution_kwargs is None:
             distribution_kwargs = {}
-        self._dstr = utils.check_or_get_instance( # type: ignore
+        self._dstr = utils.check_or_get_instance(
             distribution, distribution_kwargs,
             ["torch.distributions", "torch.distributions.multivariate_normal",
              "texar.custom"])
