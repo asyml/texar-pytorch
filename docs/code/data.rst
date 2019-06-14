@@ -73,6 +73,12 @@ Data
     :inherited-members:
     :exclude-members: make_vocab,make_embedding
 
+:hidden:`ScalarData`
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: texar.data.ScalarData
+    :members:
+    :inherited-members:
 
 Data Iterators
 ===============

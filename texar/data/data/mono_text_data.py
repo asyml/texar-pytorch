@@ -75,7 +75,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
             hyperparameters. See :meth:`default_hparams` for the defaults.
 
     By default, the processor reads raw data files, performs tokenization,
-    batching and other pre-processing steps, and results in a TF Dataset
+    batching and other pre-processing steps, and results in a Dataset
     whose element is a python `dict` including three fields:
 
     "text":
