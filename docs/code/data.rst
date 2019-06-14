@@ -80,13 +80,6 @@ Data
     :members:
     :inherited-members:
 
-:hidden:`MultiAlignedData`
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. autoclass:: texar.data.MultiAlignedData
-    :members:
-    :inherited-members:
-
 Data Iterators
 ===============
 

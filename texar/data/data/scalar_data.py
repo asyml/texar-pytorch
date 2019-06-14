@@ -15,17 +15,18 @@
 Various data classes that define data reading, parsing, batching, and other
 preprocessing operations.
 """
-from typing import (Optional, List, Union, Type)
 
 import torch
 import numpy as np
 
+from typing import (Optional, List, Union)
+
 from texar.hyperparams import HParams
 from texar.data.data.dataset_utils import Batch
-from texar.data.data.data_base import DataBase, SequenceDataSource
+from texar.data.data.data_base import DataBase
 from texar.data.data.text_data_base import TextLineDataSource
 
-# pylint: disable=protected-access
+# pylint: disable=invalid-name, arguments-differ, not-context-manager
 
 __all__ = [
     "_default_scalar_dataset_hparams",
@@ -48,8 +49,8 @@ def _default_scalar_dataset_hparams():
     }
 
 
-class ScalarData(DataBase[str, Union[int, float]]):
-    r"""Scalar data where each line of the files is a scalar (int or float),
+class ScalarData(DataBase):
+    """Scalar data where each line of the files is a scalar (int or float),
     e.g., a data label.
 
     Args:
@@ -77,7 +78,7 @@ class ScalarData(DataBase[str, Union[int, float]]):
             iterator = DataIterator(data)
             for batch in iterator:
                 # batch contains the following
-                # batch == {
+                # batch_ == {
                 #     'label': [2, 9]
                 # }
     """
@@ -85,48 +86,14 @@ class ScalarData(DataBase[str, Union[int, float]]):
     def __init__(self, hparams, device: Optional[torch.device] = None):
         self._hparams = HParams(hparams, self.default_hparams())
         self._other_transforms = self._hparams.dataset.other_transformations
-        data_type = self._hparams.dataset["data_type"]
-        self._typecast_func: Union[Type[int], Type[float]]
-        if data_type == "int":
-            self._typecast_func = int
-            self._to_data_type = np.int32
-        elif data_type == "float":
-            self._typecast_func = float
-            self._to_data_type = np.float32
-        else:
-            raise ValueError("Incorrect 'data_type'. Currently 'int' and "
-                             "'float' are supported. Received {}"
-                             .format(data_type))
-        data_source = TextLineDataSource(
-            self._hparams.dataset.files,
-            compression_type=self._hparams.dataset.compression_type)
+        data_source = TextLineDataSource(self._hparams.dataset.files,
+                                         compression_type=
+                                         self._hparams.dataset.compression_type)
         super().__init__(data_source, hparams, device=device)
-
-    @classmethod
-    def _construct(cls, hparams, device: Optional[torch.device] = None):
-        scalar_data = cls.__new__(cls)
-        scalar_data._hparams = HParams(hparams, scalar_data.default_hparams())
-        scalar_data._other_transforms = \
-            scalar_data._hparams.dataset.other_transformations
-        data_type = scalar_data._hparams.dataset["data_type"]
-        if data_type == "int":
-            scalar_data._typecast_func = int
-            scalar_data._to_data_type = np.int32
-        elif data_type == "float":
-            scalar_data._typecast_func = float
-            scalar_data._to_data_type = np.float32
-        else:
-            raise ValueError("Incorrect 'data_type'. Currently 'int' and "
-                             "'float' are supported. Received {}"
-                             .format(data_type))
-        data_source: SequenceDataSource[str] = SequenceDataSource([])
-        super(ScalarData, scalar_data).__init__(data_source, hparams,
-                                                device=device)
-        return scalar_data
 
     @staticmethod
     def default_hparams():
-        r"""Returns a dictionary of default hyperparameters.
+        """Returns a dicitionary of default hyperparameters.
 
         .. code-block:: python
 
@@ -157,24 +124,24 @@ class ScalarData(DataBase[str, Union[int, float]]):
 
         1. For the hyperparameters in the :attr:`"dataset"` field:
 
-            `"files"`: str or list
+            "files" : str or list
                 A (list of) file path(s).
 
                 Each line contains a single scalar number.
 
-            `"compression_type"`: str, optional
+            "compression_type" : str, optional
                 One of "" (no compression), "ZLIB", or "GZIP".
 
-            `"data_type"`: str
+            "data_type" : str
                 The scalar type. Currently supports "int" and "float".
 
-            `"other_transformations"`: list
+            "other_transformations" : list
                 A list of transformation functions or function names/paths to
                 further transform each single data instance.
 
                 (More documentations to be added.)
 
-            `"data_name"`: str
+            "data_name" : str
                 Name of the dataset.
 
         2. For the **general** hyperparameters, see
@@ -188,22 +155,42 @@ class ScalarData(DataBase[str, Union[int, float]]):
         })
         return hparams
 
-    def process(self, raw_example: str) -> Union[int, float]:
+    def _process(self, raw_example: str) -> Union[int, float]:
         # Apply the "other transformations".
-        example: Union[int, float] = self._typecast_func(raw_example)
+        example: Union[int, float]
+        data_type = self.hparams.dataset["data_type"]
+        if data_type == "int":
+            example = int(raw_example)
+        elif data_type == "float":
+            example = float(raw_example)
+        else:
+            raise ValueError("Incorrect \'data_type\'. Currently \'int\' and "
+                             "\'float\' are supported. Received {}"
+                             .format(data_type))
         for transform in self._other_transforms:
             example = transform(example)
         return example
 
-    def collate(self, examples: List[Union[int, float]]) -> Batch:
+    def _collate(self, examples: List[Union[int, float]]) -> Batch:
         # convert the list of strings into appropriate tensors here
-        examples_np = np.array(examples, dtype=self._to_data_type)
-        collated_examples = torch.from_numpy(examples_np).to(device=self.device)
+        data_type = self.hparams.dataset["data_type"]
+        if data_type == "int":
+            examples_np = np.array(examples, dtype=np.int32)
+            collated_examples = torch.from_numpy(examples_np).\
+                to(device=self.device)
+        elif data_type == "float":
+            examples_np = np.array(examples, dtype=np.float32)
+            collated_examples = torch.from_numpy(examples_np).\
+                to(device=self.device)
+        else:
+            raise ValueError("Incorrect \'data_type\'. Currently \'int\' and "
+                             "\'float\' are supported. Received {}"
+                             .format(data_type))
         return Batch(len(examples),
-                     batch={self.data_name: collated_examples})
+                     **{self.hparams.dataset["data_name"]: collated_examples})
 
     def list_items(self):
-        r"""Returns the list of item names that the data can produce.
+        """Returns the list of item names that the data can produce.
 
         Returns:
             A list of strings.
@@ -211,8 +198,15 @@ class ScalarData(DataBase[str, Union[int, float]]):
         return [self.hparams.dataset["data_name"]]
 
     @property
+    def dataset(self):
+        """The dataset.
+        """
+        return self._source
+
+    @property
     def data_name(self):
-        r"""The name of the data tensor, "data" by default if not specified in
+        """The name of the data tensor, "data" by default if not specified in
         :attr:`hparams`.
         """
         return self.hparams.dataset["data_name"]
+

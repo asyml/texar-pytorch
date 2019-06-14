@@ -66,7 +66,7 @@ class ScalarDataTest(unittest.TestCase):
                              set(scalar_data.list_items()))
             value = batch[scalar_data.data_name][0]
             if test_transform:
-                self.assertEqual(2 * i, value)
+                self.assertEqual(2*i, value)
             else:
                 self.assertEqual(i, value)
             i += 1
@@ -111,12 +111,12 @@ class ScalarDataTest(unittest.TestCase):
         """
         hparams = copy.deepcopy(self._int_hparams)
         hparams["dataset"].update(
-            {"other_transformations": [lambda x: x * 2]})
+            {"other_transformations": [lambda x: x*2]})
         self._run_and_test(hparams, test_transform=True)
 
         hparams = copy.deepcopy(self._float_hparams)
         hparams["dataset"].update(
-            {"other_transformations": [lambda x: x * 2]})
+            {"other_transformations": [lambda x: x*2]})
         self._run_and_test(hparams, test_transform=True)
 
 
