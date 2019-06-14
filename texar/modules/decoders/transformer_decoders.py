@@ -285,22 +285,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         outputs = outputs.squeeze(1)
         return outputs, cache
 
-    def _input_ids_to_outputs(self, input_ids: torch.LongTensor, step: int,
-                              embedding_fn,
-                              cache: Cache) -> Tuple[torch.Tensor, Cache]:
-        r"""The function is called in beam-search decoding.
-
-        :attr:`inputs` should be of shape ``[batch_size]``.
-
-        Returns:
-            A tuple of logits and updated cache. Logits are of shape
-            ``[batch_size, vocab_size]``.
-        """
-        _batch_size = input_ids.size(0)
-        times = input_ids.new_full((_batch_size,), step)
-        inputs = embedding_fn(input_ids, times)
-        return self._inputs_to_outputs(inputs, cache)
-
     def forward(self,  # type: ignore
                 inputs: Optional[torch.Tensor] = None,
                 sequence_length: Optional[torch.LongTensor] = None,
@@ -669,16 +653,20 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         return cache
 
     def _beam_decode(self, start_tokens: torch.LongTensor, end_token: int,
-                     embedding_fn: Callable[[torch.Tensor, torch.Tensor],
-                                            torch.Tensor],
+                     embedding_fn: Callable[
+                         [torch.LongTensor, torch.LongTensor], torch.Tensor],
                      decode_length: int = 256, beam_width: int = 5,
                      length_penalty: float = 0.6) \
             -> Tuple[torch.Tensor, torch.Tensor]:
 
         def _symbols_to_logits_fn(ids, cache):
-            step = ids.size()[-1] - 1
-            return self._input_ids_to_outputs(
-                ids[:, -1], step, embedding_fn, cache)
+            batch_size = ids.size(0)
+            step = ids.size(-1) - 1
+            times = ids.new_full((batch_size,), step)
+            inputs = embedding_fn(ids[:, -1], times)
+            return self._inputs_to_outputs(inputs, cache)
+
+        assert self._vocab_size is not None
 
         outputs, log_prob = beam_search(
             _symbols_to_logits_fn,
@@ -693,7 +681,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         # Ignores <BOS>
         outputs = outputs[:, :, 1:]
         # shape = [batch_size, seq_length, beam_width]
-        outputs = outputs.permute([0, 2, 1])
+        outputs = outputs.permute(0, 2, 1)
         return outputs, log_prob
 
     @property

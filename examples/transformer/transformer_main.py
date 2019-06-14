@@ -19,9 +19,9 @@ import importlib
 import os
 import pickle
 import random
-from tqdm import tqdm
 
 import torch
+from tqdm import tqdm
 from torchtext import data
 
 import texar as tx

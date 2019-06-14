@@ -184,6 +184,10 @@ Misc
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.map_structure_zip
 
+:hidden:`beam_search`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.beam_search.beam_search
+
 
 
 AverageRecorder
