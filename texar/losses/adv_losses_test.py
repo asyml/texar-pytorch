@@ -2,8 +2,6 @@
 Unit tests for adv_losses.
 """
 
-# pylint: disable=invalid-name
-
 import unittest
 
 import torch

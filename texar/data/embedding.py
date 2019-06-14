@@ -30,7 +30,7 @@ __all__ = [
 
 def load_word2vec(filename: str, vocab: Dict[str, int],
                   word_vecs: np.ndarray) -> np.ndarray:
-    """Loads embeddings in the word2vec binary format which has a header line
+    r"""Loads embeddings in the word2vec binary format which has a header line
     containing the number of vectors and their dimensionality (two integers),
     followed with number-of-vectors lines each of which is formatted as
     ``<word-string> <embedding-vector>``.
@@ -71,7 +71,7 @@ def load_word2vec(filename: str, vocab: Dict[str, int],
 
 def load_glove(filename: str, vocab: Dict[str, int],
                word_vecs: np.ndarray) -> np.ndarray:
-    """Loads embeddings in the glove text format in which each line is
+    r"""Loads embeddings in the glove text format in which each line is
     ``<word-string> <embedding-vector>``. Dimensions of the embedding vector
     are separated with whitespace characters.
 
@@ -101,16 +101,14 @@ def load_glove(filename: str, vocab: Dict[str, int],
 
 
 class Embedding:
-    """Embedding class that loads token embedding vectors from file. Token
+    r"""Embedding class that loads token embedding vectors from file. Token
     embeddings not in the embedding file are initialized as specified in
     :attr:`hparams`.
 
     Args:
         vocab (dict): A dictionary that maps token strings to integer index.
-        read_fn: Callable that takes `(filename, vocab, word_vecs)` and
-            returns the updated `word_vecs`. E.g.,
-            :func:`~texar.data.embedding.load_word2vec` and
-            :func:`~texar.data.embedding.load_glove`.
+        hparams (dict): Hyperparameters. See :meth:`default_hparams` for the
+            defaults.
     """
 
     def __init__(self, vocab: Dict[str, int],
@@ -146,10 +144,7 @@ class Embedding:
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of hyperparameters with default values:
-
-        .. role:: python(code)
-           :language: python
+        r"""Returns a dictionary of hyperparameters with default values:
 
         .. code-block:: python
 
@@ -168,14 +163,14 @@ class Embedding:
 
         Here:
 
-        "file" : str
+        `"file"`: str
             Path to the embedding file. If not provided, all embeddings are
             initialized with the initialization function.
 
-        "dim": int
+        `"dim"`: int
             Dimension size of each embedding vector
 
-        "read_fn" : str or callable
+        `"read_fn"`: str or callable
             Function to read the embedding file. This can be the function,
             or its string name or full module path. E.g.,
 
@@ -192,7 +187,7 @@ class Embedding:
             The function must have the same signature as with
             :func:`load_word2vec`.
 
-        "init_fn" : dict
+        `"init_fn"`: dict
             Hyperparameters of the initialization function used to initialize
             embedding of tokens missing in the embedding
             file.
@@ -202,11 +197,11 @@ class Embedding:
 
             The `dict` has the following fields:
 
-            "type" : str or callable
+            `"type"`: str or callable
                 The initialization function. Can be either the function,
                 or its string name or full module path.
 
-            "kwargs" : dict
+            `"kwargs"`: dict
                 Keyword arguments for calling the function. The function
                 is called with :python:`init_fn(size=[.., ..], **kwargs)`.
         """
@@ -226,12 +221,12 @@ class Embedding:
 
     @property
     def word_vecs(self):
-        """2D numpy array of shape `[vocab_size, embedding_dim]`.
+        r"""2D numpy array of shape `[vocab_size, embedding_dim]`.
         """
         return self._word_vecs
 
     @property
     def vector_size(self):
-        """The embedding dimension size.
+        r"""The embedding dimension size.
         """
         return self._hparams.dim

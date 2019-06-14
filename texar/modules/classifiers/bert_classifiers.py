@@ -20,18 +20,17 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-import texar as tx
 from texar.hyperparams import HParams
 from texar.modules.classifiers.classifier_base import ClassifierBase
-
-# pylint: disable=too-many-arguments, invalid-name, no-member,
-# pylint: disable=too-many-branches, too-many-locals, too-many-statements
+from texar.modules.embedders.embedders import WordEmbedder
+from texar.modules.embedders.position_embedders import PositionEmbedder
+from texar.modules.encoders.transformer_encoder import TransformerEncoder
 
 __all__ = ["BertClassifier"]
 
 
 class BertClassifier(ClassifierBase):
-    """Classifier based on BERT modules.
+    r"""Classifier based on BERT modules.
 
     This is a combination of the BERT encoder with a classification
     layer. Both step-wise classification and sequence-level classification
@@ -48,22 +47,21 @@ class BertClassifier(ClassifierBase):
 
     def __init__(self, hparams=None):
         super().__init__(hparams)
-        self.word_embedder = tx.modules.WordEmbedder(
+        self.word_embedder = WordEmbedder(
             vocab_size=self._hparams.vocab_size, hparams=self._hparams.embed)
 
         # Segment embedding for each type of tokens
-        self.segment_embedder = tx.modules.WordEmbedder(
+        self.segment_embedder = WordEmbedder(
             vocab_size=self._hparams.type_vocab_size,
             hparams=self._hparams.segment_embed)
 
         # Position embedding
-        self.position_embedder = tx.modules.PositionEmbedder(
+        self.position_embedder = PositionEmbedder(
             position_size=self._hparams.position_size,
             hparams=self._hparams.position_embed)
 
         # The BERT encoder (a TransformerEncoder)
-        self.encoder = tx.modules.TransformerEncoder(
-            hparams=self._hparams.encoder)
+        self.encoder = TransformerEncoder(hparams=self._hparams.encoder)
 
         self.pooler = nn.Sequential(
             nn.Linear(self._hparams.hidden_size, self._hparams.hidden_size),
@@ -92,7 +90,7 @@ class BertClassifier(ClassifierBase):
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of hyperparameters with default values.
+        r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
 
@@ -117,21 +115,21 @@ class BertClassifier(ClassifierBase):
 
         2. Additional hyperparameters for downstream tasks:
 
-           "num_classes" : int
+           `"num_classes"`: int
                Number of classes:
 
-               - If **`> 0`**, an additional :torch_nn:`Linear` layer is
+               - If **> 0**, an additional :torch_nn:`Linear` layer is
                  appended to the encoder to compute the logits over classes.
-               - If **`<= 0`**, no dense layer is appended. The number of
+               - If **<= 0**, no dense layer is appended. The number of
                  classes is assumed to be the final dense layer size of the
                  encoder.
 
-           "logit_layer_kwargs" : dict
-               Keyword arguments for the logit Dense layer constructor,
-               except for argument "units" which is set to "num_classes".
-               Ignored if no extra logit layer is appended.
+           `"logit_layer_kwargs"`: dict
+               Keyword arguments for the logit :torch_nn:`Linear` layer
+               constructor, except for argument `"units"` which is set to
+               `"num_classes"`. Ignored if no extra logit layer is appended.
 
-           "clas_strategy" : str
+           `"clas_strategy"`: str
                The classification strategy, one of:
 
                - **"cls_time"**: Sequence-level classification based on the
@@ -142,14 +140,14 @@ class BertClassifier(ClassifierBase):
                - **"time_wise"**: Step-wise classification, i.e., make
                  classification for each time step based on its output.
 
-           "max_seq_length" : int, optional
+           `"max_seq_length"`: int, optional
                Maximum possible length of input sequences. Required if
-               "clas_strategy" is "all_time".
+               `"clas_strategy"` is "all_time".
 
-           "dropout" : float
-               The dropout rate of the bert encoder output.
+           `"dropout"`: float
+               The dropout rate of the BERT encoder output.
 
-           "name" : str
+           `"name"`: str
                Name of the classifier.
         """
 
@@ -221,7 +219,7 @@ class BertClassifier(ClassifierBase):
                 segment_ids: Optional[torch.LongTensor] = None,
                 labels: Optional[torch.LongTensor] = None) \
             -> Tuple[torch.Tensor, torch.LongTensor, Optional[torch.Tensor]]:
-        """Feeds the inputs through the network and makes classification.
+        r"""Feeds the inputs through the network and makes classification.
 
         Args:
             inputs: A 2D Tensor of shape ``[batch_size, max_time]``,
@@ -231,14 +229,14 @@ class BertClassifier(ClassifierBase):
                 out automatically.
             segment_ids (optional): A 2D Tensor of shape
                 ``[batch_size, max_time]``, containing the segment ids
-                of tokens in input sequences. If ``None`` (default), a tensor
+                of tokens in input sequences. If `None` (default), a tensor
                 with all elements set to zero is used.
             labels (optional): Used in training
 
         Returns:
             A tuple ``(logits, pred, loss)``, containing the logits over
             classes, the predictions, and the final loss, respectively. If
-            ``labels`` is ``None``, then the returned loss is also ``None``.
+            ``labels`` is `None`, then the returned loss is also `None`.
 
             - If ``"clas_strategy"`` is ``"cls_time"`` or ``"all_time"``:
 

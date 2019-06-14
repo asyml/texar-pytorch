@@ -21,8 +21,6 @@ from torch.nn.parameter import Parameter
 from texar.module_base import ModuleBase
 from texar.modules.embedders import embedder_utils
 
-# pylint: disable=invalid-name
-
 __all__ = [
     "EmbedderBase",
     "EmbeddingDropout",
@@ -89,7 +87,6 @@ class EmbedderBase(ModuleBase):
             "name": "embedder"
         }
 
-    # pylint: disable=W0221
     def forward(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -118,7 +115,6 @@ class EmbeddingDropout(ModuleBase):
         ModuleBase.__init__(self, hparams)
         self._rate = rate
 
-    # pylint: disable=W0221
     def forward(self, input_tensor=None, noise_shape=None):
         r"""Apply dropout on the tensor.
 

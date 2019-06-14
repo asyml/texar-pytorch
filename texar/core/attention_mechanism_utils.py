@@ -13,7 +13,7 @@
 # limitations under the License.
 """Various helper utilities for attention mechanism.
 
-The implementation of sparsemax adapted from:
+The implementation of `sparsemax` adapted from:
     `https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/
     modules/sparse_activations.py`
 """
@@ -156,11 +156,11 @@ def _make_ix_like(input: torch.Tensor,
 
 def _threshold_and_support(input: torch.Tensor,
                            dim: int = -1) -> Tuple[torch.Tensor, torch.Tensor]:
-    r"""Sparsemax building block: compute the threshold
+    r"""`Sparsemax` building block: compute the threshold.
 
     Args:
         input: any dimension
-        dim: dimension along which to apply the sparsemax
+        dim: dimension along which to apply `sparsemax`.
 
     Returns:
         the threshold value
@@ -206,11 +206,11 @@ class SparsemaxFunction(Function):
 
 
 def sparsemax(input: torch.Tensor, dim: int = -1) -> torch.Tensor:
-    r"""sparsemax: normalizing sparse transform (a la softmax)
+    r"""`sparsemax`: normalizing sparse transform (a la softmax).
 
     Args:
         input (Tensor): A batch tensor of logit values.
-        dim: Dimension along which to apply sparsemax.
+        dim: Dimension along which to apply `sparsemax`.
 
     Returns:
         Tensor: output with the same shape as input.

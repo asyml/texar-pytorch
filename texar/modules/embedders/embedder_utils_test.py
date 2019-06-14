@@ -3,8 +3,6 @@
 Unit tests for embedder utils.
 """
 
-# pylint: disable=no-member
-
 import unittest
 
 from texar.modules.embedders import embedder_utils

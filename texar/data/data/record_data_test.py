@@ -18,7 +18,6 @@ class RecordDataTest(unittest.TestCase):
     """Tests RecordData class.
     """
 
-    # pylint: disable=too-many-locals
     def setUp(self):
         # Create test data
         self._test_dir = tempfile.mkdtemp()

@@ -15,8 +15,6 @@
 Modules of texar losses.
 """
 
-# pylint: disable=wildcard-import
-
 from texar.losses.adv_losses import *
 from texar.losses.entropy import *
 from texar.losses.losses_utils import *

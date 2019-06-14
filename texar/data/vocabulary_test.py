@@ -7,9 +7,6 @@ import unittest
 from texar.data import vocabulary
 
 
-# pylint: disable=protected-access
-
-
 class VocabularyTest(unittest.TestCase):
     """Tests vocabulary related operations.
     """

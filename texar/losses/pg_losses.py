@@ -23,8 +23,6 @@ import torch.nn.functional as F
 from texar.losses.losses_utils import mask_and_reduce
 from texar.utils.shapes import get_rank
 
-# pylint: disable=too-many-arguments, protected-access
-
 __all__ = [
     "pg_loss_with_logits",
     "pg_loss_with_log_probs",

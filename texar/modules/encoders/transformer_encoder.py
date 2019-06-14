@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Transformer encoders with multihead self attention.
+Transformer encoders with multi-head self attention.
 """
 
-from typing import Dict
+from typing import Any, Dict
 
 import torch
 from torch import nn
@@ -27,10 +27,6 @@ from texar.modules.networks.networks import FeedForwardNetwork
 from texar.utils import transformer_attentions as attn
 from texar.utils.utils import sequence_mask
 
-# pylint: disable=too-many-locals, invalid-name
-# pylint: disable=arguments-differ, too-many-branches, too-many-statements
-
-
 __all__ = [
     "default_transformer_poswise_net_hparams",
     "TransformerEncoder",
@@ -39,9 +35,9 @@ __all__ = [
 
 def default_transformer_poswise_net_hparams(input_dim: int,
                                             output_dim: int = 512) \
-        -> Dict:
+        -> Dict[str, Any]:
     r"""Returns default hyperparameters of a
-    :class:`~texar.modules.FeedForwardNetwork` as a pos-wise network used
+    :class:`~texar.modules.FeedForwardNetwork` as a position-wise network used
     in :class:`~texar.modules.TransformerEncoder` and
     :class:`~texar.modules.TransformerDecoder`.
     This is a 2-layer dense network with dropout in-between.
@@ -121,7 +117,6 @@ def default_transformer_poswise_net_hparams(input_dim: int,
     }
 
 
-# pylint: disable=too-many-instance-attributes
 class TransformerEncoder(EncoderBase):
     r"""Transformer encoder that applies multi-head self attention for encoding
     sequences.
@@ -146,7 +141,6 @@ class TransformerEncoder(EncoderBase):
     """
 
     def __init__(self, hparams=None):
-        # pylint: disable=too-many-instance-attributes
         EncoderBase.__init__(self, hparams)
         self._input_size = self._hparams.dim
         self.self_attns = nn.ModuleList()
@@ -238,17 +232,17 @@ class TransformerEncoder(EncoderBase):
 
         Here:
 
-        "num_blocks" : int
+        `"num_blocks"`: int
             Number of stacked blocks.
 
-        "dim" : int
+        `"dim"`: int
             Hidden dimension of the encoders.
 
-        "use_bert_config" : bool
+        `"use_bert_config"`: bool
             If `False`, apply the standard Transformer Encoder architecture from
             the original paper `(Vaswani et al.) "Attention is All You Need"`.
             If `True`, apply the Transformer Encoder architecture used in BERT
-            `(Devlin et al.)` and the default setting of Tensorflow.
+            `(Devlin et al.)` and the default setting of TensorFlow.
             The differences lie in:
 
             1. The standard arch restricts the word embedding of PAD token to
@@ -260,31 +254,31 @@ class TransformerEncoder(EncoderBase):
                normalization. In standard architectures, the tensors are
                connected *before* layer normalization.
 
-        "embedding_dropout" : float
+        `"embedding_dropout"`: float
             Dropout rate of the input embedding.
 
-        "residual_dropout" :  float
+        `"residual_dropout"`: float
             Dropout rate of the residual connections.
 
-        "poswise_feedforward" : dict
+        `"poswise_feedforward"`: dict
             Hyperparameters for a feed-forward network used in residual
             connections.
             Make sure the dimension of the output tensor is equal to ``"dim"``.
             See :func:`~texar.modules.default_transformer_poswise_net_hparams`
             for details.
 
-        "multihead_attention" : dict
-            Hyperparameters for the multihead attention strategy.
+        `"multihead_attention"`: dict
+            Hyperparameters for the multi-head attention strategy.
             Make sure the ``"output_dim"`` in this module is equal to ``"dim"``.
             See :func:`~texar.modules.MultiheadAttentionEncoder.default_hparams`
             for details.
 
-        "initializer" : dict, optional
+        `"initializer"`: dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
             See :func:`~texar.core.get_initializer` for details.
 
-        "name" : str
+        `"name"`: str
             Name of the module.
         """
         dim = 512
@@ -307,8 +301,7 @@ class TransformerEncoder(EncoderBase):
             'name': 'transformer_encoder',
         }
 
-    # pylint: disable=arguments-differ
-    def forward(self,  # type: ignore
+    def forward(self,  # type: ignore # pylint: disable=arguments-differ
                 inputs: torch.Tensor,
                 sequence_length: torch.LongTensor) \
             -> torch.Tensor:

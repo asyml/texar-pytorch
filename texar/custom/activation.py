@@ -1,3 +1,7 @@
+"""
+Custom activation functions used in various methods.
+"""
+
 import math
 
 import torch
@@ -5,8 +9,7 @@ from torch import nn
 
 
 class BertGELU(nn.Module):
-    """
-    Bert use GELU as the activation function for the poswise network.
+    r"""Bert uses GELU as the activation function for the position-wise network.
     """
 
     def forward(self, x):
@@ -14,9 +17,8 @@ class BertGELU(nn.Module):
 
 
 class GPTGELU(nn.Module):
-    """
-    For information: OpenAI GPT's gelu is slightly different (and gives slightly
-    different results).
+    r"""For information: OpenAI GPT's GELU is slightly different (and gives
+    slightly different results).
     """
 
     def forward(self, x):

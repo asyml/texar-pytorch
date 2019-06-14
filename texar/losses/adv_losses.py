@@ -39,9 +39,6 @@ def binary_adversarial_losses(
         mode: str = "max_real") -> Tuple[torch.Tensor, torch.Tensor]:
     r"""Computes adversarial losses of real/fake binary discrimination game.
 
-    .. role:: python(code)
-       :language: python
-
     Args:
         real_data (Tensor or array): Real data of shape
             `[num_real_examples, ...]`.

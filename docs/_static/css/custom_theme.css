@@ -20,6 +20,11 @@ h1, h2, .rst-content .toctree-wrapper p.caption, h3, h4, h5, h6, legend, p.capti
     font-size: inherit;
 }
 
+div.section h3 > span.hidden-section,
+div.section h3 > span.hidden-section + a.headerlink {
+    display: none;
+}
+
 /* Literal color */
 .rst-content tt.literal, .rst-content tt.literal, .rst-content code.literal {
     color: #DB2407;

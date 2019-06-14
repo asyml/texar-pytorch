@@ -2,9 +2,6 @@
 Unit tests for RNN decoders.
 """
 
-# pylint: disable=invalid-name, not-callable, too-many-arguments
-# pylint: disable=too-many-locals, protected-access
-
 import unittest
 
 import numpy as np

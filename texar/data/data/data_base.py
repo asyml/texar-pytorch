@@ -111,7 +111,7 @@ class ZipDataSource(DataSource[Tuple[RawExample, ...]]):
 class FilterDataSource(DataSource[RawExample]):
     r"""Data source for filtering raw example with user-specified filter
     function. Only those examples for which the filter functions returns
-    ``True`` are returned.
+    `True` are returned.
     """
 
     def __init__(self, source: DataSource[RawExample],
@@ -305,7 +305,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 self._lazy_strategy is _LazyStrategy.ALL and
                 self._cache_strategy is not _CacheStrategy.LOADED):
             self._transformed_source = _TransformedDataSource[
-                RawExample, Example](self._source, self._process)
+                RawExample, Example](self._source, self.process)
             self._source = self._transformed_source  # type: ignore
 
         # Check whether data source supports random access, and obtain dataset
@@ -330,7 +330,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         if (not self._parallelize_processing and
                 self._cache_strategy is _CacheStrategy.LOADED):
             self._transformed_source = _TransformedDataSource[
-                RawExample, Example](self._source, self._process)
+                RawExample, Example](self._source, self.process)
             self._source = self._transformed_source  # type: ignore
 
         # Simplify some logic-heavy checks.
@@ -355,7 +355,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         # Perform eager loading/processing if required.
         if self._lazy_strategy is _LazyStrategy.NONE:
             # Process entire dataset and cache.
-            self._processed_cache = [self._process(raw_example)
+            self._processed_cache = [self.process(raw_example)
                                      for raw_example in self._source]
             self._dataset_size = len(self._processed_cache)
             self._fully_cached = True
@@ -393,7 +393,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
         Here:
 
-        "num_epochs" : int
+        `"num_epochs"`: int
             Number of times the dataset should be repeated.
 
             .. note::
@@ -401,11 +401,11 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 ignored. A warning will be generated is any value other than
                 1 is used.
 
-        "batch_size" : int
+        `"batch_size"`: int
             Batch size, i.e., the number of consecutive elements of the
             dataset to combine in a single batch.
 
-        "allow_smaller_final_batch" : bool
+        `"allow_smaller_final_batch"`: bool
            Whether to allow the final batch to be smaller if there are
            insufficient elements left. If `False`, the final batch is
            discarded if it is smaller than batch size. Note that,
@@ -413,10 +413,10 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
            will have a a **static** batch_size dimension equal to
            "batch_size".
 
-        "shuffle" : bool
+        `"shuffle"`: bool
             Whether to randomly shuffle the elements of the dataset.
 
-        "shuffle_buffer_size" : int
+        `"shuffle_buffer_size"`: int
             The buffer size for data shuffling. The larger, the better
             the resulting data is mixed.
 
@@ -424,7 +424,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             whole dataset (i.e., make the shuffling the maximally
             effective).
 
-        "shard_and_shuffle" : bool
+        `"shard_and_shuffle"`: bool
             Whether to first shard the dataset and then shuffle each
             block respectively. Useful when the whole data is too large to
             be loaded efficiently into the memory.
@@ -435,14 +435,14 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             .. warning::
                 Sharding is not yet supported. This option will be ignored.
 
-        "num_parallel_calls" : int
+        `"num_parallel_calls"`: int
             Number of elements from the datasets to process in parallel.
             When ``"num_parallel_calls"`` equals 1, no worker threads will
             be created; however, when the value is greater than 1, the
             number of worker threads will be equal to
             ``"num_parallel_calls"``.
 
-        "prefetch_buffer_size" : int
+        `"prefetch_buffer_size"`: int
             The maximum number of elements that will be buffered when
             prefetching.
 
@@ -453,13 +453,13 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 internally by PyTorch :torch_docs:`DataLoader
                 <data.html#torch.utils.data.DataLoader>`.
 
-        max_dataset_size : int
+        `"max_dataset_size"`: int
             Maximum number of instances to include in
             the dataset. If set to `-1` or greater than the size of
             dataset, all instances will be included. This constraint is
             imposed after data shuffling and filtering.
 
-        seed : int, optional
+        `"seed"`: int, optional
             The random seed for shuffle.
 
             Note that if a seed is set, the shuffle order will be exact
@@ -469,10 +469,10 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 Manual seeding is not yet supported. This option will be
                 ignored.
 
-        name : str
+        `"name"`: str
             Name of the data.
 
-        lazy_strategy : str
+        `"lazy_strategy"`: str
             Lazy strategy for data examples. Lazy loading/processing defers
             data loading/processing until when it's being accessed.
             Non-lazy (eager) loading/processing would load/process all data
@@ -485,7 +485,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             Defaults to `all`. Note that currently, all eager operations
             are performed on a single process only.
 
-        cache_strategy: str
+        `"cache_strategy"`: str
             Caching strategy for data examples. Available options are:
 
             - `none`: No data is cached. Data is always loaded from
@@ -504,7 +504,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             - When `lazy_strategy` is `process`, `none` is equivalent
               to `loaded`.
 
-        parallelize_processing: bool
+        `"parallelize_processing"`: bool
             Whether to perform parallelized processing of data. Since
             multi-processing parallelism is utilized, this flag should be
             `False` if your process routine involves modifying a shared
@@ -552,7 +552,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         `parallelize_processing` is `False`."""
         if len(self._processed_cache) <= index:
             self._processed_cache.extend(
-                self._process(self._source[x])
+                self.process(self._source[x])
                 for x in range(len(self._processed_cache), index + 1))
             if len(self._processed_cache) == self._dataset_size:
                 self._fully_cached = True
@@ -616,7 +616,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             assert self._dataset_size is not None
         return self._dataset_size
 
-    def _process(self, raw_example: RawExample) -> Example:
+    def process(self, raw_example: RawExample) -> Example:
         r"""The process routine. Subclasses must implement this method.
 
         The process routine would take raw examples loaded from the data source
@@ -639,13 +639,13 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             elif not self._parallelize_processing:
                 return self._transformed_source[index]
             else:
-                return self._process(self._source[index])
+                return self.process(self._source[index])
         else:
             # `index` is a tuple of (index, example).
             if not self._parallelize_processing:
                 return index[1]  # type: ignore
             else:
-                return self._process(index[1])
+                return self.process(index[1])
 
     def _add_cached_examples(self, indices: List[int], examples: List[Example]):
         r"""Called by :class:`texar.data.data._CacheDataLoaderIter` to cache
@@ -661,7 +661,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             # deleted. Thus, we move deletion to
             # `_add_cached_examples`.
             for index in indices:
-                del self._cached_source._cache[index]
+                del self._cached_source._cache[index]  # pylint: disable=protected-access
         for index, example in zip(indices, examples):
             if index == len(self._processed_cache):
                 self._processed_cache.append(example)
@@ -714,7 +714,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         """
         return self._source
 
-    def _collate(self, examples: List[Example]) -> Batch:
+    def collate(self, examples: List[Example]) -> Batch:
         r"""The collate routine. Subclasses must implement this method.
 
         The collate routine is called to collate (combine) examples into
@@ -746,7 +746,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         Returns:
             The collated batch.
         """
-        batch = self._collate(examples)
+        batch = self.collate(examples)
         if self._should_return_processed_examples:
             return examples, batch
         return batch

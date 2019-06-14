@@ -9,9 +9,6 @@ import torch
 from texar.modules.networks.networks import FeedForwardNetwork
 
 
-# pylint: disable=no-member, invalid-name
-
-
 class FeedForwardNetworkTest(unittest.TestCase):
     """Tests the class
     :class:`~texar.modules.networks.networks.FeedForwardNetwork`.

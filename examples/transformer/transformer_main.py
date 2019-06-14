@@ -19,18 +19,16 @@ import importlib
 import os
 import pickle
 import random
-from tqdm import tqdm
 
 import torch
+from tqdm import tqdm
 from torchtext import data
 
 import texar as tx
-from bleu_tool import bleu_wrapper
 from texar.modules import Transformer
+from bleu_tool import bleu_wrapper
 from utils import data_utils, utils
 from utils.preprocess import eos_token_id
-
-# pylint: disable=invalid-name, too-many-locals
 
 parser = argparse.ArgumentParser()
 
@@ -71,7 +69,6 @@ def main():
         config_data.input_dir, config_data.filename_prefix)
     with open(config_data.vocab_file, 'rb') as f:
         id2w = pickle.load(f)
-    vocab_size = len(id2w)
 
     beam_width = getattr(config_model, "beam_width", 1)
 
@@ -136,6 +133,7 @@ def main():
             # For 'eval' mode, the BLEU is based on token ids (rather than
             # text tokens) and serves only as a surrogate metric to monitor
             # the training process
+            # TODO: Use texar.evals.bleu
             fname = os.path.join(args.model_dir, 'tmp.eval')
             hwords, rwords = [], []
             for hyp, ref in zip(hypotheses, references):
@@ -220,7 +218,7 @@ def main():
         logger.info("Begin running with train_and_evaluate mode")
         model_path = os.path.join(args.model_dir, args.model_fn)
         if os.path.exists(model_path):
-            logger.info("Restore latest checkpoint in %s", model_path)
+            logger.info("Restore latest checkpoint in", model_path)
             ckpt = torch.load(model_path)
             model.load_state_dict(ckpt['model'])
             optim.load_state_dict(ckpt['optimizer'])
@@ -242,7 +240,7 @@ def main():
     elif args.run_mode == 'test':
         logger.info("Begin running with test mode")
         model_path = os.path.join(args.model_dir, args.model_fn)
-        logger.info("Restore latest checkpoint in %s", model_path)
+        logger.info("Restore latest checkpoint in", model_path)
         ckpt = torch.load(model_path)
         model.load_state_dict(ckpt['model'])
         _eval_epoch(0, mode='test')

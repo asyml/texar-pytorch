@@ -1,17 +1,26 @@
+"""
+Sequence-to-Sequence Transformer model
+"""
+
 import pickle
 from typing import Optional
 
 import torch
 from torch import nn
 
-import texar as tx
 from texar.losses.mle_losses import sequence_softmax_cross_entropy
 from texar.module_base import ModuleBase
-from texar.modules.decoders import TransformerDecoder
-from texar.modules.encoders import TransformerEncoder
+from texar.modules.decoders.transformer_decoders import TransformerDecoder
+from texar.modules.embedders.embedders import WordEmbedder
+from texar.modules.embedders.position_embedders import SinusoidsPositionEmbedder
+from texar.modules.encoders.transformer_encoder import TransformerEncoder
 
 
 class Transformer(ModuleBase):
+    r"""A standalone sequence-to-sequence Transformer model.
+    TODO: Add detailed docstrings.
+    """
+
     def __init__(self, config_model, config_data):
         ModuleBase.__init__(self)
         self.config_model = config_model
@@ -24,10 +33,10 @@ class Transformer(ModuleBase):
         self.pad_token_id, self.bos_token_id = (0, 1)
         self.eos_token_id, self.unk_token_id = (2, 3)
 
-        self.word_embedder = tx.modules.WordEmbedder(
+        self.word_embedder = WordEmbedder(
             vocab_size=self.vocab_size, hparams=config_model.emb
         )
-        self.pos_embedder = tx.modules.SinusoidsPositionEmbedder(
+        self.pos_embedder = SinusoidsPositionEmbedder(
             position_size=config_data.max_decoding_length,
             hparams=config_model.position_embedder_hparams,
         )
@@ -53,6 +62,18 @@ class Transformer(ModuleBase):
         labels: Optional[torch.Tensor] = None,
         beam_width: Optional[int] = None,
     ):
+        r"""TODO: Add detailed docstrings.
+
+        Args:
+            encoder_input:
+            is_train_mode:
+            decoder_input:
+            labels:
+            beam_width:
+
+        Returns:
+
+        """
 
         batch_size = encoder_input.size()[0]
         # (text sequence length excluding padding)
@@ -150,21 +171,20 @@ class Transformer(ModuleBase):
 
 
 class LabelSmoothingLoss(nn.Module):
-    """
-    With label smoothing,
+    r"""With label smoothing,
     KL-divergence between q_{smoothed ground truth prob.}(w)
     and p_{prob. computed by model}(w) is minimized.
+
+    Args:
+        label_confidence: the confidence weight on the ground truth label.
+        tgt_vocab_size: the size of the final classification.
+        ignore_index: The index in the vocabulary to ignore weight.
     """
 
     def __init__(self, label_confidence, tgt_vocab_size, ignore_index=0):
-        """
-        :param label_confidence: the confidence weight on the ground truth label
-        :param tgt_vocab_size: the size of the final classification
-        :param ignore_index: The index in the vocabulary to ignore weight
-        """
         self.ignore_index = ignore_index
         self.tgt_vocab_size = tgt_vocab_size
-        super(LabelSmoothingLoss, self).__init__()
+        super().__init__()
 
         label_smoothing = 1 - label_confidence
         assert 0.0 < label_smoothing <= 1.0
@@ -180,10 +200,13 @@ class LabelSmoothingLoss(nn.Module):
         target: torch.Tensor,
         label_lengths: torch.LongTensor,
     ) -> torch.Tensor:
-        """
-        output (FloatTensor): batch_size x seq_length * n_classes
-        target (LongTensor): batch_size * seq_length, specify the label target
-        label_lengths(torch.LongTensor): specify the length of the labels
+        r"""
+
+        Args:
+            output (FloatTensor): batch_size x seq_length * n_classes
+            target (LongTensor): batch_size * seq_length, specify the label
+                target
+            label_lengths(torch.LongTensor): specify the length of the labels
         """
         ori_shapes = (output.size(), target.size())
         output = output.view(-1, self.tgt_vocab_size)

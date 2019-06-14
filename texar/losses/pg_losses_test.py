@@ -2,8 +2,6 @@
 Unit tests for pg losses.
 """
 
-# pylint: disable=invalid-name
-
 import unittest
 
 import torch

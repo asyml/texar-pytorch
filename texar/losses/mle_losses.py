@@ -15,9 +15,6 @@
 Various losses
 """
 
-# pylint: disable=invalid-name, not-context-manager, protected-access,
-# pylint: disable=too-many-arguments
-
 from typing import Callable, Optional, Tuple, Union
 
 import torch
@@ -382,9 +379,6 @@ def binary_sigmoid_cross_entropy_with_clas(
         return_pos_neg_losses: bool = False) \
         -> Union[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
     r"""Computes sigmoid cross entropy of binary classifier.
-
-    .. role:: python(code)
-       :language: python
 
     Args:
         clas_fn: A callable takes data (e.g., :attr:`pos_inputs` and

@@ -16,13 +16,12 @@ https://github.com/google-research/bert/blob/master/run_classifier.py
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 import csv
 import logging
 import os
 
 import texar as tx
-import utils.tokenization as tokenization
+from utils import tokenization
 
 
 class InputExample:
@@ -55,7 +54,7 @@ class InputFeatures:
         self.label_id = label_id
 
 
-class DataProcessor(object):
+class DataProcessor:
     """Base class for data converters for sequence classification data sets."""
 
     def get_train_examples(self, data_dir):
@@ -107,14 +106,15 @@ class SSTProcessor(DataProcessor):
         """See base class."""
         return ["0", "1"]
 
-    def _create_examples(self, lines, set_type):
+    @staticmethod
+    def _create_examples(lines, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
-        if set_type == 'train' or set_type == 'dev':
+        if set_type in ('train', 'dev'):
             for (i, line) in enumerate(lines):
                 if i == 0:
                     continue
-                guid = "%s-%s" % (set_type, i)
+                guid = f"{set_type}-{i}"
                 text_a = tokenization.convert_to_unicode(line[0])
                 # Single sentence classification, text_b doesn't exist
                 text_b = None
@@ -125,7 +125,7 @@ class SSTProcessor(DataProcessor):
             for (i, line) in enumerate(lines):
                 if i == 0:
                     continue
-                guid = "%s-%s" % (set_type, i)
+                guid = f"{set_type}-{i}"
                 text_a = tokenization.convert_to_unicode(line[1])
                 # Single sentence classification, text_b doesn't exist
                 text_b = None
@@ -207,7 +207,8 @@ class MnliProcessor(DataProcessor):
         """See base class."""
         return ["contradiction", "entailment", "neutral"]
 
-    def _create_examples(self, lines, set_type):
+    @staticmethod
+    def _create_examples(lines, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
         for (i, line) in enumerate(lines):
@@ -250,7 +251,8 @@ class MrpcProcessor(DataProcessor):
         """See base class."""
         return ["0", "1"]
 
-    def _create_examples(self, lines, set_type):
+    @staticmethod
+    def _create_examples(lines, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
         for (i, line) in enumerate(lines):
@@ -293,7 +295,8 @@ class ColaProcessor(DataProcessor):
         """See base class."""
         return ["0", "1"]
 
-    def _create_examples(self, lines, set_type):
+    @staticmethod
+    def _create_examples(lines, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
         for (i, line) in enumerate(lines):
@@ -390,14 +393,14 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     # here we disable the verbose printing of the data
     if ex_index < 0:
         logging.info("*** Example ***")
-        logging.info(f"guid: {example.guid}")
-        logging.info("tokens: " + " ".join(
+        logging.info("guid: %s", example.guid)
+        logging.info("tokens: %s", " ".join(
             [tokenization.printable_text(x) for x in tokens]))
-        logging.info("input_ids: " + " ".join([str(x) for x in input_ids]))
-        logging.info(f"input_ids length: {len(input_ids)}")
-        logging.info("input_mask: " + " ".join([str(x) for x in input_mask]))
-        logging.info("segment_ids: " + " ".join([str(x) for x in segment_ids]))
-        logging.info(f"label: {example.label} (id = {label_id})")
+        logging.info("input_ids: %s", " ".join([str(x) for x in input_ids]))
+        logging.info("input_ids length: %d", len(input_ids))
+        logging.info("input_mask: %s", " ".join([str(x) for x in input_mask]))
+        logging.info("segment_ids: %s", " ".join([str(x) for x in segment_ids]))
+        logging.info("label: %s (id = %d)", example.label, label_id)
 
     feature = InputFeatures(input_ids=input_ids,
                             input_mask=input_mask,

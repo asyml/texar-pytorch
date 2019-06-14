@@ -15,8 +15,6 @@
 Modules of texar library utils.
 """
 
-# pylint: disable=wildcard-import
-
 from texar.utils.average_recorder import *
 from texar.utils.dtypes import *
 from texar.utils.exceptions import *

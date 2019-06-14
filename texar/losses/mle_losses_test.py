@@ -2,8 +2,6 @@
 Unit tests for mle losses.
 """
 
-# pylint: disable=invalid-name
-
 import unittest
 
 import torch

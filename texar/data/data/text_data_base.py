@@ -17,7 +17,7 @@ Base text data class that is inherited by all text data classes.
 import io
 import locale
 from abc import ABC
-from typing import IO, Iterator, Optional, TypeVar, AnyStr, BinaryIO
+from typing import IO, Iterator, Optional, TypeVar
 
 import torch
 from texar.data.data.data_base import DataBase, DataSource
@@ -50,7 +50,7 @@ class TextLineDataSource(DataSource[str]):
             file_paths (str or list[str]): Paths to the text files.
             compression_type (str, optional): The compression type for the text
                 files, ``"gzip"`` and ``"zlib"`` are supported. Default is
-                ``None``, in which case files are treated as plain text files.
+                `None`, in which case files are treated as plain text files.
             encoding (str, optional): Encoding for the files. By default uses
                 the default locale of the system (usually UTF-8).
             delimiter (str, optional): Delimiter for tokenization purposes. This
@@ -61,8 +61,8 @@ class TextLineDataSource(DataSource[str]):
                 ``max_length`` tokens will be dropped.
 
                 .. note::
-                    ``delimiter`` and ``max_length`` should both be ``None`` or
-                    not ``None``.
+                    ``delimiter`` and ``max_length`` should both be `None` or
+                    not `None`.
         """
         if compression_type is not None:
             compression_type = compression_type.lower()
@@ -157,14 +157,14 @@ class TextLineDataSource(DataSource[str]):
                         # A very brute way to filter out overly long lines at
                         # this stage, but still better than actually performing
                         # tokenization.
-                        if (line.count(self._delimiter) + 1  # type: ignore
-                                > self._max_length):
+                        if (line.count(self._delimiter) + 1 >  # type: ignore
+                                self._max_length):
                             continue
                     yield line.rstrip('\n')
 
 
-class TextDataBase(DataBase[RawExample, Example], ABC):  # noqa: E501 pylint: disable=too-few-public-methods
-    """Base class inherited by all text data classes.
+class TextDataBase(DataBase[RawExample, Example], ABC):
+    r"""Base class inherited by all text data classes.
     """
 
     def __init__(self, source: DataSource[RawExample], hparams,
@@ -173,7 +173,7 @@ class TextDataBase(DataBase[RawExample, Example], ABC):  # noqa: E501 pylint: di
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of default hyperparameters.
+        r"""Returns a dictionary of default hyperparameters.
 
         See the specific subclasses for the details.
         """

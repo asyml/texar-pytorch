@@ -2,8 +2,6 @@
 Unit tests for entropy.
 """
 
-# pylint: disable=invalid-name
-
 import unittest
 
 import torch

@@ -12,9 +12,6 @@ from texar.modules.decoders.transformer_decoders import TransformerDecoder
 from texar.modules.decoders.transformer_decoders import TransformerDecoderOutput
 
 
-# pylint: disable=too-many-instance-attributes
-
-
 class TransformerDecoderTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.TransformerDecoder`
     """

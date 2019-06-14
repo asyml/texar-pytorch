@@ -1,6 +1,10 @@
+"""
+Various utilities for data module
+"""
+
 from enum import Enum
-from typing import Any, Dict, ItemsView, KeysView, List, Optional, Tuple, \
-    Union, ValuesView
+from typing import (
+    Any, Dict, ItemsView, KeysView, List, Optional, Tuple, Union, ValuesView)
 
 import numpy as np
 
@@ -22,8 +26,8 @@ def padded_batch(examples: Union[List[np.ndarray], List[List[int]]],
     Args:
         examples (list of lists): The list of examples.
         pad_length (int, optional): The desired length after padding. If
-            ``None``, use the maximum length of lists in the batch. Defaults to
-            ``None``. Note that if ``pad_length`` is not ``None`` and the
+            `None`, use the maximum length of lists in the batch. Defaults to
+            `None`. Note that if ``pad_length`` is not `None` and the
             maximum length of lists is greater than ``pad_length``, then all
             lists are padded to the maximum length instead.
         pad_value (int, optional): The value to fill in the padded positions.
@@ -84,7 +88,8 @@ class FieldBatch(Batch):
     """
 
     def __init__(self, data=None, dataset=None, device=None):
-        """Create a Batch from a list of examples."""
+        r"""Create a Batch from a list of examples.
+        """
         if data is not None:
             batch_size = len(data)
             _batch_dict = {}

@@ -12,10 +12,6 @@ from texar.data.vocabulary import SpecialTokens
 from texar.data import DataIterator
 
 
-# pylint: disable=too-many-locals, protected-access, too-many-branches
-# pylint: disable=invalid-name
-
-
 class MonoTextDataTest(unittest.TestCase):
     r"""Tests text data class.
     """

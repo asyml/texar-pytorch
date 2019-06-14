@@ -15,10 +15,8 @@
 Utilities for maintaining moving average.
 """
 
-# pylint: disable=invalid-name
-
 from collections import deque
-from typing import Deque, Dict, Optional, Union, no_type_check
+from typing import Deque, Dict, List, Optional, Union, no_type_check
 
 from texar.utils.types import MaybeList, MaybeSeq
 
@@ -37,7 +35,7 @@ class _SingleAverageRecorder:
     records) of a single metric.
 
     Args:
-        size (int, optional): The window size of moving average. If ``None``,
+        size (int, optional): The window size of moving average. If `None`,
             the average of all added records is maintained.
         name (str, optional): name of the recorder. Used when printing.
     """
@@ -58,7 +56,7 @@ class _SingleAverageRecorder:
         Args:
             record: A scalar; the new record to append.
             weight (optional): A scalar, weight of the new record for
-                calculating a weighted average. If ``None``, weight is set to
+                calculating a weighted average. If `None`, weight is set to
                 ``1``.
                 For example, :attr:`weight` can be set to batch size and
                 :attr:`record` the average value of certain metric on the batch
@@ -134,7 +132,7 @@ class AverageRecorder:
     Fields are determined by the first call of :meth:`add`.
 
     Args:
-        size (int, optional): The window size of moving average. If ``None``,
+        size (int, optional): The window size of moving average. If `None`,
             the average of all added records is maintained.
 
     Example:
@@ -205,7 +203,7 @@ class AverageRecorder:
         Args:
             record: A single scalar, a list of scalars, or a dict of scalars.
             weight (optional): A scalar, weight of the new record for
-                calculating a weighted average. If ``None``, weight is set to
+                calculating a weighted average. If `None`, weight is set to
                 ``1``.
                 For example, :attr:`weight` can be set to batch size and
                 :attr:`record` the average value of certain metrics on the batch
@@ -281,7 +279,7 @@ class AverageRecorder:
             id_or_name (optional): A list or a single element. Each element is
                 the index (if the record type is ``list``) or name (if the
                 record type is ``dict``) of the field to reset.
-                If ``None``, all fields are reset.
+                If `None`, all fields are reset.
         """
         keys = id_or_name
         if keys is None:
@@ -315,11 +313,10 @@ class AverageRecorder:
         """
         strs = {name: rec.to_str(precision=precision)
                 for name, rec in self._recorders.items()}
-        str_list = []
-        if self._record_type in {list, tuple}:
-            for i in range(len(strs)):  # noqa: E501 pylint: disable=consider-using-enumerate
-                # Enumerates the keys in order, which are the indexes
-                str_list.append(strs[i])
+        str_list: List[str] = []
+        if self._record_type in [list, tuple]:
+            # Enumerates the keys in order, which are the indexes
+            str_list.extend(strs[i] for i in range(len(strs)))
         elif self._record_type == dict:
             str_list = list(strs.values())
         else:

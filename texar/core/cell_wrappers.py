@@ -15,9 +15,6 @@
 TensorFlow-style RNN cell wrappers.
 """
 
-# pylint: disable=redefined-builtin, arguments-differ, too-many-arguments
-# pylint: disable=invalid-name, too-few-public-methods
-
 from typing import Callable, Generic, List, Optional, Tuple, TypeVar, Union
 
 import torch
@@ -27,7 +24,7 @@ from torch import nn
 from texar.core.attention_mechanism import (
     AttentionMechanism, AttentionWrapperState, compute_attention)
 from texar.utils import utils
-from texar.utils.types import MaybeList, MaybeTuple
+from texar.utils.types import MaybeList
 
 __all__ = [
     'HiddenState',
@@ -59,7 +56,7 @@ def wrap_builtin_cell(cell: nn.RNNCellBase):
 
     Returns:
         The wrapped cell derived from
-        :class`texar.core.cell_wrappers.RNNCellBase`.
+        :class:`texar.core.cell_wrappers.RNNCellBase`.
     """
     # convert cls to corresponding derived wrapper class
     if isinstance(cell, nn.RNNCell):
@@ -70,7 +67,7 @@ def wrap_builtin_cell(cell: nn.RNNCellBase):
         self = RNNCellBase.__new__(LSTMCell)
     else:
         raise TypeError(f"Unrecognized class {type(cell)}.")
-    self._cell = cell  # noqa: E501 pylint: disable=protected-access, attribute-defined-outside-init
+    self._cell = cell  # pylint: disable=protected-access,attribute-defined-outside-init
     return self
 
 
@@ -344,8 +341,8 @@ class ResidualWrapper(RNNCellBase[State]):
 class HighwayWrapper(RNNCellBase[State]):
     r"""RNNCell wrapper that adds highway connection on cell input and output.
 
-    Based on: R. K. Srivastava, K. Greff, and J. Schmidhuber, "Highway
-    networks", arXiv preprint arXiv:1505.00387, 2015.
+    Based on: `R. K. Srivastava, K. Greff, and J. Schmidhuber, "Highway
+    networks", arXiv preprint arXiv:1505.00387, 2015.`
     https://arxiv.org/pdf/1505.00387.pdf
     """
 
@@ -369,8 +366,7 @@ class HighwayWrapper(RNNCellBase[State]):
         if carry_bias_init is not None:
             nn.init.constant_(self.carry.bias, carry_bias_init)
             if not couple_carry_transform_gates:
-                nn.init.constant_(self.transform.bias,
-                                  -carry_bias_init)  # noqa: E501 pylint: disable=invalid-unary-operand-type
+                nn.init.constant_(self.transform.bias, -carry_bias_init)
 
     def forward(self,  # type: ignore
                 input: torch.Tensor, state: Optional[State] = None) \
@@ -501,12 +497,12 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
         if isinstance(attention_mechanism, (list, tuple)):
             self._is_multi = True
             attention_mechanisms = attention_mechanism
-            for attention_mechanism in attention_mechanisms:
-                if not isinstance(attention_mechanism, AttentionMechanism):
+            for mechanism in attention_mechanisms:
+                if not isinstance(mechanism, AttentionMechanism):
                     raise TypeError(
                         "attention_mechanism must contain only instances of "
                         "AttentionMechanism, saw type: %s" %
-                        type(attention_mechanism).__name__)
+                        type(mechanism).__name__)
         else:
             self._is_multi = False
             if not isinstance(attention_mechanism, AttentionMechanism):
@@ -514,7 +510,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                     "attention_mechanism must be an AttentionMechanism or list "
                     "of multiple AttentionMechanism instances, saw type: %s" %
                     type(attention_mechanism).__name__)
-            attention_mechanisms = [attention_mechanism, ]
+            attention_mechanisms = [attention_mechanism]
 
         if cell_input_fn is None:
             cell_input_fn = (
@@ -580,6 +576,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
 
     @property
     def output_size(self) -> int:
+        r"""The number of features in the output tensor."""
         if self._output_attention:
             return self._attention_layer_size
         else:

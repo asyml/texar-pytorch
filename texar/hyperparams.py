@@ -58,31 +58,33 @@ class HParams:
                 ...
             }
 
-    - **Automatic typecheck.** For most hyperparameters, provided value must
-      have the same or compatible dtype with the default value. HParams does
-      necessary typecheck, and raises Error if improper dtype is provided.
+    - **Automatic type-check.** For most hyperparameters, provided value must
+      have the same or compatible dtype with the default value. :class:`HParams`
+      does necessary type-check, and raises Error if improper dtype is provided.
       Also, hyperparameters not listed in `default_hparams` are not allowed,
       except for `"kwargs"` as detailed below.
 
     - **Flexible dtype for specified hyperparameters.**  Some hyperparameters
       may allow different dtypes of values.
 
-        - Hyperparameters named `"type"` are not typechecked.
+        - Hyperparameters named `"type"` are not type-checked.
           For example, in :func:`~texar.core.get_rnn_cell`, hyperparameter
           `"type"` can take value of an RNNCell class, its string name of module
           path, or an RNNCell class instance. (String name or module path is
-          allowed so that users can specify the value in YAML config files.)
+          allowed so that users can specify the value in YAML configuration
+          files.)
 
         - For other hyperparameters, list them
           in the `"@no_typecheck"` field in :meth:`default_hparams` to skip
-          typecheck. For example, in :class:`~texar.modules.Conv1DNetwork`,
+          type-check. For example, in :class:`~texar.modules.Conv1DNetwork`,
           hyperparameter `"kernel_size"` can be set to either a `list` of int
           or simply an `int`.
 
     - **Special flexibility of keyword argument hyperparameters.**
-      Hyperparameters named "kwargs" are used as keyword arguments for a class
-      constructor or a function call. Such hyperparameters take a `dict`, and
-      users can add arbitrary valid keyword arguments to the dict. For example:
+      Hyperparameters named ``"kwargs"`` are used as keyword arguments for a
+      class constructor or a function call. Such hyperparameters take a `dict`,
+      and users can add arbitrary valid keyword arguments to the dict.
+      For example:
 
         .. code-block:: python
 
@@ -102,8 +104,8 @@ class HParams:
             }
             _ = HParams(my_hparams, default_rnn_cell_hparams)
 
-    - **Rich interfaces.** An HParams instance provides rich interfaces for
-      accessing, updating, or adding hyperparameters.
+    - **Rich interfaces.** An :class:`HParams` instance provides rich interfaces
+      for accessing, updating, or adding hyperparameters.
 
         .. code-block:: python
 
@@ -128,8 +130,9 @@ class HParams:
 
 
     Args:
-        hparams: A `dict` or an `HParams` instance containing hyperparameters.
-            If `None`, all hyperparameters are set to default values.
+        hparams: A `dict` or an :class:`HParams` instance containing
+            hyperparameters. If `None`, all hyperparameters are set to default
+            values.
         default_hparams (dict): Hyperparameters with default values. If `None`,
             Hyperparameters are fully defined by :attr:`hparams`.
         allow_new_hparam (bool): If `False` (default), :attr:`hparams` cannot
@@ -138,7 +141,7 @@ class HParams:
             above.
     """
 
-    # - The default hyperparameters in :attr:`"kwargs"` are used (for typecheck
+    # - The default hyperparameters in :attr:`"kwargs"` are used (for type-check
     #   and complementing missing hyperparameters) only when :attr:`"type"`
     #   takes default value (i.e., missing in :attr:`hparams` or set to
     #   the same value with the default). In this case :attr:`kwargs` allows to
@@ -158,10 +161,10 @@ class HParams:
                 hparams, default_hparams, allow_new_hparam)
         else:
             parsed_hparams = self._parse(hparams, hparams)
-        super(HParams, self).__setattr__('_hparams', parsed_hparams)
+        super().__setattr__('_hparams', parsed_hparams)
 
     @staticmethod
-    def _parse(hparams: Optional[Dict[str, Any]],  # noqa: E501 pylint: disable=too-many-branches, too-many-statements
+    def _parse(hparams: Optional[Dict[str, Any]],
                default_hparams: Optional[Dict[str, Any]],
                allow_new_hparam: bool = False):
         r"""Parses hyperparameters.
@@ -293,7 +296,7 @@ class HParams:
         r"""Retrieves the value of the hyperparameter.
         """
         if name == '_hparams':
-            return super(HParams, self).__getattribute__('_hparams')
+            return super().__getattribute__('_hparams')
         if name not in self._hparams:
             # Raise AttributeError to allow copy.deepcopy, etc
             raise AttributeError("Unknown hyperparameter: %s" % name)
@@ -315,12 +318,12 @@ class HParams:
         self._hparams[name] = self._parse_value(value, name)
 
     def items(self) -> ItemsView[str, Any]:
-        r"""Returns the list of hyperparam `(name, value)` pairs
+        r"""Returns the list of hyperparameter `(name, value)` pairs.
         """
         return self._hparams.items()
 
     def keys(self) -> KeysView[str]:
-        r"""Returns the list of hyperparam names
+        r"""Returns the list of hyperparameter names.
         """
         return self._hparams.keys()
 
@@ -335,7 +338,7 @@ class HParams:
         return name in self._hparams
 
     def __str__(self) -> str:
-        r"""Return a string of the hparams.
+        r"""Return a string of the hyperparameters.
         """
         hparams_dict = self.todict()
         return json.dumps(hparams_dict, sort_keys=True, indent=2)

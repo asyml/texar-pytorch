@@ -20,8 +20,7 @@ import torch
 
 from texar.core.layers import get_pooling_layer_hparams
 from texar.hyperparams import HParams
-from texar.modules.networks.network_base import (
-    FeedForwardNetworkBase, _build_layers)
+from texar.modules.networks.network_base import FeedForwardNetworkBase
 from texar.utils.shapes import mask_sequences
 from texar.utils.utils import uniquify_str
 
@@ -50,8 +49,8 @@ def _to_list(value: Union[List, Tuple, int], name=None, list_length=None):
 
 
 class Conv1DNetwork(FeedForwardNetworkBase):
-    r"""Simple Conv-1D network which consists of a sequence of conv layers
-    followed with a sequence of dense layers.
+    r"""Simple `Conv-1D` network which consists of a sequence of convolutional
+    layers followed with a sequence of dense layers.
 
     Args:
         hparams (dict, optional): Hyperparameters. Missing
@@ -80,25 +79,24 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
     def __init__(self, in_channels: int, in_features: Optional[int] = None,
                  hparams=None):
-        super(Conv1DNetwork, self).__init__(hparams)
+        super().__init__(hparams)
         if self.hparams.num_dense_layers > 0 and in_features is None:
             raise ValueError("\"in_features\" cannot be None "
                              "if \"num_dense_layers\" > 0")
 
         # construct only non-dense layers first
-        layer_hparams = self._build_non_dense_layer_hparams(in_channels=
-                                                            in_channels)
-        _build_layers(self, layers=None, layer_hparams=layer_hparams)
+        layer_hparams = self._build_non_dense_layer_hparams(
+            in_channels=in_channels)
+        self._build_layers(layers=None, layer_hparams=layer_hparams)
         if self.hparams.num_dense_layers > 0:
             if in_features is None:
                 raise ValueError("\"in_features\" cannot be None "
                                  "if \"num_dense_layers\" > 0")
             ones = torch.ones(1, in_channels, in_features)
             input_size = self._infer_dense_layer_input_size(ones)
-            layer_hparams = self._build_dense_hparams(in_features=input_size[1],
-                                                      layer_hparams=
-                                                      layer_hparams)
-            _build_layers(self, layers=None, layer_hparams=layer_hparams)
+            layer_hparams = self._build_dense_hparams(
+                in_features=input_size[1], layer_hparams=layer_hparams)
+            self._build_layers(layers=None, layer_hparams=layer_hparams)
 
     @staticmethod
     def default_hparams():
@@ -141,105 +139,106 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
         1. For **convolutional** layers:
 
-           "num_conv_layers": int
+           `"num_conv_layers"`: int
                Number of convolutional layers.
 
-           "out_channels": int or list
+           `"out_channels"`: int or list
                The number of out_channels in the convolution, i.e., the
                dimensionality of the output space. If
                ``"num_conv_layers"`` > 1, ``"out_channels"`` must be a list of
                ``"num_conv_layers"`` integers.
 
-           "kernel_size": int or list
+           `"kernel_size"`: int or list
                Lengths of 1D convolution windows.
 
                - If `"num_conv_layers"` = 1, this can be a ``int`` list of
-                 arbitrary length denoting different sized conv windows. The
-                 number of filters of each size is specified by ``"filters"``.
+                 arbitrary length denoting different sized convolution windows.
+                 The number of filters of each size is specified by
+                 ``"filters"``.
                  For example, the default values will create 3 sets of filters,
                  each of which has kernel size of 3, 4, and 5, respectively,
                  and has filter number 128.
-               - If ``"num_conv_layers"`` > 1, this must be a list of length
+               - If `"num_conv_layers"` > 1, this must be a list of length
                  ``"num_conv_layers"``. Each element can be an ``int`` or a
                  ``int`` list of arbitrary length denoting the kernel size of
                  each layer.
 
-           "conv_activation": str or callable
+           `"conv_activation"`: str or callable
                Activation applied to the output of the convolutional
-               layers. Set to ``None`` to maintain a linear activation.
+               layers. Set to `None` to maintain a linear activation.
                See :func:`~texar.core.get_layer` for more details.
 
-           "conv_activation_kwargs" : dict, optional
-               Keyword arguments for conv activation layer.
-               See :func:`~texar.core.get_layer` for more details.
+           `"conv_activation_kwargs"`: dict, optional
+               Keyword arguments for the activation following the convolutional
+               layer. See :func:`~texar.core.get_layer` for more details.
 
-           "other_conv_kwargs" : dict, optional
-               Other keyword arguments for
-               :torch_docs:`torch.nn.Conv1d <nn.html#conv1d>` constructor,
+           `"other_conv_kwargs"`: dict, optional
+               Other keyword arguments for :torch_nn:`Conv1d` constructor,
                e.g., ``padding``.
 
         2. For **pooling** layers:
 
-           "pooling" : str or class or instance
+           `"pooling"`: str or class or instance
                Pooling layer after each of the convolutional layer(s). Can be a
                pooling layer class, its name or module path, or a class
                instance.
 
-           "pool_size" : int or list, optional
+           `"pool_size"`: int or list, optional
                Size of the pooling window. If an ``int``, all pooling layer
                will have the same pool size. If a list, the list length must
-               equal ``"num_conv_layers"``. If ``None`` and the pooling type
+               equal ``"num_conv_layers"``. If `None` and the pooling type
                is either :torch_docs:`MaxPool1d <nn.html#maxpool1d>` or
                :torch_docs:`AvgPool1d <nn.html#avgpool1d>`, the pool size will
                be set to input size. That is, the output of the pooling layer
                is a single unit.
 
-           "pool_stride" : int or list, optional
+           `"pool_stride"`: int or list, optional
                Strides of the pooling operation. If an ``int``, all
                layers will have the same stride. If a list, the list length
                must equal ``"num_conv_layers"``.
 
-           "other_pool_kwargs" : dict, optional
+           `"other_pool_kwargs"`: dict, optional
                Other keyword arguments for pooling layer class constructor.
 
-        3. For **dense** layers (note that here dense layers always follow conv
-           and pooling layers):
+        3. For **dense** layers (note that here dense layers always follow
+           convolutional and pooling layers):
 
-           "num_dense_layers" : int
+           `"num_dense_layers"`: int
                Number of dense layers.
 
-           "out_features" int or list
+           `"out_features"`: int or list
                Dimension of output features after the dense layers. If an
                ``int``, all dense layers will have the same feature dimension.
                If a list of ``int``, the list length must equal
                ``"num_dense_layers"``.
 
-           "dense_activation" : str or callable
+           `"dense_activation"`: str or callable
                Activation function applied to the output of the dense
                layers **except** the last dense layer output. Set to
-               ``None`` to maintain a linear activation.
+               `None` to maintain a linear activation.
 
-           "dense_activation_kwargs" : dict, optional
+           `"dense_activation_kwargs"`: dict, optional
                Keyword arguments for dense layer activation functions before
                the last dense layer.
 
-           "final_dense_activation" : str or callable
+           `"final_dense_activation"`: str or callable
                Activation function applied to the output of the **last** dense
-               layer. Set to ``None`` to maintain a linear activation.
+               layer. Set to `None` to maintain a linear activation.
 
-           "final_dense_activation_kwargs" : dict, optional
+           `"final_dense_activation_kwargs"`: dict, optional
                Keyword arguments for the activation function of last
                dense layer.
 
-           "other_dense_kwargs" : dict, optional
+           `"other_dense_kwargs"`: dict, optional
                Other keyword arguments for dense layer class constructor.
 
         4. For **dropouts**:
 
-           "dropout_conv" : int or list
-               The indices of conv layers (starting from 0) whose **inputs**
-               are applied with dropout. The index = :attr:`num_conv_layers`
-               means dropout applies to the final conv layer output. E.g.,
+           `"dropout_conv"`: int or list
+               The indices of convolutional layers (starting from 0) whose
+               **inputs** are applied with dropout.
+               The index = :attr:`num_conv_layers` means dropout applies to the
+               final convolutional layer output. E.g.,
 
                .. code-block:: python
 
@@ -254,17 +253,17 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                The dropout mode (training or not) is controlled
                by :attr:`self.training`.
 
-           "dropout_dense" : int or list
+           `"dropout_dense"`: int or list
                Same as ``"dropout_conv"`` but applied to dense layers (index
                starting from 0).
 
-           "dropout_rate" : float
+           `"dropout_rate"`: float
                The dropout rate, between 0 and 1. E.g.,
                ``"dropout_rate": 0.1`` would drop out 10% of elements.
 
         5. Others:
 
-           "name" : str
+           `"name"`: str
                Name of the network.
         """
         return {
@@ -328,7 +327,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         return pool_hparams
 
     def _build_conv1d_hparams(self, in_channels, pool_hparams):
-        r"""Creates the hparams for each of the conv layers usable for
+        r"""Creates the hparams for each of the convolutional layers usable for
         :func:`texar.core.layers.get_layer`.
         """
         nconv = self._hparams.num_conv_layers
@@ -524,11 +523,11 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         if sequence_length is not None:
             input = mask_sequences(input, sequence_length,
                                    dtype=dtype, time_major=False)
-        return super(Conv1DNetwork, self).forward(input)
+        return super().forward(input)
 
     def _infer_dense_layer_input_size(self, input: torch.Tensor) -> torch.Size:
         # feed forward the input on the conv part of the network to infer
         # input shape for dense layers
         with torch.no_grad():
-            output = super(Conv1DNetwork, self).forward(input)
+            output = super().forward(input)
         return output.view(output.size()[0], -1).size()
