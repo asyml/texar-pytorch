@@ -1,5 +1,5 @@
 batch_size = 2048
-test_batch_size = 64
+test_batch_size = 32
 
 max_train_epoch = 20
 display_steps = 500

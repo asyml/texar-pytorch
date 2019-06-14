@@ -77,17 +77,26 @@ python bleu_tool.py --reference=data/en_de/test.de --translation=temp/test.outpu
 
 ### Results
 
-* On IWSLT'15, the implementation achieves around `BLEU_cased=28.54` and `BLEU_uncased=29.30` (by [bleu_tool.py](./bleu_tool.py)), which are comparable to the base_single_gpu results by the [official implementation](https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/models/transformer.py) (`28.12` and `28.97`, respectively, as reported [here](https://github.com/tensorflow/tensor2tensor/pull/611)).
+* On IWSLT'15, the implementation achieves around `BLEU_cased=28.44` and 
+`BLEU_uncased=29.21` (by [bleu_tool.py](./bleu_tool.py)), which are 
+comparable to the base_single_gpu results by the [official implementation]
+(https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/models/transformer.py) (`28.12` and `28.97`, respectively, as reported [here](https://github.com/tensorflow/tensor2tensor/pull/611)).
 
-* On WMT'14, the implementation achieves around `BLEU_cased=25.12` (setting: base_single_gpu, batch_size=3072).
+* On WMT'14, the implementation achieves around `BLEU_cased=25.02` following 
+the setting in `config_wmt14.py`
+.(setting:
+ base_single_gpu, batch_size=3072). It takes more than 18 hours to finish 
+ training 250k steps. 
+ You can modify `max_train_epoch` in `config_wmt14.py` 
+ to adjust the training time.
 
 
 ### Example training log
 
 ```
-12:02:02,686:INFO:step:500 loss: 7.3735
-12:04:20,035:INFO:step:1000 loss:6.1502
-12:06:37,550:INFO:step:1500 loss:5.4877
+12:57:06,611:INFO:step: 500, loss: 7.4818
+12:58:24,629:INFO:step: 1000, loss: 6.8003
+12:59:42,661:INFO:step: 1500, loss: 6.3096
 ```
 Using an Nvidia GTX 1080Ti, the model usually converges within 5 hours (~15 epochs) on IWSLT'15.
 
