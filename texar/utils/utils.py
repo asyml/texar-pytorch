@@ -18,6 +18,7 @@ Miscellaneous Utility functions.
 import collections
 import copy
 import inspect
+from functools import lru_cache
 from pydoc import locate
 from typing import (
     Any, Callable, Collection, Dict, List, MutableMapping, Optional, Sequence,
@@ -34,6 +35,7 @@ from texar.utils.types import MaybeSeq, MaybeTuple
 MAX_SEQ_LENGTH = np.iinfo(np.int32).max
 
 __all__ = [
+    'no_map',
     'map_structure',
     'map_structure_zip',
     'sequence_mask',
@@ -75,6 +77,38 @@ ParamDict = Union[HParams, AnyDict]
 # NestedCollection = Union[T, Collection['NestedCollection']]
 
 
+@lru_cache(maxsize=None)
+def _no_map_type(container_type: Type[T]) -> Type[T]:
+    # Create a subtype of the container type that sets an normally inaccessible
+    # special attribute on instances.
+    # This is necessary because `setattr` does not work on built-in types
+    # (e.g. `list`).
+    new_type = type("_no_map" + container_type.__name__,
+                    (container_type,), {'--no-map--': True})
+    return new_type
+
+
+def no_map(container_type: Type[T], *args, **kwargs) -> T:
+    r"""Create a "`non-mappable`" container type, i.e. it will be treated as a
+    singleton object in :meth:`map_structure` and :meth:`map_structure_zip`,
+    its contents will not be traversed.
+
+    This is implemented by dynamically creating a subclass of the required type,
+    and overriding the :attr:`__subclasscheck__` class method to always return
+    `False`.
+
+    Args:
+        container_type: The type of the container to create,
+            e.g. `list`, `dict`.
+        args: Arguments to the constructor.
+        kwargs: Keyword arguments to the constructor
+
+    Returns:
+        The `non-mappable` container type.
+    """
+    return _no_map_type(container_type)(*args, **kwargs)  # type: ignore
+
+
 @no_type_check
 def map_structure(fn: Callable[[T], R], obj: Collection[T]) -> Collection[R]:
     r"""Map a function over all elements in a (possibly nested) collection.
@@ -86,6 +120,8 @@ def map_structure(fn: Callable[[T], R], obj: Collection[T]) -> Collection[R]:
     Returns:
         The collection in the same structure, with elements mapped.
     """
+    if hasattr(obj, "--no-map--"):
+        return fn(obj)
     if isinstance(obj, list):
         return [map_structure(fn, x) for x in obj]
     if isinstance(obj, tuple):
@@ -107,6 +143,14 @@ def map_structure_zip(fn: Callable[..., R],
     (possibly nested) collection. Each collection must have identical
     structures.
 
+    .. note::
+        Although identical structures are required, it is not enforced by
+        assertions. The structure of the first collection is assumed to be
+        the structure for all collections.
+
+        For rare cases where collections need to have different structures,
+        refer to :meth:`no_map`.
+
     Args:
         fn (callable): The function to call on elements.
         objs: The list of collections to map function over.
@@ -115,6 +159,8 @@ def map_structure_zip(fn: Callable[..., R],
         A collection with the same structure, with elements mapped.
     """
     obj = objs[0]
+    if hasattr(obj, "--no-map--"):
+        return fn(*objs)
     if isinstance(obj, list):
         return [map_structure_zip(fn, xs) for xs in zip(*objs)]
     if isinstance(obj, tuple):

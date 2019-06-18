@@ -19,7 +19,7 @@ import torch
 
 from texar.core.cell_wrappers import RNNCellBase
 from texar.utils.shapes import mask_sequences
-from texar.utils.types import MaybeTuple
+from texar.utils.utils import map_structure, map_structure_zip, no_map
 
 __all__ = [
     "reverse_sequence",
@@ -344,53 +344,35 @@ def _dynamic_rnn_loop(cell: RNNCellBase[State],
     time_steps = inputs.shape[0]
     all_outputs = []
 
-    all_state: MaybeTuple[List[torch.Tensor]]
-    if isinstance(state, tuple):
-        all_state = ([], [])
-    else:
-        all_state = []
+    all_state = map_structure(lambda _: no_map(list), state)
 
     for i in range(time_steps):
         output, state = cell(inputs[i], state)
         all_outputs.append(output)
-        if isinstance(state, tuple):
-            all_state[0].append(state[0])
-            all_state[1].append(state[1])
-        else:
-            all_state.append(state)  # type: ignore
+        map_structure_zip(lambda xs, x: xs.append(x), (all_state, state))
     # TODO: Do not compute everything regardless of sequence_length
 
     final_outputs = torch.stack(all_outputs, dim=0)
-
     final_outputs = mask_sequences(final_outputs,
                                    sequence_length=sequence_length,
                                    time_major=True)
 
-    final_state: MaybeTuple[List[torch.Tensor]]
-    if isinstance(state, tuple):
-        final_state = ([], [])
-    else:
-        final_state = []
-
+    final_state = map_structure(lambda _: no_map(list), state)
+    # pylint: disable=cell-var-from-loop
+    # Our use case is fine because the function is called immediately and
+    # exclusively in the current iteration of the loop.
     for batch_idx, time_idx in enumerate(sequence_length.tolist()):
         if time_idx > 0:
-            if isinstance(state, tuple):
-                final_state[0].append(all_state[0][time_idx - 1][batch_idx])
-                final_state[1].append(all_state[1][time_idx - 1][batch_idx])
-            else:
-                final_state.append(  # type: ignore
-                    all_state[time_idx - 1][batch_idx])
+            map_structure_zip(
+                lambda xs, x: xs.append(x[time_idx - 1][batch_idx]),
+                (final_state, all_state))
         else:
-            if isinstance(initial_state, tuple):
-                final_state[0].append(initial_state[0][batch_idx])
-                final_state[1].append(initial_state[1][batch_idx])
-            else:
-                final_state.append(initial_state[batch_idx])  # type: ignore
+            map_structure_zip(
+                lambda xs, x: xs.append(x[batch_idx]),
+                (final_state, initial_state))
+    # pylint: enable=cell-var-from-loop
 
-    if isinstance(state, tuple):
-        final_state = (torch.stack(final_state[0], dim=0),
-                       torch.stack(final_state[1], dim=0))
-    else:
-        final_state = torch.stack(final_state, dim=0)  # type: ignore
+    final_state = map_structure(
+            lambda x: torch.stack(x, dim=0), final_state)
 
     return final_outputs, final_state
