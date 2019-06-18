@@ -15,11 +15,10 @@
 Base class for encoders.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import torch
 
-from texar.hyperparams import HParams
 from texar.module_base import ModuleBase
 
 __all__ = [
@@ -30,9 +29,6 @@ __all__ = [
 class EncoderBase(ModuleBase):
     r"""Base class inherited by all encoder classes.
     """
-
-    def __init__(self, hparams: Optional[HParams] = None):
-        super().__init__(hparams)
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:

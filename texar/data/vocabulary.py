@@ -17,12 +17,12 @@ Helper functions and classes for vocabulary processing.
 """
 import warnings
 from collections import defaultdict
-from typing import List, MutableMapping, Sequence, Tuple, Union, Optional
+from typing import DefaultDict, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
 from texar.utils.utils import (
-    dict_lookup, str_join, strip_special_tokens, _recur_split)
+    _recur_split, dict_lookup, str_join, strip_special_tokens)
 
 __all__ = [
     "SpecialTokens",
@@ -45,7 +45,7 @@ class SpecialTokens:
 def _make_defaultdict(keys: Sequence[Union[int, str]],
                       values: Sequence[Union[int, str]],
                       default_value: Union[int, str]) \
-        -> MutableMapping[Union[int, str], Union[int, str]]:
+        -> DefaultDict[Union[int, str], Union[int, str]]:
     r"""Creates a Python `defaultdict`.
 
     Args:
@@ -57,8 +57,8 @@ def _make_defaultdict(keys: Sequence[Union[int, str]],
     Returns:
         defaultdict: A Python `defaultdict` instance that maps keys to values.
     """
-    dict_: MutableMapping[Union[int, str], Union[int, str]] = \
-        defaultdict(lambda: default_value)
+    dict_: DefaultDict[Union[int, str], Union[int, str]]
+    dict_ = defaultdict(lambda: default_value)
     for k, v in zip(keys, values):
         dict_[k] = v
     return dict_
@@ -103,7 +103,7 @@ class Vocab:
             = self.load(self._filename)
 
     def load(self, filename: str) \
-            -> Tuple[MutableMapping[int, str], MutableMapping[str, int]]:
+            -> Tuple[Dict[int, str], Dict[str, int]]:
         r"""Loads the vocabulary from the file.
 
         Args:
@@ -180,14 +180,14 @@ class Vocab:
         return dict_lookup(self.token_to_id_map_py, tokens, self.unk_token_id)
 
     @property
-    def id_to_token_map_py(self) -> MutableMapping[int, str]:
+    def id_to_token_map_py(self) -> Dict[int, str]:
         r"""The dictionary instance that maps from token index to the string
         form.
         """
         return self._id_to_token_map_py
 
     @property
-    def token_to_id_map_py(self) -> MutableMapping[str, int]:
+    def token_to_id_map_py(self) -> Dict[str, int]:
         r"""The dictionary instance that maps from token string to the index.
         """
         return self._token_to_id_map_py

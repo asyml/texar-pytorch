@@ -14,7 +14,7 @@
 """
 Helper functions and classes for embedding processing.
 """
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict
 
 import numpy as np
 
@@ -112,7 +112,7 @@ class Embedding:
     """
 
     def __init__(self, vocab: Dict[str, int],
-                 hparams: Optional[HParams] = None):
+                 hparams=None):
         self._hparams = HParams(hparams, self.default_hparams())
 
         # Initialize embeddings

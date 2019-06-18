@@ -310,7 +310,7 @@ def get_regularizer(hparams=None):
     return rgl
 
 
-def get_initializer(hparams: Optional[HParams] = None) \
+def get_initializer(hparams=None) \
         -> Optional[Callable[[torch.Tensor], torch.Tensor]]:
     r"""Returns an initializer instance.
 

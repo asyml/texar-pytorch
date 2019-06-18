@@ -22,7 +22,6 @@ from torch import nn
 
 from texar.core import layers
 from texar.core.cell_wrappers import RNNCellBase
-from texar.hyperparams import HParams
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
 from texar.modules.decoders.decoder_helpers import Helper
@@ -50,7 +49,7 @@ class RNNDecoderBase(DecoderBase[State, Output]):
                  output_layer: Optional[nn.Module] = None,
                  input_time_major: bool = False,
                  output_time_major: bool = False,
-                 hparams: Optional[HParams] = None):
+                 hparams=None):
         super().__init__(input_size, vocab_size, input_time_major,
                          output_time_major, hparams)
 
