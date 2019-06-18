@@ -148,9 +148,9 @@ def get_embedding(num_embeds: Optional[int] = None,
         embedding = torch.empty(size=[num_embeds] + dim)
         # initializer should be set by layers.get_initializer
         if initializer:
-            embedding = initializer(embedding)
+            initializer(embedding)
         else:
-            embedding = torch.nn.init.xavier_uniform_(embedding)
+            torch.nn.init.xavier_uniform_(embedding)
     else:
         if torch.is_tensor(init_value):
             embedding = init_value  # Do not copy the tensor.
