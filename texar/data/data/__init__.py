@@ -22,6 +22,7 @@ from texar.data.data.mono_text_data import *
 from texar.data.data.multi_aligned_data import *
 from texar.data.data.paired_text_data import *
 from texar.data.data.scalar_data import *
+from texar.data.data.multi_aligned_data import *
 from texar.data.data.record_data import *
 from texar.data.data.scalar_data import *
 from texar.data.data.text_data_base import *
