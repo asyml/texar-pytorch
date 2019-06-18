@@ -26,8 +26,6 @@ from texar.data.data.dataset_utils import Batch
 from texar.data.data.data_base import DataBase
 from texar.data.data.text_data_base import TextLineDataSource
 
-# pylint: disable=invalid-name, arguments-differ, not-context-manager
-
 __all__ = [
     "_default_scalar_dataset_hparams",
     "ScalarData"
@@ -49,7 +47,7 @@ def _default_scalar_dataset_hparams():
     }
 
 
-class ScalarData(DataBase):
+class ScalarData(DataBase[str, Union[int, float]]):
     """Scalar data where each line of the files is a scalar (int or float),
     e.g., a data label.
 
@@ -93,7 +91,7 @@ class ScalarData(DataBase):
 
     @staticmethod
     def default_hparams():
-        """Returns a dicitionary of default hyperparameters.
+        """Returns a dictionary of default hyperparameters.
 
         .. code-block:: python
 
