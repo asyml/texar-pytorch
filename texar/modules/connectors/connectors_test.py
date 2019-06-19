@@ -42,12 +42,8 @@ class TestConnectors(unittest.TestCase):
         state_size = namedtuple('LSTMStateTuple', ['c', 'h'])(256, 256)
         connector_0 = ConstantConnector(state_size)
         decoder_initial_state_0 = connector_0(self._batch_size)
-<<<<<<< HEAD
         connector_1 = ConstantConnector(
             state_size, hparams={"value": 1.})
-=======
-        connector_1 = ConstantConnector(state_size, hparams={"value": 1.})
->>>>>>> fb00347a96db064cc96c6166e8d2f150a9846d17
         decoder_initial_state_1 = connector_1(self._batch_size)
 
         s_0 = decoder_initial_state_0
@@ -56,12 +52,8 @@ class TestConnectors(unittest.TestCase):
         self.assertEqual(nest.flatten(s_1)[0][0, 0], 1.)
 
         size = torch.Size([1, 2, 3])
-<<<<<<< HEAD
         connector_size_0 = ConstantConnector(
             size, hparams={"value": 2.})
-=======
-        connector_size_0 = ConstantConnector(size, hparams={"value": 2.})
->>>>>>> fb00347a96db064cc96c6166e8d2f150a9846d17
         size_tensor = connector_size_0(self._batch_size)
         self.assertEqual(
             torch.Size([self._batch_size]) + size, size_tensor.size())
@@ -153,7 +145,6 @@ class TestConnectors(unittest.TestCase):
         state_size = (torch.Size([8, 32]), torch.Size([16, 64]))
         connector = MLPTransformConnector(state_size, linear_layer_dim=10)
         output = connector(torch.zeros(5, 10))
-<<<<<<< HEAD
         output_1 = output[0]
         output_2 = output[1]
         self.assertEqual(
@@ -162,8 +153,6 @@ class TestConnectors(unittest.TestCase):
         self.assertEqual(
             torch.Size([5, 16, 64]),
             output_2.size())
-=======
->>>>>>> fb00347a96db064cc96c6166e8d2f150a9846d17
 
     def test_reparameterized_stochastic_connector(self):
         r"""Tests the logic of

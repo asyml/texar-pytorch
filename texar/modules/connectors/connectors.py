@@ -39,7 +39,7 @@ __all__ = [
     "MLPTransformConnector",
     "ReparameterizedStochasticConnector",
     "StochasticConnector",
-    #"ConcatConnector"
+    # "ConcatConnector"
 ]
 
 T = TypeVar('T')
@@ -48,9 +48,9 @@ TensorStruct = Union[List[torch.Tensor],
                      MaybeTuple[torch.Tensor]]
 OutputSize = MaybeTuple[Union[int, torch.Size]]
 HParamsType = HParams
-#Optional[Union[HParams, dict]]
 ActivationFn = Optional[Callable[[torch.Tensor], torch.Tensor]]
 LinearLayer = Callable[[torch.Tensor], torch.Tensor]
+
 
 def _assert_same_size(outputs: TensorStruct,
                       output_size: OutputSize):
@@ -74,6 +74,7 @@ def _assert_same_size(outputs: TensorStruct,
             raise ValueError(
                 "The output size does not match the the required output_size")
 
+
 def _get_tensor_depth(x: torch.Tensor) -> int:
     r"""Returns the size of a tensor excluding the first dimension
     (typically the batch dimension).
@@ -82,6 +83,7 @@ def _get_tensor_depth(x: torch.Tensor) -> int:
         x: A tensor.
     """
     return int(np.prod(x.size()[1:]))
+
 
 def _sum_output_size(output_size: OutputSize) -> int:
     r"""Return sum of all dim values in :attr:`output_size`
@@ -100,6 +102,7 @@ def _sum_output_size(output_size: OutputSize) -> int:
         size_list = flat_output_size
     sum_output_size = sum(size_list)
     return sum_output_size
+
 
 def _mlp_transform(inputs: TensorStruct,
                    output_size: OutputSize,
@@ -151,7 +154,7 @@ def _mlp_transform(inputs: TensorStruct,
     if activation_fn is not None:
         fc_output = activation_fn(fc_output)
 
-    flat_output = split(fc_output, size_list, dim=1) # type: ignore
+    flat_output = split(fc_output, size_list, dim=1)    # type: ignore
     flat_output = list(flat_output)
     for i, _ in enumerate(flat_output):
         final_state = flat_output[i].size(-1)
@@ -240,7 +243,7 @@ class ConstantConnector(ConnectorBase):
             "name": "constant_connector"
         }
 
-    def forward(self, # type: ignore
+    def forward(self,    # type: ignore
                 batch_size: Union[int, torch.Tensor]) -> Any:
         """Creates output tensor(s) that has the given value.
 
@@ -329,7 +332,7 @@ class ForwardConnector(ConnectorBase):
             "name": "forward_connector"
         }
 
-    def forward(self, # type: ignore
+    def forward(self,    # type: ignore
                 inputs: TensorStruct
                 ) -> Any:
         r"""Transforms inputs to have the same structure as with
@@ -430,7 +433,7 @@ class MLPTransformConnector(ConnectorBase):
             "name": "mlp_connector"
         }
 
-    def forward(self, # type: ignore
+    def forward(self,    # type: ignore
                 inputs: TensorStruct
                 ) -> Any:
         r"""Transforms inputs with an MLP layer and packs the results to have
@@ -521,17 +524,17 @@ class ReparameterizedStochasticConnector(ConnectorBase):
         ConnectorBase.__init__(self, output_size, hparams)
 
         self._dstr = distribution
-        for dstr_attr in self._dstr.arg_constraints.keys(): # type: ignore
+        for dstr_attr in self._dstr.arg_constraints.keys():  # type: ignore
             tensor = getattr(self._dstr, dstr_attr)
             self.register_buffer(dstr_attr, nn.Parameter(tensor))
             setattr(self._dstr, dstr_attr, getattr(self, dstr_attr))
 
         if num_samples:
-            sample = self._dstr.rsample([num_samples]) # type: ignore
+            sample = self._dstr.rsample([num_samples])    # type: ignore
         else:
-            sample = self._dstr.rsample() # type: ignore
+            sample = self._dstr.rsample()  # type: ignore
 
-        if self._dstr.event_shape == []: # type: ignore
+        if self._dstr.event_shape == []:  # type: ignore
             sample = torch.reshape(
                 sample,
                 sample.size() + torch.Size([1]))
@@ -566,7 +569,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             "name": "reparameterized_stochastic_connector"
         }
 
-    def forward(self, # type: ignore
+    def forward(self,    # type: ignore
                 transform: bool = True) -> Tuple[Any, Any]:
         r"""Samples from a distribution and optionally performs transformation
         with an MLP layer.
@@ -643,17 +646,17 @@ class StochasticConnector(ConnectorBase):
         ConnectorBase.__init__(self, output_size, hparams)
 
         self._dstr = distribution
-        for dstr_attr in self._dstr.arg_constraints.keys(): # type: ignore
+        for dstr_attr in self._dstr.arg_constraints.keys():  # type: ignore
             tensor = getattr(self._dstr, dstr_attr)
             self.register_buffer(dstr_attr, nn.Parameter(tensor))
             setattr(self._dstr, dstr_attr, getattr(self, dstr_attr))
 
         if num_samples:
-            output = self._dstr.rsample([num_samples]) # type: ignore
+            output = self._dstr.rsample([num_samples])    # type: ignore
         else:
-            output = self._dstr.rsample() # type: ignore
+            output = self._dstr.rsample()    # type: ignore
 
-        if self._dstr.event_shape == []: # type: ignore
+        if self._dstr.event_shape == []:    # type: ignore
             output = torch.reshape(
                 input=output, shape=output.size() + torch.Size([1]))
 
@@ -690,7 +693,7 @@ class StochasticConnector(ConnectorBase):
             "name": "stochastic_connector"
         }
 
-    def forward(self, # type: ignore
+    def forward(self,    # type: ignore
                 transform: bool = False) -> Any:
         r"""Samples from a distribution and optionally performs transformation
         with an MLP layer.
@@ -731,7 +734,7 @@ class StochasticConnector(ConnectorBase):
         return output
 
 
-#class ConcatConnector(ConnectorBase):
+# class ConcatConnector(ConnectorBase):
 #    """Concatenates multiple connectors into one connector. Used in, e.g.,
 #    semi-supervised variational autoencoders, disentangled representation
 #    learning, and other models.

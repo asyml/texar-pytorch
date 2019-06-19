@@ -1,5 +1,7 @@
-# Apply from 
+# Apply from
+# pylint:disable=line-too-long
 # Tensorflow(https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/util/nest.py)
+# pylint: enable=line-too-long
 
 """This module can perform operations on nested structures. A nested
 structure is a Python sequence, tuple (including `namedtuple`), or
@@ -7,8 +9,7 @@ dict that can contain further sequences, tuples, and dicts.
 """
 
 import collections
-from collections import namedtuple, OrderedDict
-from typing import TypeVar, Mapping, Union, Callable, Tuple, List, Any
+from typing import TypeVar, Mapping, Union, Tuple, List, Any
 import torch
 
 
@@ -224,7 +225,6 @@ def _sequence_like(instance: InstanceType,
         return type(instance)(generator) # type: ignore
     elif _is_namedtuple(instance):
         return type(instance)(*args)
-
     else:
         # Not a namedtuple
         return type(instance)(args)
