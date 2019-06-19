@@ -45,15 +45,16 @@ __all__ = [
 ]
 
 T = TypeVar('T')
-Inputs = Union[List[Any], Dict[Any, Any], Tuple[Any], torch.Tensor]
-D = MultivariateNormal
-OutputSize = Union[MaybeTuple[int], MaybeTuple[torch.Size], Tuple]
-HParamsType = Optional[HParams]
+TensorStruct = Union[List[torch.Tensor],
+    Dict[Any, torch.Tensor],
+    MaybeTuple[torch.Tensor]]
+OutputSize = MaybeTuple[Union[int, torch.Size]]
+HParamsType = HParams
 #Optional[Union[HParams, dict]]
-ActivationFn = Optional[Callable[[torch.Tensor], torch.Tensor]]
+ActivationFn = Callable[[torch.Tensor], torch.Tensor]
 LinearLayer = Callable[[torch.Tensor], torch.Tensor]
 
-def _assert_same_size(outputs: Inputs,
+def _assert_same_size(outputs: TensorStruct,
                       output_size: OutputSize):
     r"""Check if outputs match output_size
 
@@ -84,15 +85,34 @@ def _get_tensor_depth(x: torch.Tensor) -> int:
     """
     return int(np.prod(x.size()[1:]))
 
-def _mlp_transform(inputs: Inputs,
+def _sum_output_size(output_size: OutputSize) -> int:
+    r"""Return sum of all dim values in :attr:`output_size`
+
+    Args:
+        output_size: Can be an ``Integer``, a ``torch.Size``, or a (nested)
+            ``tuple`` of ``Integers`` or ``torch.Size``.
+    """
+    flat_output_size = nest.flatten(output_size)
+
+    if isinstance(flat_output_size[0], torch.Size):
+        size_list = [0] * len(flat_output_size)
+        for (i, shape) in enumerate(flat_output_size):
+            size_list[i] = np.prod([dim for dim in shape])
+    else:
+        size_list = flat_output_size
+    sum_output_size = sum(size_list)
+    return sum_output_size
+
+def _mlp_transform(inputs: TensorStruct,
                    output_size: OutputSize,
-                   activation_fn: ActivationFn = layers.identity,
+                   linear_layer,
+                   activation_fn: Optional[ActivationFn] = layers.identity,
                    ) -> Any:
     r"""Transforms inputs through a fully-connected layer that creates
     the output with specified size.
 
     Args:
-        inputs: A ``Tensor`` of shape ``[batch_size, ...]``
+        inputs: A ``Tensor`` of shape ``[batch_size, ..., finale_state]``
             (i.e., batch-major), or a (nested) tuple of such elements.
             A Tensor or a (nested) tuple of Tensors with shape
             ``[max_time, batch_size, ...]`` (i.e., time-major) can
@@ -102,9 +122,9 @@ def _mlp_transform(inputs: Inputs,
             ``tuple`` of ``Integers`` or ``torch.Size``.
         activation_fn: Activation function applied to the output.
 
-    Returns:
+    :returns:
         If :attr:`output_size` is an ``Integer`` or a ``torch.Size``,
-        returns a ``Tensor`` of shape ``[batch_size x output_size]``.
+        returns a ``Tensor`` of shape ``[batch_size, *, output_size]``.
         If :attr:`output_size` is a ``tuple`` of Integers or TensorShape,
         returns a ``tuple`` having the same structure as:attr:`output_size`,
         where each element ``Tensor`` has the same size as
@@ -112,10 +132,13 @@ def _mlp_transform(inputs: Inputs,
     """
     # Flatten inputs
     flat_input = nest.flatten(inputs)
-    dims = [_get_tensor_depth(x) for x in flat_input]
-    flat_input = [torch.reshape(x, (-1, d)) for x, d in zip(flat_input, dims)]
-    concat_input = torch.cat(flat_input, 1)
+    if len(flat_input[0].size()) == 1:
+        batch_size = 1
+    else: 
+        batch_size = flat_input[0].size(0)
+    flat_input = [x.view(-1, x.size(-1)) for x in flat_input]
 
+    concat_input = torch.cat(flat_input, 0)
     # Get output dimension
     flat_output_size = nest.flatten(output_size)
 
@@ -126,16 +149,17 @@ def _mlp_transform(inputs: Inputs,
     else:
         size_list = flat_output_size
 
-    sum_output_size = sum(size_list)
-    linear_layer = nn.Linear(
-        concat_input.size()[-1], sum_output_size)
-
     fc_output = linear_layer(concat_input)
-    if activation_fn:
+    if activation_fn is not None:
         fc_output = activation_fn(fc_output)
 
-    flat_output = split(fc_output, size_list, dim=1) # type: ignore
+    flat_output = split(fc_output, size_list, dim=1)
     flat_output = list(flat_output)
+    for i in range(len(flat_output)):
+        final_state = flat_output[i].size(-1)
+        flat_output[i] = flat_output[i].view(batch_size, -1, final_state)
+        flat_output[i] = torch.squeeze(flat_output[i], 1)
+
     if isinstance(flat_output_size[0], torch.Size):
         for (i, shape) in enumerate(flat_output_size):
             flat_output[i] = torch.reshape(
@@ -143,7 +167,7 @@ def _mlp_transform(inputs: Inputs,
 
     output = nest.pack_sequence_as(structure=output_size,
                                    flat_sequence=flat_output)
-    return output, linear_layer
+    return output
 
 
 class ConstantConnector(ConnectorBase):
@@ -190,9 +214,10 @@ class ConstantConnector(ConnectorBase):
     """
     def __init__(self,
                  output_size: OutputSize,
-                 hparams: HParamsType = None):
+                 hparams: Optional[HParamsType] = None):
 
         ConnectorBase.__init__(self, output_size, hparams)
+        self.register_buffer('value', torch.tensor(self.hparams.value))
 
     @staticmethod
     def default_hparams() -> dict:
@@ -227,18 +252,17 @@ class ConstantConnector(ConnectorBase):
             value (optional): A scalar, the value that the output tensor(s)
                 has. If ``None``, ``"value"`` in :attr:`hparams` is used.
 
-        Returns:
+        :returns:
             A (structure of) ``Tensor`` whose structure is the same as
             :attr:`output_size`, with value speicified by
             ``value`` or :attr:`hparams`.
         """
-        value_ = self.hparams.value
 
         def full_tensor(x):
             if isinstance(x, torch.Size):
-                return torch.full((batch_size,) + x, value_)
+                return torch.full((batch_size,) + x, self.value)
             else:
-                return torch.full((batch_size, x), value_)
+                return torch.full((batch_size, x), self.value)
 
         output = utils.map_structure(
             full_tensor,
@@ -285,7 +309,7 @@ class ForwardConnector(ConnectorBase):
 
     def __init__(self,
                  output_size: OutputSize,
-                 hparams: HParamsType = None):
+                 hparams: Optional[HParamsType] = None):
         ConnectorBase.__init__(self, output_size, hparams)
 
     @staticmethod
@@ -308,7 +332,7 @@ class ForwardConnector(ConnectorBase):
         }
 
     def forward(self, # type: ignore
-                inputs: Inputs
+                inputs: TensorStruct
                 ) -> Any:
         r"""Transforms inputs to have the same structure as with
         :attr:`output_size`. Values of the inputs are not changed.
@@ -318,7 +342,7 @@ class ForwardConnector(ConnectorBase):
         Args:
             inputs: The input (structure of) tensor to pass forward.
 
-        Returns:
+        :returns:
             A (structure of) tensors that re-packs :attr:`inputs` to have
             the specified structure of :attr:`output_size`.
         """
@@ -365,6 +389,8 @@ class MLPTransformConnector(ConnectorBase):
             or a ``tuple`` of ``torch.Size``.
             For example, to transform inputs to have decoder state size, set
             :python:`output_size=decoder.state_size`.
+        linear_layer_dim: Integer, Value of finale ``dim`` of the input
+            tensors. Which is the input dim of the mlp linear layer.
         hparams (dict, optional): Hyperparameters. Missing
             hyperparamerter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter sturcture and
@@ -375,8 +401,11 @@ class MLPTransformConnector(ConnectorBase):
 
     def __init__(self,
                  output_size: OutputSize,
-                 hparams: HParamsType = None):
+                 linear_layer_dim: int,
+                 hparams: Optional[HParamsType] = None):
         ConnectorBase.__init__(self, output_size, hparams)
+        self._linear_layer = nn.Linear(
+            linear_layer_dim, _sum_output_size(output_size))
 
     @staticmethod
     def default_hparams() -> dict:
@@ -404,7 +433,7 @@ class MLPTransformConnector(ConnectorBase):
         }
 
     def forward(self, # type: ignore
-                inputs: Inputs
+                inputs: TensorStruct
                 ) -> Any:
         r"""Transforms inputs with an MLP layer and packs the results to have
         the same structure as specified by :attr:`output_size`.
@@ -415,15 +444,14 @@ class MLPTransformConnector(ConnectorBase):
                 ``tuple`` of such Tensors. That is, the first dimension of
                 (each) ``Tensor`` must be the batch dimension.
 
-        Returns:
+        :returns:
             A ``Tensor`` or a (nested) ``tuple`` of Tensors of the
             same structure of :attr:`output_size`.
         """
         activation_fn = layers.get_activation_fn(self.hparams.activation_fn)
 
-        output, linear_layer = _mlp_transform(
-            inputs, self._output_size, activation_fn)
-        self._linear_layers.append(linear_layer)
+        output = _mlp_transform(
+            inputs, self._output_size, self._linear_layer, activation_fn)
 
         return output
 
@@ -470,30 +498,47 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             a ``tuple`` of ``torch.Size``.
             For example, to transform inputs to have decoder state size, set
             :python:`output_size=decoder.state_size`.
+        distribution: A instance of subclass of
+            :torch:`distributions.distribution.Distribution`,
+            Can be a class, its name or module path, or a class instance.
+        num_samples (optional): An ``int`` or ``int`` ``Tensor``.
+            Number of samples to generate. If not given,
+            generate a single sample. Note that if batch size has
+            already been included in :attr:`distribution`'s dimensionality,
+            :attr:`num_samples` should be left as ``None``.
         hparams (dict, optional): Hyperparameters. Missing
             hyperparamerter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter sturcture and
             default values.
-        distribution: A instance of subclass of
-            :torch:`distributions.distribution.Distribution`,
-            Can be a class, its name or module path, or a class instance.
-        distribution_kwargs (dict, optional): Keyword arguments for the
-            distribution constructor. Ignored if :attr:`distribution` is a
-            class instance.
     """
 
     def __init__(self,
                  output_size: OutputSize,
-                 hparams: HParamsType = None,
-                 distribution: Union[Type[T], T, str] = 'MultivariateNormal',
-                 distribution_kwargs: Optional[Dict[str, Any]] = None,):
+                 distribution: Union[Type[T], T]=None,
+                 num_samples: Optional[Union[int, torch.Tensor]] = None,
+                 hparams: Optional[HParamsType] = None):
         ConnectorBase.__init__(self, output_size, hparams)
-        if distribution_kwargs is None:
-            distribution_kwargs = {}
-        self._dstr = utils.check_or_get_instance(
-            distribution, distribution_kwargs,
-            ["torch.distributions", "torch.distributions.multivariate_normal",
-             "texar.custom"])
+
+        self._dstr = distribution
+        for dstr_attr in self._dstr.arg_constraints.keys():
+            tensor = getattr(self._dstr, dstr_attr)
+            self.register_buffer(dstr_attr, nn.Parameter(tensor))
+            setattr(self._dstr, dstr_attr, getattr(self, dstr_attr))
+
+        if num_samples:
+            sample = self._dstr.rsample([num_samples]) # type: ignore
+        else:
+            sample = self._dstr.rsample() # type: ignore
+
+        if self._dstr.event_shape == []: # type: ignore
+            sample = torch.reshape(
+                sample,
+                sample.size() + torch.Size([1]))
+
+        self._sample = sample.float()
+        linear_layer_dim = self._sample.size(-1)
+        self._linear_layer = nn.Linear(
+            linear_layer_dim, _sum_output_size(output_size))
 
     @staticmethod
     def default_hparams() -> dict:
@@ -521,25 +566,18 @@ class ReparameterizedStochasticConnector(ConnectorBase):
         }
 
     def forward(self, # type: ignore
-                transform: bool = True,
-                num_samples: Optional[Union[int, torch.Tensor]] = None
-                ) -> Tuple[Any, Any]:
+                transform: bool = True) -> Tuple[Any, Any]:
         r"""Samples from a distribution and optionally performs transformation
         with an MLP layer.
         The distribution must be reparameterizable, i.e.,
-        :python:`distribution.reparameterization_type = FULLY_REPARAMETERIZED`.
+        :python:`Distribution.has_rsample == True`.
 
         Args:
             transform (bool): Whether to perform MLP transformation of the
                 distribution samples. If ``False``, the structure/shape of a
                 sample must match :attr:`output_size`.
-            num_samples (optional): An ``int`` or ``int`` ``Tensor``.
-                Number of samples to generate. If not given,
-                generate a single sample. Note that if batch size has
-                already been included in :attr:`distribution`'s dimensionality,
-                :attr:`num_samples` should be left as ``None``.
 
-        Returns:
+        :returns:
             A ``tuple`` (output, sample), where
             - output: A ``Tensor`` or a (nested) ``tuple`` of Tensors with
               the same structure and size of :attr:`output_size`.
@@ -551,29 +589,17 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             ValueError: The output does not match :attr:`output_size`.
         """
 
-        if num_samples:
-            sample = self._dstr.sample([num_samples]) # type: ignore
-        else:
-            sample = self._dstr.sample() # type: ignore
-
-        if self._dstr.event_shape == []: # type: ignore
-            sample = torch.reshape(
-                sample,
-                sample.size() + torch.Size([1]))
-
-        sample = sample.float()
         if transform:
             fn_modules = ['torch', 'torch.nn', 'texar.custom']
             activation_fn = utils.get_function(
                 self.hparams.activation_fn, fn_modules)
 
-            output, linear_layer = _mlp_transform(
-                sample, self._output_size, activation_fn)
-            self._linear_layers.append(linear_layer)
+            output = _mlp_transform(
+                self._sample, self._output_size, self._linear_layer, activation_fn)
 
             _assert_same_size(output, self._output_size)
 
-        return (output, sample)
+        return (output, self._sample)
 
 
 class StochasticConnector(ConnectorBase):
@@ -591,30 +617,47 @@ class StochasticConnector(ConnectorBase):
             torch.Size.
             For example, to transform inputs to have decoder state size, set
             :python:`output_size=decoder.state_size`.
+        distribution: A instance of subclass of
+            :torch:`distributions.distribution.Distribution`,
+            Can be a class, its name or module path, or a class instance.
+        num_samples (optional): An ``int`` or ``int`` ``Tensor``.
+            Number of samples to generate. If not given,
+            generate a single sample. Note that if batch size has
+            already been included in :attr:`distribution`'s dimensionality,
+            :attr:`num_samples` should be left as ``None``.
         hparams (dict, optional): Hyperparameters. Missing
             hyperparamerter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter sturcture and
             default values.
-        distribution: A instance of subclass of
-            :torch:`distributions.distribution.Distribution`,
-            Can be a class, its name or module path, or a class instance.
-        distribution_kwargs (dict, optional): Keyword arguments for the
-            distribution constructor. Ignored if :attr:`distribution` is a
-            class instance.
     """
 
     def __init__(self,
                  output_size: OutputSize,
-                 hparams: HParamsType = None,
-                 distribution: Union[Type[T], T, str] = 'MultivariateNormal',
-                 distribution_kwargs: Optional[Dict[str, Any]] = None,):
+                 distribution: Union[Type[T], T],
+                 num_samples: Optional[Union[int, torch.Tensor]] = None,
+                 hparams: Optional[HParamsType] = None):
         ConnectorBase.__init__(self, output_size, hparams)
-        if distribution_kwargs is None:
-            distribution_kwargs = {}
-        self._dstr = utils.check_or_get_instance(
-            distribution, distribution_kwargs,
-            ["torch.distributions", "torch.distributions.multivariate_normal",
-             "texar.custom"])
+
+        self._dstr = distribution
+        for dstr_attr in self._dstr.arg_constraints.keys():
+            tensor = getattr(self._dstr, dstr_attr)
+            self.register_buffer(dstr_attr, nn.Parameter(tensor))
+            setattr(self._dstr, dstr_attr, getattr(self, dstr_attr))
+
+        if num_samples:
+            sample = self._dstr.rsample([num_samples]) # type: ignore
+        else:
+            sample = self._dstr.rsample() # type: ignore
+
+        if self._dstr.event_shape == []: # type: ignore
+            sample = torch.reshape(
+                sample,
+                sample.size() + torch.Size([1]))
+
+        self._sample = sample.float()
+        linear_layer_dim = self._sample.size(-1)
+        self._linear_layer = nn.Linear(
+            linear_layer_dim, _sum_output_size(output_size))
 
     @staticmethod
     def default_hparams():
@@ -642,9 +685,7 @@ class StochasticConnector(ConnectorBase):
         }
 
     def forward(self, # type: ignore
-                transform: bool = False,
-                num_samples: Optional[Union[int, torch.Tensor]] = None
-                ) -> Any:
+                transform: bool = False) -> Any:
         r"""Samples from a distribution and optionally performs transformation
         with an MLP layer.
         The inputs and outputs are the same as
@@ -656,13 +697,8 @@ class StochasticConnector(ConnectorBase):
             transform (bool): Whether to perform MLP transformation of the
                 distribution samples. If ``False``, the structure/shape of a
                 sample must match :attr:`output_size`.
-            num_samples (optional): An ``int`` or ``int`` ``Tensor``. Number
-                of samples to generate. If not given, generate a
-                single sample. Note that if batch size has already
-                been included in :attr:`distribution`'s dimensionality,
-                ``num_samples`` should be left as ``None``.
 
-        Returns:
+        :returns:
             A ``Tensor`` or a (nested) ``tuple`` output, where
             - output: A ``Tensor`` or a (nested) ``tuple`` of Tensors
               with the same structure and size of :attr:`output_size`.
@@ -674,9 +710,9 @@ class StochasticConnector(ConnectorBase):
         """
 
         if num_samples:
-            output = self._dstr.sample([num_samples]) # type: ignore
+            output = self._dstr.rsample([num_samples]) # type: ignore
         else:
-            output = self._dstr.sample() # type: ignore
+            output = self._dstr.rsample() # type: ignore
 
         if self._dstr.event_shape == []: # type: ignore
             output = torch.reshape(
@@ -691,9 +727,8 @@ class StochasticConnector(ConnectorBase):
             activation_fn = utils.get_function(
                 self.hparams.activation_fn, fn_modules)
 
-            output, linear_layer = _mlp_transform(
-                output, self._output_size, activation_fn)
-            self._linear_layers.append(linear_layer)
+            output = _mlp_transform(
+                output, self._output_size, self._linear_layer, activation_fn)
 
         _assert_same_size(output, self._output_size)
 
@@ -722,7 +757,7 @@ class StochasticConnector(ConnectorBase):
 #    def default_hparams():
 #        """Returns a dictionary of hyperparameters with default values.
 #
-#        Returns:
+#        :returns:
 #
 #            .. code-block:: python
 #
@@ -763,7 +798,7 @@ class StochasticConnector(ConnectorBase):
 #            transform (bool): If `True`, then the output are automatically
 #                transformed to match :attr:`output_size`.
 #
-#        Returns:
+#        :returns:
 #            A Tensor or a (nested) tuple of Tensors of the same structure of
 #            the decoder state.
 #        """
