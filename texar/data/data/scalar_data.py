@@ -48,7 +48,7 @@ def _default_scalar_dataset_hparams():
 
 
 class ScalarData(DataBase[str, Union[int, float]]):
-    """Scalar data where each line of the files is a scalar (int or float),
+    r"""Scalar data where each line of the files is a scalar (int or float),
     e.g., a data label.
 
     Args:
@@ -91,7 +91,7 @@ class ScalarData(DataBase[str, Union[int, float]]):
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of default hyperparameters.
+        r"""Returns a dictionary of default hyperparameters.
 
         .. code-block:: python
 
@@ -122,24 +122,24 @@ class ScalarData(DataBase[str, Union[int, float]]):
 
         1. For the hyperparameters in the :attr:`"dataset"` field:
 
-            "files" : str or list
+            `"files"`: str or list
                 A (list of) file path(s).
 
                 Each line contains a single scalar number.
 
-            "compression_type" : str, optional
+            `"compression_type"`: str, optional
                 One of "" (no compression), "ZLIB", or "GZIP".
 
-            "data_type" : str
+            `"data_type"`: str
                 The scalar type. Currently supports "int" and "float".
 
-            "other_transformations" : list
+            `"other_transformations"`: list
                 A list of transformation functions or function names/paths to
                 further transform each single data instance.
 
                 (More documentations to be added.)
 
-            "data_name" : str
+            `"data_name"`: str
                 Name of the dataset.
 
         2. For the **general** hyperparameters, see
@@ -188,7 +188,7 @@ class ScalarData(DataBase[str, Union[int, float]]):
                      **{self.hparams.dataset["data_name"]: collated_examples})
 
     def list_items(self):
-        """Returns the list of item names that the data can produce.
+        r"""Returns the list of item names that the data can produce.
 
         Returns:
             A list of strings.
@@ -197,13 +197,13 @@ class ScalarData(DataBase[str, Union[int, float]]):
 
     @property
     def dataset(self):
-        """The dataset.
+        r"""The dataset.
         """
         return self._source
 
     @property
     def data_name(self):
-        """The name of the data tensor, "data" by default if not specified in
+        r"""The name of the data tensor, "data" by default if not specified in
         :attr:`hparams`.
         """
         return self.hparams.dataset["data_name"]
