@@ -217,7 +217,7 @@ def pad_and_concat(values: List[torch.Tensor], axis: int,
             if pad_shape[pad_dim] == max_dim_size:
                 continue
             pad_shape[pad_dim] = max_dim_size - pad_shape[pad_dim]
-            padding = torch.full(tuple(pad_shape), pad_constant_values)
+            padding = values[0].new_full(tuple(pad_shape), pad_constant_values)
             values[i] = torch.cat((v, padding), dim=pad_dim)
 
     return torch.cat(values, dim=axis)
