@@ -16,13 +16,11 @@ Various connectors.
 """
 
 from typing import (Optional, Union, Callable, Tuple, List,
-                    Any, Dict, Type, TypeVar)
+                    Any, Dict, TypeVar)
 import numpy as np
 
 import torch
 from torch import nn, split
-from torch.distributions.multivariate_normal import MultivariateNormal
-from torch.distributions.distribution import Distribution
 
 from texar.hyperparams import HParams
 from texar.modules.connectors.connector_base import ConnectorBase
@@ -46,8 +44,8 @@ __all__ = [
 
 T = TypeVar('T')
 TensorStruct = Union[List[torch.Tensor],
-    Dict[Any, torch.Tensor],
-    MaybeTuple[torch.Tensor]]
+                     Dict[Any, torch.Tensor],
+                     MaybeTuple[torch.Tensor]]
 OutputSize = MaybeTuple[Union[int, torch.Size]]
 HParamsType = HParams
 #Optional[Union[HParams, dict]]
@@ -134,7 +132,7 @@ def _mlp_transform(inputs: TensorStruct,
     flat_input = nest.flatten(inputs)
     if len(flat_input[0].size()) == 1:
         batch_size = 1
-    else: 
+    else:
         batch_size = flat_input[0].size(0)
     flat_input = [x.view(-1, x.size(-1)) for x in flat_input]
 
@@ -153,9 +151,9 @@ def _mlp_transform(inputs: TensorStruct,
     if activation_fn is not None:
         fc_output = activation_fn(fc_output)
 
-    flat_output = split(fc_output, size_list, dim=1)
+    flat_output = split(fc_output, size_list, dim=1) # type: ignore
     flat_output = list(flat_output)
-    for i in range(len(flat_output)):
+    for i, _ in enumerate(flat_output):
         final_state = flat_output[i].size(-1)
         flat_output[i] = flat_output[i].view(batch_size, -1, final_state)
         flat_output[i] = torch.squeeze(flat_output[i], 1)
@@ -466,29 +464,32 @@ class ReparameterizedStochasticConnector(ConnectorBase):
 
         .. code-block:: python
 
+            # Initialized without num_samples
             cell = LSTMCell(num_units=256)
             # cell.state_size == LSTMStateTuple(c=256, h=256)
-            connector = ReparameterizedStochasticConnector(cell.state_size)
-            kwargs = {
-                'loc': torch.zeros([batch_size, 10]),
-                'scale_diag': torch.stack(
-                    [torch.diag(x) for x in torch.ones([batch_size, 10])],
-                    0)
-            }
-            output, sample = connector(distribution_kwargs=kwargs)
-            # output == LSTMStateTuple(c=tensor_of_shape_(batch_size, 256),
-            #                          h=tensor_of_shape_(batch_size, 256))
-            # sample == Tensor([batch_size, 10])
-            kwargs = {
-                'loc': torch.zeros([10]),
-                'scale_diag': torch.stack(
-                    [torch.diag(x) for x in torch.ones([10])], dim=0)
-            }
+            mu = torch.zeros([16, 100])
+            var = torch.ones([16, 100])
+            #var = torch.stack([torch.diag(x) for x in var], 0)
+            f_mu = torch.flatten(mu)
+            f_var = torch.flatten(var)
+            gauss_ds = tds.multivariate_normal.MultivariateNormal(
+                loc=f_mu,
+                scale_tril=torch.diag(f_var))
+            connector = ReparameterizedStochasticConnector(
+                cell.state_size, distribution=gauss_ds)
+            output, sample = connector()
+            # output == LSTMStateTuple(c=tensor_of_shape_(1, 256),
+            #                          h=tensor_of_shape_(1, 256))
+            # sample == Tensor([16 * 100])
+
+            # Initialized with num_samples
+            connector = ReparameterizedStochasticConnector(
+                cell.state_size, distribution=gauss_ds, num_samples=4)
             output_, sample_ = connector(distribution_kwargs=kwargs,
-                                         num_samples=batch_size_)
-            # output_ == LSTMStateTuple(c=tensor_of_shape_(batch_size_, 256),
-            #                           h=tensor_of_shape_(batch_size_, 256))
-            # sample == Tensor([batch_size_, 10])
+                                         num_samples=4)
+            # output_ == LSTMStateTuple(c=tensor_of_shape_(4, 256),
+            #                           h=tensor_of_shape_(4, 256))
+            # sample == Tensor([4, 16 * 100])
 
     Args:
         output_size: Size of output **excluding** the batch dimension. For
@@ -500,7 +501,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             :python:`output_size=decoder.state_size`.
         distribution: A instance of subclass of
             :torch:`distributions.distribution.Distribution`,
-            Can be a class, its name or module path, or a class instance.
+            Can be a distribution class instance.
         num_samples (optional): An ``int`` or ``int`` ``Tensor``.
             Number of samples to generate. If not given,
             generate a single sample. Note that if batch size has
@@ -514,13 +515,13 @@ class ReparameterizedStochasticConnector(ConnectorBase):
 
     def __init__(self,
                  output_size: OutputSize,
-                 distribution: Union[Type[T], T]=None,
+                 distribution: T,
                  num_samples: Optional[Union[int, torch.Tensor]] = None,
                  hparams: Optional[HParamsType] = None):
         ConnectorBase.__init__(self, output_size, hparams)
 
         self._dstr = distribution
-        for dstr_attr in self._dstr.arg_constraints.keys():
+        for dstr_attr in self._dstr.arg_constraints.keys(): # type: ignore
             tensor = getattr(self._dstr, dstr_attr)
             self.register_buffer(dstr_attr, nn.Parameter(tensor))
             setattr(self._dstr, dstr_attr, getattr(self, dstr_attr))
@@ -595,7 +596,10 @@ class ReparameterizedStochasticConnector(ConnectorBase):
                 self.hparams.activation_fn, fn_modules)
 
             output = _mlp_transform(
-                self._sample, self._output_size, self._linear_layer, activation_fn)
+                self._sample,
+                self._output_size,
+                self._linear_layer,
+                activation_fn)
 
             _assert_same_size(output, self._output_size)
 
@@ -633,29 +637,31 @@ class StochasticConnector(ConnectorBase):
 
     def __init__(self,
                  output_size: OutputSize,
-                 distribution: Union[Type[T], T],
+                 distribution: T,
                  num_samples: Optional[Union[int, torch.Tensor]] = None,
                  hparams: Optional[HParamsType] = None):
         ConnectorBase.__init__(self, output_size, hparams)
 
         self._dstr = distribution
-        for dstr_attr in self._dstr.arg_constraints.keys():
+        for dstr_attr in self._dstr.arg_constraints.keys(): # type: ignore
             tensor = getattr(self._dstr, dstr_attr)
             self.register_buffer(dstr_attr, nn.Parameter(tensor))
             setattr(self._dstr, dstr_attr, getattr(self, dstr_attr))
 
         if num_samples:
-            sample = self._dstr.rsample([num_samples]) # type: ignore
+            output = self._dstr.rsample([num_samples]) # type: ignore
         else:
-            sample = self._dstr.rsample() # type: ignore
+            output = self._dstr.rsample() # type: ignore
 
         if self._dstr.event_shape == []: # type: ignore
-            sample = torch.reshape(
-                sample,
-                sample.size() + torch.Size([1]))
+            output = torch.reshape(
+                input=output, shape=output.size() + torch.Size([1]))
 
-        self._sample = sample.float()
-        linear_layer_dim = self._sample.size(-1)
+        # Disable gradients through samples
+        output = output.detach()
+        self._output = output.float()
+
+        linear_layer_dim = self._output.size(-1)
         self._linear_layer = nn.Linear(
             linear_layer_dim, _sum_output_size(output_size))
 
@@ -709,26 +715,16 @@ class StochasticConnector(ConnectorBase):
             ValueError: The output does not match :attr:`output_size`.
         """
 
-        if num_samples:
-            output = self._dstr.rsample([num_samples]) # type: ignore
-        else:
-            output = self._dstr.rsample() # type: ignore
-
-        if self._dstr.event_shape == []: # type: ignore
-            output = torch.reshape(
-                input=output, shape=output.size() + torch.Size([1]))
-        # Disable gradients through samples
-        output = output.detach()
-
-        output = output.float()
-
         if transform:
             fn_modules = ['torch', 'torch.nn', 'texar.custom']
             activation_fn = utils.get_function(
                 self.hparams.activation_fn, fn_modules)
 
             output = _mlp_transform(
-                output, self._output_size, self._linear_layer, activation_fn)
+                self._output,
+                self._output_size,
+                self._linear_layer,
+                activation_fn)
 
         _assert_same_size(output, self._output_size)
 

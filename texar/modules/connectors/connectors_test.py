@@ -15,7 +15,7 @@ from texar.modules.connectors.connectors import ConstantConnector
 from texar.modules.connectors.connectors import MLPTransformConnector
 from texar.modules.connectors.connectors import (
     ReparameterizedStochasticConnector)
-from texar.modules.connectors.connectors import _assert_same_size, _mlp_transform
+from texar.modules.connectors.connectors import _assert_same_size
 
 
 from texar.utils import nest
@@ -42,7 +42,8 @@ class TestConnectors(unittest.TestCase):
         state_size = namedtuple('LSTMStateTuple', ['c', 'h'])(256, 256)
         connector_0 = ConstantConnector(state_size)
         decoder_initial_state_0 = connector_0(self._batch_size)
-        connector_1 = ConstantConnector(state_size, hparams={"value": 1.})
+        connector_1 = ConstantConnector(
+            state_size, hparams={"value": 1.})
         decoder_initial_state_1 = connector_1(self._batch_size)
 
         s_0 = decoder_initial_state_0
@@ -51,54 +52,58 @@ class TestConnectors(unittest.TestCase):
         self.assertEqual(nest.flatten(s_1)[0][0, 0], 1.)
 
         size = torch.Size([1, 2, 3])
-        connector_size_0 = ConstantConnector(size, hparams={"value": 2.})
+        connector_size_0 = ConstantConnector(
+            size, hparams={"value": 2.})
         size_tensor = connector_size_0(self._batch_size)
         self.assertEqual(
             torch.Size([self._batch_size]) + size, size_tensor.size())
         self.assertEqual(size_tensor[0][0, 0, 0], 2.)
 
         tuple_size_1 = (torch.Size([1, 2, 3]), torch.Size([4, 5, 6]))
-        connector_size_1 = ConstantConnector(tuple_size_1, hparams={"value": 3.})
+        connector_size_1 = ConstantConnector(
+            tuple_size_1, hparams={"value": 3.})
         tuple_size_tensor = connector_size_1(self._batch_size)
         tuple_size_tensor_0 = tuple_size_tensor[0]
         tuple_size_tensor_1 = tuple_size_tensor[1]
-        self.assertEqual(torch.Size(
-            [self._batch_size]) + torch.Size([1, 2, 3]),
-                tuple_size_tensor_0.size())
+        self.assertEqual(
+            torch.Size([self._batch_size]) + torch.Size([1, 2, 3]),
+            tuple_size_tensor_0.size())
         self.assertEqual(tuple_size_tensor_0[0][0, 0, 0], 3.)
-        self.assertEqual(torch.Size(
-            [self._batch_size]) + torch.Size([4, 5, 6]),
-                tuple_size_tensor_1.size())
+        self.assertEqual(
+            torch.Size([self._batch_size]) + torch.Size([4, 5, 6]),
+            tuple_size_tensor_1.size())
         self.assertEqual(tuple_size_tensor_1[0][0, 0, 0], 3.)
 
         tuple_size_2 = (5, 10)
-        connector_size_2 = ConstantConnector(tuple_size_2, hparams={"value": 4.})
+        connector_size_2 = ConstantConnector(
+            tuple_size_2, hparams={"value": 4.})
         tuple_size_tensor = connector_size_2(self._batch_size)
         tuple_size_tensor_0 = tuple_size_tensor[0]
         tuple_size_tensor_1 = tuple_size_tensor[1]
-        self.assertEqual(torch.Size(
-            [self._batch_size]) + torch.Size([5]),
-                tuple_size_tensor_0.size())
+        self.assertEqual(
+            torch.Size([self._batch_size]) + torch.Size([5]),
+            tuple_size_tensor_0.size())
         self.assertEqual(tuple_size_tensor_0[0][0], 4.)
-        self.assertEqual(torch.Size(
-            [self._batch_size]) + torch.Size([10]),
-                tuple_size_tensor_1.size())
+        self.assertEqual(
+            torch.Size([self._batch_size]) + torch.Size([10]),
+            tuple_size_tensor_1.size())
         self.assertEqual(tuple_size_tensor_1[0][0], 4.)
 
         tuple_size_3 = (torch.Size([1, 2, 3]), 10)
-        connector_size_3 = ConstantConnector(tuple_size_3, hparams={"value": 4.})
+        connector_size_3 = ConstantConnector(
+            tuple_size_3, hparams={"value": 4.})
         tuple_size_tensor = connector_size_3(self._batch_size)
         tuple_size_tensor_0 = tuple_size_tensor[0]
         tuple_size_tensor_1 = tuple_size_tensor[1]
-        self.assertEqual(torch.Size(
-            [self._batch_size]) + torch.Size([1, 2, 3]),
-                tuple_size_tensor_0.size())
+        self.assertEqual(
+            torch.Size([self._batch_size]) + torch.Size([1, 2, 3]),
+            tuple_size_tensor_0.size())
         self.assertEqual(tuple_size_tensor_0[0][0, 0, 0], 4.)
-        self.assertEqual(torch.Size(
-            [self._batch_size]) + torch.Size([10]),
-                tuple_size_tensor_1.size())
+        self.assertEqual(
+            torch.Size([self._batch_size]) + torch.Size([10]),
+            tuple_size_tensor_1.size())
         self.assertEqual(tuple_size_tensor_1[0][0], 4.)
-        
+
 
     # pylint: disable=fixme, unnecessary-pass
     def test_forward_connector(self):
@@ -124,7 +129,7 @@ class TestConnectors(unittest.TestCase):
         self.assertEqual(
             torch.Size([5, 256]),
             output_2.size())
-        
+
         state_size = (16, 32)
         connector = MLPTransformConnector(state_size, linear_layer_dim=10)
         output = connector(torch.zeros(5, 10))

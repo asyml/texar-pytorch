@@ -1,5 +1,5 @@
 import builtins
-from typing import Callable, ContextManager, Iterator, Optional, Sequence, Tuple, Type, TypeVar, Union, overload
+from typing import Callable, ContextManager, Iterator, Optional, Sequence, Tuple, List, Type, TypeVar, Union, overload
 
 import numpy as np
 import torch.autograd
@@ -75,6 +75,7 @@ class Size(Tuple[builtins.int, ...]):
 
 T = TypeVar('T')
 MaybeTuple = Union[T, Tuple[T, ...]]
+MaybeList = Union[T, List[T]]
 
 
 class _float16(dtype): ...
@@ -1090,7 +1091,7 @@ class Tensor(TensorBase):
     def sparse_resize_and_clear_(self, size: MaybeTuple[builtins.int], sparseDims: builtins.int,
                                  denseDims: builtins.int) -> Tensor: ...
 
-    def split(tensor: Tensor, split_size_or_sections: MaybeList[int], dim: int = 0) -> Tuple[Tensor, ...]: ...
+    def split(tensor: Tensor, split_size_or_sections: MaybeList[builtins.int], dim: builtins.int = 0) -> Tuple[Tensor, ...]: ...
 
     def sqrt(self) -> Tensor: ...
 
