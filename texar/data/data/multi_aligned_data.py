@@ -33,7 +33,6 @@ from texar.data.data.record_data import (_default_record_dataset_hparams,
                                          _convert_feature_hparams,
                                          _create_image_transform)
 from texar.data.data.mono_text_data import _LengthFilterMode
-from texar.data.data_utils import count_file_lines
 from texar.data.data import dataset_utils as dsutils
 from texar.data.vocabulary import Vocab, SpecialTokens
 from texar.data.embedding import Embedding
@@ -51,7 +50,7 @@ RawExample = TypeVar('RawExample')
 Example = TypeVar('Example')
 
 
-class _DataTypes(object):  # pylint: disable=no-init, too-few-public-methods
+class _DataTypes:  # pylint: disable=no-init, too-few-public-methods
     r"""Enumeration of data types.
     """
     TEXT = "text"
@@ -65,7 +64,7 @@ def _is_text_data(data_type):
 
 
 def _is_scalar_data(data_type):
-    return data_type == _DataTypes.INT or data_type == _DataTypes.FLOAT
+    return data_type in [_DataTypes.INT, _DataTypes.FLOAT]
 
 
 def _is_record_data(data_type):
@@ -199,15 +198,28 @@ class MultiAlignedData(
         self._dataset_features: List[Optional[Dict[str, Any]]] = []
         self._name_prefix: List[str] = []
         datasources: List[DataSource] = []
+        filters: List[Optional[Callable[[str], bool]]] = []
         for _, hparams_i in enumerate(self._hparams.datasets):
             dtype = hparams_i.data_type
             datasource_i: DataSource
             if _is_text_data(dtype) or _is_scalar_data(dtype):
-                datasource_i = TextLineDataSource(hparams_i.files,
-                                             compression_type=
-                                             hparams_i.compression_type)
+                datasource_i = TextLineDataSource(
+                    hparams_i.files,
+                    compression_type=hparams_i.compression_type)
                 datasources.append(datasource_i)
                 self._dataset_features.append(None)
+                if _is_text_data(dtype) and hparams_i["length_filter_mode"] is \
+                        _LengthFilterMode.DISCARD.value and \
+                        hparams_i["max_seq_length"] is not None:
+
+                    def _get_filter(delimiter, max_seq_length):
+                        return lambda x: len(x.split(delimiter)) <= \
+                               max_seq_length
+
+                    filters.append(_get_filter(hparams_i["delimiter"],
+                                               hparams_i["max_seq_length"]))
+                else:
+                    filters.append(None)
             elif _is_record_data(dtype):
                 datasource_i = PickleDataSource(file_paths=hparams_i.files)
                 datasources.append(datasource_i)
@@ -236,6 +248,7 @@ class MultiAlignedData(
                                                "convert_types": convert_types,
                                                "image_transforms":
                                                    image_transforms})
+                filters.append(None)
             else:
                 raise ValueError("Unknown data type: %s" % hparams_i.data_type)
 
@@ -251,19 +264,6 @@ class MultiAlignedData(
 
         datasource: DataSource
         datasource = ZipDataSource(*datasources)
-
-        filters: List[Optional[Callable[[str], bool]]] = []
-        for i, ds_hpms in enumerate(self._hparams.datasets):
-            if _is_text_data(ds_hpms["data_type"]) and \
-                ds_hpms["length_filter_mode"] is\
-                    _LengthFilterMode.DISCARD.value and \
-                    ds_hpms["max_seq_length"] is not None:
-                delimiter = ds_hpms["delimiter"]
-                max_seq_length = ds_hpms["max_seq_length"]
-                filters.append(lambda x: len(x.split(delimiter)) <=
-                               max_seq_length)
-            else:
-                filters.append(None)
 
         if any(filters):
             def filter_fn(data):
@@ -470,7 +470,7 @@ class MultiAlignedData(
 
         return embs
 
-    def _process(self, raw_example: Tuple[Union[str, Dict[str, Any]], ...]) \
+    def process(self, raw_example: Tuple[Union[str, Dict[str, Any]], ...]) \
             -> Tuple[Union[List[str], int, float, Dict[str, Any]], ...]:
         dataset_hparams = self.hparams.datasets
         processed_examples = []
@@ -515,17 +515,17 @@ class MultiAlignedData(
                 # ignore to the lines below
                 if self._dataset_features[i] is not None:
                     for key, dtype in \
-                            self._dataset_features[i]["convert_types"].items():  # type: ignore # noqa
+                            self._dataset_features[i]["convert_types"].items():  # type: ignore # pylint: disable=line-too-long
                         example[key] = np.asarray(example[key], dtype=dtype)
                     for key, transform in \
-                            self._dataset_features[i]["image_transforms"].items():  # type: ignore # noqa
+                            self._dataset_features[i]["image_transforms"].items():  # type: ignore # pylint: disable=line-too-long
                         example[key] = transform(example[key])
                 for transform in self._other_transforms[i]:
                     example = transform(example)
                 processed_examples.append(example)
         return tuple(processed_examples)
 
-    def _collate(self, examples) -> Batch:
+    def collate(self, examples) -> Batch:
         dataset_hparams = self.hparams["datasets"]
         transposed_examples: List[Tuple] = list(map(tuple, zip(*examples)))
         batch: Dict[str, Any] = {}
@@ -539,9 +539,8 @@ class MultiAlignedData(
                                        self.vocab(i).eos_token])
                 text_ids = [self.vocab(i).map_tokens_to_ids_py(sent) for sent in
                             transposed_example]
-                text_ids, lengths = padded_batch(text_ids, pad_length,
-                                                 pad_value=
-                                                 self.vocab(i).pad_token_id)
+                text_ids, lengths = padded_batch(
+                    text_ids, pad_length, pad_value=self.vocab(i).pad_token_id)
                 # also pad the examples
                 pad_length = pad_length or max(lengths)
                 transposed_example = tuple(
@@ -580,7 +579,7 @@ class MultiAlignedData(
                 batch.update({self._name_prefix[i]: example})
             elif _is_record_data(dataset_hparams[i]["data_type"]):
                 for key, descriptor in \
-                        self._dataset_features[i]["feature_types"].items():  # type: ignore # noqa
+                        self._dataset_features[i]["feature_types"].items():  # type: ignore # pylint: disable=line-too-long
                     values = [ex[key] for ex in transposed_example]
                     if descriptor.shape is not None:
                         # FixedLenFeature, do not pad.
@@ -636,17 +635,6 @@ class MultiAlignedData(
         r"""The dataset.
         """
         return self._source
-
-    def dataset_size(self):
-        r"""Returns the number of data instances in the dataset.
-
-        Note that this is the total data count in the raw files, before any
-        filtering and truncation.
-        """
-        if not self._dataset_size:
-            self._dataset_size = count_file_lines(
-                self._hparams.datasets[0].files)
-        return self._dataset_size
 
     def _maybe_name_to_id(self, name_or_id):
         if is_str(name_or_id):
