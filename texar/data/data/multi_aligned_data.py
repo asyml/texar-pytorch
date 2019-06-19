@@ -52,7 +52,7 @@ Example = TypeVar('Example')
 
 
 class _DataTypes(object):  # pylint: disable=no-init, too-few-public-methods
-    """Enumeration of data types.
+    r"""Enumeration of data types.
     """
     TEXT = "text"
     INT = "int"
@@ -73,7 +73,7 @@ def _is_record_data(data_type):
 
 
 def _default_dataset_hparams(data_type=None):
-    """Returns hyperparameters of a dataset with default values.
+    r"""Returns hyperparameters of a dataset with default values.
 
     See :meth:`texar.data.MultiAlignedData.default_hparams` for details.
     """
@@ -98,7 +98,7 @@ def _default_dataset_hparams(data_type=None):
 class MultiAlignedData(
     TextDataBase[Tuple[Union[str, Dict[str, Any]], ...],
                  Tuple[Union[List[str], int, float, Dict[str, Any]], ...]]):
-    """Data consisting of multiple aligned parts.
+    r"""Data consisting of multiple aligned parts.
 
     Args:
         hparams (dict): Hyperparameters. See :meth:`default_hparams` for the
@@ -180,7 +180,7 @@ class MultiAlignedData(
         self._hparams = HParams(hparams, self.default_hparams())
         self._other_transforms: List[
             List[Callable[[Union[List[str], int, RawExample]], Example]]] = []
-        # Defaultizes hparams of each dataset
+        # Defaultizes hyperparameters of each dataset
         datasets_hparams = self._hparams.datasets
         defaultized_datasets_hparams = []
         for ds_hpms in datasets_hparams:
@@ -275,94 +275,95 @@ class MultiAlignedData(
 
     @staticmethod
     def default_hparams():
-        """Returns a dictionary of default hyperparameters.
+        r"""Returns a dictionary of default hyperparameters:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            {
-                # (1) Hyperparams specific to text dataset
-                "datasets": []
-                # (2) General hyperparams
-                "num_epochs": 1,
-                "batch_size": 64,
-                "allow_smaller_final_batch": True,
-                "shuffle": True,
-                "shuffle_buffer_size": None,
-                "shard_and_shuffle": False,
-                "num_parallel_calls": 1,
-                "prefetch_buffer_size": 0,
-                "max_dataset_size": -1,
-                "seed": None,
-                "name": "multi_aligned_data",
-            }
+                {
+                    # (1) Hyperparams specific to text dataset
+                    "datasets": []
+                    # (2) General hyperparams
+                    "num_epochs": 1,
+                    "batch_size": 64,
+                    "allow_smaller_final_batch": True,
+                    "shuffle": True,
+                    "shuffle_buffer_size": None,
+                    "shard_and_shuffle": False,
+                    "num_parallel_calls": 1,
+                    "prefetch_buffer_size": 0,
+                    "max_dataset_size": -1,
+                    "seed": None,
+                    "name": "multi_aligned_data",
+                }
 
-        Here:
+            Here:
 
-        1. "datasets" is a list of `dict` each of which specifies a
-        dataset which can be text, scalar or Record. The
-        :attr:`"data_name"` field of each dataset is used as the name
-        prefix of the data fields from the respective dataset. The
-        :attr:`"data_name"` field of each dataset should not be the same.
+            1. "datasets" is a list of `dict` each of which specifies a
+            dataset which can be text, scalar or Record. The :attr:`"data_name"`
+            field of each dataset is used as the name prefix of the data fields
+            from the respective dataset. The :attr:`"data_name"` field of each
+            dataset should not be the same.
 
-            - For scalar dataset, the allowed hyperparameters and default \
-            values are the same as the "dataset" field of \
-            :meth:`texar.data.ScalarData.default_hparams`. Note that \
-            :attr:`"data_type"` must be explicily specified \
-            (either "int" or "float"). \
+                i) For scalar dataset, the allowed hyperparameters and default
+                values are the same as the "dataset" field of
+                :meth:`texar.data.ScalarData.default_hparams`. Note that
+                :attr:`"data_type"` must be explicitly specified
+                (either "int" or "float").
 
-            - For Record dataset, the allowed hyperparameters and default \
-            values are the same as the "dataset" field of \
-            :meth:`texar.data.RecordData.default_hparams`. Note that \
-            :attr:`"data_type"` must be explicitly specified \
-            (record"). \
+                ii) For Record dataset, the allowed hyperparameters and default
+                values are the same as the "dataset" field of
+                :meth:`texar.data.RecordData.default_hparams`. Note that
+                :attr:`"data_type"` must be explicitly specified ("record").
 
-            - For text dataset, the allowed hyperparameters and default values\
-            are the same as the "dataset" filed of \
-            :meth:`texar.data.MonoTextData.default_hparams`, with several \
-            extra hyperparameters:
+                iii) For text dataset, the allowed hyperparameters and default
+                values are the same as the "dataset" filed of
+                :meth:`texar.data.MonoTextData.default_hparams`,
+                with several extra hyperparameters:
 
-                "data_type" : str
-                    The type of the dataset, one of {"text", "int", "float",
-                    "tf_record"}. If set to "int" or "float", the dataset is
-                    considered to be a scalar dataset. If set to "tf_record",
-                    the dataset is considered to be a TFRecord dataset.
-                    If not specified or set to "text", the dataset is
-                    considered to be a text dataset.
+                    `"data_type"`: str
+                        The type of the dataset, one of {"text", "int", "float",
+                        "record"}. If set to "int" or "float", the dataset is
+                        considered to be a scalar dataset. If set to
+                        "record", the dataset is considered to be a Record
+                        dataset.
 
-                "vocab_share_with" : int, optional
-                    Share the vocabulary of a preceding text dataset with the
-                    specified index in the list (starting from 0). The
-                    specified dataset must be a text dataset, and must have
-                    an index smaller than the current dataset.
+                        If not specified or set to "text", the dataset is
+                        considered to be a text dataset.
 
-                    If specified, the vocab file of current dataset is ignored.
-                    Default is `None` which disables the vocab sharing.
+                    `"vocab_share_with"`: int, optional
+                        Share the vocabulary of a preceding text dataset with
+                        the specified index in the list (starting from 0). The
+                        specified dataset must be a text dataset, and must have
+                        an index smaller than the current dataset.
 
-                "embedding_init_share_with": int, optional
-                    Share the embedding initial value of a preceding text
-                    dataset with the specified index in the list (starting
-                    from 0).
-                    The specified dataset must be a text dataset, and must have
-                    an index smaller than the current dataset.
+                        If specified, the vocab file of current dataset is
+                        ignored. Default is `None` which disables the vocab
+                        sharing.
 
-                    If specified, the :attr:`"embedding_init"` field of
-                    the current dataset is ignored. Default is `None` which
-                    disables the initial value sharing.
+                    `"embedding_init_share_with"`: int, optional
+                        Share the embedding initial value of a preceding text
+                        dataset with the specified index in the list (starting
+                        from 0). The specified dataset must be a text dataset,
+                        and must have an index smaller than the current dataset.
 
-                "processing_share_with" : int, optional
-                    Share the processing configurations of a preceding text
-                    dataset with the specified index in the list (starting
-                    from 0).
-                    The specified dataset must be a text dataset, and must have
-                    an index smaller than the current dataset.
+                        If specified, the :attr:`"embedding_init"` field of the
+                        current dataset is ignored. Default is `None` which
+                        disables the initial value sharing.
 
-                    If specified, relevant field of the current dataset are
-                    ignored, including "delimiter", "bos_token", "eos_token",
-                    and "other_transformations". Default is `None` which
-                    disables the processing sharing.
+                    `"processing_share_with"`: int, optional
+                        Share the processing configurations of a preceding text
+                        dataset with the specified index in the list (starting
+                        from 0). The specified dataset must be a text dataset,
+                        and must have an index smaller than the current dataset.
 
-        2. For the **general** hyperparameters, see
-        :meth:`texar.data.DataBase.default_hparams` for details.
+                        If specified, relevant field of the current dataset are
+                        ignored, including `delimiter`, `bos_token`,
+                        `eos_token`, and "other_transformations". Default is
+                        `None` which disables the processing sharing.
+
+            2. For the **general** hyperparameters, see
+            :meth:`texar.data.DataBase.default_hparams` for details.
+
         """
         hparams = TextDataBase.default_hparams()
         hparams["name"] = "multi_aligned_data"
@@ -377,7 +378,7 @@ class MultiAlignedData(
 
     @staticmethod
     def make_vocab(hparams):
-        """Makes a list of vocabs based on the hparams.
+        r"""Makes a list of vocabs based on the hyperparameters.
 
         Args:
             hparams (list): A list of dataset hyperparameters.
@@ -385,7 +386,7 @@ class MultiAlignedData(
         Returns:
             A list of :class:`texar.data.Vocab` instances. Some instances
             may be the same objects if they are set to be shared and have
-            the same other configs.
+            the same other configurations.
         """
         if not isinstance(hparams, (list, tuple)):
             hparams = [hparams]
@@ -433,7 +434,7 @@ class MultiAlignedData(
 
     @staticmethod
     def make_embedding(hparams, vocabs):
-        """Optionally loads embeddings from files (if provided), and
+        r"""Optionally loads embeddings from files (if provided), and
         returns respective :class:`texar.data.Embedding` instances.
         """
         if not isinstance(hparams, (list, tuple)):
@@ -609,7 +610,7 @@ class MultiAlignedData(
         return name_prefix
 
     def list_items(self):
-        """Returns the list of item names that the data can produce.
+        r"""Returns the list of item names that the data can produce.
 
         Returns:
             A list of strings.
@@ -632,12 +633,12 @@ class MultiAlignedData(
 
     @property
     def dataset(self):
-        """The dataset.
+        r"""The dataset.
         """
         return self._source
 
     def dataset_size(self):
-        """Returns the number of data instances in the dataset.
+        r"""Returns the number of data instances in the dataset.
 
         Note that this is the total data count in the raw files, before any
         filtering and truncation.
@@ -655,7 +656,7 @@ class MultiAlignedData(
         return name_or_id
 
     def vocab(self, name_or_id):
-        """Returns the :class:`~texar.data.Vocab` of text dataset by its name
+        r"""Returns the :class:`~texar.data.Vocab` of text dataset by its name
         or id. `None` if the dataset is not of text type.
 
         Args:
@@ -665,14 +666,14 @@ class MultiAlignedData(
         return self._vocab[i]
 
     def embedding_init_value(self, name_or_id):
-        """Returns the `Tensor` of embedding init value of the
+        r"""Returns the `Tensor` of embedding initial value of the
         dataset by its name or id. `None` if the dataset is not of text type.
         """
         i = self._maybe_name_to_id(name_or_id)
         return self._embedding[i]
 
     def text_name(self, name_or_id):
-        """The name of text tensor of text dataset by its name or id. If the
+        r"""The name of text tensor of text dataset by its name or id. If the
         dataset is not of text type, returns `None`.
         """
         i = self._maybe_name_to_id(name_or_id)
@@ -682,7 +683,7 @@ class MultiAlignedData(
         return name
 
     def length_name(self, name_or_id):
-        """The name of length tensor of text dataset by its name or id. If the
+        r"""The name of length tensor of text dataset by its name or id. If the
         dataset is not of text type, returns `None`.
         """
         i = self._maybe_name_to_id(name_or_id)
@@ -692,7 +693,7 @@ class MultiAlignedData(
         return name
 
     def text_id_name(self, name_or_id):
-        """The name of length tensor of text dataset by its name or id. If the
+        r"""The name of length tensor of text dataset by its name or id. If the
         dataset is not of text type, returns `None`.
         """
         i = self._maybe_name_to_id(name_or_id)
@@ -703,7 +704,7 @@ class MultiAlignedData(
         return name
 
     def data_name(self, name_or_id):
-        """The name of the data tensor of scalar dataset by its name or id..
+        r"""The name of the data tensor of scalar dataset by its name or id..
         If the dataset is not a scalar data, returns `None`.
         """
         i = self._maybe_name_to_id(name_or_id)
