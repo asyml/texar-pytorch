@@ -68,7 +68,7 @@ def _is_scalar_data(data_type):
     return data_type == _DataTypes.INT or data_type == _DataTypes.FLOAT
 
 
-def _is_tfrecord_data(data_type):
+def _is_record_data(data_type):
     return data_type == _DataTypes.RECORD
 
 
@@ -87,7 +87,7 @@ def _default_dataset_hparams(data_type=None):
         })
     elif _is_scalar_data(data_type):
         hparams = _default_scalar_dataset_hparams()
-    elif _is_tfrecord_data(data_type):
+    elif _is_record_data(data_type):
         hparams = _default_record_dataset_hparams()
         hparams.update({
             "data_type": _DataTypes.RECORD,
@@ -105,9 +105,9 @@ class MultiAlignedData(
             defaults.
 
     The processor can read any number of parallel fields as specified in
-    the "datasets" list of :attr:`hparams`, and result in a TF Dataset whose
+    the "datasets" list of :attr:`hparams`, and result in a Dataset whose
     element is a python `dict` containing data fields from each of the
-    specified datasets. Fields from a text dataset or TFRecord dataset have
+    specified datasets. Fields from a text dataset or Record dataset have
     names prefixed by its "data_name". Fields from a scalar dataset are
     specified by its "data_name".
 
@@ -125,19 +125,18 @@ class MultiAlignedData(
             }
             data = MultiAlignedData(hparams)
             iterator = DataIterator(data)
-            batch = iterator.get_next()
 
-            iterator.switch_to_dataset(sess) # initializes the dataset
-            batch_ = sess.run(batch)
-            # batch_ == {
-            #    'x_text': [['<BOS>', 'x', 'sequence', '<EOS>']],
-            #    'x_text_ids': [['1', '5', '10', '2']],
-            #    'x_length': [4]
-            #    'y_text': [['<BOS>', 'y', 'sequence', '1', '<EOS>']],
-            #    'y_text_ids': [['1', '6', '10', '20', '2']],
-            #    'y_length': [5],
-            #    'z': [1000],
-            # }
+            for batch in iterator:
+                # batch contains the following
+                # batch_ == {
+                #    'x_text': [['<BOS>', 'x', 'sequence', '<EOS>']],
+                #    'x_text_ids': [['1', '5', '10', '2']],
+                #    'x_length': [4]
+                #    'y_text': [['<BOS>', 'y', 'sequence', '1', '<EOS>']],
+                #    'y_text_ids': [['1', '6', '10', '20', '2']],
+                #    'y_length': [5],
+                #    'z': [1000],
+                # }
 
             ...
 
@@ -162,20 +161,18 @@ class MultiAlignedData(
             }
             data = MultiAlignedData(hparams)
             iterator = DataIterator(data)
-            batch = iterator.get_next()
-
-            iterator.switch_to_dataset(sess) # initializes the dataset
-            batch_ = sess.run(batch)
-            # batch_ == {
-            #    'x_text': [['<BOS>', 'NewYork', 'City', 'Map', '<EOS>']],
-            #    'x_text_ids': [['1', '100', '80', '65', '2']],
-            #    'x_length': [5],
-            #
-            #    # "t_image" is a list of a "numpy.ndarray" image
-            #    # in this example. Its width equals to 512 and
-            #    # its height equals to 512.
-            #    't_image': [...]
-            # }
+            for batch in iterator:
+                # batch contains the following
+                # batch_ == {
+                #    'x_text': [['<BOS>', 'NewYork', 'City', 'Map', '<EOS>']],
+                #    'x_text_ids': [['1', '100', '80', '65', '2']],
+                #    'x_length': [5],
+                #
+                #    # "t_image" is a list of a "numpy.ndarray" image
+                #    # in this example. Its width equals to 512 and
+                #    # its height equals to 512.
+                #    't_image': [...]
+                # }
 
     """
 
@@ -211,7 +208,7 @@ class MultiAlignedData(
                                              hparams_i.compression_type)
                 datasources.append(datasource_i)
                 self._dataset_features.append(None)
-            elif _is_tfrecord_data(dtype):
+            elif _is_record_data(dtype):
                 datasource_i = PickleDataSource(file_paths=hparams_i.files)
                 datasources.append(datasource_i)
                 feature_types = hparams_i.feature_original_types
@@ -278,7 +275,7 @@ class MultiAlignedData(
 
     @staticmethod
     def default_hparams():
-        """Returns a dicitionary of default hyperparameters.
+        """Returns a dictionary of default hyperparameters.
 
         .. code-block:: python
 
@@ -302,7 +299,7 @@ class MultiAlignedData(
         Here:
 
         1. "datasets" is a list of `dict` each of which specifies a
-        dataset which can be text, scalar or TFRecord. The
+        dataset which can be text, scalar or Record. The
         :attr:`"data_name"` field of each dataset is used as the name
         prefix of the data fields from the respective dataset. The
         :attr:`"data_name"` field of each dataset should not be the same.
@@ -313,11 +310,11 @@ class MultiAlignedData(
             :attr:`"data_type"` must be explicily specified \
             (either "int" or "float"). \
 
-            - For TFRecord dataset, the allowed hyperparameters and default \
+            - For Record dataset, the allowed hyperparameters and default \
             values are the same as the "dataset" field of \
-            :meth:`texar.data.TFRecordData.default_hparams`. Note that \
-            :attr:`"data_type"` must be explicily specified \
-            (tf_record"). \
+            :meth:`texar.data.RecordData.default_hparams`. Note that \
+            :attr:`"data_type"` must be explicitly specified \
+            (record"). \
 
             - For text dataset, the allowed hyperparameters and default values\
             are the same as the "dataset" filed of \
@@ -510,7 +507,7 @@ class MultiAlignedData(
                     for transform in transforms:
                         scalar_ex = transform(scalar_ex)
                 processed_examples.append(scalar_ex)
-            elif _is_tfrecord_data(dataset_hparams[i]["data_type"]):
+            elif _is_record_data(dataset_hparams[i]["data_type"]):
                 example: Dict[str, Any] = raw_example_i  # type: ignore
                 # for some reasons even after the not None check here, mypy
                 # thinks self._dataset_features[i] may be None, hence adding
@@ -580,7 +577,7 @@ class MultiAlignedData(
                         "\'float\' are supported. Received {}"
                         .format(data_type))
                 batch.update({self._name_prefix[i]: example})
-            elif _is_tfrecord_data(dataset_hparams[i]["data_type"]):
+            elif _is_record_data(dataset_hparams[i]["data_type"]):
                 for key, descriptor in \
                         self._dataset_features[i]["feature_types"].items():  # type: ignore # noqa
                     values = [ex[key] for ex in transposed_example]
@@ -626,7 +623,7 @@ class MultiAlignedData(
                               connect_name(self._name_prefix[i], "length")])
             elif _is_scalar_data(ds_hpms["data_type"]):
                 items.append(self._name_prefix[i])
-            elif _is_tfrecord_data(ds_hpms["data_type"]):
+            elif _is_record_data(ds_hpms["data_type"]):
                 for feature_name in \
                         self._dataset_features[i]["feature_types"].keys():
                     items.append(connect_name(self._name_prefix[i],
@@ -646,7 +643,6 @@ class MultiAlignedData(
         filtering and truncation.
         """
         if not self._dataset_size:
-            # pylint: disable=attribute-defined-outside-init
             self._dataset_size = count_file_lines(
                 self._hparams.datasets[0].files)
         return self._dataset_size
@@ -706,19 +702,6 @@ class MultiAlignedData(
             self._name_prefix[i], "text_ids")
         return name
 
-    def utterance_cnt_name(self, name_or_id):
-        """The name of utterance count tensor of text dataset by its name or id.
-        If the dataset is not variable utterance text data, returns `None`.
-        """
-        i = self._maybe_name_to_id(name_or_id)
-        if not _is_text_data(self._hparams.datasets[i]["data_type"]) or \
-                not self._hparams.datasets[i]["variable_utterance"]:
-            return None
-        name = dsutils.connect_name(
-            self._name_prefix[i], "utterance_cnt")
-        return name
-
-    # @property
     def data_name(self, name_or_id):
         """The name of the data tensor of scalar dataset by its name or id..
         If the dataset is not a scalar data, returns `None`.
