@@ -16,6 +16,7 @@ import torch
 TypeArg = TypeVar('TypeArg')  # type argument
 NestedStructure = Any
 
+
 def is_sequence(seq: Any) -> bool:
     r"""If a instance is sequance(list, tuple, excluding torch.Size),
     return True, else False.
@@ -27,6 +28,7 @@ def is_sequence(seq: Any) -> bool:
     if isinstance(seq, torch.Size):
         return False
     return isinstance(seq, (list, tuple))
+
 
 def flatten(structure: NestedStructure) -> List[Any]:
     r"""Returns a flat list from a given nested structure.
@@ -61,6 +63,7 @@ def flatten(structure: NestedStructure) -> List[Any]:
             res += flatten(item)
 
     return res
+
 
 def pack_sequence_as(structure: NestedStructure,
                      flat_sequence: Union[List, Tuple]
@@ -117,6 +120,7 @@ def pack_sequence_as(structure: NestedStructure,
                  flat_sequence))
     return _sequence_like(structure, packed)
 
+
 def _sorted(dict_: Mapping[Any, Any]) -> List[TypeArg]:
     r"""Returns a sorted list of the dict keys, with error if keys not
     sortable.
@@ -125,6 +129,7 @@ def _sorted(dict_: Mapping[Any, Any]) -> List[TypeArg]:
         return sorted(dict_)
     except TypeError:
         raise TypeError("nest only supports dicts with sortable keys.")
+
 
 def _is_namedtuple(instance: object) -> bool:
     r"""Returns True if `instance` is a `namedtuple`.
@@ -142,6 +147,7 @@ def _is_namedtuple(instance: object) -> bool:
         return False
     return all(isinstance(n, str) for n in field_)
 
+
 def _yield_value(iterable):
     r"""Yield only sorted values from `iterable`.
     Args:
@@ -151,6 +157,7 @@ def _yield_value(iterable):
     """
     for _, value in _yield_sorted_items(iterable):
         yield value
+
 
 def _yield_sorted_items(iterable):
     r"""Yield (key, value) pairs for `iterable` in a deterministic order.
@@ -163,7 +170,6 @@ def _yield_sorted_items(iterable):
     Yields:
         The iterable's (key, value) pairs, in order of sorted keys.
     """
-    #print("iterable", iterable, type(iterable))
     if isinstance(iterable, collections.Mapping):
         for key in _sorted(iterable):
             yield key, iterable[key]
@@ -175,6 +181,7 @@ def _yield_sorted_items(iterable):
     else:
         for index, item in enumerate(iterable):
             yield index, item
+
 
 def _packed_nest_with_indices(structure: NestedStructure,
                               flat: NestedStructure,
@@ -208,7 +215,10 @@ def _packed_nest_with_indices(structure: NestedStructure,
             index += 1
     return index, packed
 
+
 InstanceType = Any
+
+
 def _sequence_like(instance: InstanceType,
                    args: Any) -> InstanceType:
     r"""Converts the sequence `args` to the same type as `instance`.
@@ -222,7 +232,7 @@ def _sequence_like(instance: InstanceType,
     if isinstance(instance, collections.Mapping):
         result: Mapping[Any, Any] = dict(zip(_sorted(instance), args))
         generator = ((key, result[key]) for key in instance)
-        return type(instance)(generator) # type: ignore
+        return type(instance)(generator)    # type: ignore
     elif _is_namedtuple(instance):
         return type(instance)(*args)
     else:

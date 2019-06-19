@@ -104,7 +104,6 @@ class TestConnectors(unittest.TestCase):
             tuple_size_tensor_1.size())
         self.assertEqual(tuple_size_tensor_1[0][0], 4.)
 
-
     # pylint: disable=fixme, unnecessary-pass
     def test_forward_connector(self):
         r"""Tests the logic of
@@ -165,7 +164,7 @@ class TestConnectors(unittest.TestCase):
 
         mu = torch.zeros([self._batch_size, variable_size])
         var = torch.ones([self._batch_size, variable_size])
-        #var = torch.stack([torch.diag(x) for x in var], 0)
+        # var = torch.stack([torch.diag(x) for x in var], 0)
         f_mu = torch.flatten(mu)
         f_var = torch.flatten(var)
         mu_vec = torch.zeros([variable_size])
@@ -207,12 +206,12 @@ class TestConnectors(unittest.TestCase):
         # # pylint: disable=no-member
         # sample_var = np.var(sample_outputs, axis=0)
 
-        ## check if the value is approximated N(0, 1)
+        # # check if the value is approximated N(0, 1)
         # for i in range(variable_size):
-            # self.assertAlmostEqual(0, sample_mu[i], delta=0.2)
-            # self.assertAlmostEqual(1, sample_var[i], delta=0.2)
+        #     self.assertAlmostEqual(0, sample_mu[i], delta=0.2)
+        #     self.assertAlmostEqual(1, sample_var[i], delta=0.2)
 
-    #def test_concat_connector(self): # pylint: disable=too-many-locals
+    # def test_concat_connector(self): # pylint: disable=too-many-locals
     #    r"""Tests the logic of
     #    :class:`~texar.modules.connectors.ConcatConnector`.
     #    """
@@ -255,6 +254,7 @@ class TestConnectors(unittest.TestCase):
     #        # check the same size
     #        self.assertEqual(output1.shape[1], decoder_size1)
     #        self.assertEqual(output2[1].shape[1], decoder_size2[1])
+
 
 if __name__ == "__main__":
     unittest.main()
