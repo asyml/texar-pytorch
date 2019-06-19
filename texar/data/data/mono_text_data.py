@@ -347,7 +347,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
         return embedding
 
     def process(self, raw_example: str) -> List[str]:
-        # `_process` truncates sentences and appends BOS/EOS tokens.
+        # Truncates sentences and appends BOS/EOS tokens.
         words = raw_example.split(self._delimiter)
         if (self._max_seq_length is not None and
                 len(words) > self._max_seq_length):

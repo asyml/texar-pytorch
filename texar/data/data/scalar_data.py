@@ -15,11 +15,10 @@
 Various data classes that define data reading, parsing, batching, and other
 preprocessing operations.
 """
+from typing import (Optional, List, Union)
 
 import torch
 import numpy as np
-
-from typing import (Optional, List, Union)
 
 from texar.hyperparams import HParams
 from texar.data.data.dataset_utils import Batch
@@ -84,9 +83,9 @@ class ScalarData(DataBase[str, Union[int, float]]):
     def __init__(self, hparams, device: Optional[torch.device] = None):
         self._hparams = HParams(hparams, self.default_hparams())
         self._other_transforms = self._hparams.dataset.other_transformations
-        data_source = TextLineDataSource(self._hparams.dataset.files,
-                                         compression_type=
-                                         self._hparams.dataset.compression_type)
+        data_source = TextLineDataSource(
+            self._hparams.dataset.files,
+            compression_type=self._hparams.dataset.compression_type)
         super().__init__(data_source, hparams, device=device)
 
     @staticmethod
@@ -153,7 +152,7 @@ class ScalarData(DataBase[str, Union[int, float]]):
         })
         return hparams
 
-    def _process(self, raw_example: str) -> Union[int, float]:
+    def process(self, raw_example: str) -> Union[int, float]:
         # Apply the "other transformations".
         example: Union[int, float]
         data_type = self.hparams.dataset["data_type"]
@@ -169,7 +168,7 @@ class ScalarData(DataBase[str, Union[int, float]]):
             example = transform(example)
         return example
 
-    def _collate(self, examples: List[Union[int, float]]) -> Batch:
+    def collate(self, examples: List[Union[int, float]]) -> Batch:
         # convert the list of strings into appropriate tensors here
         data_type = self.hparams.dataset["data_type"]
         if data_type == "int":
@@ -207,4 +206,3 @@ class ScalarData(DataBase[str, Union[int, float]]):
         :attr:`hparams`.
         """
         return self.hparams.dataset["data_name"]
-
