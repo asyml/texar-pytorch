@@ -4,8 +4,6 @@
 Unit tests for metrics.
 """
 
-# pylint: disable=invalid-name
-
 import unittest
 
 import torch

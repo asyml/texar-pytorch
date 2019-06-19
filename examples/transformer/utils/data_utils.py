@@ -13,13 +13,12 @@
 # limitations under the License.
 """Data read/write utilities for Transformer.
 """
-import os
+
 import codecs
-import six
+import os
+
 import numpy as np
 import torch
-
-# pylint: disable=no-member
 
 
 def load_data_numpy(input_dir, prefix):
@@ -75,15 +74,13 @@ def seq2seq_pad_concat_convert(xy_batch, eos_id=2, bos_id=1, device=None):
         x_block[i_batch, len(seq)] = eos_id
 
     y_out_block = np.pad(
-        y_block, ((0, 0), (0, 1)), "constant", constant_values=0
-    )
+        y_block, ((0, 0), (0, 1)), "constant", constant_values=0)
     for i_batch, seq in enumerate(y_seqs):
         y_out_block[i_batch, len(seq)] = eos_id
 
     # Add BOS in target language
     y_in_block = np.pad(
-        y_block, ((0, 0), (1, 0)), "constant", constant_values=bos_id
-    )
+        y_block, ((0, 0), (1, 0)), "constant", constant_values=bos_id)
 
     x_block = torch.tensor(x_block, dtype=torch.long, device=device)
     y_in_block = torch.tensor(y_in_block, dtype=torch.long, device=device)
@@ -91,7 +88,7 @@ def seq2seq_pad_concat_convert(xy_batch, eos_id=2, bos_id=1, device=None):
     return x_block, y_in_block, y_out_block
 
 
-def source_pad_concat_convert(x_seqs, eos_id=2, bos_id=1, device=None):
+def source_pad_concat_convert(x_seqs, eos_id=2, device=None):
     """
     This function is used when testing the model without target input.
     """
@@ -119,8 +116,7 @@ def _concat_examples(arrays, padding=0):
     shape = tuple(np.insert(shape, 0, len(arrays)))
 
     result = np.full(shape, padding, dtype=arrays[0].dtype)
-    for i in six.moves.range(len(arrays)):
-        src = arrays[i]
+    for i, src in enumerate(arrays):
         slices = tuple(slice(dim) for dim in src.shape)
         result[(i,) + slices] = src
     return result

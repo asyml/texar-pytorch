@@ -15,8 +15,6 @@
 Modules of texar evals.
 """
 
-# pylint: disable=wildcard-import
-
 from texar.evals.bleu import *
 from texar.evals.bleu_moses import *
 from texar.evals.metrics import *

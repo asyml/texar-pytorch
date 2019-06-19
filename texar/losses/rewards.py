@@ -22,8 +22,6 @@ import torch
 from texar.utils.shapes import mask_sequences
 from texar.utils.utils import sequence_mask
 
-# pylint: disable=invalid-name, too-many-arguments, no-member
-
 __all__ = [
     "discount_reward",
     "_discount_reward_tensor_1d",
@@ -53,8 +51,8 @@ def discount_reward(reward: torch.Tensor,
     """
     if not isinstance(reward, torch.Tensor):
         reward = torch.tensor(reward)
-    if (sequence_length is not None
-            and not isinstance(sequence_length, torch.Tensor)):
+    if (sequence_length is not None and
+            not isinstance(sequence_length, torch.Tensor)):
         sequence_length = torch.tensor(sequence_length,
                                        dtype=torch.int64,
                                        device=reward.device)
@@ -72,8 +70,8 @@ def discount_reward(reward: torch.Tensor,
         raise ValueError("The dimension of reward can only be 1 or 2.")
 
     if normalize:
-        mu = torch.mean(disc_reward, dim=(0, 1), keepdim=True)
-        var = torch.std(disc_reward, dim=(0, 1), keepdim=True)
+        mu = torch.mean(disc_reward)
+        var = torch.std(disc_reward)
         disc_reward = (disc_reward - mu) / (torch.sqrt(var) + 1e-8)
 
     return disc_reward

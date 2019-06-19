@@ -2,8 +2,6 @@
 Unit tests for RL rewards.
 """
 
-# pylint: disable=invalid-name
-
 import unittest
 
 import numpy as np

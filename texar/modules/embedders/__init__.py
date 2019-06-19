@@ -15,8 +15,6 @@
 Modules of texar library embedders.
 """
 
-# pylint: disable=wildcard-import
-
 from texar.modules.embedders.embedder_base import *
 from texar.modules.embedders.embedders import *
 from texar.modules.embedders.position_embedders import *

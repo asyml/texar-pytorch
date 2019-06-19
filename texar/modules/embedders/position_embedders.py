@@ -26,8 +26,6 @@ from texar.modules.embedders.embedder_base import (
     EmbedderBase, EmbeddingDropout)
 from texar.utils.shapes import mask_sequences
 
-# pylint: disable=arguments-differ, invalid-name
-
 __all__ = [
     "PositionEmbedder",
     "SinusoidsPositionEmbedder",
@@ -46,7 +44,7 @@ class PositionEmbedder(EmbedderBase):
             initial value of embeddings. It is typically of shape
             ``[position_size, embedding dim]``.
 
-            If ``None``, embedding is initialized as specified in
+            If `None`, embedding is initialized as specified in
             ``hparams["initializer"]``. Otherwise, the
             ``"initializer"`` and ``"dim"``
             hyperparameters in :attr:`hparams` are ignored.
@@ -259,14 +257,14 @@ class SinusoidsPositionEmbedder(EmbedderBase):
                 'min_timescale': 1.0,
                 'max_timescale': 10000.0,
                 'dim': 512,
-                'name':'sinusoid_posisiton_embedder',
+                'name':'sinusoid_position_embedder',
             }
         """
         return {
             'min_timescale': 1.0,
             'max_timescale': 1.0e4,
             'dim': 512,
-            'name': 'sinusoid_posisiton_embedder',
+            'name': 'sinusoid_position_embedder',
         }
 
     def forward(self,  # type: ignore

@@ -19,8 +19,8 @@ import logging
 import os
 
 import texar as tx
-import utils.data_utils as data_utils
-import utils.tokenization as tokenization
+from utils import data_utils
+from utils import tokenization
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -83,7 +83,8 @@ def prepare_data():
 
     num_classes = len(processor.get_labels())
     num_train_data = len(processor.get_train_examples(data_dir))
-    logging.info(f'num_classes:{num_classes}; num_train_data:{num_train_data}')
+    logging.info("num_classes: %d; num_train_data: %d",
+                 num_classes, num_train_data)
     tokenizer = tokenization.FullTokenizer(
         vocab_file=args.vocab_file,
         do_lower_case=args.do_lower_case)

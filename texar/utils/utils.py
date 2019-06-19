@@ -15,15 +15,13 @@
 Miscellaneous Utility functions.
 """
 
-# pylint: disable=invalid-name, no-member, no-name-in-module, protected-access
-# pylint: disable=redefined-outer-name, too-many-arguments, too-many-lines
-# pylint: disable=wildcard-import,unused-wildcard-import
-
 import collections
 import copy
 import inspect
 from pydoc import locate
-from typing import *
+from typing import (
+    Any, Callable, Collection, Dict, List, MutableMapping, Optional, Sequence,
+    Tuple, Type, TypeVar, Union, cast, no_type_check)
 
 import funcsigs
 import numpy as np
@@ -60,7 +58,6 @@ __all__ = [
     'strip_bos',
     'strip_special_tokens',
     'str_join',
-    'map_ids_to_strs',
     'default_str',
     'uniquify_str',
     'ceildiv',
@@ -167,15 +164,12 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
         dtype: the desired data type of returned tensor. Default: if None,
             returns :torch:`ByteTensor`.
         device: the desired device of returned tensor. Default: if None, uses
-            the current device for the default tensor type (see
-            :meth:`torch.set_default_tensor_type()`). :attr:`device` will be CPU
-            for CPU tensor types and the current CUDA device for CUDA tensor
-            types.
+            the current device for the default tensor type.
     Returns:
-        A mask tensor of shape :python:`lengths.shape + (maxlen,)`, cast to
+        A mask tensor of shape :python:`lengths.shape + (max_len,)`, cast to
         specified dtype.
     Raises:
-        ValueError: if ``maxlen`` is not a scalar.
+        ValueError: if ``max_len`` is not a scalar.
     """
     if not isinstance(lengths, torch.Tensor):
         lengths = torch.tensor(lengths, device=device)
@@ -189,9 +183,9 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
     row_vector = torch.arange(max_len, device=device, dtype=lengths.dtype).view(
         *([1] * len(size)), -1).expand(*size, max_len)
     row_vector = row_vector
-    mask = (row_vector < lengths.unsqueeze(-1))
+    mask = (row_vector < lengths.unsqueeze(-1)).to(device=device)
     if dtype is not None:
-        mask = mask.to(dtype=dtype, device=row_vector.device)
+        mask = mask.to(dtype=dtype)
 
     return mask
 
@@ -538,7 +532,7 @@ def call_function_with_redundant_kwargs(fn: Callable[..., R],
 
 
 def get_instance_kwargs(kwargs: Kwargs, hparams: ParamDict) -> Kwargs:
-    r"""Makes a dict of keyword arguments with the following structure:
+    r"""Makes a dictionary of keyword arguments with the following structure:
 
     ``kwargs_ = {'hparams': dict(hparams), **kwargs}``.
 
@@ -546,9 +540,9 @@ def get_instance_kwargs(kwargs: Kwargs, hparams: ParamDict) -> Kwargs:
     arguments as well as a argument named ``"hparams"``.
 
     Args:
-        kwargs (dict): A ``dict`` of keyword arguments. Can be ``None``.
+        kwargs (dict): A ``dict`` of keyword arguments. Can be `None`.
         hparams: A ``dict`` or an instance of :class:`~texar.HParams` Can be
-            ``None``.
+            `None`.
 
     Returns:
         A ``dict`` that contains the keyword arguments in :attr:`kwargs`, and
@@ -592,23 +586,24 @@ def dict_patch(tgt_dict: AnyDict, src_dict: AnyDict) -> AnyDict:
 
 def dict_lookup(dict_: MutableMapping[K, V], keys: Union[List[K], np.ndarray],
                 default: Optional[V] = None) -> np.ndarray:
-    r"""Looks up :attr:`keys` in the dict, returns the corresponding values.
+    r"""Looks up :attr:`keys` in the dictionary, returns the corresponding
+    values.
 
-    The :attr:`default` is used for keys not present in the dict.
+    The :attr:`default` is used for keys not present in the dictionary.
 
     Args:
         dict\_ (dict): A dictionary for lookup.
         keys: A numpy array or a (possibly nested) list of keys.
         default (optional): Value to be returned when a key is not in
             :attr:`dict_`. Error is raised if :attr:`default` is not given and
-            key is not in the dict.
+            key is not in the dictionary.
 
     Returns:
         A numpy array of values with the same structure as :attr:`keys`.
 
     Raises:
         TypeError: If key is not in :attr:`dict_` and :attr:`default` is
-            ``None``.
+            `None`.
     """
     return np.vectorize(lambda x: dict_.get(x, default))(keys)  # type: ignore
 
@@ -616,18 +611,18 @@ def dict_lookup(dict_: MutableMapping[K, V], keys: Union[List[K], np.ndarray],
 def dict_fetch(src_dict: Optional[ParamDict],
                tgt_dict_or_keys: Union[ParamDict, List[str]]) \
         -> Optional[AnyDict]:
-    r"""Fetches a sub dict of :attr:`src_dict` with the keys in
+    r"""Fetches a sub-dictionary of :attr:`src_dict` with the keys in
     :attr:`tgt_dict_or_keys`.
 
     Args:
-        src_dict: A dict or instance of :class:`~texar.HParams`.
-            The source dict to fetch values from.
-        tgt_dict_or_keys: A dict, instance of :class:`~texar.HParams`,
-            or a list (or a dict_keys) of keys to be included in the output
-            dict.
+        src_dict: A dictionary or instance of :class:`~texar.HParams`.
+            The source dictionary to fetch values from.
+        tgt_dict_or_keys: A dictionary, instance of :class:`~texar.HParams`,
+            or a list (or a ``dict_keys``/``KeysView``) of keys to be included
+            in the output dictionary.
 
     Returns:
-        A new dict that is a sub-dict of :attr:`src_dict`.
+        A new dictionary that is a sub-dictionary of :attr:`src_dict`.
     """
     if src_dict is None:
         return src_dict
@@ -646,14 +641,14 @@ def dict_fetch(src_dict: Optional[ParamDict],
 
 def dict_pop(dict_: MutableMapping[T, Any], pop_keys: MaybeSeq[T],
              default: Optional[Any] = None) -> Dict[T, Any]:
-    r"""Removes keys from a dict and returns their values.
+    r"""Removes keys from a dictionary and returns their values.
 
     Args:
         dict\_ (dict): A dictionary from which items are removed.
         pop_keys: A key or a list of keys to remove and return respective
             values or :attr:`default`.
         default (optional): Value to be returned when a key is not in
-            :attr:`dict_`. The default value is ``None``.
+            :attr:`dict_`. The default value is `None`.
 
     Returns:
         A ``dict`` of the items removed from :attr:`dict_`.
@@ -666,7 +661,7 @@ def dict_pop(dict_: MutableMapping[T, Any], pop_keys: MaybeSeq[T],
 
 def flatten_dict(dict_: AnyDict, parent_key: str = "", sep: str = "."):
     r"""Flattens a nested dictionary. Namedtuples within the dictionary are
-    converted to dicts.
+    also converted to dictionaries.
 
     Adapted from:
     https://github.com/google/seq2seq/blob/master/seq2seq/models/model_base.py
@@ -697,7 +692,7 @@ def flatten_dict(dict_: AnyDict, parent_key: str = "", sep: str = "."):
 
 
 def default_str(str_: Optional[str], default: str) -> str:
-    r"""Returns :attr:`str_` if it is not ``None`` or empty, otherwise returns
+    r"""Returns :attr:`str_` if it is not `None` or empty, otherwise returns
     :attr:`default_str`.
 
     Args:
@@ -913,6 +908,8 @@ def strip_bos(str_: MaybeSeq[str], bos_token: str = '<BOS>',
 _strip_bos_ = strip_bos
 
 
+# pylint: disable=redefined-outer-name
+
 def strip_special_tokens(str_: MaybeSeq[str],
                          strip_pad: Optional[str] = '<PAD>',
                          strip_bos: Optional[str] = '<BOS>',
@@ -937,19 +934,19 @@ def strip_special_tokens(str_: MaybeSeq[str],
             the leading and trailing PAD tokens of the strings). Default
             is ``"<PAD>"`` as defined in
             :class:`~texar.data.SpecialTokens`.PAD.
-            Set to ``None`` or ``False`` to disable the stripping.
+            Set to `None` or `False` to disable the stripping.
         strip_bos (str): The BOS token to strip from the strings (i.e., remove
             the leading BOS tokens of the strings).
             Default is ``"<BOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.BOS.
-            Set to ``None`` or ``False`` to disable the stripping.
+            Set to `None` or `False` to disable the stripping.
         strip_eos (str): The EOS token to strip from the strings (i.e., remove
             the EOS tokens and all subsequent tokens of the strings).
             Default is ``"<EOS>"`` as defined in
             :class:`~texar.data.SpecialTokens`.EOS.
-            Set to ``None`` or ``False`` to disable the stripping.
+            Set to `None` or `False` to disable the stripping.
         is_token_list (bool): Whether each sentence in :attr:`str_` is a list
-            of tokens. If ``False``, each sentence in :attr:`str_` is assumed to
+            of tokens. If `False`, each sentence in :attr:`str_` is assumed to
             contain tokens separated with space character.
 
     Returns:
@@ -976,7 +973,7 @@ def strip_special_tokens(str_: MaybeSeq[str],
 
 
 def str_join(tokens: Sequence[List], sep: str = ' ') -> Sequence[str]:
-    r"""Concats :attr:`tokens` along the last dimension with intervening
+    r"""Concatenates :attr:`tokens` along the last dimension with intervening
     occurrences of :attr:`sep`.
 
     Args:
@@ -1001,83 +998,18 @@ def str_join(tokens: Sequence[List], sep: str = ' ') -> Sequence[str]:
     return str_
 
 
-def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]],
-                    vocab: 'Vocab',  # type: ignore
-                    # pylint: disable=fixme
-                    # TODO: Remove the ignored type after Vocab is implemented.
-                    join: bool = True, strip_pad: Optional[str] = '<PAD>',
-                    strip_bos: Optional[str] = '<BOS>',
-                    strip_eos: Optional[str] = '<EOS>') \
-        -> Union[np.ndarray, List[str]]:
-    r"""Transforms ``int`` indexes to strings by mapping ids to tokens,
-    concatenating tokens into sentences, and stripping special tokens, etc.
-
-    Args:
-        ids: An n-D numpy array or (possibly nested) list of ``int`` indexes.
-        vocab: An instance of :class:`~texar.data.Vocab`.
-        join (bool): Whether to concat along the last dimension of the
-            the tokens into a string separated with a space character.
-        strip_pad (str): The PAD token to strip from the strings (i.e., remove
-            the leading and trailing PAD tokens of the strings). Default
-            is ``"<PAD>"`` as defined in
-            :class:`~texar.data.SpecialTokens`.PAD.
-            Set to ``None`` or ``False`` to disable the stripping.
-        strip_bos (str): The BOS token to strip from the strings (i.e., remove
-            the leading BOS tokens of the strings).
-            Default is ``"<BOS>"`` as defined in
-            :class:`~texar.data.SpecialTokens`.BOS.
-            Set to ``None`` or ``False`` to disable the stripping.
-        strip_eos (str): The EOS token to strip from the strings (i.e., remove
-            the EOS tokens and all subsequent tokens of the strings).
-            Default is ``"<EOS>"`` as defined in
-            :class:`~texar.data.SpecialTokens`.EOS.
-            Set to ``None`` or ``False`` to disable the stripping.
-
-    Returns:
-        If :attr:`join` is True, returns a `(n-1)`-D numpy array (or list) of
-        concatenated strings. If :attr:`join` is False, returns an `n`-D numpy
-        array (or list) of str tokens.
-
-    Example:
-
-        .. code-block:: python
-
-            text_ids = [[1, 9, 6, 2, 0, 0], [1, 28, 7, 8, 2, 0]]
-
-            text = map_ids_to_strs(text_ids, data.vocab)
-            # text == ['a sentence', 'parsed from ids']
-
-            text = map_ids_to_strs(
-                text_ids, data.vocab, join=False,
-                strip_pad=None, strip_bos=None, strip_eos=None)
-            # text == [['<BOS>', 'a', 'sentence', '<EOS>', '<PAD>', '<PAD>'],
-            #          ['<BOS>', 'parsed', 'from', 'ids', '<EOS>', '<PAD>']]
-    """
-    tokens = vocab.map_ids_to_tokens_py(ids)
-    if isinstance(ids, (list, tuple)):
-        tokens = tokens.tolist()
-
-    str_ = str_join(tokens)
-
-    str_ = strip_special_tokens(
-        str_, strip_pad=strip_pad, strip_bos=strip_bos, strip_eos=strip_eos)
-
-    if join:
-        return str_
-    else:
-        return _recur_split(str_, ids)  # type: ignore
-
+# pylint: enable=redefined-outer-name
 
 def ceildiv(a: int, b: int) -> int:
-    r"""Divides with ceil.
+    r"""Compute division with results rounding up.
 
     E.g., ``5 / 2 = 2.5``, ``ceildiv(5, 2) = 3``.
 
     Args:
-        a (int): Dividend integer.
-        b (int): Divisor integer.
+        a (int): The dividend.
+        b (int): The divisor.
 
     Returns:
-        int: Ceil quotient.
+        int: The quotient, rounded up.
     """
     return -(-a // b)

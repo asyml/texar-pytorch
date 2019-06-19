@@ -14,16 +14,14 @@
 """Attentional Seq2seq.
 """
 
-# pylint: disable=invalid-name, too-many-arguments, too-many-locals
-
 import argparse
 import importlib
+
 import torch
 
 import texar as tx
-from texar.core.optimization import *
+from texar.core.optimization import get_optimizer, get_train_op
 from texar.module_base import ModuleBase
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_model',
@@ -36,16 +34,15 @@ parser.add_argument('--config_data',
                     help="The dataset config.")
 args = parser.parse_args()
 
-
 config_model = importlib.import_module(args.config_model)
 config_data = importlib.import_module(args.config_data)
 
 
-class Seq2Seq_Attn(ModuleBase):
+class Seq2SeqAttn(ModuleBase):
 
     def __init__(self, train_data):
 
-        ModuleBase.__init__(self)
+        super().__init__()
 
         self.source_vocab_size = train_data.source_vocab.size
         self.target_vocab_size = train_data.target_vocab.size
@@ -66,8 +63,8 @@ class Seq2Seq_Attn(ModuleBase):
             hparams=config_model.encoder)
 
         self.decoder = tx.modules.AttentionRNNDecoder(
-            encoder_output_size=
-            self.encoder.cell_fw.hidden_size+self.encoder.cell_bw.hidden_size,
+            encoder_output_size=(self.encoder.cell_fw.hidden_size +
+                                 self.encoder.cell_bw.hidden_size),
             input_size=self.target_embedder.dim + config_model.decoder
             ['attention']['attention_layer_size'],
             vocab_size=self.target_vocab_size,
@@ -127,7 +124,7 @@ def main():
     data_iterator = tx.data.TrainTestDataIterator(
         train=train_data, val=val_data, test=test_data)
 
-    model = Seq2Seq_Attn(train_data)
+    model = Seq2SeqAttn(train_data)
     optimizer = get_optimizer(model.parameters(), config_model.opt)
     train_op = get_train_op(optimizer, config_model.opt)
 
@@ -160,7 +157,7 @@ def main():
             target_texts_ori = [text[1:] for text in batch['target_text']]
             target_texts = tx.utils.strip_special_tokens(
                 target_texts_ori, is_token_list=True)
-            output_texts = tx.utils.map_ids_to_strs(
+            output_texts = tx.data.vocabulary.map_ids_to_strs(
                 ids=output_ids, vocab=val_data.target_vocab)
 
             for hypo, ref in zip(output_texts, target_texts):

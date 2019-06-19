@@ -68,8 +68,8 @@ Entropy
 .. autofunction:: texar.losses.sequence_entropy_with_logits
 
 
-Loss Utils
-===========
+Loss Utilities
+===============
 
 :hidden:`mask_and_reduce`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

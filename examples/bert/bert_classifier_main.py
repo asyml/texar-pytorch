@@ -24,9 +24,9 @@ import os
 import torch
 
 import texar as tx
-import utils.model_utils as model_utils
 from texar.custom.optimizers import BertAdam
 from texar.modules import BertClassifier
+from utils import model_utils
 
 parser = argparse.ArgumentParser()
 
@@ -164,7 +164,7 @@ def main():
 
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
-            logits, preds, loss = model(
+            _, _, loss = model(
                 inputs=input_ids,
                 sequence_length=input_length,
                 segment_ids=segment_ids,
@@ -177,7 +177,7 @@ def main():
 
             dis_steps = config_data.display_steps
             if dis_steps > 0 and step % dis_steps == 0:
-                logging.info(f"step: {step}; loss: {loss};")
+                logging.info("step: %d; loss: %d", step, loss)
 
             eval_steps = config_data.eval_steps
             if eval_steps > 0 and step % eval_steps == 0:
@@ -205,7 +205,7 @@ def main():
             batch_size = input_ids.size()[0]
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
-            logits, preds, loss = model(
+            _, preds, loss = model(
                 inputs=input_ids,
                 sequence_length=input_length,
                 segment_ids=segment_ids,
@@ -216,11 +216,8 @@ def main():
             cum_acc += accu * batch_size
             cum_loss += loss * batch_size
             nsamples += batch_size
-        logging.info(
-            "eval accu: {}; loss: {}; nsamples: {}".format(
-                cum_acc / nsamples, cum_loss / nsamples, nsamples
-            )
-        )
+        logging.info("eval accu: %.4f; loss: %.4f; nsamples: %d",
+                     cum_acc / nsamples, cum_loss / nsamples, nsamples)
 
     @torch.no_grad()
     def _test_epoch():
@@ -238,7 +235,7 @@ def main():
 
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
-            logits, preds, _ = model(
+            _, preds, _ = model(
                 inputs=input_ids,
                 sequence_length=input_length,
                 segment_ids=segment_ids,
@@ -256,7 +253,7 @@ def main():
         scheduler.load_state_dict(ckpt['scheduler'])
 
     if args.do_train:
-        for i in range(config_data.max_train_epoch):
+        for _ in range(config_data.max_train_epoch):
             _train_epoch()
         states = {
             'model': model.state_dict(),

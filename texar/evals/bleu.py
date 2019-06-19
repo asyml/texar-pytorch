@@ -33,9 +33,6 @@ from typing import Counter, List, Tuple, Union
 from texar.utils.dtypes import compat_as_text
 from texar.utils.types import MaybeList
 
-# pylint: disable=invalid-name, too-many-branches, too-many-locals
-# pylint: disable=too-many-arguments
-
 __all__ = [
     "sentence_bleu",
     "corpus_bleu",
@@ -91,19 +88,19 @@ def sentence_bleu(references: List[MaybeList[str]],
             Each hypothesis can be either a list of string tokens, or a
             string containing tokenized tokens separated with whitespaces.
             List can also be numpy array.
-        lowercase (bool): If ``True``, lowercase reference and hypothesis
+        lowercase (bool): If `True`, lowercase reference and hypothesis
             tokens.
         max_order (int): Maximum n-gram order to use when computing
             BLEU score.
-        smooth (bool): Whether or not to apply (Lin et al. 2004) smoothing.
-        return_all (bool): If ``True``, returns BLEU and all
+        smooth (bool): Whether or not to apply `(Lin et al. 2004)` smoothing.
+        return_all (bool): If `True`, returns BLEU and all
             n-gram precisions.
 
     Returns:
-        If :attr:`return_all` is ``False`` (default), returns a float32
+        If :attr:`return_all` is `False` (default), returns a float32
         BLEU score.
 
-        If :attr:`return_all` is ``True``, returns a list of float32
+        If :attr:`return_all` is `True`, returns a list of float32
         ``[BLEU] + n-gram precisions``, which is of length :attr:`max_order`
         +1.
     """
@@ -132,19 +129,19 @@ def corpus_bleu(list_of_references: List[List[MaybeList[str]]],
             Each hypothesis can be either a list of string tokens, or a
             string containing tokenized tokens separated with whitespaces.
             List can also be numpy array.
-        lowercase (bool): If ``True``, lowercase reference and hypothesis
+        lowercase (bool): If `True`, lowercase reference and hypothesis
             tokens.
         max_order (int): Maximum n-gram order to use when computing
             BLEU score.
-        smooth (bool): Whether or not to apply (Lin et al. 2004) smoothing.
-        return_all (bool): If ``True``, returns BLEU and all
+        smooth (bool): Whether or not to apply `(Lin et al. 2004)` smoothing.
+        return_all (bool): If `True`, returns BLEU and all
             n-gram precisions.
 
     Returns:
-        If :attr:`return_all` is ``False`` (default), returns a ``float32``
+        If :attr:`return_all` is `False` (default), returns a ``float32``
         BLEU score.
 
-        If :attr:`return_all` is ``True``, returns a list of
+        If :attr:`return_all` is `True`, returns a list of
         ``float32`` scores: ``[BLEU] + n-gram precisions``,
         which is of length :attr:`max_order` +1.
     """

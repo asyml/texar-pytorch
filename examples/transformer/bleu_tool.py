@@ -1,5 +1,3 @@
-# flake8: noqa: E501
-
 # Copyright 2018 The Tensor2Tensor Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,30 +26,14 @@ Usage: python bleu_tool.py --translation=my-wmt13.de --reference=wmt13_deen.de
 # BLEU score will be similar to the one obtained using: mteval-v14.pl
 # Note:compound splitting is not implemented in this module
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-from argparse import ArgumentParser
-from io import open
 import collections
 import math
 import re
 import sys
 import unicodedata
-
-# Dependency imports
+from argparse import ArgumentParser
 
 import numpy as np
-import six
-
-# pylint: disable=redefined-builtin
-from six.moves import xrange
-from six.moves import zip
-
-
-# pylint: enable=redefined-builtin
 
 
 def _get_ngrams(segment, max_order):
@@ -67,14 +49,15 @@ def _get_ngrams(segment, max_order):
     with a count of how many times each n-gram occurred.
   """
     ngram_counts = collections.Counter()
-    for order in xrange(1, max_order + 1):
-        for i in xrange(0, len(segment) - order + 1):
-            ngram = tuple(segment[i : i + order])
+    for order in range(1, max_order + 1):
+        for i in range(0, len(segment) - order + 1):
+            ngram = tuple(segment[i: i + order])
             ngram_counts[ngram] += 1
     return ngram_counts
 
 
-def compute_bleu(reference_corpus, translation_corpus, max_order=4, use_bp=True):
+def compute_bleu(reference_corpus, translation_corpus,
+                 max_order=4, use_bp=True):
     """Computes BLEU score of translated segments against references.
 
     Args:
@@ -111,14 +94,16 @@ def compute_bleu(reference_corpus, translation_corpus, max_order=4, use_bp=True)
         for ngram in overlap:
             matches_by_order[len(ngram) - 1] += overlap[ngram]
         for ngram in translation_ngram_counts:
-            possible_matches_by_order[len(ngram) - 1] += translation_ngram_counts[ngram]
+            possible_matches_by_order[len(ngram) - 1] += \
+                translation_ngram_counts[ngram]
     precisions = [0] * max_order
     smooth = 1.0
-    for i in xrange(0, max_order):
+    for i in range(max_order):
         if possible_matches_by_order[i] > 0:
             precisions[i] = matches_by_order[i] / possible_matches_by_order[i]
             if matches_by_order[i] > 0:
-                precisions[i] = matches_by_order[i] / possible_matches_by_order[i]
+                precisions[i] = (matches_by_order[i] /
+                                 possible_matches_by_order[i])
             else:
                 smooth *= 2
                 precisions[i] = 1.0 / (smooth * possible_matches_by_order[i])
@@ -138,22 +123,21 @@ def compute_bleu(reference_corpus, translation_corpus, max_order=4, use_bp=True)
     return np.float32(bleu)
 
 
-class UnicodeRegex(object):
+class UnicodeRegex:
     """Ad-hoc hack to recognize all punctuation and symbols."""
 
-    # pylint:disable=too-few-public-methods
     def __init__(self):
         punctuation = self.property_chars("P")
         self.nondigit_punct_re = re.compile(r"([^\d])([" + punctuation + r"])")
         self.punct_nondigit_re = re.compile(r"([" + punctuation + r"])([^\d])")
         self.symbol_re = re.compile("([" + self.property_chars("S") + "])")
 
-    def property_chars(self, prefix):
-        # pylint:disable=no-self-use
+    @staticmethod
+    def property_chars(prefix):
         return "".join(
-            six.unichr(x)
+            chr(x)
             for x in range(sys.maxunicode)
-            if unicodedata.category(six.unichr(x)).startswith(prefix)
+            if unicodedata.category(chr(x)).startswith(prefix)
         )
 
 
@@ -163,27 +147,27 @@ uregex = UnicodeRegex()
 def bleu_tokenize(string):
     r"""Tokenize a string following the official BLEU implementation.
 
-  See https://github.com/moses-smt/mosesdecoder/"
-           "blob/master/scripts/generic/mteval-v14.pl#L954-L983
-  In our case, the input string is expected to be just one line
-  and no HTML entities de-escaping is needed.
-  So we just tokenize on punctuation and symbols,
-  except when a punctuation is preceded and followed by a digit
-  (e.g. a comma/dot as a thousand/decimal separator).
+    See
+    `https://github.com/moses-smt/mosesdecoder/blob/master/scripts/generic/mteval-v14.pl#L954-L983`_
+    In our case, the input string is expected to be just one line
+    and no HTML entities de-escaping is needed.
+    So we just tokenize on punctuation and symbols,
+    except when a punctuation is preceded and followed by a digit
+    (e.g. a comma/dot as a thousand/decimal separator).
 
-  Note that a numer (e.g. a year) followed by a dot at the end of sentence
-  is NOT tokenized,
-  i.e. the dot stays with the number because `s/(\p{P})(\P{N})/ $1 $2/g`
-  does not match this case (unless we add a space after each sentence).
-  However, this error is already in the original mteval-v14.pl
-  and we want to be consistent with it.
+    Note that a number (e.g. a year) followed by a dot at the end of sentence
+    is NOT tokenized,
+    i.e. the dot stays with the number because `s/(\p{P})(\P{N})/ $1 $2/g`
+    does not match this case (unless we add a space after each sentence).
+    However, this error is already in the original mteval-v14.pl
+    and we want to be consistent with it.
 
-  Args:
-    string: the input string
+    Args:
+        string: the input string
 
-  Returns:
-    a list of tokens
-  """
+    Returns:
+        a list of tokens
+    """
     string = uregex.nondigit_punct_re.sub(r"\1 \2 ", string)
     string = uregex.punct_nondigit_re.sub(r" \1 \2", string)
     string = uregex.symbol_re.sub(r" \1 ", string)
@@ -203,7 +187,7 @@ def bleu_wrapper(ref_filename, hyp_filename, case_sensitive=False):
     return compute_bleu(ref_tokens, hyp_tokens)
 
 
-if __name__ == "__main__":
+def main():
     parser = ArgumentParser(
         description="Compute BLEU score. \
         Usage: t2t-bleu --translation=my-wmt13.de --reference=wmt13_deen.de"
@@ -213,7 +197,13 @@ if __name__ == "__main__":
     parser.add_argument("--reference", type=str)
     args = parser.parse_args()
 
-    bleu = 100 * bleu_wrapper(args.reference, args.translation, case_sensitive=False)
+    bleu = 100 * bleu_wrapper(args.reference, args.translation,
+                              case_sensitive=False)
     print("BLEU_uncased = %6.2f" % bleu)
-    bleu = 100 * bleu_wrapper(args.reference, args.translation, case_sensitive=True)
+    bleu = 100 * bleu_wrapper(args.reference, args.translation,
+                              case_sensitive=True)
     print("BLEU_cased = %6.2f" % bleu)
+
+
+if __name__ == "__main__":
+    main()

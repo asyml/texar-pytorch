@@ -23,7 +23,7 @@ class AttentionMechanismTest(unittest.TestCase):
             self._batch_size, self._max_time, self._encoder_output_size
         )
         self._memory_sequence_length = torch.tensor(
-            np.random.randint(self._max_time, size=[self._batch_size])+1
+            np.random.randint(self._max_time, size=[self._batch_size]) + 1
         )
         self._attention_state = torch.rand(self._batch_size, self._max_time)
 

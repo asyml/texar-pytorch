@@ -79,7 +79,6 @@ def reverse_sequence(inputs: torch.Tensor,
     return outputs
 
 
-# pylint: disable=too-many-arguments, too-many-locals
 def bidirectional_dynamic_rnn(
         cell_fw: RNNCellBase[State],
         cell_bw: RNNCellBase[State],
@@ -166,7 +165,6 @@ def bidirectional_dynamic_rnn(
         batch_size = inputs.shape[0]
 
     if sequence_length is None:
-        # pylint: disable=not-callable
         sequence_length = torch.tensor([time_steps] * batch_size,
                                        dtype=torch.int32)
 
@@ -278,7 +276,6 @@ def dynamic_rnn(
     time_steps = inputs.shape[0]
     batch_size = inputs.shape[1]
 
-    # pylint: disable=not-callable
     if sequence_length is not None:
         if not isinstance(sequence_length, torch.Tensor):
             sequence_length = torch.tensor(sequence_length, dtype=torch.int32)
@@ -313,7 +310,6 @@ def dynamic_rnn(
     return outputs, final_state
 
 
-# pylint: disable=too-many-branches
 def _dynamic_rnn_loop(cell: RNNCellBase[State],
                       inputs: torch.Tensor,
                       initial_state: State,
@@ -362,7 +358,6 @@ def _dynamic_rnn_loop(cell: RNNCellBase[State],
             all_state[1].append(state[1])
         else:
             all_state.append(state)  # type: ignore
-    # pylint: disable=fixme
     # TODO: Do not compute everything regardless of sequence_length
 
     final_outputs = torch.stack(all_outputs, dim=0)

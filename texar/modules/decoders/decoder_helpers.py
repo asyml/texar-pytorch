@@ -14,10 +14,6 @@
 """
 Various helper classes and utilities for RNN decoders.
 """
-
-# pylint: disable=too-many-arguments, too-many-instance-attributes
-# pylint: disable=missing-docstring  # does not support generic classes
-
 from abc import ABC
 from typing import (
     Callable, Generic, List, Optional, Tuple, Type, TypeVar, Union, overload)
@@ -57,6 +53,9 @@ Embedding = Union[
 EmbeddingWithPos = Callable[[torch.LongTensor, torch.LongTensor], torch.Tensor]
 
 
+# TODO: Remove these once pylint supports function stubs.
+# pylint: disable=unused-argument,function-redefined,multiple-statements
+
 @overload
 def _convert_embedding(embedding: Embedding) \
         -> Callable[[torch.LongTensor], torch.Tensor]: ...
@@ -83,6 +82,8 @@ def _convert_embedding(embedding):
     else:
         raise ValueError(
             "'embedding' must either be a torch.Tensor or a callable.")
+
+# pylint: enable=unused-argument,function-redefined,multiple-statements
 
 
 IDType = TypeVar('IDType', bound=torch.Tensor)
@@ -149,7 +150,7 @@ class TrainingHelper(Helper[torch.LongTensor]):
             respective embedding (e.g., an instance of subclass of
             :class:`~texar.modules.EmbedderBase`).
         time_major (bool):  Whether the tensors in ``inputs`` are time major.
-            If ``False`` (default), they are assumed to be batch major.
+            If `False` (default), they are assumed to be batch major.
     """
     _embedding: Optional[Embedding]
 
@@ -169,6 +170,7 @@ class TrainingHelper(Helper[torch.LongTensor]):
 
     @property
     def sample_ids_shape(self) -> torch.Size:
+        r"""Tensor shape of returned `sample_ids`."""
         return torch.Size()  # scalar
 
     def initialize(self, inputs: Optional[torch.Tensor],
@@ -201,13 +203,15 @@ class TrainingHelper(Helper[torch.LongTensor]):
         next_inputs = inputs[0] if not all_finished else self._zero_inputs
         return (finished, next_inputs)
 
-    def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
+    def sample(self,  # pylint: disable=no-self-use
+               time: int, outputs: torch.Tensor) -> torch.LongTensor:
         del time
         sample_ids = torch.argmax(outputs, dim=-1)
         return sample_ids
 
     def next_inputs(self, time: int, outputs: torch.Tensor,
                     sample_ids: torch.LongTensor) -> NextInputTuple:
+        del outputs, sample_ids
         next_time = time + 1
         finished = (next_time >= self._sequence_length)
         all_finished = torch.all(finished).item()
@@ -257,6 +261,7 @@ class EmbeddingHelper(Helper[IDType], ABC):
     def initialize(self, inputs: Optional[torch.Tensor],
                    sequence_length: Optional[torch.LongTensor]) \
             -> HelperInitTuple:
+        del inputs, sequence_length
         finished = self._start_tokens.new_zeros(
             self._batch_size, dtype=torch.uint8)
         return (finished, self._start_inputs)
@@ -303,7 +308,7 @@ class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
         elif self._embedding_args_cnt == 2:
             # Position index is 0 in the beginning
             times = self._start_tokens.new_zeros(self._batch_size,
-                    dtype=self._start_tokens.dtype)
+                                                 dtype=self._start_tokens.dtype)
             self._start_inputs = self._embedding_fn(  # type: ignore
                 self._start_tokens, times)
         else:
@@ -365,12 +370,8 @@ class GreedyEmbeddingHelper(SingleEmbeddingHelper):
             :attr:`end_token` is not a scalar.
     """
 
-    def __init__(self, embedding: Union[Embedding, EmbeddingWithPos],
-                 start_tokens: torch.LongTensor,
-                 end_token: Union[int, torch.LongTensor]):
-        super().__init__(embedding, start_tokens, end_token)
-
-    def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
+    def sample(self,  # pylint: disable=no-self-use
+               time: int, outputs: torch.Tensor) -> torch.LongTensor:
         del time  # unused by sample_fn
         # Outputs are logits, use argmax to get the most probable id
         if not torch.is_tensor(outputs):
@@ -545,7 +546,7 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
         stop_gradient (bool): Whether to stop the gradient backpropagation
             when feeding softmax vector to the next step.
         use_finish (bool): Whether to stop decoding once :attr:`end_token`
-            is generated. If ``False``, decoding will continue until
+            is generated. If `False`, decoding will continue until
             :attr:`max_decoding_length` of the decoder is reached.
 
     Raises:
@@ -622,15 +623,15 @@ class GumbelSoftmaxEmbeddingHelper(SoftmaxEmbeddingHelper):
             token that marks end of decoding.
         tau: A float scalar tensor, the softmax temperature.
         straight_through (bool): Whether to use straight through gradient
-            between time steps. If ``True``, a single token with highest
+            between time steps. If `True`, a single token with highest
             probability (i.e., greedy sample) is fed to the next step and
-            gradient is computed using straight through. If ``False``
+            gradient is computed using straight through. If `False`
             (default), the soft Gumbel-softmax distribution is fed to the
             next step.
         stop_gradient (bool): Whether to stop the gradient backpropagation
             when feeding softmax vector to the next step.
         use_finish (bool): Whether to stop decoding once :attr:`end_token`
-            is generated. If ``False``, decoding will continue until
+            is generated. If `False`, decoding will continue until
             :attr:`max_decoding_length` of the decoder is reached.
 
     Raises:
@@ -650,9 +651,9 @@ class GumbelSoftmaxEmbeddingHelper(SoftmaxEmbeddingHelper):
 
     def sample(self, time: int, outputs: torch.Tensor) -> torch.Tensor:
         r"""Returns ``sample_id`` of shape ``[batch_size, vocab_size]``. If
-        :attr:`straight_through` is ``False``, this contains the Gumbel softmax
+        :attr:`straight_through` is `False`, this contains the Gumbel softmax
         distributions over vocabulary with temperature :attr:`tau`. If
-        :attr:`straight_through` is ``True``, this contains one-hot vectors of
+        :attr:`straight_through` is `True`, this contains one-hot vectors of
         the greedy samples.
         """
         gumbel_samples = self._gumbel.sample(outputs.size()).to(

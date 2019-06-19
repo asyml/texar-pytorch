@@ -1,6 +1,9 @@
 """
 Model utility functions
 """
+
+# pylint: disable=protected-access
+
 import json
 import sys
 
@@ -82,10 +85,9 @@ def init_gpt2_checkpoint(model, init_checkpoint):
     """
 
     try:
-        import re
+        import os
         import numpy as np
         import tensorflow as tf
-        import os
     except ImportError:
         print("Loading a TensorFlow models in PyTorch, requires TensorFlow to "
               "be installed. Please see https://www.tensorflow.org/install/ "
@@ -118,7 +120,7 @@ def init_gpt2_checkpoint(model, init_checkpoint):
     init_vars = tf.train.list_variables(tf_path)
     names = []
     arrays = []
-    for name, shape in init_vars:
+    for name, _ in init_vars:
         array = tf.train.load_variable(tf_path, name)
         names.append(name)
         arrays.append(array.squeeze())
@@ -136,7 +138,7 @@ def init_gpt2_checkpoint(model, init_checkpoint):
 
         processing = (idx + 1.0) / len(names)
         idx += 1
-        sys.stdout.write("\rLoading checkpoint: {:.1%}".format(processing))
+        sys.stdout.write(f"\rLoading checkpoint: {processing:.1%}")
         sys.stdout.flush()
 
         if name in global_tensor_map:

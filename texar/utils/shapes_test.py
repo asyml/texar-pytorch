@@ -2,8 +2,6 @@
 Unit tests for shape-related utility functions.
 """
 
-# pylint: disable=invalid-name, no-self-use
-
 import unittest
 
 import numpy as np

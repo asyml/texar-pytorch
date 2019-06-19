@@ -108,6 +108,10 @@ Cells
 
 :hidden:`AttentionWrapper`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. spelling::
+    Luong
+    Bahdanau
+
 .. autoclass:: texar.core.cell_wrappers.AttentionWrapper
     :members:
 

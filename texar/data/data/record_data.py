@@ -28,8 +28,6 @@ from texar.hyperparams import HParams
 from texar.utils.dtypes import get_numpy_dtype
 from texar.utils.types import MaybeList
 
-# pylint: disable=invalid-name
-
 __all__ = [
     "_default_record_dataset_hparams",
     "PickleDataSource",
@@ -38,7 +36,7 @@ __all__ = [
 
 
 def _default_record_dataset_hparams():
-    """Returns hyperparameters of a TFRecord dataset with default values.
+    r"""Returns hyperparameters of a TFRecord dataset with default values.
 
     See :meth:`texar.data.TFRecordData.default_hparams` for details.
     """
@@ -70,27 +68,25 @@ class PickleDataSource(DataSource[RawExample]):
     example.
 
     This data source does not support indexing.
+
+    Args:
+        file_paths (str or list[str]): Paths to pickled binary files.
+        lists_are_examples (bool): If `True`, lists will be treated as
+            a single example; if `False`, each element in the list will be
+            treated as separate examples. Default is `True`. Set this to
+            `False` if the entire pickled binary file is a list.
+
+            .. note::
+                It is recommended against storing all examples as a list,
+                because in this case, all examples can only be accessed
+                after the whole list is parsed.
+
+        pickle_kwargs: Additional keyword arguments to pass to
+            :meth:`pickle.load`.
     """
 
     def __init__(self, file_paths: MaybeList[str],
                  lists_are_examples: bool = True, **pickle_kwargs):
-        r"""Construct a :class:`PickleDataSource` instance.
-
-        Args:
-            file_paths (str or list[str]): Paths to pickled binary files.
-            lists_are_examples (bool): If ``True``, lists will be treated as
-                a single example; if ``False``, each element in the list will be
-                treated as separate examples. Default is ``True``. Set this to
-                ``False`` if the entire pickled binary file is a list.
-
-                .. note::
-                    It is recommended against storing all examples as a list,
-                    because in this case, all examples can only be accessed
-                    after the whole list is parsed.
-
-            pickle_kwargs: Additional keyword arguments to pass to
-                :meth:`pickle.load`.
-        """
         if isinstance(file_paths, str):
             file_paths = [file_paths]
         self._file_paths = file_paths
@@ -126,9 +122,9 @@ def _create_image_transform(height: Optional[int], width: Optional[int],
     that performs resizing with desired resize method (interpolation).
 
     Args:
-        height (int, optional): Height of the transformed image. Set to ``None``
+        height (int, optional): Height of the transformed image. Set to `None`
             to not perform resizing.
-        width (int, optional): Width of the transformed image. Set to ``None``
+        width (int, optional): Width of the transformed image. Set to `None`
             to not perform resizing.
         resize_method (str or int, optional): Interpolation method to use.
             Supported values are ``"nearest"`` (nearest neighbor),
@@ -138,7 +134,7 @@ def _create_image_transform(height: Optional[int], width: Optional[int],
 
     Returns:
         The created transformation function.
-    """  # noqa
+    """
     try:
         import PIL.Image
     except ImportError:
@@ -196,6 +192,7 @@ def _create_image_transform(height: Optional[int], width: Optional[int],
 
 
 class FeatureDescription(NamedTuple):
+    r"""Description of a feature."""
     dtype: np.dtype
     shape: Optional[Tuple[int, ...]]
 
@@ -372,7 +369,32 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
     @classmethod
     def writer(cls, file_path: str,
                feature_original_types: Dict[str, Tuple[Any, ...]]) \
-            -> _RecordWriter:  # noqa: F821
+            -> '_RecordWriter':
+        r"""Construct a file writer object that saves records in pickled format.
+
+        Example:
+            .. code-block:: python
+
+                output_file = "data/train.record"
+                feature_original_types = {
+                    "input_ids": ["int64", "FixedLenFeature", 128],
+                    "label_ids": ["int64", "FixedLenFeature"],
+                }
+                with tx.data.RecordData.writer(
+                        output_file, feature_original_types) as writer:
+                    writer.write({
+                        "input_ids": np.randint(0, 100, size=128),
+                        "label_ids": np.randint(0, 100),
+                    })
+
+        Args:
+            file_path (str): Path to save the dataset.
+            feature_original_types: Feature names and types. Please refer to
+                :meth:`default_hparams` for details.
+
+        Returns:
+            A file writer object.
+        """
         feature_types = _convert_feature_hparams(feature_original_types)
         return cls._RecordWriter(file_path, feature_types)
 
@@ -412,18 +434,19 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
         1. For the hyperparameters in the :attr:`"dataset"` field:
 
-            "files" : str or list
+            `"files"`: str or list
                 A (list of) TFRecord file path(s).
 
-            "feature_original_types" : dict
+            `"feature_original_types"`: dict
                 The feature names (str) with their data types and length types,
                 key and value in pair
                 `feature_name: [dtype, feature_len_type, len]`,
 
-                - `dtype` is a :tf_main:`TF Dtype <dtypes/DType>` such as
-                  `tf.string` and `tf.int32`, or its string name such as
-                  'tf.string' and 'tf.int32'. The feature will be read from the
-                  files and parsed into this dtype.
+                - `dtype` is a Python type (`int`, `str`), dtype instance from
+                  PyTorch (``torch.float``), NumPy (``np.int64``),
+                  or TensorFlow (``tf.string``), or their stringified names such
+                  as ``"torch.float"`` and ``"np.int64"``. The feature will be
+                  read from the files and parsed into this dtype.
 
                 - `feature_len_type` is of type `str`, and can be either
                   'FixedLenFeature' or 'VarLenFeature' for fixed length
@@ -442,17 +465,18 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
                         "name_lists": ["tf.string", "VarLenFeature"],
                     }
 
-            "feature_convert_types" : dict, optional
+            `"feature_convert_types"`: dict, optional
                 Specifies dtype converting after reading the data files. This
                 `dict` maps feature names to desired data dtypes. For example,
-                you can first read a feature into dtype `tf.float64` by
+                you can first read a feature into dtype ``torch.int32`` by
                 specifying in "feature_original_types" above, and convert
-                the feature to dtype "tf.int64" by specifying here.
+                the feature to dtype ``"torch.long"`` by specifying here.
                 Features not specified here will not do dtype-convert.
 
-                - `dtype` is a :tf_main:`TF Dtype <dtypes/DType>` such as
-                  `tf.string` and `tf.int32`, or its string name such as
-                  'tf.string' and 'tf.int32'.
+                - `dtype` is a Python type (`int`, `str`), dtype instance from
+                  PyTorch (``torch.float``), NumPy (``np.int64``),
+                  or TensorFlow (``tf.string``), or their stringified names such
+                  as ``"torch.float"`` and ``"np.int64"``.
 
                 Be noticed that this converting process is after all the data
                 are restored, `feature_original_types` has to be set firstly.
@@ -466,7 +490,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
                         "label_ids": "tf.int32",
                     }
 
-            "image_options" : dict, optional
+            `"image_options"`: dict, optional
                 Specifies the image feature name and performs image resizing,
                 includes three fields:
 
@@ -481,11 +505,13 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
                 If either `resize_height` or `resize_width` is not set,
                 image data will be restored with original shape.
-            "num_shards": int, optional
+
+            `"num_shards"`: int, optional
                 The number of data shards in distributed mode. Usually set to
                 the number of processes in distributed computing.
                 Used in combination with :attr:`"shard_id"`.
-            "shard_id": int, optional
+
+            `"shard_id"`: int, optional
                 Sets the unique id to identify a shard. The module will
                 processes only the corresponding shard of the whole data.
                 Used in combination with :attr:`"num_shards"`.
@@ -516,10 +542,11 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
                 Also refer to `examples/bert` for a use case.
 
-            "other_transformations" : list
+            `"other_transformations"`: list
                 A list of transformation functions or function names/paths to
                 further transform each single data instance.
-            "data_name" : str
+
+            `"data_name"`: str
                 Name of the dataset.
 
         2. For the **general** hyperparameters, see
@@ -532,7 +559,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
         })
         return hparams
 
-    def _process(self, raw_example: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, raw_example: Dict[str, Any]) -> Dict[str, Any]:
         example = raw_example
         for key, dtype in self._convert_types.items():
             example[key] = np.asarray(example[key], dtype=dtype)
@@ -542,7 +569,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
             example = transform(example)
         return example
 
-    def _collate(self, examples: List[Dict[str, Any]]) -> Batch:
+    def collate(self, examples: List[Dict[str, Any]]) -> Batch:
         batch = {}
         for key, descriptor in self._features.items():
             values = [ex[key] for ex in examples]

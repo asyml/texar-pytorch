@@ -15,8 +15,6 @@
 Modules of networks.
 """
 
-# pylint: disable=wildcard-import
-
 from texar.modules.networks.conv_networks import *
 from texar.modules.networks.network_base import *
 from texar.modules.networks.networks import *

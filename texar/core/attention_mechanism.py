@@ -19,10 +19,8 @@ The code structure adapted from:
     seq2seq/python/ops/attention_wrapper.py`
 """
 
-# pylint: disable=too-many-arguments, too-many-instance-attributes
-# pylint: disable=missing-docstring  # does not support generic classes
-
 import functools
+from abc import ABC
 from typing import Callable, List, NamedTuple, Optional, Tuple, TypeVar
 
 import numpy as np
@@ -49,7 +47,7 @@ __all__ = [
 State = TypeVar('State')
 
 
-class AttentionMechanism(ModuleBase):
+class AttentionMechanism(ModuleBase, ABC):
     r"""A base AttentionMechanism class providing common functionality.
 
     Common functionality includes:
@@ -119,13 +117,13 @@ class AttentionMechanism(ModuleBase):
                 masked with zeros for values past the respective sequence
                 lengths.
         """
-        query = self.query_layer(query) if self.query_layer else query
+        query = self._query_layer(query) if self._query_layer else query
 
         if self._values is None and self._keys is None:
             self._values = prepare_memory(memory, memory_sequence_length)
 
-            if self.memory_layer is not None:
-                self._keys = self.memory_layer(self._values)
+            if self._memory_layer is not None:
+                self._keys = self._memory_layer(self._values)
             else:
                 self._keys = self._values
         return query
@@ -158,18 +156,22 @@ class AttentionMechanism(ModuleBase):
 
     @property
     def memory_layer(self) -> nn.Module:
+        r"""The layer used to transform the attention memory."""
         return self._memory_layer
 
     @property
     def query_layer(self) -> Optional[nn.Module]:
+        r"""The layer used to transform the attention query."""
         return self._query_layer
 
     @property
     def values(self) -> torch.Tensor:
+        r"""Cached tensor of the attention values."""
         return self._values
 
     @property
     def encoder_output_size(self) -> int:
+        r"""Dimension of the encoder output."""
         return self._encoder_output_size
 
     def clear_cache(self):
@@ -180,7 +182,7 @@ class AttentionMechanism(ModuleBase):
         self._values = None
         self._keys = None
 
-    def initial_alignments(self,
+    def initial_alignments(self,  # pylint: disable=no-self-use
                            batch_size: int,
                            max_time: int,
                            dtype: torch.dtype,
@@ -311,7 +313,7 @@ class LuongAttention(AttentionMechanism):
             probabilities.  The default is `torch.nn.softmax`. Other options
             include :func:`~texar.core.hardmax` and
             :func:`~texar.core.sparsemax`. Its signature should be:
-            `probabilities = probability_fn(score)`.
+            :python:`probabilities = probability_fn(score)`.
         score_mask_value (optional) The mask value for score before passing
             into `probability_fn`. The default is `-inf`. Only used if
             :attr:`memory_sequence_length` is not None.
@@ -330,7 +332,7 @@ class LuongAttention(AttentionMechanism):
             probability_fn = lambda x: F.softmax(x, dim=-1)
         self._probability_fn = probability_fn
 
-        super(LuongAttention, self).__init__(
+        super().__init__(
             encoder_output_size=encoder_output_size,
             memory_layer=nn.Linear(encoder_output_size, num_units, False),
             query_layer=None,
@@ -428,7 +430,7 @@ class BahdanauAttention(AttentionMechanism):
             probabilities.  The default is `torch.nn.softmax`. Other options
             include :func:`~texar.core.hardmax` and
             :func:`~texar.core.sparsemax`. Its signature should be:
-            `probabilities = probability_fn(score)`.
+            :python:`probabilities = probability_fn(score)`:.
         score_mask_value (optional): The mask value for score before passing
             into ``probability_fn``. The default is `-inf`. Only used
             if :attr:`memory_sequence_length` is not None.
@@ -446,7 +448,7 @@ class BahdanauAttention(AttentionMechanism):
             probability_fn = lambda x: F.softmax(x, dim=-1)
         self._probability_fn = probability_fn
 
-        super(BahdanauAttention, self).__init__(
+        super().__init__(
             encoder_output_size=encoder_output_size,
             query_layer=nn.Linear(decoder_output_size, num_units, False),
             memory_layer=nn.Linear(encoder_output_size, num_units, False),
@@ -500,8 +502,8 @@ def monotonic_attention(p_choose_i: torch.Tensor,
     Monotonic attention implies that the input sequence is processed in an
     explicitly left-to-right manner when generating the output sequence.  In
     addition, once an input sequence element is attended to at a given output
-    timestep, elements occurring before it cannot be attended to at subsequent
-    output timesteps.  This function generates attention distributions
+    time step, elements occurring before it cannot be attended to at subsequent
+    output time steps.  This function generates attention distributions
     according to these assumptions. For more information, see `Online and
     Linear-Time Attention by Enforcing Monotonic Alignments`.
 
@@ -510,8 +512,8 @@ def monotonic_attention(p_choose_i: torch.Tensor,
             Should be of shape (batch_size, input_sequence_length), and should
             all be in the range [0, 1].
         previous_attention: The attention distribution from the previous output
-            timestep.  Should be of shape (batch_size, input_sequence_length).
-            For the first output timestep, `previous_attention[n]` should be
+            time step.  Should be of shape (batch_size, input_sequence_length).
+            For the first output time step, `previous_attention[n]` should be
             `[1, 0, 0, ..., 0] for all n in [0, ... batch_size - 1]`.
         mode: How to compute the attention distribution.
             Must be one of ``"recursive"``, ``"parallel"``, or ``"hard"``:
@@ -617,8 +619,8 @@ def _monotonic_probability_fn(score: torch.Tensor,
             the resulting attention distribution one-hot.  It should be set to 0
             at test-time, and when hard attention is not desired.
         mode: How to compute the attention distribution.  Must be one of
-            ``"recursive"``, ``"parallel"``, or ``"hard"``.  See the docstring
-            for :func:`~texar.core.monotonic_attention` for more information.
+            ``"recursive"``, ``"parallel"``, or ``"hard"``. Refer to
+            :func:`~texar.core.monotonic_attention` for more information.
 
     Returns:
         A ``[batch_size, alignments_size]`` shaped tensor corresponding to the
@@ -638,7 +640,7 @@ def _monotonic_probability_fn(score: torch.Tensor,
     return monotonic_attention(p_choose_i, previous_alignments, mode)
 
 
-class MonotonicAttentionMechanism(AttentionMechanism):
+class MonotonicAttentionMechanism(AttentionMechanism, ABC):
     r"""Base attention mechanism for monotonic attention.
 
     Simply overrides the initial_alignments function to provide a dirac
@@ -678,7 +680,7 @@ class BahdanauMonotonicAttention(MonotonicAttentionMechanism):
     This type of attention enforces a monotonic constraint on the attention
     distributions; that is once the model attends to a given point in the
     memory it can't attend to any prior points at subsequence output
-    timesteps.  It achieves this by using the _monotonic_probability_fn
+    time steps.  It achieves this by using the :func:`_monotonic_probability_fn`
     instead of softmax to construct its attention distributions.  Since the
     attention scores are passed through a sigmoid, a learnable scalar bias
     parameter is applied after the score function and before the sigmoid.
@@ -696,15 +698,15 @@ class BahdanauMonotonicAttention(MonotonicAttentionMechanism):
         score_mask_value: (optional): The mask value for score before
             passing into ``probability_fn``. The default is -inf. Only used
             if :attr:`memory_sequence_length` is not None.
-        sigmoid_noise: Standard deviation of pre-sigmoid noise.  See the
-            docstring for :func:`_monotonic_probability_fn` for more
+        sigmoid_noise: Standard deviation of pre-sigmoid noise.  Refer to
+            :func:`_monotonic_probability_fn` for more
             information.
         score_bias_init: Initial value for score bias scalar.  It's
             recommended to initialize this to a negative value when the
             length of the memory is large.
         mode: How to compute the attention distribution.  Must be one of
-            ``"recursive"``, ``"parallel"``, or ``"hard"``.  See the docstring
-            for :func:`~texar.core.monotonic_attention` for more information.
+            ``"recursive"``, ``"parallel"``, or ``"hard"``.  Refer to
+            :func:`~texar.core.monotonic_attention` for more information.
     """
 
     def __init__(self,
@@ -722,7 +724,7 @@ class BahdanauMonotonicAttention(MonotonicAttentionMechanism):
             sigmoid_noise=sigmoid_noise,
             mode=mode)
 
-        super(BahdanauMonotonicAttention, self).__init__(
+        super().__init__(
             encoder_output_size=encoder_output_size,
             query_layer=nn.Linear(decoder_output_size, num_units, False),
             memory_layer=nn.Linear(encoder_output_size, num_units, False),
@@ -779,7 +781,7 @@ class LuongMonotonicAttention(MonotonicAttentionMechanism):
     This type of attention enforces a monotonic constraint on the attention
     distributions; that is once the model attends to a given point in the
     memory it can't attend to any prior points at subsequence output
-    timesteps.  It achieves this by using the _monotonic_probability_fn
+    time steps.  It achieves this by using :func:`_monotonic_probability_fn`
     instead of softmax to construct its attention distributions.  Otherwise,
     it is equivalent to LuongAttention.  This approach is proposed in:
     `Colin Raffel, Minh-Thang Luong, Peter J. Liu, Ron J. Weiss, Douglas Eck,
@@ -793,15 +795,15 @@ class LuongMonotonicAttention(MonotonicAttentionMechanism):
         score_mask_value: (optional): The mask value for score before
             passing into ``probability_fn``. The default is -inf. Only used
             if :attr:`memory_sequence_length` is not None.
-        sigmoid_noise: Standard deviation of pre-sigmoid noise.  See the
-            docstring for :func:`_monotonic_probability_fn` for more
+        sigmoid_noise: Standard deviation of pre-sigmoid noise.  Refer to
+            :func:`_monotonic_probability_fn` for more
             information.
         score_bias_init: Initial value for score bias scalar.  It's
             recommended to initialize this to a negative value when the
             length of the memory is large.
         mode: How to compute the attention distribution.  Must be one of
-            ``"recursive"``, ``"parallel"``, or ``"hard"``.  See the docstring
-            for :func:`~texar.core.monotonic_attention` for more information.
+            ``"recursive"``, ``"parallel"``, or ``"hard"``.  Refer to
+            :func:`~texar.core.monotonic_attention` for more information.
     """
 
     def __init__(self,
@@ -818,7 +820,7 @@ class LuongMonotonicAttention(MonotonicAttentionMechanism):
             sigmoid_noise=sigmoid_noise,
             mode=mode)
 
-        super(LuongMonotonicAttention, self).__init__(
+        super().__init__(
             encoder_output_size=encoder_output_size,
             query_layer=None,
             memory_layer=nn.Linear(encoder_output_size, num_units, False),

@@ -1,7 +1,7 @@
 .. role:: hidden
     :class: hidden-section
 
-Utils
+Utilities
 **************
 
 Frequent Use
@@ -15,10 +15,6 @@ Frequent Use
 :hidden:`compat_as_text`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.compat_as_text
-
-:hidden:`map_ids_to_strs`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.map_ids_to_strs
 
 :hidden:`write_paired_text`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,10 +95,6 @@ Dictionary
 
 String
 =======
-
-:hidden:`map_ids_to_strs`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.utils.map_ids_to_strs
 
 :hidden:`strip_token`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -191,6 +183,10 @@ Misc
 :hidden:`map_structure_zip`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.utils.map_structure_zip
+
+:hidden:`beam_search`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.utils.beam_search.beam_search
 
 
 

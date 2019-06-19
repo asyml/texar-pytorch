@@ -26,8 +26,8 @@ __all__ = [
 
 
 class Conv1DEncoder(Conv1DNetwork, EncoderBase):  # type: ignore
-    r"""Simple Conv-1D encoder which consists of a sequence of conv layers
-    followed with a sequence of dense layers.
+    r"""Simple `Conv-1D` encoder which consists of a sequence of convolutional
+    layers followed with a sequence of dense layers.
 
     Wraps :class:`~texar.modules.Conv1DNetwork` to be a subclass of
     :class:`~texar.modules.EncoderBase`. Has exact the same functionality
@@ -36,9 +36,9 @@ class Conv1DEncoder(Conv1DNetwork, EncoderBase):  # type: ignore
 
     def __init__(self, in_channels: int, in_features: Optional[int] = None,
                  hparams=None):
-        super(Conv1DEncoder, self).__init__(in_channels=in_channels,
-                                            in_features=in_features,
-                                            hparams=hparams)
+        super().__init__(in_channels=in_channels,
+                         in_features=in_features,
+                         hparams=hparams)
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
@@ -46,7 +46,7 @@ class Conv1DEncoder(Conv1DNetwork, EncoderBase):  # type: ignore
 
         The same as :meth:`~texar.modules.Conv1DNetwork.default_hparams`
         of :class:`~texar.modules.Conv1DNetwork`, except that the default name
-        is 'conv_encoder'.
+        is ``"conv_encoder"``.
         """
         hparams = Conv1DNetwork.default_hparams()
         hparams['name'] = 'conv_encoder'

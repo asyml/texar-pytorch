@@ -10,8 +10,6 @@ import unittest
 from texar.hyperparams import HParams
 
 
-# pylint: disable=no-member
-
 class HParamsTest(unittest.TestCase):
     r"""Tests hyperparameter related operations.
     """

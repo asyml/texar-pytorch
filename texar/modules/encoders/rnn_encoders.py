@@ -28,8 +28,6 @@ from texar.modules.networks.conv_networks import _to_list
 from texar.utils.rnn import bidirectional_dynamic_rnn, dynamic_rnn
 from texar.utils.shapes import mask_sequences
 
-# pylint: disable=too-many-arguments, too-many-locals, invalid-name, no-member
-
 __all__ = [
     "_forward_output_layers",
     "RNNEncoderBase",
@@ -124,14 +122,14 @@ def _forward_output_layers(
 
     Args:
         inputs: A Tensor of shape ``[batch_size, max_time] + input_size`` if
-            :attr:`time_major` is ``False``, or shape
+            :attr:`time_major` is `False`, or shape
             ``[max_time, batch_size] + input_size`` if :attr:`time_major` is
-            ``True``.
+            `True`.
         output_layer (optional): :torch_nn:`Sequential` or :torch_nn:`Module`
             of output layers.
         time_major (bool): The shape format of the :attr:`inputs` and
-            :attr:`outputs` Tensors. If ``True``, these tensors are of shape
-            `[max_time, batch_size, input_size]`. If ``False`` (default),
+            :attr:`outputs` Tensors. If `True`, these tensors are of shape
+            `[max_time, batch_size, input_size]`. If `False` (default),
             these tensors are of shape `[batch_size, max_time, input_size]`.
         sequence_length (optional): A 1D :tensor:`LongTensor` of shape
             ``[batch_size]``. Sequence lengths of the batch inputs. Used to
@@ -169,9 +167,6 @@ class RNNEncoderBase(EncoderBase, Generic[State]):
             default values.
     """
 
-    def __init__(self, hparams: Optional[HParams] = None):
-        super().__init__(hparams)
-
     @staticmethod
     def default_hparams():
         r"""Returns a dictionary of hyperparameters with default values.
@@ -198,7 +193,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
             a cell is created as specified in :attr:`hparams["rnn_cell"]`.
         output_layer (optional): An instance of
             :torch_nn:`Module`. Applies to the RNN cell
-            output of each step. If ``None`` (default), the output layer is
+            output of each step. If `None` (default), the output layer is
             created as specified in :attr:`hparams["output_layer"]`.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameters will be set to default values. See
@@ -270,28 +265,28 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
 
         Here:
 
-        "rnn_cell" : dict
+        `"rnn_cell"`: dict
             A dictionary of RNN cell hyperparameters. Ignored if
             :attr:`cell` is given to the encoder constructor.
 
             The default value is defined in
             :func:`~texar.core.default_rnn_cell_hparams`.
 
-        "output_layer" : dict
+        `"output_layer"`: dict
             Output layer hyperparameters. Ignored if :attr:`output_layer`
             is given to the encoder constructor. Includes:
 
-            "num_layers" : int
+            `"num_layers"`: int
                 The number of output (dense) layers. Set to 0 to avoid any
                 output layers applied to the cell outputs.
 
-            "layer_size" : int or list
+            `"layer_size"`: int or list
                 The size of each of the output (dense) layers.
 
                 If an `int`, each output layer will have the same size. If
                 a list, the length must equal to :attr:`num_layers`.
 
-            "activation" : str or callable or None
+            `"activation"`: str or callable or None
                 Activation function for each of the output (dense)
                 layer except for the final layer. This can be
                 a function, or its string name or module path.
@@ -305,17 +300,17 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
                     "activation": "my_module.my_activation_fn" # module path
                     "activation": my_module.my_activation_fn # function
 
-                Default is ``None`` which results in an identity activation.
+                Default is `None` which results in an identity activation.
 
-            "final_layer_activation" : str or callable or None
+            `"final_layer_activation"`: str or callable or None
                 The activation function for the final output layer.
 
-            "other_dense_kwargs" : dict or None
+            `"other_dense_kwargs"`: dict or None
                 Other keyword arguments to construct each of the output
                 dense layers, e.g., ``bias``. See
                 :torch_nn:`Linear` for the keyword arguments.
 
-            "dropout_layer_ids": int or list
+            `"dropout_layer_ids"`: int or list
                 The indexes of layers (starting from 0) whose inputs
                 are applied with dropout. The index = :attr:`num_layers`
                 means dropout applies to the final layer output. E.g.,
@@ -333,14 +328,14 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
                 The dropout mode (training or not) is controlled
                 by :attr:`self.training`.
 
-            "dropout_rate" : float
+            `"dropout_rate"`: float
                 The dropout rate, between 0 and 1. E.g.,
                 ``"dropout_rate": 0.1`` would drop out 10% of elements.
 
-            "variational_dropout": bool
+            `"variational_dropout"`: bool
                 Whether the dropout mask is the same across all time steps.
 
-        "name" : str
+        `"name"`: str
             Name of the encoder
         """
         hparams = RNNEncoderBase.default_hparams()
@@ -365,7 +360,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
             inputs: A 3D Tensor of shape ``[batch_size, max_time, dim]``.
                 The first two dimensions
                 :attr:`batch_size` and :attr:`max_time` are exchanged if
-                :attr:`time_major` is ``True``.
+                :attr:`time_major` is `True`.
             sequence_length (optional): A 1D :tensor:`LongTensor` of shape
                 ``[batch_size]``.
                 Sequence lengths of the batch inputs. Used to copy-through
@@ -373,8 +368,8 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
                 length.
             initial_state (optional): Initial state of the RNN.
             time_major (bool): The shape format of the :attr:`inputs` and
-                :attr:`outputs` Tensors. If ``True``, these tensors are of shape
-                ``[max_time, batch_size, depth]``. If ``False`` (default),
+                :attr:`outputs` Tensors. If `True`, these tensors are of shape
+                ``[max_time, batch_size, depth]``. If `False` (default),
                 these tensors are of shape ``[batch_size, max_time, depth]``.
             return_cell_output (bool): Whether to return the output of the RNN
                 cell. This is the results prior to the output layer.
@@ -383,15 +378,15 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
 
         Returns:
             - By default (both ``return_cell_output`` and ``return_output_size``
-              are ``False``), returns a pair :attr:`(outputs, final_state)`,
+              are `False`), returns a pair :attr:`(outputs, final_state)`,
               where
 
               - :attr:`outputs`: The RNN output tensor by the output layer
                 (if exists) or the RNN cell (otherwise). The tensor is of
                 shape ``[batch_size, max_time, output_size]`` if
-                ``time_major`` is ``False``, or
+                ``time_major`` is `False`, or
                 ``[max_time, batch_size, output_size]`` if
-                ``time_major`` is ``True``.
+                ``time_major`` is `True`.
                 If RNN cell output is a (nested) tuple of Tensors, then the
                 :attr:`outputs` will be a (nested) tuple having the same
                 nest structure as the cell output.
@@ -408,7 +403,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
                 output layer, having the same structure with :attr:`outputs`
                 except for the ``output_dim``.
 
-            - If ``return_output_size`` is ``True``, returns a tuple
+            - If ``return_output_size`` is `True`, returns a tuple
               :attr:`(outputs, final_state, output_size)`
 
               - :attr:`output_size`: A (possibly nested tuple of) int
@@ -419,7 +414,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
                 structure as with ``outputs``.
 
             - If both ``return_cell_output`` and ``return_output_size`` are
-              ``True``, returns
+              `True`, returns
               :attr:`(outputs, final_state, cell_outputs, output_size)`.
         """
 
@@ -476,11 +471,11 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             a cell is created as specified in ``hparams["rnn_cell_bw"]``.
         output_layer_fw (optional): An instance of
             :torch_nn:`Module`. Apply to the forward
-            RNN cell output of each step. If ``None`` (default), the output
+            RNN cell output of each step. If `None` (default), the output
             layer is created as specified in ``hparams["output_layer_fw"]``.
         output_layer_bw (optional): An instance of
             :torch_nn:`Module`. Apply to the backward
-            RNN cell output of each step. If ``None`` (default), the output
+            RNN cell output of each step. If `None` (default), the output
             layer is created as specified in ``hparams["output_layer_bw"]``.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameters will be set to default values. See
@@ -585,46 +580,46 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
 
         Here:
 
-        "rnn_cell_fw" : dict
+        `"rnn_cell_fw"`: dict
             Hyperparameters of the forward RNN cell.
             Ignored if :attr:`cell_fw` is given to the encoder constructor.
 
             The default value is defined in
             :func:`~texar.core.default_rnn_cell_hparams`.
 
-        "rnn_cell_bw" : dict
+        `"rnn_cell_bw"`: dict
             Hyperparameters of the backward RNN cell.
             Ignored if :attr:`cell_bw` is given to the encoder constructor,
-            or if `"rnn_cell_share_config"` is ``True``.
+            or if `"rnn_cell_share_config"` is `True`.
 
             The default value is defined in
             :meth:`~texar.core.default_rnn_cell_hparams`.
 
-        "rnn_cell_share_config" : bool
+        `"rnn_cell_share_config"`: bool
             Whether share hyperparameters of the backward cell with the
             forward cell. Note that the cell parameters (variables) are not
             shared.
 
-        "output_layer_fw" : dict
+        `"output_layer_fw"`: dict
             Hyperparameters of the forward output layer. Ignored if
             ``output_layer_fw`` is given to the constructor.
             See the ``"output_layer"`` field of
             :meth:`~texar.modules.UnidirectionalRNNEncoder.default_hparams` for
             details.
 
-        "output_layer_bw" : dict
+        `"output_layer_bw"`: dict
             Hyperparameters of the backward output layer. Ignored if
             :attr:`output_layer_bw` is given to the constructor. Have the
             same structure and defaults with :attr:`"output_layer_fw"`.
 
-            Ignored if ``output_layer_share_config`` is ``True``.
+            Ignored if ``output_layer_share_config`` is `True`.
 
-        "output_layer_share_config" : bool
+        `"output_layer_share_config"`: bool
             Whether share hyperparameters of the backward output layer
             with the forward output layer. Note that the layer parameters
             (variables) are not shared.
 
-        "name" : str
+        `"name"`: str
             Name of the encoder
         """
         hparams = RNNEncoderBase.default_hparams()
@@ -654,7 +649,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             inputs: A 3D Tensor of shape ``[batch_size, max_time, dim]``.
                 The first two dimensions
                 ``batch_size`` and ``max_time`` may be exchanged if
-                ``time_major`` is ``True``.
+                ``time_major`` is `True`.
             sequence_length (optional): A 1D :tensor:`LongTensor` of shape
                 ``[batch_size]``.
                 Sequence lengths of the batch inputs. Used to copy-through
@@ -663,8 +658,8 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
             initial_state_fw: (optional): Initial state of the forward RNN.
             initial_state_bw: (optional): Initial state of the backward RNN.
             time_major (bool): The shape format of the :attr:`inputs` and
-                :attr:`outputs` Tensors. If ``True``, these tensors are of shape
-                ``[max_time, batch_size, depth]``. If ``False`` (default),
+                :attr:`outputs` Tensors. If `True`, these tensors are of shape
+                ``[max_time, batch_size, depth]``. If `False` (default),
                 these tensors are of shape ``[batch_size, max_time, depth]``.
             return_cell_output (bool): Whether to return the output of the RNN
                 cell. This is the results prior to the output layer.
@@ -673,14 +668,14 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
 
         Returns:
             - By default (both ``return_cell_output`` and ``return_output_size``
-              are ``False``), returns a pair :attr:`(outputs, final_state)`
+              are `False`), returns a pair :attr:`(outputs, final_state)`
 
               - :attr:`outputs`: A tuple ``(outputs_fw, outputs_bw)``
                 containing the forward and the backward RNN outputs, each of
                 which is of shape ``[batch_size, max_time, output_dim]``
-                if ``time_major`` is ``False``, or
+                if ``time_major`` is `False`, or
                 ``[max_time, batch_size, output_dim]`` if ``time_major``
-                is ``True``.
+                is `True`.
                 If RNN cell output is a (nested) tuple of Tensors, then
                 ``outputs_fw`` and ``outputs_bw`` will be a (nested) tuple
                 having the same structure as the cell output.
@@ -692,7 +687,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 (nested) tuple of Tensors if ``cell.state_size`` is a (nested)
                 tuple.
 
-            - If ``return_cell_output`` is ``True``, returns a triple
+            - If ``return_cell_output`` is `True`, returns a triple
               :attr:`(outputs, final_state, cell_outputs)` where
 
               - :attr:`cell_outputs`: A tuple
@@ -701,7 +696,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 layers, having the same structure with :attr:`outputs` except
                 for the ``output_dim``.
 
-            - If ``return_output_size`` is ``True``, returns a tuple
+            - If ``return_output_size`` is `True`, returns a tuple
               :attr:`(outputs, final_state, output_size)` where
 
               - :attr:`output_size`: A tuple
@@ -715,7 +710,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                 ``outputs_fw``. The same applies to ``output_size_bw``.
 
             - If both ``return_cell_output`` and ``return_output_size`` are
-              ``True``, returns
+              `True`, returns
               :attr:`(outputs, final_state, cell_outputs, output_size)`.
         """
 

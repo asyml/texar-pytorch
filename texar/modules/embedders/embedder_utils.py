@@ -44,14 +44,14 @@ def default_embedding_hparams():
 
         Here:
 
-        "name" : str
+        `"name"`: str
             Name of the embedding variable.
 
-        "dim" : int or list
+        `"dim"`: int or list
             Embedding dimension. Can be a list of integers to yield embeddings
             with dimensionality > 1.
 
-        "initializer" : dict or None
+        `"initializer"`: dict or None
             Hyperparameters of the initializer for the embedding values. An
             example is:
 
@@ -64,7 +64,7 @@ def default_embedding_hparams():
 
             which corresponds to :torch_nn:`init.uniform_`, and includes:
 
-            "type": str or function
+            `"type"`: str or function
                 Name, full path, or instance of the initializer class or
                 initializing function;
                 The function can be
@@ -77,18 +77,18 @@ def default_embedding_hparams():
                   Must provide the full path, e.g.,
                   :attr:`"my_module.MyInitializer"`, or the instance.
 
-            "kwargs": dict
+            `"kwargs"`: dict
                 A dictionary of arguments for constructor of the
                 initializer function. An initializer is
                 created by ``initializer = initializer_class_or_fn(**kwargs)``
                 where :attr:`initializer_class_or_fn` is specified in
                 :attr:`"type"`.
 
-        "dropout_rate" : float
+        `"dropout_rate"`: float
             The dropout rate between 0 and 1. E.g., ``dropout_rate=0.1`` would
             drop out 10% of the embedding.
 
-        "dropout_strategy" : str
+        `"dropout_strategy"`: str
             The dropout strategy. Can be one of the following
 
             - ``"element"``: The regular strategy that drops individual elements
@@ -148,9 +148,9 @@ def get_embedding(num_embeds: Optional[int] = None,
         embedding = torch.empty(size=[num_embeds] + dim)
         # initializer should be set by layers.get_initializer
         if initializer:
-            embedding = initializer(embedding)
+            initializer(embedding)
         else:
-            embedding = torch.nn.init.xavier_uniform_(embedding)
+            torch.nn.init.xavier_uniform_(embedding)
     else:
         if torch.is_tensor(init_value):
             embedding = init_value  # Do not copy the tensor.

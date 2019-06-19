@@ -36,7 +36,7 @@ class SamplerTest(unittest.TestCase):
             }
             super().__init__(source, hparams)
 
-        def _process(self, raw_example):
+        def process(self, raw_example):
             return raw_example
 
     def setUp(self) -> None:
@@ -252,13 +252,13 @@ Example = Tuple[List[int], List[str]]
 
 
 class MockDataBase(DataBase[RawExample, Example]):
-    def _process(self, raw_example: RawExample) -> Example:
+    def process(self, raw_example: RawExample) -> Example:
         numbers, string = raw_example
         numbers = [x + 1 for x in numbers]
         strings = string.split()
         return numbers, strings
 
-    def _collate(self, examples: List[Example]) -> Batch:
+    def collate(self, examples: List[Example]) -> Batch:
         numbers = np.asarray([ex[0] for ex in examples])
         strings = np.asarray([ex[1] for ex in examples])
         return Batch(len(numbers), numbers=numbers, strings=strings)

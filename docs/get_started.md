@@ -6,7 +6,7 @@ With the design goals of **modularity, versatility, and extensibility** in mind,
    * encoder(s) to decoder(s), sequential- and self-attentions, memory, hierarchical models, classifiers... 
    * maximum likelihood learning, reinforcement learning, adversarial learning, probabilistic modeling, ... 
 
-With Texar, cutting-edge complex models can be easily constructed, freely enriched with best modeling/training practices, readily fitted into standard training/evaluation pipelines, and fastly experimented and evolved by, e.g., plugging-in and swapping-out different modules.
+With Texar, cutting-edge complex models can be easily constructed, freely enriched with best modeling/training practices, readily fitted into standard training/evaluation pipelines, and rapidly experimented and evolved by, e.g., plugging-in and swapping-out different modules.
 
 <div align="center">
    <img src="https://zhitinghu.github.io/texar_web/images/texar_stack.png"><br><br>
@@ -18,22 +18,29 @@ With Texar, cutting-edge complex models can be easily constructed, freely enrich
 Users can construct their own models at a high conceptual level just like assembling building blocks. It is convenient to plug in or swap out modules, and configure rich options of each module. For example, switching between maximum likelihood learning and reinforcement learning involves only changing several lines of code.
 * **Extensibility**. It is straightforward to integrate any user-customized, external modules. Also, Texar is fully compatible with the native PyTorch interfaces and can take advantage of the rich PyTorch features, and resources from the vibrant open-source community.
 * Interfaces with different functionality levels. Users can customize a model through 1) simple **Python/YAML configuration files** of provided model templates/examples; 2) programming with **Python Library APIs** for maximal customizability.
-* Easy-to-use APIs: 1) Convenient automatic variable re-use---no worry about the complicated TF variable scopes; 2) Pytorch-like callable modules; 3) Rich configuration options for each module, all with default values; ...
+* Easy-to-use APIs: 1) Convenient automatic variable re-use---no worry about the complicated TF variable scopes; 2) PyTorch-like callable modules; 3) Rich configuration options for each module, all with default values; ...
 * Well-structured high-quality code of uniform design patterns and consistent styles. 
-* Clean, detailed [documentation](https://texar.readthedocs.io) and rich [examples](https://github.com/asyml/texar/tree/master/examples).
+* Clean, detailed [documentation](https://texar-pytorch.readthedocs.io) and rich [examples](https://github.com/asyml/texar-pytorch/tree/master/examples).
 
 ### Library API Example
 Builds a (self-)attentional sequence encoder-decoder model, with different learning algorithms:
 ```python
 import texar as tx
 
+class Model(tx.ModuleBase):
+    def __init__(self, data, hparams):
+        self.src_embedder = tx.modules.WordEmbedder(data.source_vocab.size, hparams=hparams.embedder)
+        self.tgt_embedder = tx.modules.WordEmbedder(data.target_vocab.size, hparams=hparams.embedder)
+        self.encoder = tx.modules.BidirectionalRNNEncoder(input_size = self.src_embedder.dim, hparams=hparams.encoder)
+        self.decoder = tx.modules.AttentionRNNDecoder(input_size=self.tgt_embedder.dim, encoder_output_size=)
+
 # Data 
 data = tx.data.PairedTextData(hparams=hparams_data) # Hyperparameter configs in `hparams` 
 iterator = tx.data.DataIterator(data)
 
 # Model architecture
-embedder = tx.modules.WordEmbedder(data.target_vocab.size, hparams=hparams_emb)
-encoder = tx.modules.BidirectionalRNNEncoder(input_size=source_embedder.dim,
+embedder = 
+encoder = tx.modules.BidirectionalRNNEncoder(input_size=embedder.dim,
                                              hparams=hparams_encoder)
 outputs_enc = encoder(inputs=embedder(batch['source_text_ids']),
                       sequence_length=batch['source_length'])
@@ -61,7 +68,7 @@ for batch in iterator:
                     logits=training_outputs.logits,
                     sequence_length=batch['target_length'] - 1)
 ```
-Many more examples are available [here](https://github.com/asyml/texar/tree/master/examples)
+Many more examples are available [here](https://github.com/asyml/texar-pytorch/tree/master/examples).
   
 ### Installation
 ```
@@ -71,9 +78,9 @@ pip install -e .
 ```
 
 ### Getting Started
-* [Examples](https://github.com/asyml/texar/tree/master/examples)
-* [Documentations](https://texar.readthedocs.io)
-* [GitHub](https://github.com/asyml/texar)
+* [Examples](https://github.com/asyml/texar-pytorch/tree/master/examples)
+* [Documentations](https://texar-pytorch.readthedocs.io)
+* [GitHub](https://github.com/asyml/texar-pytorch)
 
 ### Reference
 If you use Texar, please cite the [report](https://arxiv.org/abs/1809.00794) with the following BibTex entry:
@@ -90,4 +97,4 @@ Zhiting Hu, Haoran Shi, Zichao Yang, Bowen Tan, Tiancheng Zhao, Junxian He, Went
 ```
 
 ### License
-[Apache License 2.0](https://github.com/asyml/texar/blob/master/LICENSE)
+[Apache License 2.0](https://github.com/asyml/texar-pytorch/blob/master/LICENSE)

@@ -4,8 +4,6 @@
 Unit tests for rnn helpers.
 """
 
-# pylint: disable=invalid-name
-
 import unittest
 
 import torch

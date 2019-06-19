@@ -23,8 +23,6 @@ import torch.nn.functional as F
 from texar.losses.losses_utils import mask_and_reduce, reduce_dimensions
 from texar.utils.shapes import get_rank
 
-# pylint: disable=too-many-arguments
-
 __all__ = [
     "entropy_with_logits",
     "sequence_entropy_with_logits",
@@ -38,7 +36,7 @@ def _get_entropy(logits: torch.Tensor) -> torch.Tensor:
         logits: Unscaled log probabilities.
 
     Return:
-        A tensor containing the shannon in the last dimension.
+        A tensor containing the Shannon entropy in the last dimension.
     """
     probs = F.softmax(logits, -1) + 1e-8
     entropy = - probs * torch.log(probs)
@@ -87,7 +85,7 @@ def entropy_with_logits(logits: torch.Tensor,
             Used only when :attr:`logits` has rank >= 3.
 
     Returns:
-        A Tensor containing the shannon entropy. The dimensionality of the
+        A Tensor containing the Shannon entropy. The dimensionality of the
         Tensor depends on the configuration of reduction arguments. For
         example, if both batch and remaining dimensions are reduced (by
         either sum or average), the returned Tensor is a scalar Tensor.
@@ -185,7 +183,7 @@ def sequence_entropy_with_logits(
             `[batch_size, max_time, ...]`.
 
     Returns:
-        A Tensor containing the shannon entropy. The dimensionality of the
+        A Tensor containing the Shannon entropy. The dimensionality of the
         Tensor depends on the configuration of reduction arguments. For
         example, if batch, time, and remaining dimensions are all reduced (by
         either sum or average), the returned Tensor is a scalar Tensor.

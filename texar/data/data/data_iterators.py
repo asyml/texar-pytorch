@@ -14,6 +14,9 @@
 """
 Various data iterator classes.
 """
+
+# pylint: disable=protected-access
+
 from typing import (
     Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence,
     Tuple, Union)
@@ -111,13 +114,7 @@ class SamplerBase(torch_sampler.Sampler):
 class SequentialSampler(SamplerBase):
     r"""Samples elements sequentially, always in the same order. Same as
     :class:`torch.utils.data.SequentialSampler`.
-
-    Args:
-        data: The :class:`~texar.data.data.DataBase` instance.
     """
-
-    def __init__(self, data: DataBase):
-        super().__init__(data)
 
     def _iterator_given_size(self, size: int) -> Iterator[int]:
         return iter(range(size))
@@ -144,7 +141,7 @@ class RandomSampler(SamplerBase):
     Args:
         data: The :class:`~texar.data.data.DataBase` instance.
         num_samples (int): number of samples to draw, default=len(dataset)
-        replacement (bool): samples are drawn with replacement if ``True``,
+        replacement (bool): samples are drawn with replacement if `True`,
             default=False
     """
 
@@ -213,7 +210,7 @@ class BufferShuffleSampler(SamplerBase):
                     if buffer[x] < self.size)
 
 
-class _DataLoaderIter(torch_DataLoaderIter):
+class _DataLoaderIter(torch_DataLoaderIter):  # pylint: disable=abstract-method
     r"""Iterates once over the DataLoader's dataset. This is almost identical
     to PyTorch :class:`torch.utils.data.dataloader._DataLoaderIter`, except
     that we check `allow_smaller_final_batch` here. This is because using
@@ -234,7 +231,7 @@ class _DataLoaderIter(torch_DataLoaderIter):
         return batch
 
 
-class _CacheDataLoaderIter(torch_DataLoaderIter):
+class _CacheDataLoaderIter(torch_DataLoaderIter):  # pylint: disable=abstract-method
     r"""Iterates once over the DataLoader's dataset. This class is used when
     examples are processed and returned by worker processes. We need to record
     the corresponding indices of each batch, call

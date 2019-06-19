@@ -76,7 +76,7 @@ def whitespace_tokenize(text):
     return tokens
 
 
-class FullTokenizer(object):
+class FullTokenizer:
     """Runs end-to-end tokenziation."""
 
     def __init__(self, vocab_file, do_lower_case=True):
@@ -100,7 +100,7 @@ class FullTokenizer(object):
         return convert_by_vocab(self.inv_vocab, ids)
 
 
-class BasicTokenizer(object):
+class BasicTokenizer:
     """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
 
     def __init__(self, do_lower_case=True):
@@ -136,7 +136,8 @@ class BasicTokenizer(object):
         output_tokens = whitespace_tokenize(" ".join(split_tokens))
         return output_tokens
 
-    def _run_strip_accents(self, text):
+    @staticmethod
+    def _run_strip_accents(text):
         """Strips accents from a piece of text."""
         text = unicodedata.normalize("NFD", text)
         output = []
@@ -147,7 +148,8 @@ class BasicTokenizer(object):
             output.append(char)
         return "".join(output)
 
-    def _run_split_on_punc(self, text):
+    @staticmethod
+    def _run_split_on_punc(text):
         """Splits punctuation on a piece of text."""
         chars = list(text)
         i = 0
@@ -180,7 +182,8 @@ class BasicTokenizer(object):
                 output.append(char)
         return "".join(output)
 
-    def _is_chinese_char(self, cp):
+    @staticmethod
+    def _is_chinese_char(cp):
         """Checks whether CP is the codepoint of a CJK character."""
         # This defines a "chinese character" as anything in the CJK Unicode
         # block:
@@ -204,7 +207,8 @@ class BasicTokenizer(object):
 
         return False
 
-    def _clean_text(self, text):
+    @staticmethod
+    def _clean_text(text):
         """Performs invalid character removal and whitespace cleanup on text."""
         output = []
         for char in text:
@@ -218,7 +222,7 @@ class BasicTokenizer(object):
         return "".join(output)
 
 
-class WordpieceTokenizer(object):
+class WordpieceTokenizer:
     """Runs WordPiece tokenziation."""
 
     def __init__(self, vocab, unk_token="[UNK]", max_input_chars_per_word=100):
@@ -284,7 +288,7 @@ def _is_whitespace(char):
     """Checks whether `chars` is a whitespace character."""
     # \t, \n, and \r are technically control characters but we treat them
     # as whitespace since they are generally considered as such.
-    if char == " " or char == "\t" or char == "\n" or char == "\r":
+    if char in (' ', '\t', '\n', '\r'):
         return True
     cat = unicodedata.category(char)
     if cat == "Zs":
@@ -296,7 +300,7 @@ def _is_control(char):
     """Checks whether `chars` is a control character."""
     # These are technically control characters but we count them as whitespace
     # characters.
-    if char == "\t" or char == "\n" or char == "\r":
+    if char in ('\t', '\n', '\r'):
         return False
     cat = unicodedata.category(char)
     if cat.startswith("C"):

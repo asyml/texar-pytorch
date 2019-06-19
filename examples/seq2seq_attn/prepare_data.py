@@ -18,8 +18,6 @@ import argparse
 
 import texar as tx
 
-# pylint: disable=invalid-name
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--data',
                     type=str,

@@ -14,7 +14,6 @@
 
 import sys
 import os
-from recommonmark.parser import CommonMarkParser
 #from unittest.mock import MagicMock
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -37,7 +36,9 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'sphinx.ext.extlinks',
-    'sphinxcontrib.napoleon',
+    'sphinx.ext.napoleon',
+    'recommonmark',
+    'sphinxcontrib.spelling',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -45,11 +46,10 @@ templates_path = ['_templates']
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
-source_parsers = {
-    '.md': CommonMarkParser,
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.md': 'markdown',
 }
-source_suffix = ['.rst', '.md']
-#source_suffix = '.rst'
 
 # The encoding of source files.
 #source_encoding = 'utf-8-sig'
@@ -343,9 +343,21 @@ extlinks = {'torch_docs': (
 
 ##### Customize ######
 
-autodoc_member_order = 'bysource'
+# Snippet to insert at beginning of each RST file.
+rst_prolog = r"""
+.. role:: python(code)
+    :language: python
+"""
 
-# Adresses import errors. Refer to:
+autodoc_member_order = 'bysource'
+autodoc_typehints = 'none'
+
+napoleon_numpy_docstring = False
+
+spelling_lang = 'en_US'
+spelling_word_list_filename = 'spelling_wordlist.txt'
+
+# Addresses import errors. Refer to:
 # https://docs.readthedocs.io/en/latest/faq.html#i-get-import-errors-on-libraries-that-depend-on-c-modules
 #class Mock(MagicMock):
 #    @classmethod

@@ -15,8 +15,6 @@
 Utility functions related to data types.
 """
 
-# pylint: disable=invalid-name, no-member, protected-access
-
 from typing import Any, Dict, Optional, Union
 
 import numpy as np
@@ -75,14 +73,14 @@ def get_numpy_dtype(dtype: Union[str, type]):
 
 
 def is_callable(x):
-    r"""Return ``True`` if :attr:`x` is callable.
+    r"""Return `True` if :attr:`x` is callable.
     """
     return callable(x)
 
 
 def is_str(x):
-    r"""Returns ``True`` if :attr:`x` is either a str or unicode.
-    Returns ``False`` otherwise.
+    r"""Returns `True` if :attr:`x` is either a str or unicode.
+    Returns `False` otherwise.
     """
     return isinstance(x, str)
 
@@ -149,6 +147,7 @@ def compat_as_text(str_):
     Returns:
         The converted strings of the same structure/shape as :attr:`str_`.
     """
+
     def _recur_convert(s):
         if isinstance(s, (list, tuple, np.ndarray)):
             s_ = [_recur_convert(si) for si in s]

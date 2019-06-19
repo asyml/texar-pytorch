@@ -28,9 +28,6 @@ from texar.modules.embedders.position_embedders import PositionEmbedder
 from texar.modules.decoders.transformer_decoders import TransformerDecoder
 from utils import model_utils, processor
 
-# pylint: disable=invalid-name, too-many-locals, too-many-statements, no-member
-# pylint: disable=too-many-branches
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint',
                     type=str,
