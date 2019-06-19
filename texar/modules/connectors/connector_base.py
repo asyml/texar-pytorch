@@ -28,6 +28,7 @@ __all__ = [
 OutputSize = TypeVar('OutputSize')
 HParamsType = Optional[HParams]
 
+
 class ConnectorBase(ModuleBase, Generic[OutputSize], ABC):
     r"""Base class inherited by all connector classes. A connector is to
     transform inputs into outputs with any specified structure and shape.
