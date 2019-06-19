@@ -49,7 +49,7 @@ TensorStruct = Union[List[torch.Tensor],
 OutputSize = MaybeTuple[Union[int, torch.Size]]
 HParamsType = HParams
 #Optional[Union[HParams, dict]]
-ActivationFn = Callable[[torch.Tensor], torch.Tensor]
+ActivationFn = Optional[Callable[[torch.Tensor], torch.Tensor]]
 LinearLayer = Callable[[torch.Tensor], torch.Tensor]
 
 def _assert_same_size(outputs: TensorStruct,
