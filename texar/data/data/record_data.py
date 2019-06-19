@@ -506,7 +506,11 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
                 If either `resize_height` or `resize_width` is not set,
                 image data will be restored with original shape.
 
-            `"num_shards"`: int, optional
+            .. warning::
+                  Sharding is not yet supported. This option (and
+                  related ones below) will be ignored.
+
+            "num_shards": int, optional
                 The number of data shards in distributed mode. Usually set to
                 the number of processes in distributed computing.
                 Used in combination with :attr:`"shard_id"`.
