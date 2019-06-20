@@ -15,7 +15,7 @@
 Various data classes that define data reading, parsing, batching, and other
 preprocessing operations.
 """
-from typing import (Optional, List, Union)
+from typing import (Optional, List, Union, Type)
 
 import torch
 import numpy as np
@@ -75,7 +75,7 @@ class ScalarData(DataBase[str, Union[int, float]]):
             iterator = DataIterator(data)
             for batch in iterator:
                 # batch contains the following
-                # batch_ == {
+                # batch == {
                 #     'label': [2, 9]
                 # }
     """
@@ -83,6 +83,18 @@ class ScalarData(DataBase[str, Union[int, float]]):
     def __init__(self, hparams, device: Optional[torch.device] = None):
         self._hparams = HParams(hparams, self.default_hparams())
         self._other_transforms = self._hparams.dataset.other_transformations
+        data_type = self._hparams.dataset["data_type"]
+        self._typecast_func: Union[Type[int], Type[float]]
+        if data_type == "int":
+            self._typecast_func = int
+            self._to_data_type = np.int32
+        elif data_type == "float":
+            self._typecast_func = float
+            self._to_data_type = np.float32
+        else:
+            raise ValueError("Incorrect 'data_type'. Currently 'int' and "
+                             "'float' are supported. Received {}"
+                             .format(data_type))
         data_source = TextLineDataSource(
             self._hparams.dataset.files,
             compression_type=self._hparams.dataset.compression_type)
@@ -154,37 +166,17 @@ class ScalarData(DataBase[str, Union[int, float]]):
 
     def process(self, raw_example: str) -> Union[int, float]:
         # Apply the "other transformations".
-        example: Union[int, float]
-        data_type = self.hparams.dataset["data_type"]
-        if data_type == "int":
-            example = int(raw_example)
-        elif data_type == "float":
-            example = float(raw_example)
-        else:
-            raise ValueError("Incorrect \'data_type\'. Currently \'int\' and "
-                             "\'float\' are supported. Received {}"
-                             .format(data_type))
+        example: Union[int, float] = self._typecast_func(raw_example)
         for transform in self._other_transforms:
             example = transform(example)
         return example
 
     def collate(self, examples: List[Union[int, float]]) -> Batch:
         # convert the list of strings into appropriate tensors here
-        data_type = self.hparams.dataset["data_type"]
-        if data_type == "int":
-            examples_np = np.array(examples, dtype=np.int32)
-            collated_examples = torch.from_numpy(examples_np).\
-                to(device=self.device)
-        elif data_type == "float":
-            examples_np = np.array(examples, dtype=np.float32)
-            collated_examples = torch.from_numpy(examples_np).\
-                to(device=self.device)
-        else:
-            raise ValueError("Incorrect \'data_type\'. Currently \'int\' and "
-                             "\'float\' are supported. Received {}"
-                             .format(data_type))
+        examples_np = np.array(examples, dtype=self._to_data_type)
+        collated_examples = torch.from_numpy(examples_np).to(device=self.device)
         return Batch(len(examples),
-                     **{self.hparams.dataset["data_name"]: collated_examples})
+                     batch={self.data_name: collated_examples})
 
     def list_items(self):
         r"""Returns the list of item names that the data can produce.
