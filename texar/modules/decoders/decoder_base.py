@@ -23,7 +23,6 @@ import torch
 from torch import nn
 
 from texar.core.layers import identity
-from texar.hyperparams import HParams
 from texar.module_base import ModuleBase
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_helpers import Embedding, Helper
@@ -93,7 +92,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                  vocab_size: Optional[int] = None,
                  input_time_major: bool = False,
                  output_time_major: bool = False,
-                 hparams: Optional[HParams] = None):
+                 hparams=None):
         super().__init__(hparams)
 
         self._train_helper: Optional[Helper] = None

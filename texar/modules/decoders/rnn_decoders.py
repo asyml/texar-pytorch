@@ -23,7 +23,6 @@ from torch import nn
 from texar.core.attention_mechanism import (
     AttentionMechanism, AttentionWrapperState)
 from texar.core.cell_wrappers import AttentionWrapper, HiddenState, RNNCellBase
-from texar.hyperparams import HParams
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.modules.decoders.rnn_decoder_base import RNNDecoderBase
@@ -306,7 +305,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                  output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
                  cell_input_fn: Optional[Callable[[torch.Tensor, torch.Tensor],
                                                   torch.Tensor]] = None,
-                 hparams: Optional[HParams] = None):
+                 hparams=None):
 
         super().__init__(cell=cell,
                          input_size=input_size,

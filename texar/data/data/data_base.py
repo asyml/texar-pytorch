@@ -545,6 +545,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         devices.
         """
         self.device = device
+        return self
 
     def _prefetch_processed(self, index: int):
         r"""Performs processing on the main process. This is called in

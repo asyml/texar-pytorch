@@ -23,7 +23,6 @@ from torch import nn
 from mypy_extensions import TypedDict
 
 from texar.core import layers
-from texar.hyperparams import HParams
 from texar.modules.encoders.encoder_base import EncoderBase
 from texar.utils.types import MaybeList
 
@@ -61,7 +60,7 @@ class MultiheadAttentionEncoder(EncoderBase):
     .. document private functions
     """
 
-    def __init__(self, input_size: int, hparams: Optional[HParams] = None):
+    def __init__(self, input_size: int, hparams=None):
         super().__init__(hparams)
         use_bias = self._hparams.use_bias
 

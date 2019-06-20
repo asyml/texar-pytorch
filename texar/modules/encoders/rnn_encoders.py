@@ -222,7 +222,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
                  input_size: int,
                  cell: Optional[RNNCellBase[State]] = None,
                  output_layer: Optional[nn.Module] = None,
-                 hparams: Optional[HParams] = None):
+                 hparams=None):
         super().__init__(hparams)
 
         # Make RNN cell
@@ -507,7 +507,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
                  cell_bw: Optional[RNNCellBase[State]] = None,
                  output_layer_fw: Optional[nn.Module] = None,
                  output_layer_bw: Optional[nn.Module] = None,
-                 hparams: Optional[HParams] = None):
+                 hparams=None):
         super().__init__(hparams)
 
         # Make RNN cells

@@ -21,7 +21,6 @@ import torch
 from torch import nn
 
 from texar.core import layers
-from texar.hyperparams import HParams
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
 from texar.modules.decoders.decoder_helpers import EmbeddingHelper, Helper
 from texar.modules.encoders.multihead_attention import (
@@ -92,7 +91,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
     def __init__(self,
                  vocab_size: Optional[int] = None,
                  output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
-                 hparams: Optional[HParams] = None):
+                 hparams=None):
         super().__init__(0, vocab_size,  # dummy value for input_size
                          input_time_major=False,
                          output_time_major=False, hparams=hparams)
