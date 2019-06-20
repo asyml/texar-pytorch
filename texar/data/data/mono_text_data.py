@@ -75,7 +75,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
             hyperparameters. See :meth:`default_hparams` for the defaults.
 
     By default, the processor reads raw data files, performs tokenization,
-    batching and other pre-processing steps, and results in a TF Dataset
+    batching and other pre-processing steps, and results in a Dataset
     whose element is a python `dict` including three fields:
 
     "text":
@@ -347,7 +347,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
         return embedding
 
     def process(self, raw_example: str) -> List[str]:
-        # `_process` truncates sentences and appends BOS/EOS tokens.
+        # Truncates sentences and appends BOS/EOS tokens.
         words = raw_example.split(self._delimiter)
         if (self._max_seq_length is not None and
                 len(words) > self._max_seq_length):

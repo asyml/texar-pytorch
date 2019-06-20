@@ -25,8 +25,24 @@ class ShapesTest(unittest.TestCase):
         seq_sum = torch.sum(masked_seq, dim=(1, 2))
         np.testing.assert_array_equal(seq_sum, seq_length * 3)
 
-    def test_pad_and_concat(self):
-        r"""Test :func:`texar.utils.shapes.pad_and_concat`.
+    def test_pad_and_concat_long(self):
+        r"""Test :func:`texar.utils.shapes.pad_and_concat` with
+        torch.LongTensor.
+        """
+        a = torch.ones(3, 10, 2, dtype=torch.long)
+        b = torch.ones(4, 20, 3, dtype=torch.long)
+        c = torch.ones(5, 1, 4, dtype=torch.long)
+
+        t = shapes.pad_and_concat([a, b, c], 0)
+        np.testing.assert_array_equal(t.shape, [3 + 4 + 5, 20, 4])
+        t = shapes.pad_and_concat([a, b, c], 1)
+        np.testing.assert_array_equal(t.shape, [5, 10 + 20 + 1, 4])
+        t = shapes.pad_and_concat([a, b, c], 2)
+        np.testing.assert_array_equal(t.shape, [5, 20, 2 + 3 + 4])
+
+    def test_pad_and_concat_float(self):
+        r"""Test :func:`texar.utils.shapes.pad_and_concat` with
+        torch.FloatTensor.
         """
         a = torch.ones(3, 10, 2)
         b = torch.ones(4, 20, 3)
