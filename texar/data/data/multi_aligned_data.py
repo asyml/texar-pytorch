@@ -14,25 +14,24 @@
 """
 Data consisting of multiple aligned parts.
 """
-from typing import Optional, Tuple, List, Any, Dict, Callable, TypeVar, Union
-import numpy as np
+from typing import (Optional, Tuple, List, Any, Dict, Callable, Union)
 
 import torch
 
 from texar.hyperparams import HParams
 from texar.utils import utils
-from texar.utils.dtypes import is_str, get_numpy_dtype
-from texar.data.data.dataset_utils import Batch, padded_batch, connect_name
-from texar.data.data.data_base import (DataSource,
+from texar.utils.dtypes import is_str
+from texar.data.data.dataset_utils import Batch, connect_name
+from texar.data.data.data_base import (DataSource, DataBase,
                                        ZipDataSource, FilterDataSource)
 from texar.data.data.text_data_base import TextDataBase, TextLineDataSource
 from texar.data.data.record_data import PickleDataSource
 from texar.data.data.mono_text_data import _default_mono_text_dataset_hparams
-from texar.data.data.scalar_data import _default_scalar_dataset_hparams
-from texar.data.data.record_data import (_default_record_dataset_hparams,
-                                         _convert_feature_hparams,
-                                         _create_image_transform)
-from texar.data.data.mono_text_data import _LengthFilterMode
+from texar.data.data.scalar_data import (ScalarData,
+                                         _default_scalar_dataset_hparams)
+from texar.data.data.record_data import (RecordData,
+                                         _default_record_dataset_hparams)
+from texar.data.data.mono_text_data import MonoTextData, _LengthFilterMode
 from texar.data.data import dataset_utils as dsutils
 from texar.data.vocabulary import Vocab, SpecialTokens
 from texar.data.embedding import Embedding
@@ -44,10 +43,6 @@ __all__ = [
     "_default_dataset_hparams",
     "MultiAlignedData"
 ]
-
-
-RawExample = TypeVar('RawExample')
-Example = TypeVar('Example')
 
 
 class _DataTypes:  # pylint: disable=no-init, too-few-public-methods
@@ -76,7 +71,7 @@ def _default_dataset_hparams(data_type=None):
 
     See :meth:`texar.data.MultiAlignedData.default_hparams` for details.
     """
-    if not data_type or _is_text_data(data_type):
+    if data_type is None or _is_text_data(data_type):
         hparams = _default_mono_text_dataset_hparams()
         hparams.update({
             "data_type": _DataTypes.TEXT,
@@ -127,7 +122,7 @@ class MultiAlignedData(
 
             for batch in iterator:
                 # batch contains the following
-                # batch_ == {
+                # batch == {
                 #    'x_text': [['<BOS>', 'x', 'sequence', '<EOS>']],
                 #    'x_text_ids': [['1', '5', '10', '2']],
                 #    'x_length': [4]
@@ -178,13 +173,14 @@ class MultiAlignedData(
     def __init__(self, hparams, device: Optional[torch.device] = None):
         self._hparams = HParams(hparams, self.default_hparams())
         self._other_transforms: List[
-            List[Callable[[Union[List[str], int, RawExample]], Example]]] = []
+            List[Callable[[Union[List[str], int, float, Dict[str, Any]]],
+                          Union[List[str], int, float, Dict[str, Any]]]]] = []
         # Defaultizes hyperparameters of each dataset
         datasets_hparams = self._hparams.datasets
         defaultized_datasets_hparams = []
-        for ds_hpms in datasets_hparams:
-            data_type = ds_hpms.get("data_type", None)
-            defaultized_ds_hpms = HParams(ds_hpms,
+        for hparams_i in datasets_hparams:
+            data_type = hparams_i.get("data_type", None)
+            defaultized_ds_hpms = HParams(hparams_i,
                                           _default_dataset_hparams(data_type))
             defaultized_datasets_hparams.append(defaultized_ds_hpms)
             self._other_transforms.append(
@@ -195,22 +191,23 @@ class MultiAlignedData(
         self._embedding = self.make_embedding(self._hparams.datasets,
                                               self._vocab)
 
-        self._dataset_features: List[Optional[Dict[str, Any]]] = []
         self._name_prefix: List[str] = []
+        self._names: List[Dict[str, Any]] = []
         datasources: List[DataSource] = []
         filters: List[Optional[Callable[[str], bool]]] = []
-        for _, hparams_i in enumerate(self._hparams.datasets):
+        self._databases: List[DataBase] = []
+        for idx, hparams_i in enumerate(self._hparams.datasets):
             dtype = hparams_i.data_type
             datasource_i: DataSource
+
             if _is_text_data(dtype) or _is_scalar_data(dtype):
                 datasource_i = TextLineDataSource(
                     hparams_i.files,
                     compression_type=hparams_i.compression_type)
                 datasources.append(datasource_i)
-                self._dataset_features.append(None)
-                if _is_text_data(dtype) and hparams_i["length_filter_mode"] is \
-                        _LengthFilterMode.DISCARD.value and \
-                        hparams_i["max_seq_length"] is not None:
+                if _is_text_data(dtype) and (hparams_i["length_filter_mode"] is
+                                             _LengthFilterMode.DISCARD.value) \
+                        and (hparams_i["max_seq_length"] is not None):
 
                     def _get_filter(delimiter, max_seq_length):
                         return lambda x: len(x.split(delimiter)) <= \
@@ -220,35 +217,48 @@ class MultiAlignedData(
                                                hparams_i["max_seq_length"]))
                 else:
                     filters.append(None)
+
+                if _is_text_data(dtype):
+                    self._names.append(
+                        {"text": connect_name(hparams_i["data_name"], "text"),
+                         "text_ids": connect_name(hparams_i["data_name"],
+                                                  "text_ids"),
+                         "length": connect_name(hparams_i["data_name"],
+                                                "length")})
+
+                    text_hparams = MonoTextData.default_hparams()
+                    text_hparams.update({"dataset": hparams_i.todict()})
+
+                    # MonoTextData does not have following keys
+                    for key in ["data_type", "vocab_share_with",
+                                "embedding_init_share_with",
+                                "processing_share_with"]:
+                        del text_hparams["dataset"][key]
+
+                    self._databases.append(
+                        MonoTextData._construct(hparams=text_hparams,
+                                                device=device,
+                                                vocab=self._vocab[idx],
+                                                embedding=self._embedding[idx]))
+                else:
+                    self._names.append({"label": hparams_i["data_name"]})
+                    scalar_hparams = ScalarData.default_hparams()
+                    scalar_hparams.update({"dataset": hparams_i.todict()})
+                    self._databases.append(ScalarData(hparams=scalar_hparams,
+                                                      device=device))
             elif _is_record_data(dtype):
                 datasource_i = PickleDataSource(file_paths=hparams_i.files)
                 datasources.append(datasource_i)
-                feature_types = hparams_i.feature_original_types
-                feature_types = _convert_feature_hparams(feature_types)
-
-                convert_types = hparams_i.feature_convert_types
-                convert_types = {key: get_numpy_dtype(value)
-                                       for key, value in convert_types.items()}
-                for key, dtype in convert_types.items():
-                    feature_types[key] = feature_types[key].\
-                        _replace(dtype=dtype)
-                image_options = hparams_i.image_options
-                if isinstance(image_options, HParams):
-                    image_options = [image_options]
-                image_transforms = {}
-                for options in image_options:
-                    key = options.get('image_feature_name')
-                    if key is None or key not in feature_types:
-                        continue
-                    image_transforms[key] = _create_image_transform(
-                        options.get('resize_height'),
-                        options.get('resize_width'),
-                        options.get('resize_method') or 'bilinear')
-                self._dataset_features.append({"feature_types": feature_types,
-                                               "convert_types": convert_types,
-                                               "image_transforms":
-                                                   image_transforms})
+                self._names.append(
+                    {feature_type: connect_name(hparams_i["data_name"],
+                                                feature_type)
+                     for feature_type in
+                     hparams_i.feature_original_types.keys()})
                 filters.append(None)
+                record_hparams = RecordData.default_hparams()
+                record_hparams.update({"dataset": hparams_i.todict()})
+                del record_hparams["dataset"]["data_type"]
+                self._databases.append(RecordData(hparams=record_hparams))
             else:
                 raise ValueError("Unknown data type: %s" % hparams_i.data_type)
 
@@ -267,9 +277,8 @@ class MultiAlignedData(
 
         if any(filters):
             def filter_fn(data):
-                return all([filters[idx](data_i) for
-                            idx, data_i in enumerate(data) if filters[idx]
-                            is not None])
+                return all([filters[idx](data_i) for idx, data_i in
+                            enumerate(data) if filters[idx] is not None])
             datasource = FilterDataSource(datasource, filter_fn=filter_fn)
         super().__init__(datasource, self._hparams, device)
 
@@ -277,92 +286,92 @@ class MultiAlignedData(
     def default_hparams():
         r"""Returns a dictionary of default hyperparameters:
 
-            .. code-block:: python
+        .. code-block:: python
 
-                {
-                    # (1) Hyperparams specific to text dataset
-                    "datasets": []
-                    # (2) General hyperparams
-                    "num_epochs": 1,
-                    "batch_size": 64,
-                    "allow_smaller_final_batch": True,
-                    "shuffle": True,
-                    "shuffle_buffer_size": None,
-                    "shard_and_shuffle": False,
-                    "num_parallel_calls": 1,
-                    "prefetch_buffer_size": 0,
-                    "max_dataset_size": -1,
-                    "seed": None,
-                    "name": "multi_aligned_data",
-                }
+            {
+                # (1) Hyperparams specific to text dataset
+                "datasets": []
+                # (2) General hyperparams
+                "num_epochs": 1,
+                "batch_size": 64,
+                "allow_smaller_final_batch": True,
+                "shuffle": True,
+                "shuffle_buffer_size": None,
+                "shard_and_shuffle": False,
+                "num_parallel_calls": 1,
+                "prefetch_buffer_size": 0,
+                "max_dataset_size": -1,
+                "seed": None,
+                "name": "multi_aligned_data",
+            }
 
-            Here:
+        Here:
 
-            1. "datasets" is a list of `dict` each of which specifies a
-            dataset which can be text, scalar or Record. The :attr:`"data_name"`
-            field of each dataset is used as the name prefix of the data fields
-            from the respective dataset. The :attr:`"data_name"` field of each
-            dataset should not be the same.
+        1. "datasets" is a list of `dict` each of which specifies a
+        dataset which can be text, scalar or Record. The :attr:`"data_name"`
+        field of each dataset is used as the name prefix of the data fields
+        from the respective dataset. The :attr:`"data_name"` field of each
+        dataset should not be the same.
 
-                i) For scalar dataset, the allowed hyperparameters and default
-                values are the same as the "dataset" field of
-                :meth:`texar.data.ScalarData.default_hparams`. Note that
-                :attr:`"data_type"` must be explicitly specified
-                (either "int" or "float").
+            i) For scalar dataset, the allowed hyperparameters and default
+            values are the same as the "dataset" field of
+            :meth:`texar.data.ScalarData.default_hparams`. Note that
+            :attr:`"data_type"` must be explicitly specified
+            (either "int" or "float").
 
-                ii) For Record dataset, the allowed hyperparameters and default
-                values are the same as the "dataset" field of
-                :meth:`texar.data.RecordData.default_hparams`. Note that
-                :attr:`"data_type"` must be explicitly specified ("record").
+            ii) For Record dataset, the allowed hyperparameters and default
+            values are the same as the "dataset" field of
+            :meth:`texar.data.RecordData.default_hparams`. Note that
+            :attr:`"data_type"` must be explicitly specified ("record").
 
-                iii) For text dataset, the allowed hyperparameters and default
-                values are the same as the "dataset" filed of
-                :meth:`texar.data.MonoTextData.default_hparams`,
-                with several extra hyperparameters:
+            iii) For text dataset, the allowed hyperparameters and default
+            values are the same as the "dataset" filed of
+            :meth:`texar.data.MonoTextData.default_hparams`,
+            with several extra hyperparameters:
 
-                    `"data_type"`: str
-                        The type of the dataset, one of {"text", "int", "float",
-                        "record"}. If set to "int" or "float", the dataset is
-                        considered to be a scalar dataset. If set to
-                        "record", the dataset is considered to be a Record
-                        dataset.
+                `"data_type"`: str
+                    The type of the dataset, one of {"text", "int", "float",
+                    "record"}. If set to "int" or "float", the dataset is
+                    considered to be a scalar dataset. If set to
+                    "record", the dataset is considered to be a Record
+                    dataset.
 
-                        If not specified or set to "text", the dataset is
-                        considered to be a text dataset.
+                    If not specified or set to "text", the dataset is
+                    considered to be a text dataset.
 
-                    `"vocab_share_with"`: int, optional
-                        Share the vocabulary of a preceding text dataset with
-                        the specified index in the list (starting from 0). The
-                        specified dataset must be a text dataset, and must have
-                        an index smaller than the current dataset.
+                `"vocab_share_with"`: int, optional
+                    Share the vocabulary of a preceding text dataset with
+                    the specified index in the list (starting from 0). The
+                    specified dataset must be a text dataset, and must have
+                    an index smaller than the current dataset.
 
-                        If specified, the vocab file of current dataset is
-                        ignored. Default is `None` which disables the vocab
-                        sharing.
+                    If specified, the vocab file of current dataset is
+                    ignored. Default is `None` which disables the vocab
+                    sharing.
 
-                    `"embedding_init_share_with"`: int, optional
-                        Share the embedding initial value of a preceding text
-                        dataset with the specified index in the list (starting
-                        from 0). The specified dataset must be a text dataset,
-                        and must have an index smaller than the current dataset.
+                `"embedding_init_share_with"`: int, optional
+                    Share the embedding initial value of a preceding text
+                    dataset with the specified index in the list (starting
+                    from 0). The specified dataset must be a text dataset,
+                    and must have an index smaller than the current dataset.
 
-                        If specified, the :attr:`"embedding_init"` field of the
-                        current dataset is ignored. Default is `None` which
-                        disables the initial value sharing.
+                    If specified, the :attr:`"embedding_init"` field of the
+                    current dataset is ignored. Default is `None` which
+                    disables the initial value sharing.
 
-                    `"processing_share_with"`: int, optional
-                        Share the processing configurations of a preceding text
-                        dataset with the specified index in the list (starting
-                        from 0). The specified dataset must be a text dataset,
-                        and must have an index smaller than the current dataset.
+                `"processing_share_with"`: int, optional
+                    Share the processing configurations of a preceding text
+                    dataset with the specified index in the list (starting
+                    from 0). The specified dataset must be a text dataset,
+                    and must have an index smaller than the current dataset.
 
-                        If specified, relevant field of the current dataset are
-                        ignored, including `delimiter`, `bos_token`,
-                        `eos_token`, and "other_transformations". Default is
-                        `None` which disables the processing sharing.
+                    If specified, relevant field of the current dataset are
+                    ignored, including `delimiter`, `bos_token`,
+                    `eos_token`, and "other_transformations". Default is
+                    `None` which disables the processing sharing.
 
-            2. For the **general** hyperparameters, see
-            :meth:`texar.data.DataBase.default_hparams` for details.
+        2. For the **general** hyperparameters, see
+        :meth:`texar.data.DataBase.default_hparams` for details.
 
         """
         hparams = TextDataBase.default_hparams()
@@ -371,10 +380,10 @@ class MultiAlignedData(
         return hparams
 
     @staticmethod
-    def _raise_sharing_error(err_data, shr_data, hparam_name):
+    def _raise_sharing_error(err_data, share_data, hparam_name):
         raise ValueError(
             "Must only share specifications with a preceding dataset. "
-            "Dataset %d has '%s=%d'" % (err_data, hparam_name, shr_data))
+            "Dataset %d has '%s=%d'" % (err_data, hparam_name, share_data))
 
     @staticmethod
     def make_vocab(hparams):
@@ -397,10 +406,10 @@ class MultiAlignedData(
                 vocabs.append(None)
                 continue
 
-            proc_shr = hparams_i["processing_share_with"]
-            if proc_shr is not None:
-                bos_token = hparams[proc_shr]["bos_token"]
-                eos_token = hparams[proc_shr]["eos_token"]
+            proc_share = hparams_i["processing_share_with"]
+            if proc_share is not None:
+                bos_token = hparams[proc_share]["bos_token"]
+                eos_token = hparams[proc_share]["eos_token"]
             else:
                 bos_token = hparams_i["bos_token"]
                 eos_token = hparams_i["eos_token"]
@@ -409,19 +418,19 @@ class MultiAlignedData(
             eos_token = utils.default_str(
                 eos_token, SpecialTokens.EOS)
 
-            vocab_shr = hparams_i["vocab_share_with"]
-            if vocab_shr is not None:
-                if vocab_shr >= i:
+            vocab_share = hparams_i["vocab_share_with"]
+            if vocab_share is not None:
+                if vocab_share >= i:
                     MultiAlignedData._raise_sharing_error(
-                        i, vocab_shr, "vocab_share_with")
-                if not vocabs[vocab_shr]:
+                        i, vocab_share, "vocab_share_with")
+                if vocabs[vocab_share] is None:
                     raise ValueError("Cannot share vocab with dataset %d which "
-                                     "does not have a vocab." % vocab_shr)
-                if bos_token == vocabs[vocab_shr].bos_token and \
-                        eos_token == vocabs[vocab_shr].eos_token:
-                    vocab = vocabs[vocab_shr]
+                                     "does not have a vocab." % vocab_share)
+                if bos_token == vocabs[vocab_share].bos_token and \
+                        eos_token == vocabs[vocab_share].eos_token:
+                    vocab = vocabs[vocab_share]
                 else:
-                    vocab = Vocab(hparams[vocab_shr]["vocab_file"],
+                    vocab = Vocab(hparams[vocab_share]["vocab_file"],
                                   bos_token=bos_token,
                                   eos_token=eos_token)
             else:
@@ -446,20 +455,20 @@ class MultiAlignedData(
                 embs.append(None)
                 continue
 
-            emb_shr = hparams_i["embedding_init_share_with"]
-            if emb_shr is not None:
-                if emb_shr >= i:
+            emb_share = hparams_i["embedding_init_share_with"]
+            if emb_share is not None:
+                if emb_share >= i:
                     MultiAlignedData._raise_sharing_error(
-                        i, emb_shr, "embedding_init_share_with")
-                if not embs[emb_shr]:
+                        i, emb_share, "embedding_init_share_with")
+                if not embs[emb_share]:
                     raise ValueError("Cannot share embedding with dataset %d "
                                      "which does not have an embedding." %
-                                     emb_shr)
-                if emb_shr != hparams_i["vocab_share_with"]:
+                                     emb_share)
+                if emb_share != hparams_i["vocab_share_with"]:
                     raise ValueError("'embedding_init_share_with' != "
                                      "vocab_share_with. embedding_init can "
                                      "be shared only when vocab is shared.")
-                emb = embs[emb_shr]
+                emb = embs[emb_share]
             else:
                 emb = None
                 emb_file = hparams_i["embedding_init"]["file"]
@@ -475,138 +484,35 @@ class MultiAlignedData(
         dataset_hparams = self.hparams.datasets
         processed_examples = []
         for i, raw_example_i in enumerate(raw_example):
+            example_i: Union[List[str], int, float, Dict[str, Any]]
             if _is_text_data(dataset_hparams[i]["data_type"]):
-                delimiter = dataset_hparams[i]["delimiter"]
-                raw_tokens = raw_example_i.split(delimiter)  # type: ignore
-                max_seq_length = dataset_hparams[i]["max_seq_length"]
-                if (max_seq_length is not None and
-                        len(raw_tokens) > max_seq_length):
-                    if dataset_hparams[i]["length_filter_mode"] is \
-                            _LengthFilterMode.TRUNC.value:
-                        raw_tokens = raw_tokens[:max_seq_length]
-
-                if (dataset_hparams[i].bos_token is not None and
-                        dataset_hparams[i].bos_token != ''):
-                    raw_tokens.insert(0, dataset_hparams[i].bos_token)
-                if (dataset_hparams[i].eos_token is not None and
-                        dataset_hparams[i].eos_token != ''):
-                    raw_tokens.append(dataset_hparams[i].eos_token)
-                transforms = self._other_transforms[i]
-                if len(transforms) > 0:
-                    for transform in transforms:
-                        raw_tokens = transform(raw_tokens)
-                processed_examples.append(raw_tokens)
+                example_i = self._databases[i].process(raw_example_i)
             elif _is_scalar_data(dataset_hparams[i]["data_type"]):
-                scalar_ex: Union[str, int, float] = str(raw_example_i)
-                data_type = dataset_hparams[i]["data_type"]
-                if data_type == "int":
-                    scalar_ex = int(scalar_ex)
-                elif data_type == "float":
-                    scalar_ex = float(scalar_ex)
-                transforms = self._other_transforms[i]
-                if len(transforms) > 0:
-                    for transform in transforms:
-                        scalar_ex = transform(scalar_ex)
-                processed_examples.append(scalar_ex)
+                example_i = self._databases[i].process(raw_example_i)
             elif _is_record_data(dataset_hparams[i]["data_type"]):
-                example: Dict[str, Any] = raw_example_i  # type: ignore
-                # for some reasons even after the not None check here, mypy
-                # thinks self._dataset_features[i] may be None, hence adding
-                # ignore to the lines below
-                if self._dataset_features[i] is not None:
-                    for key, dtype in \
-                            self._dataset_features[i]["convert_types"].items():  # type: ignore # pylint: disable=line-too-long
-                        example[key] = np.asarray(example[key], dtype=dtype)
-                    for key, transform in \
-                            self._dataset_features[i]["image_transforms"].items():  # type: ignore # pylint: disable=line-too-long
-                        example[key] = transform(example[key])
-                for transform in self._other_transforms[i]:
-                    example = transform(example)
-                processed_examples.append(example)
+                example_i = self._databases[i].process(raw_example_i)
+            for transform in self._other_transforms[i]:
+                transform(example_i)
+            processed_examples.append(example_i)
         return tuple(processed_examples)
 
     def collate(self, examples) -> Batch:
         dataset_hparams = self.hparams["datasets"]
-        transposed_examples: List[Tuple] = list(map(tuple, zip(*examples)))
+        transposed_examples: \
+            List[List[Union[List[str], int, float, Dict[str, Any]]]] = \
+            list(map(list, zip(*examples)))
         batch: Dict[str, Any] = {}
         for i, transposed_example in enumerate(transposed_examples):
             if _is_text_data(dataset_hparams[i]["data_type"]):
-                # Treat it as MonoTextData and collate
-                pad_length = dataset_hparams[i]["max_seq_length"]
-                if pad_length is not None:
-                    pad_length += sum(x is not None and x != '' for x in
-                                      [self.vocab(i).bos_token,
-                                       self.vocab(i).eos_token])
-                text_ids = [self.vocab(i).map_tokens_to_ids_py(sent) for sent in
-                            transposed_example]
-                text_ids, lengths = padded_batch(
-                    text_ids, pad_length, pad_value=self.vocab(i).pad_token_id)
-                # also pad the examples
-                pad_length = pad_length or max(lengths)
-                transposed_example = tuple(
-                    sent + [''] * (pad_length - len(sent))
-                    if len(sent) < pad_length else sent
-                    for sent in transposed_example
-                )
-
-                text_ids = torch.from_numpy(text_ids).to(device=self.device)
-                lengths = torch.tensor(lengths, dtype=torch.long,
-                                       device=self.device)
-
-                batch.update(
-                    {connect_name(self._name_prefix[i], "text"):
-                     transposed_example,
-                     connect_name(self._name_prefix[i], "text_ids"):
-                     text_ids,
-                     connect_name(self._name_prefix[i], "length"):
-                     lengths})
+                text_batch = self._databases[i].collate(transposed_example)
+                batch.update(text_batch._batch)
             elif _is_scalar_data(dataset_hparams[i]["data_type"]):
-                # convert the list of strings into appropriate tensors here
-                data_type = dataset_hparams[i]["data_type"]
-                if data_type == "int":
-                    example_np = np.array(transposed_example, dtype=np.int32)
-                    example = torch.from_numpy(example_np). \
-                        to(device=self.device)
-                elif data_type == "float":
-                    example_np = np.array(transposed_example, dtype=np.float32)
-                    example = torch.from_numpy(example_np). \
-                        to(device=self.device)
-                else:
-                    raise ValueError(
-                        "Incorrect \'data_type\'. Currently \'int\' and "
-                        "\'float\' are supported. Received {}"
-                        .format(data_type))
-                batch.update({self._name_prefix[i]: example})
+                scalar_batch = self._databases[i].collate(transposed_example)
+                batch.update(scalar_batch._batch)
             elif _is_record_data(dataset_hparams[i]["data_type"]):
-                for key, descriptor in \
-                        self._dataset_features[i]["feature_types"].items():  # type: ignore # pylint: disable=line-too-long
-                    values = [ex[key] for ex in transposed_example]
-                    if descriptor.shape is not None:
-                        # FixedLenFeature, do not pad.
-                        # NumPy functions work on PyTorch tensors too.
-                        if len(descriptor.shape) > 0 \
-                                and descriptor.shape[0] is None:
-                            values, _ = padded_batch(values)
-                        else:
-                            values = np.stack(values, axis=0)
-                        if (not torch.is_tensor(values) and
-                                descriptor.dtype not in [np.str_, np.bytes_]):
-                            values = torch.from_numpy(values)
-                    else:
-                        # VarLenFeature, just put everything in a Python list.
-                        pass
-                    batch.update({connect_name(self._name_prefix[i], key):
-                                  values})
-        return Batch(len(examples),
-                     **batch)
-
-    @staticmethod
-    def _get_name_prefix(dataset_hparams):
-        name_prefix = [hpms["data_name"] for hpms in dataset_hparams]
-        for i in range(1, len(name_prefix)):
-            if name_prefix[i] in name_prefix[:i - 1]:
-                raise ValueError("Data name duplicated: %s" % name_prefix[i])
-        return name_prefix
+                record_batch = self._databases[i].collate(transposed_example)
+                batch.update(record_batch._batch)
+        return Batch(len(examples), batch=batch)
 
     def list_items(self):
         r"""Returns the list of item names that the data can produce.
@@ -614,27 +520,7 @@ class MultiAlignedData(
         Returns:
             A list of strings.
         """
-        dataset_hparams = self.hparams.datasets
-        items = []
-        for i, ds_hpms in enumerate(dataset_hparams):
-            if _is_text_data(ds_hpms["data_type"]):
-                items.extend([connect_name(self._name_prefix[i], "text"),
-                              connect_name(self._name_prefix[i], "text_ids"),
-                              connect_name(self._name_prefix[i], "length")])
-            elif _is_scalar_data(ds_hpms["data_type"]):
-                items.append(self._name_prefix[i])
-            elif _is_record_data(ds_hpms["data_type"]):
-                for feature_name in \
-                        self._dataset_features[i]["feature_types"].keys():
-                    items.append(connect_name(self._name_prefix[i],
-                                 feature_name))
-        return items
-
-    @property
-    def dataset(self):
-        r"""The dataset.
-        """
-        return self._source
+        return [value for name in self._names for value in name.values()]
 
     def _maybe_name_to_id(self, name_or_id):
         if is_str(name_or_id):
@@ -687,8 +573,7 @@ class MultiAlignedData(
         i = self._maybe_name_to_id(name_or_id)
         if not _is_text_data(self._hparams.datasets[i]["data_type"]):
             return None
-        name = dsutils.connect_name(
-            self._name_prefix[i], "text_ids")
+        name = dsutils.connect_name(self._name_prefix[i], "text_ids")
         return name
 
     def data_name(self, name_or_id):

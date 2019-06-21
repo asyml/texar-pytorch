@@ -454,12 +454,6 @@ class PairedTextData(TextDataBase[Tuple[str, str],
         return src_items + tgt_items
 
     @property
-    def dataset(self):
-        r"""The dataset.
-        """
-        return self._source
-
-    @property
     def vocab(self):
         r"""A pair instances of :class:`~texar.data.Vocab` that are source
         and target vocabs, respectively.

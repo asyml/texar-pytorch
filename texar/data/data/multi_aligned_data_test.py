@@ -102,7 +102,8 @@ class MultiAlignedDataTest(unittest.TestCase):
                     "files": [self._text_2_file.name],
                     "vocab_file": self._vocab_file.name,
                     "processing_share_with": 0,
-                    "variable_utterance": True,
+                    # TODO(avinash) - Add it back once feature is added
+                    "variable_utterance": False,
                     "data_name": "2"
                 },
                 {  # dataset 3

@@ -187,12 +187,6 @@ class ScalarData(DataBase[str, Union[int, float]]):
         return [self.hparams.dataset["data_name"]]
 
     @property
-    def dataset(self):
-        r"""The dataset.
-        """
-        return self._source
-
-    @property
     def data_name(self):
         r"""The name of the data tensor, "data" by default if not specified in
         :attr:`hparams`.

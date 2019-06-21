@@ -23,7 +23,7 @@ import numpy as np
 import torch
 
 from texar.data.data.data_base import DataBase, DataSource
-from texar.data.data.dataset_utils import Batch, padded_batch
+from texar.data.data.dataset_utils import Batch, padded_batch, connect_name
 from texar.hyperparams import HParams
 from texar.utils.dtypes import get_numpy_dtype
 from texar.utils.types import MaybeList
@@ -341,6 +341,10 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
         self._other_transforms = self._hparams.dataset.other_transformations
 
+        data_name = self._hparams.dataset.data_name
+        self._items = {key: connect_name(data_name, key)
+                       for key, _ in self._features.items()}
+
         data_source = PickleDataSource(self._hparams.dataset.files)
 
         super().__init__(data_source, hparams)
@@ -590,7 +594,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
             else:
                 # VarLenFeature, just put everything in a Python list.
                 pass
-            batch[key] = values
+            batch[self._items[key]] = values
         return Batch(len(examples), batch)
 
     def list_items(self) -> List[str]:
@@ -599,11 +603,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
         Returns:
             A list of strings.
         """
-        items = list(self._features.keys())
-        data_name = self._hparams.dataset.data_name
-        if data_name is not None:
-            items = [data_name + '_' + item for item in items]
-        return items
+        return list(self._items.keys())
 
     @property
     def feature_names(self):
