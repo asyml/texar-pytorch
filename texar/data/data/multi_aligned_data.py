@@ -277,8 +277,8 @@ class MultiAlignedData(
 
         if any(filters):
             def filter_fn(data):
-                return all([filters[idx](data_i) for idx, data_i in
-                            enumerate(data) if filters[idx] is not None])
+                return all(filters[idx](data_i) for idx, data_i in
+                            enumerate(data) if filters[idx] is not None)
             datasource = FilterDataSource(datasource, filter_fn=filter_fn)
         super().__init__(datasource, self._hparams, device)
 
