@@ -143,7 +143,7 @@ html_theme_options = {
 
 # The name for this set of Sphinx documents.
 # "<project> v<release> documentation" by default.
-html_title = u'Texar v0.1'
+html_title = u'Texar-PyTorch v0.1'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #html_short_title = None

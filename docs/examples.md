@@ -9,7 +9,6 @@ More examples are continuously added...
 ### RNN / Seq2seq ###
 
 * [seq2seq_attn](https://github.com/asyml/texar-pytorch/tree/master/examples/seq2seq_attn): Attentional seq2seq
-* [seq2seq_configs](https://github.com/asyml/texar-pytorch/tree/master/examples/seq2seq_configs): Seq2seq implemented with Texar model template
 
 ### Transformer (Self-attention) ###
 
@@ -32,7 +31,6 @@ More examples are continuously added...
 ### Machine Translation ###
 
 * [seq2seq_attn](https://github.com/asyml/texar-pytorch/tree/master/examples/seq2seq_attn): Attentional seq2seq
-* [seq2seq_configs](https://github.com/asyml/texar-pytorch/tree/master/examples/seq2seq_configs): Seq2seq implemented with Texar model template.
 * [transformer](https://github.com/asyml/texar-pytorch/tree/master/examples/transformer): Transformer for machine translation
 
 ### Classification ###
