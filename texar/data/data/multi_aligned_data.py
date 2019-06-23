@@ -304,26 +304,26 @@ class MultiAlignedData(
         Here:
 
         1. "datasets" is a list of `dict` each of which specifies a
-            dataset which can be text, scalar or Record. The :attr:`"data_name"`
-            field of each dataset is used as the name prefix of the data fields
-            from the respective dataset. The :attr:`"data_name"` field of each
-            dataset should not be the same.
+           dataset which can be text, scalar or Record. The :attr:`"data_name"`
+           field of each dataset is used as the name prefix of the data fields
+           from the respective dataset. The :attr:`"data_name"` field of each
+           dataset should not be the same.
 
-            i) For scalar dataset, the allowed hyperparameters and default
+           i) For scalar dataset, the allowed hyperparameters and default
+              values are the same as the "dataset" field of
+              :meth:`texar.data.ScalarData.default_hparams`. Note that
+              :attr:`"data_type"` must be explicitly specified
+              (either "int" or "float").
+
+           ii) For Record dataset, the allowed hyperparameters and default
                values are the same as the "dataset" field of
-               :meth:`texar.data.ScalarData.default_hparams`. Note that
-               :attr:`"data_type"` must be explicitly specified
-               (either "int" or "float").
+               :meth:`texar.data.RecordData.default_hparams`. Note that
+               :attr:`"data_type"` must be explicitly specified ("record").
 
-            ii) For Record dataset, the allowed hyperparameters and default
-                values are the same as the "dataset" field of
-                :meth:`texar.data.RecordData.default_hparams`. Note that
-                :attr:`"data_type"` must be explicitly specified ("record").
-
-            iii) For text dataset, the allowed hyperparameters and default
+           iii) For text dataset, the allowed hyperparameters and default
                 values are the same as the "dataset" filed of
-                :meth:`texar.data.MonoTextData.default_hparams`,
-                with several extra hyperparameters:
+                :meth:`texar.data.MonoTextData.default_hparams`, with several
+                extra hyperparameters:
 
                 `"data_type"`: str
                     The type of the dataset, one of {"text", "int", "float",
