@@ -10,6 +10,7 @@ import numpy as np
 
 __all__ = [
     'padded_batch',
+    'connect_name',
     'Batch',
     'FieldBatch',
     '_LazyStrategy',
@@ -45,6 +46,14 @@ def padded_batch(examples: Union[List[np.ndarray], List[List[int]]],
         length = lengths[b_idx]
         padded[b_idx, :length] = sent[:length]
     return padded, lengths
+
+
+def connect_name(lhs_name, rhs_name):
+    if not lhs_name:
+        return rhs_name
+    if not rhs_name:
+        return lhs_name
+    return "{}_{}".format(lhs_name, rhs_name)
 
 
 class Batch:

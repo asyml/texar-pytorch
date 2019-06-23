@@ -22,10 +22,14 @@ import torch
 
 from texar.data.data.dataset_utils import Batch, padded_batch
 from texar.data.data.text_data_base import TextDataBase, TextLineDataSource
+from texar.data.data.data_base import SequenceDataSource
 from texar.data.embedding import Embedding
 from texar.data.vocabulary import SpecialTokens, Vocab
 from texar.hyperparams import HParams
 from texar.utils import utils
+
+# pylint: disable=protected-access
+
 
 __all__ = [
     "_default_mono_text_dataset_hparams",
@@ -75,7 +79,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
             hyperparameters. See :meth:`default_hparams` for the defaults.
 
     By default, the processor reads raw data files, performs tokenization,
-    batching and other pre-processing steps, and results in a TF Dataset
+    batching and other pre-processing steps, and results in a Dataset
     whose element is a python `dict` including three fields:
 
     "text":
@@ -161,6 +165,59 @@ class MonoTextData(TextDataBase[str, List[str]]):
                 compression_type=self._hparams.dataset.compression_type)
 
         super().__init__(data_source, hparams, device=device)
+
+    @classmethod
+    def _construct(cls, hparams, device: Optional[torch.device] = None,
+                   vocab: Optional[Vocab] = None,
+                   embedding: Optional[Vocab] = None):
+        mono_text_data = cls.__new__(cls)
+        mono_text_data._hparams = HParams(hparams,
+                                          mono_text_data.default_hparams())
+        if mono_text_data._hparams.dataset.variable_utterance:
+            raise NotImplementedError
+
+        dataset = mono_text_data._hparams.dataset
+        mono_text_data._other_transforms = dataset.other_transformations
+
+        # Create vocabulary
+        if vocab is not None:
+            mono_text_data._vocab = vocab
+            mono_text_data._bos_token = vocab.bos_token
+            mono_text_data._eos_token = vocab.eos_token
+        else:
+            mono_text_data._bos_token = dataset.bos_token
+            mono_text_data._eos_token = dataset.eos_token
+            bos = utils.default_str(mono_text_data._bos_token,
+                                    SpecialTokens.BOS)
+            eos = utils.default_str(mono_text_data._eos_token,
+                                    SpecialTokens.EOS)
+            mono_text_data._vocab = Vocab(dataset.vocab_file,
+                                          bos_token=bos, eos_token=eos)
+
+        # Create embedding
+        if embedding is not None:
+            mono_text_data._embedding = embedding
+        else:
+            mono_text_data._embedding = mono_text_data.make_embedding(
+                dataset.embedding_init,
+                mono_text_data._vocab.token_to_id_map_py)
+
+        mono_text_data._delimiter = dataset.delimiter
+        mono_text_data._max_seq_length = dataset.max_seq_length
+        mono_text_data._length_filter_mode = _LengthFilterMode(
+            mono_text_data._hparams.dataset.length_filter_mode)
+        mono_text_data._pad_length = mono_text_data._max_seq_length
+        if mono_text_data._pad_length is not None:
+            mono_text_data._pad_length += sum(int(x != '') for x in
+                                              [mono_text_data._bos_token,
+                                              mono_text_data._eos_token])
+
+        data_source: SequenceDataSource[str] = SequenceDataSource([])
+        super(MonoTextData, mono_text_data).__init__(source=data_source,
+                                                     hparams=hparams,
+                                                     device=device)
+
+        return mono_text_data
 
     @staticmethod
     def default_hparams():
@@ -347,17 +404,17 @@ class MonoTextData(TextDataBase[str, List[str]]):
         return embedding
 
     def process(self, raw_example: str) -> List[str]:
-        # `_process` truncates sentences and appends BOS/EOS tokens.
+        # Truncates sentences and appends BOS/EOS tokens.
         words = raw_example.split(self._delimiter)
         if (self._max_seq_length is not None and
                 len(words) > self._max_seq_length):
             if self._length_filter_mode is _LengthFilterMode.TRUNC:
                 words = words[:self._max_seq_length]
 
-        if self._bos_token != '':
-            words.insert(0, self._bos_token)
-        if self._eos_token != '':
-            words.append(self._eos_token)
+        if self._hparams.dataset["bos_token"] != '':
+            words.insert(0, self._hparams.dataset["bos_token"])
+        if self._hparams.dataset["eos_token"] != '':
+            words.append(self._hparams.dataset["eos_token"])
 
         # Apply the "other transformations".
         for transform in self._other_transforms:
@@ -383,8 +440,9 @@ class MonoTextData(TextDataBase[str, List[str]]):
 
         text_ids = torch.from_numpy(text_ids).to(device=self.device)
         lengths = torch.tensor(lengths, dtype=torch.long, device=self.device)
-        return Batch(len(examples), text=examples,
-                     text_ids=text_ids, length=lengths)
+        batch = {self.text_name: examples, self.text_id_name: text_ids,
+                 self.length_name: lengths}
+        return Batch(len(examples), batch=batch)
 
     def list_items(self) -> List[str]:
         r"""Returns the list of item names that the data can produce.
@@ -404,6 +462,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
         """
         return self._vocab
 
+    @property
     def text_name(self):
         r"""The name for the text field"""
         if self.hparams.dataset["data_name"]:

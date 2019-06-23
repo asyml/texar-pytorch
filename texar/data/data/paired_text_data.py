@@ -280,7 +280,7 @@ class PairedTextData(TextDataBase[Tuple[str, str],
         Here:
 
         1. Hyperparameters in the :attr:`"source_dataset"` and
-           attr:`"target_dataset"` fields have the same definition as those
+           :attr:`"target_dataset"` fields have the same definition as those
            in :meth:`texar.data.MonoTextData.default_hparams`, for source and
            target text, respectively.
 
@@ -452,12 +452,6 @@ class PairedTextData(TextDataBase[Tuple[str, str],
             tgt_items = items
 
         return src_items + tgt_items
-
-    @property
-    def dataset(self):
-        r"""The dataset.
-        """
-        return self._source
 
     @property
     def vocab(self):
