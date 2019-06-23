@@ -22,8 +22,10 @@ import numpy as np
 
 from texar.hyperparams import HParams
 from texar.data.data.dataset_utils import Batch
-from texar.data.data.data_base import DataBase
+from texar.data.data.data_base import DataBase, SequenceDataSource
 from texar.data.data.text_data_base import TextLineDataSource
+
+# pylint: disable=protected-access
 
 __all__ = [
     "_default_scalar_dataset_hparams",
@@ -99,6 +101,28 @@ class ScalarData(DataBase[str, Union[int, float]]):
             self._hparams.dataset.files,
             compression_type=self._hparams.dataset.compression_type)
         super().__init__(data_source, hparams, device=device)
+
+    @classmethod
+    def _construct(cls, hparams, device: Optional[torch.device] = None):
+        scalar_data = cls.__new__(cls)
+        scalar_data._hparams = HParams(hparams, scalar_data.default_hparams())
+        scalar_data._other_transforms = \
+            scalar_data._hparams.dataset.other_transformations
+        data_type = scalar_data._hparams.dataset["data_type"]
+        if data_type == "int":
+            scalar_data._typecast_func = int
+            scalar_data._to_data_type = np.int32
+        elif data_type == "float":
+            scalar_data._typecast_func = float
+            scalar_data._to_data_type = np.float32
+        else:
+            raise ValueError("Incorrect 'data_type'. Currently 'int' and "
+                             "'float' are supported. Received {}"
+                             .format(data_type))
+        data_source: SequenceDataSource[str] = SequenceDataSource([])
+        super(ScalarData, scalar_data).__init__(data_source, hparams,
+                                                device=device)
+        return scalar_data
 
     @staticmethod
     def default_hparams():

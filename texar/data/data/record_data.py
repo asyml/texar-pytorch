@@ -22,11 +22,13 @@ from typing import (
 import numpy as np
 import torch
 
-from texar.data.data.data_base import DataBase, DataSource
+from texar.data.data.data_base import DataBase, DataSource, SequenceDataSource
 from texar.data.data.dataset_utils import Batch, padded_batch, connect_name
 from texar.hyperparams import HParams
 from texar.utils.dtypes import get_numpy_dtype
 from texar.utils.types import MaybeList
+
+# pylint: disable=protected-access
 
 __all__ = [
     "_default_record_dataset_hparams",
@@ -348,6 +350,45 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
         data_source = PickleDataSource(self._hparams.dataset.files)
 
         super().__init__(data_source, hparams)
+
+    @classmethod
+    def _construct(cls, hparams):
+        record_data = cls.__new__(cls)
+        record_data._hparams = HParams(hparams, record_data.default_hparams())
+
+        feature_types = record_data._hparams.dataset.feature_original_types
+        record_data._features = _convert_feature_hparams(feature_types)
+
+        convert_types = record_data._hparams.dataset.feature_convert_types
+        record_data._convert_types = {key: get_numpy_dtype(value)
+                               for key, value in convert_types.items()}
+        for key, dtype in record_data._convert_types.items():
+            record_data._features[key] = record_data._features[key].\
+                _replace(dtype=dtype)
+
+        image_options = record_data._hparams.dataset.image_options
+        if isinstance(image_options, HParams):
+            image_options = [image_options]
+        record_data._image_transforms = {}
+        for options in image_options:
+            key = options.get('image_feature_name')
+            if key is None or key not in record_data._features:
+                continue
+            record_data._image_transforms[key] = _create_image_transform(
+                options.get('resize_height'), options.get('resize_width'),
+                options.get('resize_method') or 'bilinear')
+
+        record_data._other_transforms = \
+            record_data._hparams.dataset.other_transformations
+
+        data_name = record_data._hparams.dataset.data_name
+        record_data._items = {key: connect_name(data_name, key)
+                              for key, _ in record_data._features.items()}
+
+        data_source = SequenceDataSource([])
+
+        super(RecordData, record_data).__init__(data_source, hparams)
+        return record_data
 
     class _RecordWriter(io.BytesIO):
         def __init__(self, file_path: str,
