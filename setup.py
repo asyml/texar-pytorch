@@ -1,21 +1,26 @@
+import sys
 import setuptools
 
 long_description = '''
-Texar is an open-source toolkit based on PyTorch,
+Texar-PyTorch is an open-source toolkit based on PyTorch,
 aiming to support a broad set of machine learning especially text generation
 tasks, such as machine translation, dialog, summarization, content manipulation,
 language modeling, and so on.
 
 Texar is designed for both researchers and practitioners for fast prototyping
-and experimentation.
+and experimentation. Checkout https://github.com/asyml/texar for the TensorFlow
+version which has the same functionalities and (mostly) the same interfaces.
 '''
+
+if sys.version_info < (3, 6):
+    sys.exit('Python>=3.6 is required by Texar-PyTorch.')
 
 setuptools.setup(
     name="texar",
     version="0.0.1",
-    url="https://github.com/ZhitingHu/texar-pytorch",
+    url="https://github.com/asyml/texar-pytorch",
 
-    description="Toolkit for Text Generation and Beyond",
+    description="Toolkit for Machine Learning and Text Generation",
     long_description=long_description,
     license='Apache License Version 2.0',
 
@@ -45,8 +50,7 @@ setuptools.setup(
         'Intended Audience :: Science/Research',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
 )
