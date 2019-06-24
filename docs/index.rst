@@ -3,11 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Texar's documentation!
-*********************************
+Welcome to Texar-PyTorch's documentation!
+******************************************
 
-Texar is a modularized, versatile, and extensible toolkit for text generation tasks and beyond. 
+Texar is a modularized, versatile, and extensible toolkit for machine learning and text generation tasks. 
 
+If you work with TensorFlow, check out the documentation of `Texar (TensorFlow) <https://texar.readthedocs.io>`_.
 
 .. toctree::
    :maxdepth: 1

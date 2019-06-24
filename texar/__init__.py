@@ -15,6 +15,10 @@
 Modules of texar library.
 """
 
+# pylint: disable=wildcard-import
+
+from texar.version import VERSION as __version__
+
 from texar import core
 from texar import data
 from texar import evals
