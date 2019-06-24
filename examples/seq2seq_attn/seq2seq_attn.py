@@ -100,11 +100,12 @@ class Seq2SeqAttn(ModuleBase):
         else:
             start_tokens = torch.ones_like(batch['target_length']) * \
                            self.bos_token_id
+
             helper_infer = self.decoder.create_helper(
                 decoding_strategy="infer_greedy",
                 embedding=self.target_embedder,
                 start_tokens=start_tokens,
-                end_token=torch.tensor(self.eos_token_id))
+                end_token=self.eos_token_id.item())
 
             infer_outputs, _, _ = self.decoder(
                 helper=helper_infer,
@@ -134,10 +135,9 @@ def main():
 
         step = 0
         for batch in iterator:
-            with torch.autograd.set_detect_anomaly(True):
-                loss = model(batch, mode="train")
-                loss.backward(retain_graph=True)
-                train_op()
+            loss = model(batch, mode="train")
+            loss.backward()
+            train_op()
             if step % config_data.display == 0:
                 print("step={}, loss={:.4f}".format(step, loss))
             step += 1
@@ -153,7 +153,7 @@ def main():
         refs, hypos = [], []
         for batch in iterator:
             infer_outputs = model(batch, mode="infer")
-            output_ids = infer_outputs.sample_id
+            output_ids = infer_outputs.sample_id.cpu()
             target_texts_ori = [text[1:] for text in batch['target_text']]
             target_texts = tx.utils.strip_special_tokens(
                 target_texts_ori, is_token_list=True)
