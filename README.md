@@ -39,39 +39,50 @@ Users can construct their own models at a high conceptual level just like assemb
 
 
 ### Library API Example
-Builds a (self-)attentional sequence encoder-decoder model:
+A code portion that builds a (self-)attentional sequence encoder-decoder model:
 ```python
 import texar as tx
 
-# Data 
-data = tx.data.PairedTextData(hparams=hparams_data) # Hyperparameter configs in `hparams` 
+class Seq2Seq(tx.ModuleBase):
+  def __init__(self, data):
+    self.embedder = tx.modules.WordEmbedder(data.target_vocab.size, hparams=hparams_emb)
+    self.encoder = tx.modules.TransformerEncoder(hparams=hparams_encoder) # config through `hparams`
+    self.decoder = tx.modules.AttentionRNNDecoder(
+        input_size=self.embedder.dim
+      	encoder_output_size=self.encoder.output_size,
+      	vocab_size=data.target_vocab.size,
+        hparams=hparams_decoder)
+
+  def forward(self, batch): 
+    outputs_enc = self.encoder(
+        inputs=self.embedder(batch['source_text_ids']),
+        sequence_length=batch['source_length'])
+     
+    outputs, _, _ = self.decoder(
+        memory=output_enc, 
+        memory_sequence_length=batch['source_length'],
+        helper=self.decoder.get_helper(decoding_strategy='train_greedy'), 
+        inputs=self.embedder(batch['target_text_ids']),
+        sequence_length=batch['target_length']-1)
+
+    # Loss for maximum likelihood learning
+    loss = tx.losses.sequence_sparse_softmax_cross_entropy(
+        labels=batch['target_text_ids'][:, 1:],
+        logits=outputs.logits,
+        sequence_length=batch['target_length']-1) # Automatic masking
+
+    return loss
+
+
+data = tx.data.PairedTextData(hparams=hparams_data) 
 iterator = tx.data.DataIterator(data)
-batch = iterator.get_next() # A data mini-batch
 
-# Model architecture
-embedder = tx.modules.WordEmbedder(data.target_vocab.size, hparams=hparams_emb)
-encoder = tx.modules.TransformerEncoder(hparams=hparams_encoder)
-outputs_enc = encoder(inputs=embedder(batch['source_text_ids']),
-                      sequence_length=batch['source_length'])
-                      
-decoder = tx.modules.AttentionRNNDecoder(input_size=embedder.dim
-      	                                 encoder_output_size=encoder.output_size,
-      	                                 vocab_size=data.target_vocab.size,
-                                         hparams=hparams_decoder)
-
-                                         
-outputs, _, _ = decoder(memory=output_enc, 
-                        memory_sequence_length=batch['source_length'],
-                        helper=decoder.get_helper(decoding_strategy='train_greedy'), 
-                        inputs=embedder(batch['target_text_ids']),
-                        sequence_length=batch['target_length']-1)
-                        
-# Loss for maximum likelihood learning
-loss = tx.losses.sequence_sparse_softmax_cross_entropy(
-    labels=batch['target_text_ids'][:, 1:],
-    logits=outputs.logits,
-    sequence_length=batch['target_length']-1) # Automatic masks
+model = Seq2seq(data)
+for batch in iterator.get_iterator():
+    loss = model(batch)
+    # ...
 ```
+Many more examples are available [here](./examples)
 
 
 ### Installation
