@@ -46,35 +46,35 @@ import texar as tx
 class Seq2Seq(tx.ModuleBase):
   def __init__(self, data):
     self.embedder = tx.modules.WordEmbedder(data.target_vocab.size, hparams=hparams_emb)
-    self.encoder = tx.modules.TransformerEncoder(hparams=hparams_encoder)
+    self.encoder = tx.modules.TransformerEncoder(hparams=hparams_encoder) # config through `hparams`
     self.decoder = tx.modules.AttentionRNNDecoder(
-        input_size=embedder.dim
-      	encoder_output_size=encoder.output_size,
+        input_size=self.embedder.dim
+      	encoder_output_size=self.encoder.output_size,
       	vocab_size=data.target_vocab.size,
         hparams=hparams_decoder)
 
   def forward(self, batch): 
     outputs_enc = self.encoder(
-        inputs=embedder(batch['source_text_ids']),
+        inputs=self.embedder(batch['source_text_ids']),
         sequence_length=batch['source_length'])
      
     outputs, _, _ = self.decoder(
         memory=output_enc, 
         memory_sequence_length=batch['source_length'],
-        helper=decoder.get_helper(decoding_strategy='train_greedy'), 
-        inputs=embedder(batch['target_text_ids']),
+        helper=self.decoder.get_helper(decoding_strategy='train_greedy'), 
+        inputs=self.embedder(batch['target_text_ids']),
         sequence_length=batch['target_length']-1)
 
     # Loss for maximum likelihood learning
     loss = tx.losses.sequence_sparse_softmax_cross_entropy(
         labels=batch['target_text_ids'][:, 1:],
         logits=outputs.logits,
-        sequence_length=batch['target_length']-1) # Automatic masks
+        sequence_length=batch['target_length']-1) # Automatic masking
 
     return loss
 
 
-data = tx.data.PairedTextData(hparams=hparams_data) # Hyperparameter configs in `hparams` 
+data = tx.data.PairedTextData(hparams=hparams_data) 
 iterator = tx.data.DataIterator(data)
 
 model = Seq2seq(data)
