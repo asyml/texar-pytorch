@@ -27,7 +27,7 @@ from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.modules.decoders.rnn_decoder_base import RNNDecoderBase
 from texar.utils import utils
-from texar.utils.types import MaybeTuple
+from texar.utils.types import MaybeList, MaybeTuple
 from texar.utils.utils import check_or_get_instance, get_function
 
 __all__ = [
@@ -486,6 +486,34 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         }
         return hparams
 
+    def initialize(  # type: ignore
+            self, helper: Helper,
+            inputs: Optional[torch.Tensor],
+            sequence_length: Optional[torch.LongTensor],
+            initial_state: Optional[MaybeList[MaybeTuple[torch.Tensor]]]) -> \
+            Tuple[torch.ByteTensor, torch.Tensor,
+                  Optional[AttentionWrapperState]]:
+        initial_finished, initial_inputs = helper.initialize(inputs,
+                                                             sequence_length)
+        if initial_state is None:
+            state = None
+        else:
+            if isinstance(initial_state, list):
+                if isinstance(initial_state[0], tuple):
+                    batch_size = initial_state[0][0].shape[0]
+                else:
+                    batch_size = initial_state[0].shape[0]
+            else:
+                if isinstance(initial_state, tuple):
+                    batch_size = initial_state[0].shape[0]
+                else:
+                    batch_size = initial_state.shape[0]
+
+            state = self._cell.zero_state(batch_size=batch_size)
+            state = state.clone(cell_state=initial_state)
+
+        return initial_finished, initial_inputs, state
+
     def step(self, helper: Helper, time: int,
              inputs: torch.Tensor, state: Optional[AttentionWrapperState]) -> \
             Tuple[AttentionRNNDecoderOutput, AttentionWrapperState,
@@ -510,16 +538,17 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
 
         return outputs, next_state, next_inputs, finished
 
-    def forward(self,  # type: ignore
-                memory: torch.Tensor,
-                memory_sequence_length: Optional[torch.LongTensor] = None,
-                inputs: Optional[torch.Tensor] = None,
-                sequence_length: Optional[torch.LongTensor] = None,
-                initial_state: Optional[AttentionWrapperState] = None,
-                helper: Optional[Helper] = None,
-                max_decoding_length: Optional[int] = None,
-                impute_finished: bool = False,
-                infer_mode: Optional[bool] = None, **kwargs) \
+    def forward(  # type: ignore
+            self,
+            memory: torch.Tensor,
+            memory_sequence_length: Optional[torch.LongTensor] = None,
+            inputs: Optional[torch.Tensor] = None,
+            sequence_length: Optional[torch.LongTensor] = None,
+            initial_state: Optional[MaybeList[MaybeTuple[torch.Tensor]]] = None,
+            helper: Optional[Helper] = None,
+            max_decoding_length: Optional[int] = None,
+            impute_finished: bool = False,
+            infer_mode: Optional[bool] = None, **kwargs) \
             -> Tuple[AttentionRNNDecoderOutput,
                      Optional[AttentionWrapperState], torch.LongTensor]:
         r"""Performs decoding.
@@ -618,7 +647,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             if max_decoding_length is None:
                 max_decoding_length = utils.MAX_SEQ_LENGTH
 
-        outputs, final_state, sequence_lengths = self.dynamic_decode(
+        (outputs, final_state,
+         sequence_lengths) = self.dynamic_decode(  # type: ignore
             helper, inputs, sequence_length, initial_state,
             max_decoding_length, impute_finished)
 

@@ -31,7 +31,7 @@ from torch import nn
 from texar.core.attention_mechanism_utils import (
     maybe_mask_score, prepare_memory, safe_cumprod)
 from texar.module_base import ModuleBase
-from texar.utils.types import MaybeTuple
+from texar.utils.types import MaybeList, MaybeTuple
 
 __all__ = [
     "AttentionMechanism",
@@ -925,7 +925,7 @@ class AttentionWrapperState(NamedTuple):
     r"""A `namedtuple` storing the state of an
     :class:`~texar.core.AttentionWrapper`.
     """
-    cell_state: torch.Tensor
+    cell_state: MaybeList[MaybeTuple[torch.Tensor]]
     r"""The state of the wrapped `RNNCell` at the previous time step."""
     attention: torch.Tensor
     r"""The attention emitted at the previous time step."""
@@ -941,3 +941,38 @@ class AttentionWrapperState(NamedTuple):
     attention_state: MaybeTuple[torch.Tensor]
     r"""A single or tuple of nested objects containing attention mechanism
     states for each attention mechanism."""
+
+    def clone(self, **kwargs):
+        r"""Clone this object, overriding components provided by kwargs.
+         The new state fields' shape must match original state fields' shape.
+        This will be validated, and original fields' shape will be propagated
+        to new fields.
+
+        Example:
+         ```python
+        initial_state = attention_wrapper.zero_state(batch_size=...)
+        initial_state = initial_state.clone(cell_state=encoder_state)
+        ```
+
+         Args:
+          **kwargs: Any properties of the state object to replace in the
+          returned `AttentionWrapperState`.
+
+         Returns:
+          A new `AttentionWrapperState` whose properties are the same as
+          this one, except any overridden properties as provided in `kwargs`.
+        """
+
+        def with_same_shape(old, new):
+            r"""Check and set new tensor's shape."""
+            if isinstance(old, torch.Tensor) and isinstance(new, torch.Tensor):
+                if old.shape != new.shape:
+                    raise ValueError(
+                        "The shape of the AttentionWrapperState is "
+                        "expected to be same as the one to clone. "
+                        "self.shape: {}, input.shape: {}".fotmat
+                        (old.shape, new.shape))
+            return new
+
+        return with_same_shape(
+            self, super(AttentionWrapperState, self)._replace(**kwargs))

@@ -134,10 +134,9 @@ def main():
 
         step = 0
         for batch in iterator:
-            with torch.autograd.set_detect_anomaly(True):
-                loss = model(batch, mode="train")
-                loss.backward(retain_graph=True)
-                train_op()
+            loss = model(batch, mode="train")
+            loss.backward(retain_graph=True)
+            train_op()
             if step % config_data.display == 0:
                 print("step={}, loss={:.4f}".format(step, loss))
             step += 1
