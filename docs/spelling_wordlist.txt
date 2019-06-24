@@ -51,3 +51,7 @@ stringifies
 stringified
 DType
 learnable
+PyTorch
+pytorch
+torch
+fastly
