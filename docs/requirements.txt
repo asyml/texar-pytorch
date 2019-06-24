@@ -5,3 +5,6 @@ pyyaml
 funcsigs
 recommonmark
 sphinxcontrib-spelling
+
+# PyTorch installation for ReadTheDocs
+https://download.pytorch.org/whl/cpu/torch-1.1.0-cp36-cp36m-linux_x86_64.whl
