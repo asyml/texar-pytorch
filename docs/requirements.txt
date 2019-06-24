@@ -4,7 +4,8 @@ Pygments >= 2.1.1
 pyyaml
 funcsigs
 recommonmark
+mypy_extensions
 sphinxcontrib-spelling
 
 # PyTorch installation for ReadTheDocs
-https://download.pytorch.org/whl/cpu/torch-1.1.0-cp36-cp36m-linux_x86_64.whl
+https://download.pytorch.org/whl/cpu/torch-1.1.0-cp37-cp37m-linux_x86_64.whl
