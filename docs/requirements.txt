@@ -1,7 +1,6 @@
 sphinx
 sphinx-rtd-theme >= 0.2.4
 Pygments >= 2.1.1
-torch >= 1.0.0
 pyyaml
 funcsigs
 recommonmark
