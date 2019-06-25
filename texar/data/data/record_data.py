@@ -343,10 +343,6 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
         self._other_transforms = self._hparams.dataset.other_transformations
 
-        data_name = self._hparams.dataset.data_name
-        self._items = {key: connect_name(data_name, key)
-                       for key, _ in self._features.items()}
-
         data_source = PickleDataSource(self._hparams.dataset.files)
 
         super().__init__(data_source, hparams)
@@ -635,7 +631,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
             else:
                 # VarLenFeature, just put everything in a Python list.
                 pass
-            batch[self._items[key]] = values
+            batch[key] = values
         return Batch(len(examples), batch)
 
     def list_items(self) -> List[str]:
@@ -644,7 +640,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
         Returns:
             A list of strings.
         """
-        return list(self._items.keys())
+        return list(self._features.keys())
 
     @property
     def feature_names(self):

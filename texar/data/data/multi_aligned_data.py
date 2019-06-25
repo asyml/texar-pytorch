@@ -223,6 +223,8 @@ class MultiAlignedData(
                 for key in text_hparams["dataset"].keys():
                     if key in hparams_i:
                         text_hparams["dataset"][key] = hparams_i[key]
+                # handle prepend logic in MultiAlignedData collate function
+                text_hparams["dataset"]["data_name"] = None
 
                 self._databases.append(
                     MonoTextData._construct(hparams=text_hparams,
@@ -488,7 +490,8 @@ class MultiAlignedData(
         batch: Dict[str, Any] = {}
         for i, transposed_example in enumerate(transposed_examples):
             kth_batch = self._databases[i].collate(transposed_example)
-            batch.update(kth_batch._batch)
+            for key, name in self._names[i].items():
+                batch.update({name: kth_batch[key]})
         return Batch(len(examples), batch=batch)
 
     def list_items(self):
@@ -557,4 +560,4 @@ class MultiAlignedData(
         i = self._maybe_name_to_id(name_or_id)
         if not _is_scalar_data(self._hparams.datasets[i]["data_type"]):
             return None
-        return self._names[i]
+        return self._names[i]["label"]
