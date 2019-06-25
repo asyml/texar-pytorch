@@ -66,7 +66,6 @@ class CtrlGenModel(ModuleBase):
         self.loss_d = torch.nn.BCEWithLogitsLoss()
         self.loss_g = torch.nn.BCEWithLogitsLoss()
 
-    #def _build_model(self, inputs, vocab, gamma, lambda_g):
     def forward(self, inputs, gamma, lambda_g):
         """Builds the model.
         """
@@ -79,16 +78,12 @@ class CtrlGenModel(ModuleBase):
         z = final_state[:, self._hparams.dim_c:]
 
         # Encodes label
-        #label_connector = MLPTransformConnector(self._hparams.dim_c)
 
         # Gets the sentence representation: h = (c, z)
-        #labels = tf.to_float(tf.reshape(inputs['labels'], [-1, 1]))
         labels = inputs['labels'].view(-1, 1).type(torch.FloatTensor)
         c = self.label_connector(labels)
         c_ = self.label_connector(1 - labels)
-        #h = tf.concat([c, z], 1)
         h = torch.cat((c, z), 1)
-        #h_ = tf.concat([c_, z], 1)
         h_ = torch.cat((c_, z), 1)
 
         # Teacher-force decoding and the auto-encoding loss for G
@@ -190,7 +185,6 @@ class CtrlGenModel(ModuleBase):
         metrics = {
             "accu_d": accu_d,
             "accu_g": accu_g,
-            #"accu_g_gdy": accu_g_gdy,
         }
         samples = {
             "original": inputs['text_ids'][:, 1:],
@@ -202,7 +196,6 @@ class CtrlGenModel(ModuleBase):
             "loss_g_ae": losses["loss_g_ae"],
             "loss_g_clas": losses["loss_g_clas"],
             "accu_g": metrics["accu_g"],
-            #"accu_g_gdy": metrics["accu_g_gdy"],
         }
 
         fetches_train_d = {

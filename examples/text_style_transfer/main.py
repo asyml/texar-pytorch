@@ -70,8 +70,6 @@ def main():
     )
 
     # Model
-    #gamma = tf.placeholder(dtype=tf.float32, shape=[], name='gamma')
-    #lambda_g = tf.placeholder(dtype=tf.float32, shape=[], name='lambda_g')
     model = CtrlGenModel(vocab, config.model)
 
     vars_g = []
