@@ -104,7 +104,7 @@ class Seq2SeqAttn(ModuleBase):
                 decoding_strategy="infer_greedy",
                 embedding=self.target_embedder,
                 start_tokens=start_tokens,
-                end_token=torch.tensor(self.eos_token_id))
+                end_token=start_tokens.new_tensor(self.eos_token_id))
 
             infer_outputs, _, _ = self.decoder(
                 helper=helper_infer,
@@ -153,7 +153,7 @@ def main():
         refs, hypos = [], []
         for batch in iterator:
             infer_outputs = model(batch, mode="infer")
-            output_ids = infer_outputs.sample_id
+            output_ids = infer_outputs.sample_id.cpu()
             target_texts_ori = [text[1:] for text in batch['target_text']]
             target_texts = tx.utils.strip_special_tokens(
                 target_texts_ori, is_token_list=True)

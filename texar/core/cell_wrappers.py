@@ -522,7 +522,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                     "cell_input_fn must be callable, saw type: %s" %
                     type(cell_input_fn).__name__)
 
-        self._attention_layers: Optional[Tuple[nn.Linear, ...]]
+        self._attention_layers: Optional[nn.ModuleList]
 
         if attention_layer_size is not None:
             if isinstance(attention_layer_size, (list, tuple)):
@@ -536,7 +536,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                     "one integer per attention_mechanism, saw: %d vs %d"
                     % (len(attention_layer_sizes), len(attention_mechanisms)))
 
-            self._attention_layers = tuple(
+            self._attention_layers = nn.ModuleList(
                 nn.Linear(attention_mechanisms[i].encoder_output_size +
                           cell.hidden_size,
                           attention_layer_sizes[i],
