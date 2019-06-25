@@ -259,7 +259,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
     _source: DataSource[RawExample]
     _dataset_size: Optional[int]
 
-    def __init__(self, source: DataSource[RawExample], hparams,
+    def __init__(self, source: DataSource[RawExample], hparams=None,
                  device: Optional[torch.device] = None):
         self._source = source
         self._hparams = HParams(hparams, self.default_hparams())

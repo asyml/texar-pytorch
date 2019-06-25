@@ -18,28 +18,33 @@ Various data iterator classes.
 # pylint: disable=protected-access
 
 from typing import (
-    Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence,
-    Tuple, Union)
+    Any, Callable, Dict, Generic, Iterable, Iterator, List, Mapping, Optional,
+    Sequence, Tuple, TypeVar, Union)
 
-import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import sampler as torch_sampler
 from torch.utils.data.dataloader import _DataLoaderIter as torch_DataLoaderIter
 
+import torch
 from texar.data.data.data_base import DataBase
 from texar.data.data.dataset_utils import Batch
 from texar.utils.types import MaybeSeq
+from texar.utils.utils import ceildiv
 
 __all__ = [
     "DataIterator",
     "TrainTestDataIterator",
+    "BatchingStrategy",
+    "TokenCountBatchingStrategy",
 ]
 
 DatasetsType = Union[Dict[str, DataBase], MaybeSeq[DataBase]]
+Example = TypeVar('Example')
 
 
-class SamplerBase(torch_sampler.Sampler):
-    r"""A subclass of :class:`~torch.utils.data.Sampler` that supports:
+class SamplerBase(torch_sampler.Sampler, Generic[Example]):
+    r"""A subclass of :torch_docs:`~torch.utils.data.Sampler
+    <data.html#torch.utils.data.Sampler>` that supports:
 
     - Returning raw examples when required.
     - Creating iterators with unknown dataset size.
@@ -51,12 +56,13 @@ class SamplerBase(torch_sampler.Sampler):
     Args:
         data: The :class:`~texar.data.data.DataBase` instance.
     """
+    size: Optional[int]
 
-    def __init__(self, data: DataBase):
+    def __init__(self, data: DataBase[Any, Example]):
         super().__init__(data)
 
         self._data = data
-        self.size: Optional[int] = None
+        self.size = None
 
     def _iterator_given_size(self, size: int) -> Iterator[int]:
         r"""Return an iterator that generates samples when the dataset size
@@ -76,7 +82,7 @@ class SamplerBase(torch_sampler.Sampler):
         """
         raise NotImplementedError
 
-    def __iter__(self) -> Union[Iterator[int], Iterator[Tuple[int, Any]]]:
+    def __iter__(self) -> Union[Iterator[int], Iterator[Tuple[int, Example]]]:
         r"""Return an iterator based on the dataset settings.
         """
         self.size = self._data._dataset_size
@@ -111,12 +117,13 @@ class SamplerBase(torch_sampler.Sampler):
         raise AttributeError("Dataset size cannot be determined at this point")
 
 
-class SequentialSampler(SamplerBase):
+class SequentialSampler(SamplerBase[Example]):
     r"""Samples elements sequentially, always in the same order. Same as
-    :class:`torch.utils.data.SequentialSampler`.
+    :torch_docs:`~torch.utils.data.SequentialSampler
+    <data.html#torch.utils.data.SequentialSampler>`
     """
 
-    def _iterator_given_size(self, size: int) -> Iterator[int]:
+    def _iterator_given_size(self, size: int) -> Iterator[int]:  # pylint: disable=no-self-use
         return iter(range(size))
 
     def _iterator_unknown_size(self) -> Iterator[int]:
@@ -130,12 +137,13 @@ class SequentialSampler(SamplerBase):
             index += 1
 
 
-class RandomSampler(SamplerBase):
+class RandomSampler(SamplerBase[Example]):
     r"""Samples elements randomly. If without replacement, then sample from a
     shuffled dataset. If with replacement, then user can specify ``num_samples``
     to draw.
 
-    This class uses :class:`torch.utils.data.RandomSampler` directly. Given the
+    This class uses :torch_docs:`torch.utils.data.RandomSampler
+    <data.html#torch.utils.data.RandomSampler>` directly. Given the
     nature of such shuffling, it cannot be used for iterators with unknown size.
 
     Args:
@@ -145,23 +153,25 @@ class RandomSampler(SamplerBase):
             default=False
     """
 
-    def __init__(self, data: DataBase, replacement: bool = False,
+    def __init__(self, data: DataBase[Any, Example], replacement: bool = False,
                  num_samples: Optional[int] = None):
         super().__init__(data)
         self._sampler = torch_sampler.RandomSampler(
             data, replacement, num_samples)
 
     def _iterator_given_size(self, size: int) -> Iterator[int]:
+        del size  # not used
         return iter(self._sampler)
 
-    def _iterator_unknown_size(self) -> Iterator[int]:
+    def _iterator_unknown_size(self) -> Iterator[int]:  # pylint: disable=no-self-use
         raise TypeError(
             "RandomSampler does not support lazy data loading. To perform "
             "shuffling with lazy loading, use BufferShuffleSampler.")
 
 
-class BufferShuffleSampler(SamplerBase):
-    r"""A :class:`~torch.utils.data.Sampler` that uses a shuffle buffer, as
+class BufferShuffleSampler(SamplerBase[Example]):
+    r"""A :torch_docs:`~torch.utils.data.Sampler
+    <data.html#torch.utils.data.Sampler>` that uses a shuffle buffer, as
     in TensorFlow. The buffer is first filled with data examples. Each time a
     sample is drawn from the buffer, and the drawn sample is replaced with the
     next data example.
@@ -176,7 +186,7 @@ class BufferShuffleSampler(SamplerBase):
             more uniformly-random shuffling.
     """
 
-    def __init__(self, data: DataBase, buffer_size: int):
+    def __init__(self, data: DataBase[Any, Example], buffer_size: int):
         super().__init__(data)
         self.buffer_size = buffer_size
 
@@ -210,6 +220,118 @@ class BufferShuffleSampler(SamplerBase):
                     if buffer[x] < self.size)
 
 
+class BatchingStrategy(Generic[Example]):
+    r"""Decides batch boundaries in dynamic batching. Please refer to
+    :class:`TokenCountBatchingStrategy` for a concrete example.
+    """
+
+    def reset_batch(self) -> None:
+        r"""Reset the internal state of the batching strategy. This method is
+        called at the start of iteration, and after each batch is yielded.
+        """
+        raise NotImplementedError
+
+    def add_example(self, example: Example) -> bool:
+        r"""Add an example into the current batch, and modify internal states
+        accordingly. If the example should not be added to the batch, this
+        method does not modify the internal state, and returns `False`.
+
+        Args:
+            example: The example to add to the batch.
+
+        Returns:
+            A boolean value indicating whether :attr:`example` should be added
+            to the batch.
+        """
+        raise NotImplementedError
+
+
+class TokenCountBatchingStrategy(BatchingStrategy[Example]):
+    r"""Create dynamically-sized batches so that the total number of tokens
+    inside each batch is constrained.
+
+    Args:
+        max_tokens (int): The maximum number of tokens inside each batch.
+        max_batch_size (int, optional): The maximum number of examples for each
+            batch. If `None`, batches can contain arbitrary number of examples
+            as long as the total number of tokens does not exceed
+            :attr:`max_tokens`.
+        length_fn (callable, optional): A function taking a data example as
+            argument, and returning the number of tokens in the example. By
+            default, :python:`len` is used, which is the desired behavior if the
+            dataset in question is a :class:`~texar.data.MonoTextData`.
+    """
+
+    def __init__(self, max_tokens: int, max_batch_size: Optional[int] = None,
+                 length_fn: Optional[Callable[[Example], int]] = None):
+        self.max_batch_size = max_batch_size
+        self.max_tokens = max_tokens
+        self.length_fn: Callable[[Example], int]
+        self.length_fn = length_fn or len  # type: ignore
+        self.sum_tokens = 0
+        self.cur_batch_size = 0
+
+    def reset_batch(self) -> None:
+        self.sum_tokens = 0
+        self.cur_batch_size = 0
+
+    def add_example(self, example: Example) -> bool:
+        if self.cur_batch_size == self.max_batch_size:
+            return False
+        cur_tokens = self.length_fn(example)
+        if cur_tokens + self.sum_tokens > self.max_tokens:
+            return False
+
+        self.cur_batch_size += 1
+        self.sum_tokens += cur_tokens
+        return True
+
+
+class DynamicBatchSampler(torch_sampler.BatchSampler, Generic[Example]):
+    r"""A subclass of :torch_docs:`~torch.utils.data.BatchSampler
+    <data.html#torch.utils.data.BatchSampler>` that supports dynamic batching
+    through a user-provided :class:`BatchingStrategy`. This class is used
+    internally.
+
+    Args:
+        dataset: The dataset to create batches from.
+        sampler: An instance of :class:`SamplerBase` that returns indices of
+            each sampled example.
+        strategy: An instance of :class:`BatchingStrategy` that decides whether
+            a batch should be yielded.
+    """
+
+    def __init__(self, dataset: DataBase[Any, Example],  # pylint: disable=super-init-not-called
+                 sampler: SamplerBase, strategy: BatchingStrategy[Example]):
+        self.dataset = dataset
+        self.sampler = sampler
+        self.strategy = strategy
+
+    def __iter__(self) -> Union[Iterator[List[int]],  # type: ignore
+                                Iterator[List[Tuple[int, Example]]]]:
+        batch = []  # type: ignore
+        self.strategy.reset_batch()
+        for idx in self.sampler:
+            if isinstance(idx, tuple):
+                example = self.dataset[idx[0]]
+            else:
+                example = self.dataset[idx]
+            while not self.strategy.add_example(example):
+                if len(batch) == 0:
+                    raise ValueError(f"Batching strategy refused to add "
+                                     f"example {idx} to empty batch.")
+                yield batch
+                batch = []
+                self.strategy.reset_batch()
+            batch.append(idx)
+        if len(batch) > 0:
+            yield batch
+            self.strategy.reset_batch()
+
+    def __len__(self):
+        raise TypeError("DynamicBatchSampler does not support __len__")
+
+
 class _DataLoaderIter(torch_DataLoaderIter):  # pylint: disable=abstract-method
     r"""Iterates once over the DataLoader's dataset. This is almost identical
     to PyTorch :class:`torch.utils.data.dataloader._DataLoaderIter`, except
@@ -225,7 +347,10 @@ class _DataLoaderIter(torch_DataLoaderIter):  # pylint: disable=abstract-method
 
     def __next__(self):
         batch = super().__next__()
-        if (batch.batch_size < self._batch_size and
+        # Drop smaller final batch according to settings. Note that
+        # `_batch_size` could be None if dynamic batching is used.
+        if (self._batch_size is not None and
+                batch.batch_size < self._batch_size and
                 not self.dataset.hparams.allow_smaller_final_batch):
             raise StopIteration
         return batch
@@ -294,7 +419,8 @@ class _CacheDataLoaderIter(torch_DataLoaderIter):  # pylint: disable=abstract-me
             self.dataset._add_cached_examples(indices, examples)
         else:
             batch = super().__next__()
-        if (batch.batch_size < self.dataset.batch_size and
+        if (self._batch_size is not None and
+                batch.batch_size < self.dataset.batch_size and
                 not self.dataset.hparams.allow_smaller_final_batch):
             raise StopIteration
         return batch
@@ -309,10 +435,13 @@ class SingleDatasetIterator(DataLoader):
         dataset: The dataset to iterator through. The dataset must be an
             instance of :class:`texar.data.DataBase`, because configurations are
             read from the dataset `HParams`.
+        batching_strategy: The batching strategy to use when performing dynamic
+            batching. If `None`, fixed-sized batching is used.
     """
     dataset: DataBase
 
-    def __init__(self, dataset: DataBase):
+    def __init__(self, dataset: DataBase,
+                 batching_strategy: Optional[BatchingStrategy] = None):
         shuffle = dataset.hparams.shuffle
         shuffle_buffer_size = dataset.hparams.shuffle_buffer_size
         sampler: SamplerBase
@@ -325,10 +454,18 @@ class SingleDatasetIterator(DataLoader):
 
         num_parallel_calls = dataset.hparams.num_parallel_calls
         collate_fn = dataset._collate_and_maybe_return
-        super().__init__(
-            dataset, dataset.batch_size, sampler=sampler, collate_fn=collate_fn,
-            num_workers=(0 if num_parallel_calls == 1 else num_parallel_calls),
-            drop_last=False)
+        num_workers = (0 if num_parallel_calls == 1 else num_parallel_calls)
+
+        if batching_strategy is not None:
+            batch_sampler = DynamicBatchSampler(
+                dataset, sampler, batching_strategy)
+            super().__init__(
+                dataset, batch_sampler=batch_sampler,
+                collate_fn=collate_fn, num_workers=num_workers)
+        else:
+            super().__init__(
+                dataset, batch_size=dataset.batch_size, drop_last=False,
+                sampler=sampler, collate_fn=collate_fn, num_workers=num_workers)
 
     def __iter__(self):
         if self.dataset._should_return_processed_examples:
@@ -336,6 +473,14 @@ class SingleDatasetIterator(DataLoader):
             return _CacheDataLoaderIter(self)
         else:
             return _DataLoaderIter(self)
+
+    def __len__(self):
+        if self.batch_size is None:
+            raise TypeError("__len__ not supported for dynamic batching")
+        data_length = len(self.dataset)  # may throw TypeError
+        if self.dataset.hparams.allow_smaller_final_batch:
+            return ceildiv(data_length, self.batch_size)
+        return data_length // self.batch_size
 
 
 class DataIterator:
@@ -352,7 +497,12 @@ class DataIterator:
             - A `list` of instances of :class:`texar.data.DataBase`. The name
               of instances (:attr:`texar.data.DataBase.name`) must be unique.
 
+        batching_strategy: The batching strategy to use when performing dynamic
+            batching. If `None`, fixed-sized batching is used.
+
     Example:
+
+        Create an iterator over two datasets and generating fixed-sized batches:
 
         .. code-block:: python
 
@@ -369,11 +519,50 @@ class DataIterator:
                 # Starts iterating through test data from the beginning
                 for batch in iterator.get_iterator('test'):
                     ... # Do testing with the batch.
+
+        Dynamic batching based on total number of tokens:
+
+        .. code-block:: python
+
+            iterator = DataIterator(
+                {'train': train_data, 'test': test_data},
+                batching_strategy=TokenCountBatchingStrategy(max_tokens=1000))
+
+        Dynamic batching with custom strategy (e.g. total number of tokens in
+        examples from :class:`~texar.data.PairedTextData`, including padding):
+
+        .. code-block:: python
+
+            class CustomBatchingStrategy(BatchingStrategy):
+                def __init__(self, max_tokens: int):
+                    self.max_tokens = max_tokens
+                    self.reset_batch()
+
+                def reset_batch(self) -> None:
+                    self.max_src_len = 0
+                    self.max_tgt_len = 0
+                    self.cur_batch_size = 0
+
+                def add_example(self, ex: Tuple[List[str], List[str]]) -> bool:
+                    max_src_len = max(self.max_src_len, len(ex[0]))
+                    max_tgt_len = max(self.max_tgt_len, len(ex[0]))
+                    if (max(max_src_len + max_tgt_len) *
+                            (self.cur_batch_size + 1) > self.max_tokens):
+                        return False
+                    self.max_src_len = max_src_len
+                    self.max_tgt_len = max_tgt_len
+                    self.cur_batch_size += 1
+                    return True
+
+            iterator = DataIterator(
+                {'train': train_data, 'test': test_data},
+                batching_strategy=CustomBatchingStrategy(max_tokens=1000))
     """
 
     # TODO: Think about whether we should support save/load.
 
-    def __init__(self, datasets: DatasetsType):
+    def __init__(self, datasets: DatasetsType,
+                 batching_strategy: Optional[BatchingStrategy] = None):
         self._default_dataset_name = 'data'
         if isinstance(datasets, DataBase):
             datasets = {self._default_dataset_name: datasets}
@@ -386,7 +575,7 @@ class DataIterator:
             if len(datasets) < num_datasets:
                 raise ValueError("Names of datasets must be unique.")
 
-        _datasets = {name: SingleDatasetIterator(dataset)
+        _datasets = {name: SingleDatasetIterator(dataset, batching_strategy)
                      for name, dataset in datasets.items()}
         self._datasets = _datasets
 
@@ -451,6 +640,9 @@ class DataIterator:
         r"""Returns the iterator for the currently selected or default dataset.
         """
         return self.get_iterator()
+
+    def __len__(self):
+        return len(self._datasets[self._validate_dataset_name(None)])
 
 
 class TrainTestDataIterator(DataIterator):

@@ -42,6 +42,27 @@ def batch_size_fn(new, count, size_so_far):  # pylint: disable=unused-argument
                        batch_size_fn.max_tgt_in_batch)
 
 
+class CustomBatchingStrategy(tx.data.BatchingStrategy):
+    def __init__(self, max_tokens: int):
+        self.max_tokens = max_tokens
+        self.sum_src_tokens = 0
+        self.sum_tgt_tokens = 0
+
+    def reset_batch(self) -> None:
+        self.sum_src_tokens = 0
+        self.sum_tgt_tokens = 0
+
+    def add_example(self, ex) -> bool:
+        src_len = len(ex['source_text'])
+        tgt_len = len(ex['target_text'])
+        if (src_len + self.sum_src_tokens > self.max_tokens or
+                tgt_len + self.sum_tgt_tokens > self.max_tokens):
+            return False
+        self.sum_src_tokens += src_len
+        self.sum_tgt_tokens += tgt_len
+        return True
+
+
 def get_lr_multiplier(step: int, warmup_steps: int) -> float:
     r"""Calculate the learning rate multiplier given current step and the number
     of warm-up steps. The learning rate schedule follows a linear warm-up and
