@@ -490,8 +490,8 @@ class MultiAlignedData(
         batch: Dict[str, Any] = {}
         for i, transposed_example in enumerate(transposed_examples):
             kth_batch = self._databases[i].collate(transposed_example)
-            for key, _ in self._names[i].items():
-                batch.update({self._names[i][key]: kth_batch[key]})
+            for key, name in self._names[i].items():
+                batch.update({name: kth_batch[key]})
         return Batch(len(examples), batch=batch)
 
     def list_items(self):
