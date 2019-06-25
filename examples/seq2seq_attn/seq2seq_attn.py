@@ -100,11 +100,12 @@ class Seq2SeqAttn(ModuleBase):
         else:
             start_tokens = torch.ones_like(batch['target_length']) * \
                            self.bos_token_id
+
             helper_infer = self.decoder.create_helper(
                 decoding_strategy="infer_greedy",
                 embedding=self.target_embedder,
                 start_tokens=start_tokens,
-                end_token=start_tokens.new_tensor(self.eos_token_id))
+                end_token=self.eos_token_id.item())
 
             infer_outputs, _, _ = self.decoder(
                 helper=helper_infer,
