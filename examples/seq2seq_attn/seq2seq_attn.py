@@ -136,7 +136,7 @@ def main():
         step = 0
         for batch in iterator:
             loss = model(batch, mode="train")
-            loss.backward(retain_graph=True)
+            loss.backward()
             train_op()
             if step % config_data.display == 0:
                 print("step={}, loss={:.4f}".format(step, loss))

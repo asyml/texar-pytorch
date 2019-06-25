@@ -31,7 +31,7 @@ from torch import nn
 from texar.core.attention_mechanism_utils import (
     maybe_mask_score, prepare_memory, safe_cumprod)
 from texar.module_base import ModuleBase
-from texar.utils.types import MaybeTuple
+from texar.utils.types import MaybeList, MaybeTuple
 
 __all__ = [
     "AttentionMechanism",
@@ -925,7 +925,7 @@ class AttentionWrapperState(NamedTuple):
     r"""A `namedtuple` storing the state of an
     :class:`~texar.core.AttentionWrapper`.
     """
-    cell_state: torch.Tensor
+    cell_state: MaybeList[MaybeTuple[torch.Tensor]]
     r"""The state of the wrapped `RNNCell` at the previous time step."""
     attention: torch.Tensor
     r"""The attention emitted at the previous time step."""
