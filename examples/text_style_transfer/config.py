@@ -86,19 +86,20 @@ model = {
         'max_decoding_length_infer': 20,
     },
     'classifier': {
-        'kernel_size': [3, 4, 5],
-        'filters': 128,
-        'other_conv_kwargs': {'padding': 'same'},
-        'dropout_conv': [1],
-        'dropout_rate': 0.5,
+        #'kernel_size': [3, 4, 5],
+        #'in_channels': 128,
+        'other_conv_kwargs': {'padding': 0},
+        #'dropout_conv': [1],
+        #'dropout_rate': 0.5,
+        'logit_layer_kwargs': {'in_features': 192, 'bias': True},
         'num_dense_layers': 0,
         'num_classes': 1
     },
     'opt': {
         'optimizer': {
-            'type':  'AdamOptimizer',
+            'type':  'Adam',
             'kwargs': {
-                'learning_rate': 5e-4,
+                'lr': 5e-4,
             },
         },
     },
