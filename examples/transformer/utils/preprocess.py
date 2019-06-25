@@ -268,7 +268,7 @@ def main():
         for words in test_data:
             fsrc.write("{}\n".format(" ".join(words[0])))
             ftgt.write("{}\n".format(" ".join(words[1])))
-    vocab_path = (args.save_data + args.pre_encoding + ".vocab.text")
+    vocab_path = args.save_data + "vocab.text"
     with open(os.path.join(args.input_dir, vocab_path), "w+") as f:
         max_size = len(id2w)
         for idx in range(4, max_size):
