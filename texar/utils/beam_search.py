@@ -120,15 +120,15 @@ def compute_batch_indices(batch_size: int, beam_size: int) -> torch.LongTensor:
     return batch_pos
 
 
-def compute_topk_scores_and_seq(
-    sequences: torch.LongTensor,
-    scores: torch.Tensor,
-    scores_to_gather: torch.Tensor,
-    flags: torch.ByteTensor,
-    beam_size: int,
-    batch_size: int,
-    states_to_gather: Optional[State] = None,
-) -> Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor, Optional[State]]:
+def compute_topk_scores_and_seq(sequences: torch.LongTensor,
+                                scores: torch.Tensor,
+                                scores_to_gather: torch.Tensor,
+                                flags: torch.ByteTensor,
+                                beam_size: int,
+                                batch_size: int,
+                                states_to_gather: Optional[State] = None) -> \
+        Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor,
+              Optional[State]]:
     r"""Given sequences and scores, will gather the top-k (`k = beam`) size
     sequences.
 
@@ -154,7 +154,7 @@ def compute_topk_scores_and_seq(
         batch_size: int
         states_to_gather: (possibly nested structure of) decoding states.
 
-    :returns: Tuple of:
+    Returns: Tuple of:
 
         - `topk_seq`: `[batch_size, beam_size, decode_length]`.
         - `topk_gathered_scores`: `[batch_size, beam_size]`.
@@ -219,17 +219,15 @@ def beam_search(
 # pylint: enable=unused-argument
 
 
-def beam_search(
-    symbols_to_logits_fn,
-    initial_ids,
-    beam_size,
-    decode_length,
-    vocab_size,
-    alpha,
-    eos_id,
-    states=None,
-    stop_early=True,
-):
+def beam_search(symbols_to_logits_fn,
+                initial_ids,
+                beam_size,
+                decode_length,
+                vocab_size,
+                alpha,
+                eos_id,
+                states=None,
+                stop_early=True):
     r"""Beam search with length penalties.
 
     Requires a function that can take the currently decoded symbols and
@@ -263,8 +261,8 @@ def beam_search(
         vocab_size: Size of the vocab, must equal the size of the logits
             returned by :attr:`symbols_to_logits_fn`.
         alpha: alpha for length penalty.
-        states: (possibly nested structure of) decoding states.
         eos_id: ID for end of sentence.
+        states: (possibly nested structure of) decoding states.
         stop_early: a boolean - stop once best sequence is provably
             determined.
 
@@ -308,14 +306,13 @@ def beam_search(
     finished_scores = finished_scores.to(device=initial_ids.device)
     finished_flags = finished_flags.to(device=initial_ids.device)
 
-    def grow_finished(
-        finished_seq: torch.LongTensor,
-        finished_scores: torch.Tensor,
-        finished_flags: torch.ByteTensor,
-        curr_seq: torch.LongTensor,
-        curr_scores: torch.Tensor,
-        curr_finished: torch.ByteTensor,
-    ) -> Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor]:
+    def grow_finished(finished_seq: torch.LongTensor,
+                      finished_scores: torch.Tensor,
+                      finished_flags: torch.ByteTensor,
+                      curr_seq: torch.LongTensor,
+                      curr_scores: torch.Tensor,
+                      curr_finished: torch.ByteTensor) -> \
+            Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor]:
         r"""Given sequences and scores, will gather the top-k (`k = beam`) size
         sequences.
 
@@ -364,12 +361,13 @@ def beam_search(
         )
         return next_seq, next_scores, next_flags
 
-    def grow_alive(
-        curr_seq: torch.LongTensor, curr_scores: torch.Tensor,
-            curr_log_probs: torch.Tensor, curr_finished: torch.ByteTensor,
-            states: Optional[State]
-    ) -> Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor,
-               Optional[State]]:
+    def grow_alive(curr_seq: torch.LongTensor,
+                   curr_scores: torch.Tensor,
+                   curr_log_probs: torch.Tensor,
+                   curr_finished: torch.ByteTensor,
+                   states: Optional[State]) -> \
+            Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor,
+                  Optional[State]]:
         r"""Given sequences and scores, will gather the top k=beam size
         sequences.
 
@@ -385,7 +383,7 @@ def beam_search(
                 Shape: `[batch_size, beam_size]`.
             states: (possibly nested structure of) decoding states.
 
-        :returns: Tuple of:
+        Returns: Tuple of:
 
             - Top-k sequences based on scores.
             - Log-probabilities of these sequences.
@@ -405,11 +403,12 @@ def beam_search(
             states,
         )
 
-    def grow_topk(
-        i: int, alive_seq: torch.LongTensor, alive_log_probs: torch.Tensor,
-        states: Optional[State]
-    ) -> Tuple[torch.LongTensor, torch.Tensor, torch.Tensor,
-               torch.ByteTensor, Optional[State]]:
+    def grow_topk(i: int,
+                  alive_seq: torch.LongTensor,
+                  alive_log_probs: torch.Tensor,
+                  states: Optional[State]) -> \
+            Tuple[torch.LongTensor, torch.Tensor, torch.Tensor,
+                  torch.ByteTensor, Optional[State]]:
         r"""Inner beam search loop.
 
         This function takes the current alive sequences, and grows them to
@@ -431,7 +430,7 @@ def beam_search(
                 Shape: `[batch_size, beam_size]`
             states: (possibly nested structure of) decoding states.
 
-        :returns: Tuple of:
+        Returns: Tuple of:
 
             - Top-k sequences extended by the next word.
             - Log-probabilities of these sequences,
@@ -506,16 +505,15 @@ def beam_search(
 
         return topk_seq, topk_log_probs, topk_scores, topk_finished, states
 
-    def inner_loop(
-        i: int,
-        alive_seq: torch.LongTensor,
-        alive_log_probs: torch.Tensor,
-        finished_seq: torch.LongTensor,
-        finished_scores: torch.Tensor,
-        finished_flags: torch.ByteTensor,
-        states: Optional[State],
-    ) -> Tuple[int, torch.LongTensor, torch.Tensor, torch.LongTensor,
-               torch.Tensor, torch.ByteTensor, Optional[State]]:
+    def inner_loop(i: int,
+                   alive_seq: torch.LongTensor,
+                   alive_log_probs: torch.Tensor,
+                   finished_seq: torch.LongTensor,
+                   finished_scores: torch.Tensor,
+                   finished_flags: torch.ByteTensor,
+                   states: Optional[State]) -> \
+            Tuple[int, torch.LongTensor, torch.Tensor, torch.LongTensor,
+                  torch.Tensor, torch.ByteTensor, Optional[State]]:
         r"""Inner beam search loop.
 
         There are three groups of tensors: `alive`, `finished`, and `top-k`.
@@ -560,7 +558,7 @@ def beam_search(
                 Shape: `[batch_size, beam_size]`
             states: (possibly nested structure of) decoding states.
 
-        :returns: Tuple of:
+        Returns: Tuple of:
 
             - Incremented loop index.
             - New `alive` sequences.
@@ -600,12 +598,9 @@ def beam_search(
             states,
         )
 
-    def _is_finished(
-        i: int,
-        alive_log_probs: torch.Tensor,
-        finished_scores: torch.Tensor,
-        finished_in_finished: torch.ByteTensor,
-    ) -> bool:
+    def _is_finished(i: int,
+                     alive_log_probs: torch.Tensor,
+                     finished_scores: torch.Tensor) -> bool:
         r"""Check termination condition.
 
         We terminate when we decoded up to `decode_length` or the lowest
@@ -618,35 +613,34 @@ def beam_search(
                 Shape: `[batch_size, beam_size]`.
             finished_scores: Scores for each of these sequences.
                 Shape: `[batch_size, beam_size]`.
-            finished_in_finished: Finished boolean tensors for each of these
-                sequences. Shape: `[batch_size, beam_size]`.
 
         Returns:
             Bool.
         """
-        if not stop_early:
-            return i < decode_length
         max_length_penalty = ((5.0 + float(decode_length)) / 6.0) ** alpha
         # The best possible score of the most likely alive sequence
         lower_bound_alive_scores = alive_log_probs[:, 0] / max_length_penalty
 
-        # Now to compute the lowest score of a finished sequence in
-        # finished
-        # If the sequence isn't finished, we multiply it's score by 0.
-        # since scores are all -ve, taking the min will give us the score
-        # of the lowest finished item.
-        lowest_score_of_finished_in_finished = torch.min(
-            finished_scores * finished_in_finished.float(), dim=1,
-            keepdim=False, out=None)[0]
-
-        # If none of the sequences have finished, then the min will be 0
-        # and we have to replace it by -ve INF if it is. The score of any
-        # seq in alive will be much higher than -ve INF and the
-        # termination condition will not be met.
-        lowest_score_of_finished_in_finished = (
-            lowest_score_of_finished_in_finished
-            + (1.0 - finished_in_finished.any(dim=1).float()) * -INF
-        )
+        if not stop_early:
+            # by considering the min score (in the top N beams) we ensure that
+            # the decoder will keep decoding until there is at least one beam
+            # (in the top N) that can be improved (w.r.t. the alive beams).
+            # any unfinished beam will have score -INF - thus the min
+            # will always be -INF if there is at least one unfinished beam -
+            # which means the bound_is_met condition cannot be true in this
+            # case.
+            lowest_score_of_finished_in_finished = torch.min(finished_scores)
+        else:
+            # by taking the max score we only care about the first beam;
+            # as soon as this first beam cannot be beaten from the alive beams
+            # the beam decoder can stop.
+            # similarly to the above, if the top beam is not completed, its
+            # finished_score is -INF, thus it will not activate the
+            # bound_is_met condition. (i.e., decoder will keep going on).
+            # note we need to find the max for every sequence eparately - so,
+            # we need to keep the batch dimension (see axis=1)
+            lowest_score_of_finished_in_finished, _ = torch.max(finished_scores,
+                                                                dim=1)
 
         bound_is_met = (
             (lowest_score_of_finished_in_finished > lower_bound_alive_scores)
@@ -659,7 +653,7 @@ def beam_search(
         return ret
 
     step = 0
-    while _is_finished(step, alive_log_probs, finished_scores, finished_flags):
+    while _is_finished(step, alive_log_probs, finished_scores):
         step, alive_seq, alive_log_probs, finished_seq, finished_scores, \
                 finished_flags, states = inner_loop(
             step,

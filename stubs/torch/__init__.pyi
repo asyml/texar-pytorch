@@ -2201,7 +2201,7 @@ def max(input: Tensor, other: Tensor, *, out: Optional[Tensor] = None) -> Tensor
 
 @overload
 def max(input: Tensor, dim: builtins.int, keepdim: bool = False, *,
-        out: Optional[Tuple[Tensor, Tensor]]) -> Tuple[Tensor, Tensor]: ...
+        out: Optional[Tuple[Tensor, Tensor]] = None) -> Tuple[Tensor, Tensor]: ...
 
 
 def max_pool1d_with_indices(input: Tensor, kernel_size: MaybeTuple[builtins.int],

@@ -685,7 +685,7 @@ class MergeLayer(nn.Module):
             outputs = torch.prod(_concat, dim=self._dim)
         elif self._mode == 'max':
             _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs, _ = torch.max(_concat, dim=self._dim)  # type: ignore
+            outputs, _ = torch.max(_concat, dim=self._dim)
         elif self._mode == 'min':
             _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
             outputs, _ = torch.min(_concat, dim=self._dim)  # type: ignore
