@@ -636,8 +636,7 @@ def beam_search(
         # since scores are all -ve, taking the min will give us the score
         # of the lowest finished item.
         lowest_score_of_finished_in_finished = torch.min(
-            finished_scores * finished_in_finished.float(), dim=1,
-            keepdim=False, out=None)[0]
+            finished_scores * finished_in_finished.float(), dim=1)[0]
 
         # If none of the sequences have finished, then the min will be 0
         # and we have to replace it by -ve INF if it is. The score of any
