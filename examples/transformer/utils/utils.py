@@ -15,9 +15,10 @@
 Helper functions for model training.
 """
 
-import random
-import math
 import logging
+import math
+import random
+
 import numpy as np
 import torch
 
@@ -28,39 +29,6 @@ def set_random_seed(seed):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
-
-
-def batch_size_fn(new, count, size_so_far):  # pylint: disable=unused-argument
-    if count == 1 or not hasattr(batch_size_fn, 'max_src_in_batch'):
-        batch_size_fn.max_src_in_batch = 0
-        batch_size_fn.max_tgt_in_batch = 0
-    batch_size_fn.max_src_in_batch = max(
-        batch_size_fn.max_src_in_batch, len(new[0]) + 1)
-    batch_size_fn.max_tgt_in_batch = max(
-        batch_size_fn.max_tgt_in_batch, len(new[1]) + 1)
-    return count * max(batch_size_fn.max_src_in_batch,
-                       batch_size_fn.max_tgt_in_batch)
-
-
-class CustomBatchingStrategy(tx.data.BatchingStrategy):
-    def __init__(self, max_tokens: int):
-        self.max_tokens = max_tokens
-        self.sum_src_tokens = 0
-        self.sum_tgt_tokens = 0
-
-    def reset_batch(self) -> None:
-        self.sum_src_tokens = 0
-        self.sum_tgt_tokens = 0
-
-    def add_example(self, ex) -> bool:
-        src_len = len(ex['source_text'])
-        tgt_len = len(ex['target_text'])
-        if (src_len + self.sum_src_tokens > self.max_tokens or
-                tgt_len + self.sum_tgt_tokens > self.max_tokens):
-            return False
-        self.sum_src_tokens += src_len
-        self.sum_tgt_tokens += tgt_len
-        return True
 
 
 def get_lr_multiplier(step: int, warmup_steps: int) -> float:
@@ -83,8 +51,7 @@ def get_logger(log_path):
     logger.setLevel(logging.DEBUG)
     fh = logging.FileHandler(log_path)
     fh.setLevel(logging.DEBUG)
-    fh.setFormatter(
-        logging.Formatter('%(asctime)s:%(levelname)s:%(message)s'))
+    fh.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(message)s'))
     logger.addHandler(fh)
     return logger
 

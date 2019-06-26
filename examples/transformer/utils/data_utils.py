@@ -14,115 +14,87 @@
 """Data read/write utilities for Transformer.
 """
 
-import codecs
-import os
+from typing import List, Optional, Tuple
 
 import numpy as np
 import torch
 
+import texar as tx
 
-def load_data_numpy(input_dir, prefix):
-    train_data = np.load(
-        os.path.join(input_dir, prefix + "train.npy"),
-        encoding="latin1",
-        allow_pickle=True,
-    ).tolist()
-    dev_data = np.load(
-        os.path.join(input_dir, prefix + "valid.npy"),
-        encoding="latin1",
-        allow_pickle=True,
-    ).tolist()
-    test_data = np.load(
-        os.path.join(input_dir, prefix + "test.npy"),
-        encoding="latin1",
-        allow_pickle=True,
-    ).tolist()
-    print("train data size:{}".format(len(train_data)))
-    return train_data, dev_data, test_data
+Example = Tuple[np.ndarray, np.ndarray]
 
 
-def seq2seq_pad_concat_convert(xy_batch, eos_id=2, bos_id=1, device=None):
-    """
-    Args:
-        xy_batch (list of tuple of two numpy.ndarray-s or cupy.ndarray-s):
-            xy_batch[i][0] is an array
-            of token ids of i-th input sentence in a minibatch.
-            xy_batch[i][1] is an array
-            of token ids of i-th target sentence in a minibatch.
-            The shape of each array is `(sentence length, )`.
-        eos_id: The index of end-of-sentence special token in the
-            dictionary.
-        bos_id: The index of begin-of-sentence special token in the
-            dictionary.
-        device: The device of the generated tensors.
+class CustomBatchingStrategy(tx.data.BatchingStrategy[Example]):
+    def __init__(self, max_tokens: int):
+        self.max_tokens = max_tokens
+        self.max_src_len = 0
+        self.max_tgt_len = 0
+        self.cur_batch_size = 0
 
-    Returns:
-        Tuple of Converted array.
-            (input_sent_batch_array, target_sent_batch_input_array,
-            target_sent_batch_output_array).
-            The shape of each array is `(batchsize, max_sentence_length)`.
-            All sentences are padded with 0 to reach max_sentence_length.
-    """
+    def reset_batch(self) -> None:
+        self.max_src_len = 0
+        self.max_tgt_len = 0
+        self.cur_batch_size = 0
 
-    x_seqs, y_seqs = zip(*xy_batch)
-    x_block = _concat_examples(x_seqs, padding=0)
-    y_block = _concat_examples(y_seqs, padding=0)
-
-    # Add EOS
-    x_block = np.pad(x_block, ((0, 0), (0, 1)), "constant", constant_values=0)
-    for i_batch, seq in enumerate(x_seqs):
-        x_block[i_batch, len(seq)] = eos_id
-
-    y_out_block = np.pad(
-        y_block, ((0, 0), (0, 1)), "constant", constant_values=0)
-    for i_batch, seq in enumerate(y_seqs):
-        y_out_block[i_batch, len(seq)] = eos_id
-
-    # Add BOS in target language
-    y_in_block = np.pad(
-        y_block, ((0, 0), (1, 0)), "constant", constant_values=bos_id)
-
-    x_block = torch.tensor(x_block, dtype=torch.long, device=device)
-    y_in_block = torch.tensor(y_in_block, dtype=torch.long, device=device)
-    y_out_block = torch.tensor(y_out_block, dtype=torch.long, device=device)
-    return x_block, y_in_block, y_out_block
+    def add_example(self, ex: Example) -> bool:
+        max_src_len = max(self.max_src_len, len(ex[0]))
+        max_tgt_len = max(self.max_tgt_len, len(ex[1]))
+        if ((self.cur_batch_size + 1) *
+                max(max_src_len, max_tgt_len) > self.max_tokens):
+            return False
+        self.max_src_len = max_src_len
+        self.max_tgt_len = max_tgt_len
+        self.cur_batch_size += 1
+        return True
 
 
-def source_pad_concat_convert(x_seqs, eos_id=2, device=None):
-    """
-    This function is used when testing the model without target input.
-    """
-    x_block = _concat_examples(x_seqs, padding=0)
+class Seq2SeqData(tx.data.DataBase[Example, Example]):
+    def __init__(self, filename: str, hparams=None,
+                 device: Optional[torch.device] = None):
+        data: List[Example] = np.load(
+            filename,
+            encoding="latin1",
+            allow_pickle=True).tolist()
+        source = tx.data.SequenceDataSource(data)
+        super().__init__(source, hparams, device)
 
-    # add EOS
-    x_block = np.pad(x_block, ((0, 0), (0, 1)), "constant", constant_values=0)
-    for i_batch, seq in enumerate(x_seqs):
-        x_block[i_batch, len(seq)] = eos_id
-    x_block = torch.tensor(x_block, dtype=torch.long, device=device)
-    return x_block
+    @staticmethod
+    def default_hparams():
+        return {
+            **tx.data.DataBase.default_hparams(),
+            "bos_id": 1,
+            "eos_id": 2,
+        }
 
+    def process(self, raw_example: Example) -> Example:  # pylint: disable=no-self-use
+        return raw_example
 
-def _concat_examples(arrays, padding=0):
-    if len(arrays) == 0:
-        raise ValueError("batch is empty")
-
-    first_elem = arrays[0]
-    assert isinstance(first_elem, np.ndarray)
-
-    shape = np.array(arrays[0].shape, dtype=int)
-    for array in arrays[1:]:
-        if np.any(shape != array.shape):
-            np.maximum(shape, array.shape, shape)
-    shape = tuple(np.insert(shape, 0, len(arrays)))
-
-    result = np.full(shape, padding, dtype=arrays[0].dtype)
-    for i, src in enumerate(arrays):
-        slices = tuple(slice(dim) for dim in src.shape)
-        result[(i,) + slices] = src
-    return result
-
-
-def write_words(words_list, filename):
-    with codecs.open(filename, "w+", "utf-8") as myfile:
-        for words in words_list:
-            myfile.write(" ".join(words) + "\n")
+    def collate(self, examples: List[Example]) -> tx.data.Batch:
+        src_seqs = [ex[0] for ex in examples]
+        tgt_seqs = [ex[1] for ex in examples]
+        max_src_len = max(map(len, src_seqs))
+        max_tgt_len = max(map(len, tgt_seqs))
+        # Add EOS token by setting pad_length to max length + 1.
+        source, _ = tx.data.padded_batch(
+            src_seqs, pad_length=(max_src_len + 1),
+            pad_value=self._hparams.eos_id,
+        )
+        target_output, _ = tx.data.padded_batch(
+            tgt_seqs, pad_length=(max_tgt_len + 1),
+            pad_value=self._hparams.eos_id,
+        )
+        # Add BOS token to the target inputs.
+        target_input = np.pad(
+            target_output[:, :max_tgt_len], ((0, 0), (1, 0)),
+            "constant", constant_values=self._hparams.bos_id,
+        )
+        source, target_input, target_output = [
+            torch.from_numpy(x).to(device=self.device)
+            for x in [source, target_input, target_output]
+        ]
+        return tx.data.Batch(
+            len(examples),
+            source=source,
+            target_input=target_input,
+            target_output=target_output
+        )
