@@ -42,6 +42,12 @@ DatasetsType = Union[Dict[str, DataBase], MaybeSeq[DataBase]]
 Example = TypeVar('Example')
 
 
+# pylint: disable=attribute-defined-outside-init
+# TODO: Remove this when Pylint fixes the bug. If the `disable` directive is not
+#  added, Pylint incorrectly reports this error for `self.size` in subclasses of
+#  `SamplerBase` in Python 3.6 due to use of the Generic class.
+#  See Pylint issue: https://github.com/PyCQA/pylint/issues/2981
+
 class SamplerBase(torch_sampler.Sampler, Generic[Example]):
     r"""A subclass of :torch_docs:`~torch.utils.data.Sampler
     <data.html#torch.utils.data.Sampler>` that supports:
@@ -218,6 +224,9 @@ class BufferShuffleSampler(SamplerBase[Example]):
             x += 1
         yield from (buffer[x] for x in torch.randperm(self.buffer_size)
                     if buffer[x] < self.size)
+
+
+# pylint: enable=attribute-defined-outside-init
 
 
 class BatchingStrategy(Generic[Example]):
