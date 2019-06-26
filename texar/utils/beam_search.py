@@ -16,7 +16,10 @@
 # ==============================================================================
 """
 Implementation of beam search with penalties.
-Adapted from tensor2tensor repository.
+
+Adapted from:
+    `https://github.com/tensorflow/tensor2tensor/`
+    `blob/master/tensor2tensor/utils/beam_search.py`
 """
 from typing import Callable, Optional, Tuple, TypeVar, overload
 
