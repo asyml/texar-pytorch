@@ -177,7 +177,7 @@ def main():
 
             dis_steps = config_data.display_steps
             if dis_steps > 0 and step % dis_steps == 0:
-                logging.info("step: %d; loss: %d", step, loss)
+                logging.info("step: %d; loss: %f", step, loss)
 
             eval_steps = config_data.eval_steps
             if eval_steps > 0 and step % eval_steps == 0:
