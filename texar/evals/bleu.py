@@ -117,7 +117,7 @@ def corpus_bleu(list_of_references: List[List[MaybeList[str]]],
                 max_order: int = 4,
                 lowercase: bool = False,
                 smooth: bool = False,
-                return_all: bool = True) -> MaybeList[float]:
+                return_all: bool = False) -> MaybeList[float]:
     r"""Computes corpus-level BLEU score.
 
     Args:

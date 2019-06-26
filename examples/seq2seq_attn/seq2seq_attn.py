@@ -164,8 +164,7 @@ def main():
                 hypos.append(hypo)
                 refs.append([ref])
 
-        return tx.evals.corpus_bleu_moses(list_of_references=refs,
-                                          hypotheses=hypos)
+        return tx.evals.corpus_bleu(list_of_references=refs, hypotheses=hypos)
 
     best_val_bleu = -1.
     for i in range(config_data.num_epochs):
