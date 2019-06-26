@@ -20,11 +20,10 @@ import functools
 import importlib
 import os
 import random
-from tqdm import tqdm
-
 import torch
 from torch import nn
 from torchtext import data
+from tqdm import tqdm
 
 import texar as tx
 from texar.data import Vocab
