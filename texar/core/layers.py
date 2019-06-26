@@ -525,9 +525,9 @@ class _ReducePool1d(nn.Module):
         # :torch_docs:`torch.mean <torch.html#torch.mean>`
         # does not return a tuple
         if self._reduce_function == torch.mean:
-            output = self._reduce_function(input, dim=2, keepdim=True)
+            output = self._reduce_function(input, dim=2)
         else:
-            output, _ = self._reduce_function(input, dim=2, keepdim=True)
+            output, _ = self._reduce_function(input, dim=2)
         return output
 
 
@@ -630,7 +630,7 @@ class MergeLayer(nn.Module):
     """
 
     def __init__(self, layers: Optional[List[nn.Module]] = None,
-                 mode: str = 'concat', dim: int = 2):
+                 mode: str = 'concat', dim: Optional[int] = None):
         super().__init__()
         self._mode = mode
         self._dim = dim
@@ -663,6 +663,14 @@ class MergeLayer(nn.Module):
             for layer in self._layers:
                 layer_output = layer(input)
                 layer_outputs.append(layer_output)
+
+        # the merge dimension cannot be determined until we get the output from
+        # individual layers.
+        # In case of reduce pooling operations, feature dim is removed and
+        # channel dim is merged.
+        # In non-reduce pooling operations, feature dim is merged.
+        if self._dim is None:
+            self._dim = layer_outputs[0].dim() - 1
 
         if self._mode == 'concat':
             outputs = torch.cat(tensors=layer_outputs, dim=self._dim)

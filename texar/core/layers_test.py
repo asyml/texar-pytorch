@@ -104,9 +104,9 @@ class ReducePoolingLayerTest(unittest.TestCase):
         pool_layer = layers.MaxReducePool1d()
         inputs = torch.randn(self._batch_size, self._emb_dim, self._seq_length)
         output = pool_layer(inputs)
-        output_reduce, _ = torch.max(inputs, dim=2, keepdim=True)
+        output_reduce, _ = torch.max(inputs, dim=2)
         self.assertEqual(output.shape, torch.Size([self._batch_size,
-                                                   self._emb_dim, 1]))
+                                                   self._emb_dim]))
         self.assertEqual(torch.all(torch.eq(output, output_reduce)), 1)
 
     def test_average_reduce_pooling_layer(self):
@@ -115,9 +115,9 @@ class ReducePoolingLayerTest(unittest.TestCase):
         pool_layer = layers.AvgReducePool1d()
         inputs = torch.randn(self._batch_size, self._emb_dim, self._seq_length)
         output = pool_layer(inputs)
-        output_reduce = torch.mean(inputs, dim=2, keepdim=True)
+        output_reduce = torch.mean(inputs, dim=2)
         self.assertEqual(output.shape, torch.Size([self._batch_size,
-                                                   self._emb_dim, 1]))
+                                                   self._emb_dim]))
         self.assertEqual(torch.all(torch.eq(output, output_reduce)), 1)
 
 
