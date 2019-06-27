@@ -55,3 +55,4 @@ PyTorch
 pytorch
 torch
 fastly
+precompute
