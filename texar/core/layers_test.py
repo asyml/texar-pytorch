@@ -143,6 +143,12 @@ class MergeLayerTest(unittest.TestCase):
         output = m_layer(input)
         self.assertEqual(output.shape, torch.Size([32, 32, 149]))
 
+    def test_empty_merge_layer(self):
+        m_layer = layers.MergeLayer(layers=None)
+        input = torch.randn(32, 32, 10)
+        output = m_layer(input)
+        self.assertEqual(torch.all(torch.eq(output, input)), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

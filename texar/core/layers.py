@@ -647,6 +647,24 @@ class MergeLayer(nn.Module):
                 else:
                     self._layers.append(get_layer(hparams=layer))
 
+        self._functions = {
+            "sum": torch.sum,
+            "mean": torch.mean,
+            "prod": torch.prod,
+            "max": torch.max,
+            "min": torch.min,
+            "and": torch.all,
+            "or": torch.any,
+            "logsumexp": torch.logsumexp
+        }
+
+        def merge(tensors, dim):
+            _concat = torch.cat(tensors=tensors, dim=dim)
+            outputs = self._functions[self._mode](_concat, dim=dim)
+            return outputs
+
+        self._merge_op = merge
+
     def forward(self, input: torch.Tensor) -> torch.Tensor:  # type: ignore
         r"""Feed input to every containing layer and merge the outputs.
 
@@ -656,8 +674,11 @@ class MergeLayer(nn.Module):
         Returns:
             The merged tensor.
         """
+        layer_outputs: List[torch.Tensor]
         if self._layers is None:
-            layer_outputs: Union[torch.Tensor, List[torch.Tensor]] = input
+            layer_outputs = input
+            if not isinstance(layer_outputs, (list, tuple)):
+                layer_outputs = [layer_outputs]
         else:
             layer_outputs = []
             for layer in self._layers:
@@ -669,11 +690,10 @@ class MergeLayer(nn.Module):
         # In case of reduce pooling operations, feature dim is removed and
         # channel dim is merged.
         # In non-reduce pooling operations, feature dim is merged.
-        if self._dim is None:
-            self._dim = layer_outputs[0].dim() - 1
+        dim = self._dim if self._dim is not None else - 1
 
         if self._mode == 'concat':
-            outputs = torch.cat(tensors=layer_outputs, dim=self._dim)
+            outputs = torch.cat(tensors=layer_outputs, dim=dim)
         elif self._mode == 'elemwise_sum':
             outputs = layer_outputs[0]
             for i in range(1, len(layer_outputs)):
@@ -682,30 +702,8 @@ class MergeLayer(nn.Module):
             outputs = layer_outputs[0]
             for i in range(1, len(layer_outputs)):
                 outputs = torch.mul(outputs, layer_outputs[i])
-        elif self._mode == 'sum':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs = torch.sum(_concat, dim=self._dim)
-        elif self._mode == 'mean':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs = torch.mean(_concat, dim=self._dim)
-        elif self._mode == 'prod':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs = torch.prod(_concat, dim=self._dim)
-        elif self._mode == 'max':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs, _ = torch.max(_concat, dim=self._dim)
-        elif self._mode == 'min':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs, _ = torch.min(_concat, dim=self._dim)
-        elif self._mode == 'and':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs = torch.all(_concat, dim=self._dim)
-        elif self._mode == 'or':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs = torch.any(_concat, dim=self._dim)
-        elif self._mode == 'logsumexp':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs = torch.logsumexp(_concat, dim=self._dim)
+        elif self._mode in self._functions:
+            outputs = self._merge_op(tensors=layer_outputs, dim=dim)
         else:
             raise ValueError("Unknown merge mode: '%s'" % self._mode)
 
