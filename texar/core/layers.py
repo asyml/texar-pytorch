@@ -690,7 +690,7 @@ class MergeLayer(nn.Module):
         # In case of reduce pooling operations, feature dim is removed and
         # channel dim is merged.
         # In non-reduce pooling operations, feature dim is merged.
-        dim = self._dim if self._dim is not None else - 1
+        dim = self._dim if self._dim is not None else -1
 
         if self._mode == 'concat':
             outputs = torch.cat(tensors=layer_outputs, dim=dim)
