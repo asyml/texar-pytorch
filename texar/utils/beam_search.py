@@ -18,8 +18,7 @@
 Implementation of beam search with penalties.
 
 Adapted from:
-    `https://github.com/tensorflow/tensor2tensor/`
-    `blob/master/tensor2tensor/utils/beam_search.py`
+    `https://github.com/tensorflow/tensor2tensor/blob/eb048f69c7ea860324122b87cb9caf59c52a27f3/tensor2tensor/utils/beam_search.py`
 """
 from typing import Callable, Optional, Tuple, TypeVar, overload
 
@@ -123,15 +122,15 @@ def compute_batch_indices(batch_size: int, beam_size: int) -> torch.LongTensor:
     return batch_pos
 
 
-def compute_topk_scores_and_seq(sequences: torch.LongTensor,
-                                scores: torch.Tensor,
-                                scores_to_gather: torch.Tensor,
-                                flags: torch.ByteTensor,
-                                beam_size: int,
-                                batch_size: int,
-                                states_to_gather: Optional[State] = None) -> \
-        Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor,
-              Optional[State]]:
+def compute_topk_scores_and_seq(
+        sequences: torch.LongTensor,
+        scores: torch.Tensor,
+        scores_to_gather: torch.Tensor,
+        flags: torch.ByteTensor,
+        beam_size: int,
+        batch_size: int,
+        states_to_gather: Optional[State] = None,
+) -> Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor, Optional[State]]:
     r"""Given sequences and scores, will gather the top-k (`k = beam`) size
     sequences.
 
@@ -157,7 +156,7 @@ def compute_topk_scores_and_seq(sequences: torch.LongTensor,
         batch_size: int
         states_to_gather: (possibly nested structure of) decoding states.
 
-    Returns: Tuple of:
+    :returns: Tuple of:
 
         - `topk_seq`: `[batch_size, beam_size, decode_length]`.
         - `topk_gathered_scores`: `[batch_size, beam_size]`.
@@ -222,15 +221,17 @@ def beam_search(
 # pylint: enable=unused-argument
 
 
-def beam_search(symbols_to_logits_fn,
-                initial_ids,
-                beam_size,
-                decode_length,
-                vocab_size,
-                alpha,
-                eos_id,
-                states=None,
-                stop_early=True):
+def beam_search(
+        symbols_to_logits_fn,
+        initial_ids,
+        beam_size,
+        decode_length,
+        vocab_size,
+        alpha,
+        eos_id,
+        states=None,
+        stop_early=True,
+):
     r"""Beam search with length penalties.
 
     Requires a function that can take the currently decoded symbols and
@@ -309,13 +310,14 @@ def beam_search(symbols_to_logits_fn,
     finished_scores = finished_scores.to(device=initial_ids.device)
     finished_flags = finished_flags.to(device=initial_ids.device)
 
-    def grow_finished(finished_seq: torch.LongTensor,
-                      finished_scores: torch.Tensor,
-                      finished_flags: torch.ByteTensor,
-                      curr_seq: torch.LongTensor,
-                      curr_scores: torch.Tensor,
-                      curr_finished: torch.ByteTensor) -> \
-            Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor]:
+    def grow_finished(
+            finished_seq: torch.LongTensor,
+            finished_scores: torch.Tensor,
+            finished_flags: torch.ByteTensor,
+            curr_seq: torch.LongTensor,
+            curr_scores: torch.Tensor,
+            curr_finished: torch.ByteTensor
+    ) -> Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor]:
         r"""Given sequences and scores, will gather the top-k (`k = beam`) size
         sequences.
 
@@ -364,13 +366,12 @@ def beam_search(symbols_to_logits_fn,
         )
         return next_seq, next_scores, next_flags
 
-    def grow_alive(curr_seq: torch.LongTensor,
-                   curr_scores: torch.Tensor,
-                   curr_log_probs: torch.Tensor,
-                   curr_finished: torch.ByteTensor,
-                   states: Optional[State]) -> \
-            Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor,
-                  Optional[State]]:
+    def grow_alive(
+        curr_seq: torch.LongTensor, curr_scores: torch.Tensor,
+            curr_log_probs: torch.Tensor, curr_finished: torch.ByteTensor,
+            states: Optional[State]
+    ) -> Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor,
+               Optional[State]]:
         r"""Given sequences and scores, will gather the top k=beam size
         sequences.
 
@@ -386,7 +387,7 @@ def beam_search(symbols_to_logits_fn,
                 Shape: `[batch_size, beam_size]`.
             states: (possibly nested structure of) decoding states.
 
-        Returns: Tuple of:
+        :returns: Tuple of:
 
             - Top-k sequences based on scores.
             - Log-probabilities of these sequences.
@@ -406,12 +407,11 @@ def beam_search(symbols_to_logits_fn,
             states,
         )
 
-    def grow_topk(i: int,
-                  alive_seq: torch.LongTensor,
-                  alive_log_probs: torch.Tensor,
-                  states: Optional[State]) -> \
-            Tuple[torch.LongTensor, torch.Tensor, torch.Tensor,
-                  torch.ByteTensor, Optional[State]]:
+    def grow_topk(
+        i: int, alive_seq: torch.LongTensor, alive_log_probs: torch.Tensor,
+        states: Optional[State]
+    ) -> Tuple[torch.LongTensor, torch.Tensor, torch.Tensor,
+               torch.ByteTensor, Optional[State]]:
         r"""Inner beam search loop.
 
         This function takes the current alive sequences, and grows them to
@@ -433,7 +433,7 @@ def beam_search(symbols_to_logits_fn,
                 Shape: `[batch_size, beam_size]`
             states: (possibly nested structure of) decoding states.
 
-        Returns: Tuple of:
+        :returns: Tuple of:
 
             - Top-k sequences extended by the next word.
             - Log-probabilities of these sequences,
@@ -508,15 +508,16 @@ def beam_search(symbols_to_logits_fn,
 
         return topk_seq, topk_log_probs, topk_scores, topk_finished, states
 
-    def inner_loop(i: int,
-                   alive_seq: torch.LongTensor,
-                   alive_log_probs: torch.Tensor,
-                   finished_seq: torch.LongTensor,
-                   finished_scores: torch.Tensor,
-                   finished_flags: torch.ByteTensor,
-                   states: Optional[State]) -> \
-            Tuple[int, torch.LongTensor, torch.Tensor, torch.LongTensor,
-                  torch.Tensor, torch.ByteTensor, Optional[State]]:
+    def inner_loop(
+            i: int,
+            alive_seq: torch.LongTensor,
+            alive_log_probs: torch.Tensor,
+            finished_seq: torch.LongTensor,
+            finished_scores: torch.Tensor,
+            finished_flags: torch.ByteTensor,
+            states: Optional[State]
+    ) -> Tuple[int, torch.LongTensor, torch.Tensor, torch.LongTensor,
+               torch.Tensor, torch.ByteTensor, Optional[State]]:
         r"""Inner beam search loop.
 
         There are three groups of tensors: `alive`, `finished`, and `top-k`.
@@ -561,7 +562,7 @@ def beam_search(symbols_to_logits_fn,
                 Shape: `[batch_size, beam_size]`
             states: (possibly nested structure of) decoding states.
 
-        Returns: Tuple of:
+        :returns: Tuple of:
 
             - Incremented loop index.
             - New `alive` sequences.
@@ -601,9 +602,11 @@ def beam_search(symbols_to_logits_fn,
             states,
         )
 
-    def _is_finished(i: int,
-                     alive_log_probs: torch.Tensor,
-                     finished_scores: torch.Tensor) -> bool:
+    def _is_finished(
+        i: int,
+        alive_log_probs: torch.Tensor,
+        finished_scores: torch.Tensor
+    ) -> bool:
         r"""Check termination condition.
 
         We terminate when we decoded up to `decode_length` or the lowest
