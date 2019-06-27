@@ -124,7 +124,6 @@ def main():
                                desc=f"Eval on {mode} set"):
             predictions = model(
                 encoder_input=batch.source,
-                is_train_mode=False,
                 beam_width=beam_width,
             )
             if beam_width == 1:
@@ -206,7 +205,6 @@ def main():
             optim.zero_grad()
             loss = model(
                 encoder_input=train_batch.source,
-                is_train_mode=True,
                 decoder_input=train_batch.target_input,
                 labels=train_batch.target_output,
             )

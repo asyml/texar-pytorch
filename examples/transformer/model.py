@@ -7,8 +7,12 @@ import texar as tx
 
 
 class Transformer(nn.Module):
-    r"""A standalone sequence-to-sequence Transformer model.
-    TODO: Add detailed docstrings.
+    r"""A standalone sequence-to-sequence Transformer model, from "Attention
+    Is All You Need". The Transformer model consists of the word embedding
+    layer, position embedding layer, an encoder and a decoder. Both encoder
+    and decoder are stacks of self-attention layers followed by feed-forward
+    layers. See "Attention Is All You Need" (https://arxiv.org/abs/1706.03762)
+    for the full description of the model.
     """
 
     def __init__(self, model_config, data_config, vocab: tx.data.Vocab):
@@ -46,22 +50,36 @@ class Transformer(nn.Module):
     def forward(  # type: ignore
         self,
         encoder_input: torch.Tensor,
-        is_train_mode: Optional[bool],
         decoder_input: Optional[torch.LongTensor] = None,
         labels: Optional[torch.LongTensor] = None,
         beam_width: Optional[int] = None,
     ):
-        r"""TODO: Add detailed docstrings.
+        r"""Compute the maximum likelihood loss or perform decoding, depending
+        on arguments.
+
+        Args:
+            encoder_input: the source sentence embedding, with the shape of
+                `[batch_size, source_seq_length, input_dim]`.
+            decoder_input: the target sentence embedding, with the shape of
+                `[batch_size, target_seq_length, input_dim]`.
+            labels: the target sentence labels, with the shape of
+                `[batch_size, target_seq_length]`.
+            beam_width: Used in beam search.
+
+        :returns:
+            - If both :attr:`decoder_input` and :attr:`labels` are both
+              provided, the function enters training logic and returns the
+              maximum likelihood loss.
+            - Otherwise the function enters inference logic and returns the
+              decoded sequence.
+            - If `beam_width` > 1, beam search decoding is performed. Please
+              refer to :meth:`texar.modules.TransformerDecoder.forward` for
+              details on return types.
         """
 
         batch_size = encoder_input.size(0)
         # (text sequence length excluding padding)
         encoder_input_length = (encoder_input != 0).int().sum(dim=1)
-
-        if is_train_mode:
-            self.train()
-        else:
-            self.eval()
 
         # Source word embedding
         src_word_embeds = self.word_embedder(encoder_input)
@@ -80,9 +98,8 @@ class Transformer(nn.Module):
             inputs=src_input_embedding, sequence_length=encoder_input_length
         )
 
-        if is_train_mode:
-            assert decoder_input is not None
-            assert labels is not None
+        if decoder_input is not None and labels is not None:
+            # enter the training logic
 
             tgt_word_embeds = self.word_embedder(decoder_input)
             tgt_word_embeds = (
@@ -167,7 +184,7 @@ class LabelSmoothingLoss(nn.Module):
         target: torch.Tensor,
         label_lengths: torch.LongTensor,
     ) -> torch.Tensor:
-        r"""
+        r"""Compute the label smoothing loss.
 
         Args:
             output (FloatTensor): batch_size x seq_length * n_classes
