@@ -629,6 +629,17 @@ class MergeLayer(nn.Module):
             :attr:`'elemwise_sum'` and :attr:`'elemwise_mul'`.
     """
 
+    _functions: Dict[str, Callable[[torch.Tensor, int], torch.Tensor]] = {
+        "sum": torch.sum,
+        "mean": torch.mean,
+        "prod": torch.prod,
+        "max": lambda tensors, dim: torch.max(tensors, dim)[0],
+        "min": lambda tensors, dim: torch.min(tensors, dim)[0],
+        "and": torch.all,
+        "or": torch.any,
+        "logsumexp": torch.logsumexp
+    }
+
     def __init__(self, layers: Optional[List[nn.Module]] = None,
                  mode: str = 'concat', dim: Optional[int] = None):
         super().__init__()
@@ -646,24 +657,6 @@ class MergeLayer(nn.Module):
                     self._layers.append(layer)
                 else:
                     self._layers.append(get_layer(hparams=layer))
-
-        self._functions = {
-            "sum": torch.sum,
-            "mean": torch.mean,
-            "prod": torch.prod,
-            "max": torch.max,
-            "min": torch.min,
-            "and": torch.all,
-            "or": torch.any,
-            "logsumexp": torch.logsumexp
-        }
-
-        def merge(tensors, dim):
-            _concat = torch.cat(tensors=tensors, dim=dim)
-            outputs = self._functions[self._mode](_concat, dim=dim)
-            return outputs
-
-        self._merge_op = merge
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:  # type: ignore
         r"""Feed input to every containing layer and merge the outputs.
@@ -703,7 +696,8 @@ class MergeLayer(nn.Module):
             for i in range(1, len(layer_outputs)):
                 outputs = torch.mul(outputs, layer_outputs[i])
         elif self._mode in self._functions:
-            outputs = self._merge_op(tensors=layer_outputs, dim=dim)
+            _concat = torch.cat(tensors=layer_outputs, dim=dim)
+            outputs = self._functions[self._mode](_concat, dim)
         else:
             raise ValueError("Unknown merge mode: '%s'" % self._mode)
 

@@ -125,25 +125,42 @@ class MergeLayerTest(unittest.TestCase):
     r"""Tests MergeLayer.
     """
 
-    def test_layer_logics(self):
+    def test_layer_logic(self):
         r"""Test the logic of MergeLayer.
         """
         layers_ = list()
         layers_.append(nn.Conv1d(in_channels=32, out_channels=32,
                                  kernel_size=3))
         layers_.append(nn.Conv1d(in_channels=32, out_channels=32,
-                                 kernel_size=4))
+                                 kernel_size=3))
         layers_.append(nn.Conv1d(in_channels=32, out_channels=32,
-                                 kernel_size=5))
-        layers_.append(nn.Linear(in_features=10, out_features=64))
-        layers_.append(nn.Linear(in_features=10, out_features=64))
-        m_layer = layers.MergeLayer(layers_)
+                                 kernel_size=3))
 
-        input = torch.randn(32, 32, 10)
-        output = m_layer(input)
-        self.assertEqual(output.shape, torch.Size([32, 32, 149]))
+        modes = ["concat", "sum", "mean", "prod", "max", "min", "logsumexp",
+                 "elemwise_sum", "elemwise_mul"]
+
+        for mode in modes:
+            m_layer = layers.MergeLayer(layers_, mode=mode)
+            input = torch.randn(32, 32, 10)
+            output = m_layer(input)
+
+            if mode == "concat":
+                self.assertEqual(output.shape, torch.Size([32, 32, 24]))
+            elif mode == "elemwise_sum" or mode == "elemwise_mul":
+                self.assertEqual(output.shape, torch.Size([32, 32, 8]))
+            else:
+                self.assertEqual(output.shape, torch.Size([32, 32]))
+
+        for mode in ["and", "or"]:
+            m_layer = layers.MergeLayer(layers=None, mode=mode)
+            input = torch.ones(32, 32, 10, dtype=torch.uint8)
+            output = m_layer(input)
+
+            self.assertEqual(output.shape, torch.Size([32, 32]))
 
     def test_empty_merge_layer(self):
+        r"""Test the output of MergeLayer with empty layers.
+        """
         m_layer = layers.MergeLayer(layers=None)
         input = torch.randn(32, 32, 10)
         output = m_layer(input)
