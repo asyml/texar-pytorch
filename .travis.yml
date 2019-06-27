@@ -9,7 +9,7 @@ python:
 
 install:
   - pip install --upgrade pip
-  - pip install --progress-bar off .[torch,extras]
+  - pip install --progress-bar off .[tensorflow,torch,extras]
   - pip install pylint flake8
   - pip install mypy
   - pip install pytest

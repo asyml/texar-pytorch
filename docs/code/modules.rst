@@ -59,6 +59,11 @@ Encoders
 .. autoclass:: texar.modules.TransformerEncoder
     :members:
 
+:hidden:`BertEncoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.BertEncoder
+    :members:
+
 :hidden:`Conv1DEncoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.Conv1DEncoder
@@ -177,9 +182,14 @@ Decoders
 Classifiers
 ============
 
-:hidden:`BertClassifier`
-~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.BertClassifier
+:hidden:`BertClassifierV1`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.BertClassifierV1
+    :members:
+
+:hidden:`BertClassifierV2`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.BertClassifierV2
     :members:
 
 :hidden:`Conv1DClassifier`
@@ -204,3 +214,17 @@ Networks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.Conv1DNetwork
     :members: default_hparams,forward,append_layer,has_layer,layer_by_name,layers_by_name,layers,layer_names
+
+Bert
+=========
+
+.. spelling::
+    pretrained
+    pooler
+    hparams
+    bert
+
+:hidden:`BertBase`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.BertBase
+    :members:

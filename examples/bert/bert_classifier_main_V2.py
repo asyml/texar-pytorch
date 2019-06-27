@@ -22,25 +22,19 @@ import logging
 import os
 
 import torch
+import torch.nn.functional as F
 
 import texar as tx
 from texar.custom.optimizers import BertAdam
-from texar.modules import BertClassifierV1
+from texar.modules import BertClassifierV2
 from utils import model_utils
+
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
     "--config_downstream", default="config_classifier",
     help="Configuration of the downstream part of the model")
-parser.add_argument(
-    "--config_format_bert", default="json",
-    help="The configuration format. Set to 'json' if the BERT config file "
-         "is in the same format of the official BERT config file. Set to "
-         "'texar' if the BERT config file is in Texar format.")
-parser.add_argument(
-    "--config_bert_pretrain", default='uncased_L-12_H-768_A-12',
-    help="The architecture of pre-trained BERT model to use.")
 parser.add_argument(
     "--config_data", default="config_data", help="The dataset config.")
 parser.add_argument(
@@ -81,28 +75,12 @@ def main():
     num_train_data = config_data.num_train_data
 
     # Builds BERT
-    bert_pretrain_dir = f'bert_pretrained_models/{args.config_bert_pretrain}'
-    if args.config_format_bert == "json":
-        bert_config = model_utils.transform_bert_to_texar_config(
-            os.path.join(bert_pretrain_dir, 'bert_config.json'))
-    elif args.config_format_bert == 'texar':
-        bert_config = importlib.import_module(
-            f'bert_config_lib.config_model_{args.config_bert_pretrain}')
-    else:
-        raise ValueError('Unknown config_format_bert.')
-
-    bert_hparams = BertClassifierV1.default_hparams()
-    for key in bert_config.keys():
-        bert_hparams[key] = bert_config[key]
-    for key in config_downstream.keys():
-        bert_hparams[key] = config_downstream[key]
-
-    model = BertClassifierV1(hparams=bert_hparams)
-    init_checkpoint = os.path.join(bert_pretrain_dir, 'bert_model.ckpt')
-    model_utils.init_bert_checkpoint(model, init_checkpoint)
+    hparams = {
+        'clas_strategy': 'cls_time'
+    }
+    model = BertClassifierV2(hparams=hparams)
     if torch.cuda.is_available():
         model = model.cuda()
-    print(f"Pretrained model loaded from {init_checkpoint}")
 
     # Builds learning rate decay scheduler
     static_lr = 2e-5
@@ -164,12 +142,17 @@ def main():
 
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
-            _, _, loss = model(
-                inputs=input_ids,
-                sequence_length=input_length,
-                segment_ids=segment_ids,
-                labels=labels
-            )
+            logits, _ = model(input_ids, input_length, segment_ids)
+
+            if model.is_binary:
+                loss = F.binary_cross_entropy(logits.view(-1),
+                                              labels.view(-1),
+                                              reduction='mean')
+            else:
+                loss = F.cross_entropy(logits.view(-1, model.num_classes),
+                                       labels.view(-1),
+                                       reduction='mean')
+
             loss.backward()
             optim.step()
             scheduler.step()
@@ -205,12 +188,16 @@ def main():
             batch_size = input_ids.size()[0]
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
-            _, preds, loss = model(
-                inputs=input_ids,
-                sequence_length=input_length,
-                segment_ids=segment_ids,
-                labels=labels,
-            )
+            logits, preds = model(input_ids, input_length, segment_ids)
+
+            if model.is_binary:
+                loss = F.binary_cross_entropy(logits.view(-1),
+                                              labels.view(-1),
+                                              reduction='mean')
+            else:
+                loss = F.cross_entropy(logits.view(-1, model.num_classes),
+                                       labels.view(-1),
+                                       reduction='mean')
 
             accu = tx.evals.accuracy(labels, preds)
             cum_acc += accu * batch_size
@@ -235,11 +222,8 @@ def main():
 
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
-            _, preds, _ = model(
-                inputs=input_ids,
-                sequence_length=input_length,
-                segment_ids=segment_ids,
-            )
+            _, preds = model(input_ids, input_length, segment_ids)
+
             _all_preds.extend(preds.tolist())
 
         output_file = os.path.join(args.output_dir, "test_results.tsv")

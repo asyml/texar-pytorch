@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of Texar library encoders.
+Modules of Texar library bert.
 """
 
-from texar.modules.encoders.bert_encoders import *
-from texar.modules.encoders.conv_encoders import *
-from texar.modules.encoders.encoder_base import *
-from texar.modules.encoders.multihead_attention import *
-from texar.modules.encoders.rnn_encoders import *
-from texar.modules.encoders.transformer_encoder import *
+# pylint: disable=wildcard-import
+
+from texar.modules.berts.bert_base import *
+from texar.modules.berts.bert_utils import *
