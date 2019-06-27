@@ -629,18 +629,18 @@ class MergeLayer(nn.Module):
             :attr:`'elemwise_sum'` and :attr:`'elemwise_mul'`.
     """
 
-    def __init__(self, layers: Optional[List[nn.Module]] = None,
+    def __init__(self, layers: Optional[nn.ModuleList] = None,
                  mode: str = 'concat', dim: int = 2):
         super().__init__()
         self._mode = mode
         self._dim = dim
 
-        self._layers: Optional[List[nn.Module]] = None
+        self._layers: Optional[nn.ModuleList] = None
         if layers is not None:
             if len(layers) == 0:
                 raise ValueError(
                     "'layers' must be either None or a non-empty list.")
-            self._layers = []
+            self._layers = nn.ModuleList()
             for layer in layers:
                 if isinstance(layer, nn.Module):
                     self._layers.append(layer)

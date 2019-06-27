@@ -33,7 +33,6 @@ import os
 import importlib
 import numpy as np
 import torch
-#import tensorflow as tf
 import texar as tx
 from texar.core.optimization import get_optimizer, get_train_op
 
@@ -72,52 +71,54 @@ def main():
     # Model
     model = CtrlGenModel(vocab, config.model)
 
-    vars_g = []
     vars_d = []
+    vars_g = []
+
     for name, param in model.named_parameters():
-        if not name.startswith("clas"):
-            vars_g.append(param)
-        else:
+
+        if name.startswith("clas"):
             vars_d.append(param)
-    optimizer_g = get_optimizer(vars_g, config.model["opt"])
-    train_op_g = get_train_op(optimizer_g, config.model["opt"])
+        else:
+            vars_g.append(param)
+
     optimizer_d = get_optimizer(vars_d, config.model["opt"])
     train_op_d = get_train_op(optimizer_d, config.model["opt"])
 
+    optimizer_g = get_optimizer(vars_g, config.model["opt"])
+    train_op_g = get_train_op(optimizer_g, config.model["opt"])
+
     def _train_epoch(gamma_, lambda_g_, epoch, verbose=True):
-        model.train()
 
         step = 0
         avg_meters_d = tx.utils.AverageRecorder(size=10)
         avg_meters_g = tx.utils.AverageRecorder(size=10)
 
-        it1 = iterator.get_iterator("train_d")
-        it2 = iterator.get_iterator("train_g")
+        it_d = iterator.get_iterator("train_d")
+        it_g = iterator.get_iterator("train_g")
 
         while True:
             try:
                 step += 1
                 print("step: {}".format(step))
-                optimizer_d.zero_grad()
-                batch_1 = it1.next()._batch
 
-                vals_d, _, _= model(batch_1, gamma_, lambda_g_)
-                for key, val in vals_d.items():
-                    if key.startswith("loss"):
-                        val.backward(retain_graph=True)
+                batch_d = it_d.next()._batch
+                vals_d, _, _= model(batch_d, gamma_, lambda_g_, mode="train")
+                vals_d["loss_d"].backward()
+                train_op_d()
+                avg_meters_d.add(vals_d, detach=True)
 
-                optimizer_d.step()
-                avg_meters_d.add(vals_d)
-                optimizer_g.zero_grad()
-                batch_2 = it2.next()._batch
-                _, vals_g, _ = model(batch_2, gamma_, lambda_g_)
-                for key, val in vals_g.items():
-                    if key.startswith("loss"):
-                        val.backward(retain_graph=True)
+                batch_g = it_g.next()._batch
+                _, vals_g, _ = model(batch_g, gamma_, lambda_g_, mode="train")
+                vals_g["loss_g"].backward(retain_graph=True)
+                vals_g["loss_g_ae"].backward(retain_graph=True)
+                train_op_g()
+                avg_meters_g.add(vals_g, detach=True)
 
-                #train_op_g()
-                optimizer_g.step()
-                avg_meters_g.add(vals_g)
+                print('step: {}, {}'.format(step, avg_meters_d.to_str(4)))
+                print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))
+                if verbose and (step == 1 or step % config.display == 0):
+                    print('step: {}, {}'.format(step, avg_meters_d.to_str(4)))
+                    print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))
 
                 if verbose and step % config.display_eval == 0:
                     _eval_epoch(gamma_, lambda_g_, epoch)
@@ -131,25 +132,29 @@ def main():
     def _eval_epoch(gamma_, lambda_g_, epoch, val_or_test='val'):
         avg_meters = tx.utils.AverageRecorder()
         it = iterator.get_iterator(val_or_test)
-        model.eval()
 
         while True:
             try:
                 batch = it.next()._batch
-                _, _, vals = model(batch, gamma_, lambda_g_)
+                _, _, vals = model(batch, gamma_, lambda_g_, mode='eval')
                 batch_size = vals.pop('batch_size')
 
                  # Computes BLEU
-                samples = tx.utils.dict_pop(vals, list(model.samples.keys()))
-                hyps = tx.utils.map_ids_to_strs(samples['transferred'], vocab)
+                samples = vals['samples']
+                vals.pop('samples')
+                #samples = tx.utils.dict_pop(vals, list(vals['sample'].keys()))
 
-                refs = tx.utils.map_ids_to_strs(samples['original'], vocab)
+                hyps = tx.data.vocabulary.map_ids_to_strs(
+                    ids=samples['transferred'], vocab=vocab)
+
+                refs = tx.data.vocabulary.map_ids_to_strs(
+                    ids=samples['original'], vocab=vocab)
                 refs = np.expand_dims(refs, axis=1)
 
                 bleu = tx.evals.corpus_bleu_moses(refs, hyps)
                 vals['bleu'] = bleu
 
-                avg_meters.add(vals, weight=batch_size)
+                avg_meters.add(vals, weight=batch_size, detach=True)
 
                 # Writes samples
                 tx.utils.write_paired_text(

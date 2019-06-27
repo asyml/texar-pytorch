@@ -12,7 +12,7 @@ max_nepochs = 12 # Total number of training epochs
                  # (including pre-train and full-train)
 pretrain_nepochs = 10 # Number of pre-train epochs (training as autoencoder)
 display = 500  # Display the training results every N training steps.
-display_eval = 1e10 # Display the dev results every N training steps (set to a
+display_eval = 5#1e10 # Display the dev results every N training steps (set to a
                     # very large value to disable it).
 sample_path = './samples'
 checkpoint_path = './checkpoints'
@@ -23,7 +23,6 @@ gamma_decay = 0.5 # Gumbel-softmax temperature anneal rate
 
 train_data = {
     'batch_size': 64,
-    #'seed': 123,
     'datasets': [
         {
             'files': './data/yelp/sentiment.train.text',
@@ -86,12 +85,13 @@ model = {
         'max_decoding_length_infer': 20,
     },
     'classifier': {
-        #'kernel_size': [3, 4, 5],
-        #'in_channels': 128,
-        'other_conv_kwargs': {'padding': 0},
-        #'dropout_conv': [1],
-        #'dropout_rate': 0.5,
-        'logit_layer_kwargs': {'in_features': 192, 'bias': True},
+        'kernel_size': [3, 4, 5],
+        "dense_activation": "Identity",
+        'dropout_conv': [1],
+        'dropout_rate': 0.5,
+        'logit_layer_kwargs': {'in_features': 384, 'bias': False},
+        "out_channels": 128,
+        "out_features": 128,
         'num_dense_layers': 0,
         'num_classes': 1
     },
