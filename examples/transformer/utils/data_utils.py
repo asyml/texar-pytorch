@@ -25,6 +25,15 @@ Example = Tuple[np.ndarray, np.ndarray]
 
 
 class CustomBatchingStrategy(tx.data.BatchingStrategy[Example]):
+    r"""Create dynamically-sized batches for paired text data so that the total
+    number of source and target tokens (including padding) inside each batch is
+    constrained.
+
+    Args:
+        max_tokens (int): The maximum number of source or target tokens inside
+            each batch.
+    """
+
     def __init__(self, max_tokens: int):
         self.max_tokens = max_tokens
         self.max_src_len = 0
@@ -49,6 +58,16 @@ class CustomBatchingStrategy(tx.data.BatchingStrategy[Example]):
 
 
 class Seq2SeqData(tx.data.DataBase[Example, Example]):
+    r"""A dataset that reads processed paired text from dumped NumPy files.
+
+    Args:
+        filename (str): The path to the dumped NumPy file.
+        hparams: A `dict` or instance of :class:`~texar.HParams` containing
+            hyperparameters. See :meth:`default_hparams` for the defaults.
+        device: The device of the produces batches. For GPU training, set to
+            current CUDA device.
+    """
+
     def __init__(self, filename: str, hparams=None,
                  device: Optional[torch.device] = None):
         data: List[Example] = np.load(
@@ -67,6 +86,7 @@ class Seq2SeqData(tx.data.DataBase[Example, Example]):
         }
 
     def process(self, raw_example: Example) -> Example:  # pylint: disable=no-self-use
+        # No-op. The data should already be processed.
         return raw_example
 
     def collate(self, examples: List[Example]) -> tx.data.Batch:
