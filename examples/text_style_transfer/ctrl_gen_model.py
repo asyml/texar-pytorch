@@ -28,7 +28,7 @@ from texar.modules import WordEmbedder, UnidirectionalRNNEncoder, \
         MLPTransformConnector, AttentionRNNDecoder, \
         GumbelSoftmaxEmbeddingHelper, Conv1DClassifier
 from texar.module_base import ModuleBase
-from texar.core import get_train_op, AttentionWrapperState
+from texar.core import AttentionWrapperState
 from texar.utils import get_batch_size
 
 
@@ -36,43 +36,48 @@ class CtrlGenModel(ModuleBase):
     """Control
     """
 
-    #def __init__(self, inputs, vocab, gamma, lambda_g, hparams=None):
     def __init__(self, vocab, hparams=None):
 
         super().__init__()
 
         self._hparams = tx.HParams(hparams, None)
-        #self._build_model(inputs, vocab, gamma, lambda_g)
         self.vocab = vocab
         self.embedder = WordEmbedder(
             vocab_size=vocab.size,
             hparams=self._hparams.embedder)
 
-        self.encoder = UnidirectionalRNNEncoder(input_size=100, hparams=self._hparams.encoder)
-        self.label_connector = MLPTransformConnector(self._hparams.dim_c, linear_layer_dim=1)
+        self.encoder = UnidirectionalRNNEncoder(
+            input_size=100, hparams=self._hparams.encoder)
+
+        self.label_connector = MLPTransformConnector(
+            self._hparams.dim_c, linear_layer_dim=1)
+
         self.decoder = AttentionRNNDecoder(
             input_size=100,
             encoder_output_size=700,
             vocab_size=self.vocab.size,
             cell_input_fn=lambda inputs, attention: inputs,
             hparams=self._hparams.decoder)
+
         self.classifier = Conv1DClassifier(
             in_channels=100,
             hparams=self._hparams.classifier)
+
         self.clas_embedder = WordEmbedder(
             vocab_size=self.vocab.size,
             hparams=self._hparams.embedder)
-        print("self.clas_embedder", self.clas_embedder.dim)
-        self.loss_d = torch.nn.BCEWithLogitsLoss()
-        self.loss_g = torch.nn.BCEWithLogitsLoss()
 
-    def forward(self, inputs, gamma, lambda_g):
+        self.connector = MLPTransformConnector(
+            self.decoder.state_size, linear_layer_dim=700)
+        self.loss_fn_d = torch.nn.BCEWithLogitsLoss()
+        self.loss_fn_g = torch.nn.BCEWithLogitsLoss()
+
+    def forward(self, inputs, gamma, lambda_g, mode='train'):
         """Builds the model.
         """
 
         # text_ids for encoder, with BOS token removed
         enc_text_ids = inputs['text_ids'][:, 1:]
-
         enc_outputs, final_state = self.encoder(self.embedder(enc_text_ids),
                                            sequence_length=inputs['length']-1)
         z = final_state[:, self._hparams.dim_c:]
@@ -88,10 +93,8 @@ class CtrlGenModel(ModuleBase):
 
         # Teacher-force decoding and the auto-encoding loss for G
 
-        connector = MLPTransformConnector(self.decoder.state_size, linear_layer_dim=h.size(-1))
-
-        state = self.decoder._cell.zero_state(64)
-        state = state._replace(cell_state=connector(h))
+        state_d = self.decoder._cell.zero_state(64)
+        state_d = state_d._replace(cell_state=self.connector(h))
 
         helper = self.decoder.create_helper(
             embedding=self.embedder)
@@ -100,7 +103,7 @@ class CtrlGenModel(ModuleBase):
             memory_sequence_length=inputs['length']-1,
             inputs=inputs['text_ids'],
             sequence_length=inputs['length']-1,
-            initial_state=state,
+            initial_state=state_d,
             helper=helper)
 
         loss_g_ae = tx.losses.sequence_sparse_softmax_cross_entropy(
@@ -111,7 +114,8 @@ class CtrlGenModel(ModuleBase):
             sum_over_timesteps=False)
 
         # Gumbel-softmax decoding, used in training
-        start_tokens = torch.ones_like(inputs['labels']) * self.vocab.bos_token_id
+        start_tokens = torch.ones_like(
+            inputs['labels']) * self.vocab.bos_token_id
         end_token = self.vocab.eos_token_id
         start_tokens = start_tokens.type(torch.long)
         end_token = int(end_token)
@@ -119,13 +123,13 @@ class CtrlGenModel(ModuleBase):
         gumbel_helper = GumbelSoftmaxEmbeddingHelper(
             self.embedder.embedding, start_tokens, end_token, gamma)
 
-        state_ = self.decoder._cell.zero_state(64)
-        state_ = state_._replace(cell_state=connector(h_))
+        state_g = self.decoder._cell.zero_state(64)
+        state_g = state_g._replace(cell_state=self.connector(h_))
         soft_outputs_, _, soft_length_, = self.decoder(
             memory=enc_outputs,
             memory_sequence_length=inputs['length']-1,
             helper=gumbel_helper,
-            initial_state=state_)
+            initial_state=state_g)
 
         # Greedy decoding, used in eval
 
@@ -138,7 +142,7 @@ class CtrlGenModel(ModuleBase):
             memory=enc_outputs,
             memory_sequence_length=inputs['length']-1,
             helper=greedy_helper,
-            initial_state=state_)
+            initial_state=state_g)
 
         # Classification loss for the classifier
         id_inputs = inputs['text_ids'][:, 1:]
@@ -146,10 +150,8 @@ class CtrlGenModel(ModuleBase):
         clas_logits, clas_preds = self.classifier(
             input=self.clas_embedder(ids=inputs['text_ids'][:, 1:]).transpose(1, 2),
             sequence_length=inputs['length']-1)
-
-        loss_d_clas = self.loss_d(clas_logits, inputs['labels'].type(torch.FloatTensor))
-        #loss_d_clas = tf.reduce_mean(loss_d_clas)
-        loss_d_clas = loss_d_clas.mean()
+        #print("clas_logits", clas_logits)
+        loss_d_clas = self.loss_fn_d(clas_logits, inputs['labels'].type(torch.FloatTensor))
         accu_d = tx.evals.accuracy(labels=inputs['labels'], preds=clas_preds)
 
         # Classification loss for the generator, based on soft samples
@@ -157,15 +159,16 @@ class CtrlGenModel(ModuleBase):
             input=self.clas_embedder(soft_ids=soft_outputs_.sample_id).transpose(1, 2),
             sequence_length=soft_length_)
 
-        loss_g_clas = self.loss_g(soft_logits, (1 - inputs['labels']).type(torch.FloatTensor))
-        #loss_g_clas = tf.reduce_mean(loss_g_clas)
-        loss_g_clas = loss_g_clas.mean()
+        loss_g_clas = self.loss_fn_g(
+            soft_logits,
+            (1 - inputs['labels']).type(torch.FloatTensor))
+
         # Accuracy on soft samples, for training progress monitoring
         accu_g = tx.evals.accuracy(labels=1-inputs['labels'], preds=soft_preds)
 
         # Accuracy on greedy-decoded samples, for training progress monitoring
-        #print("outputs_.sample_id: {}".format(outputs_.sample_id.size()))
-        '''_, gdy_preds = self.classifier(
+        '''print("self.clas_embedder(ids=outputs_.sample_id).transpose(1, 2)", self.clas_embedder(ids=outputs_.sample_id).transpose(1, 2).size(), length_.size())
+        _, gdy_preds = self.classifier(
             input=self.clas_embedder(ids=outputs_.sample_id).transpose(1, 2),
             sequence_length=length_)
         accu_g_gdy = tx.evals.accuracy(
@@ -176,38 +179,38 @@ class CtrlGenModel(ModuleBase):
         loss_d = loss_d_clas
 
         # Interface tensors
-        losses = {
-            "loss_g": loss_g,
-            "loss_g_ae": loss_g_ae,
-            "loss_g_clas": loss_g_clas,
-            "loss_d": loss_d_clas
-        }
-        metrics = {
-            "accu_d": accu_d,
-            "accu_g": accu_g,
-        }
-        samples = {
-            "original": inputs['text_ids'][:, 1:],
-            "transferred": outputs_.sample_id
+
+        fetches_train_d = {
+            "loss_d": loss_d_clas,
+            "accu_d": accu_d
         }
 
         fetches_train_g = {
             "loss_g": loss_g,
-            "loss_g_ae": losses["loss_g_ae"],
-            "loss_g_clas": losses["loss_g_clas"],
-            "accu_g": metrics["accu_g"],
+            "loss_g_ae": loss_g_ae,
+            "loss_g_clas": loss_g_clas,
+            "accu_g": accu_g
         }
 
-        fetches_train_d = {
-            "loss_d": loss_d_clas,
-            "accu_d": metrics["accu_d"]
-        }
-        fetches_eval = {"batch_size": get_batch_size(inputs['text_ids'])}
-        fetches_eval.update(losses)
-        fetches_eval.update(metrics)
-        fetches_eval.update(samples)
+        fetches_eval = {}
+        if mode != "train":
+            losses = {
+                "loss_g": loss_g,
+                "loss_g_ae": loss_g_ae,
+                "loss_g_clas": loss_g_clas,
+                "loss_d": loss_d_clas
+            }
+            metrics = {
+                "accu_d": accu_d,
+                "accu_g": accu_g,
+            }
+            samples = {
+                "original": inputs['text_ids'][:, 1:],
+                "transferred": outputs_.sample_id
+            }
+            fetches_eval = {"batch_size": get_batch_size(inputs['text_ids'])}
+            fetches_eval.update(losses)
+            fetches_eval.update(metrics)
+            fetches_eval["samples"] = samples
 
         return fetches_train_d, fetches_train_g, fetches_eval
-
-
-
