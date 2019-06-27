@@ -123,13 +123,13 @@ def compute_batch_indices(batch_size: int, beam_size: int) -> torch.LongTensor:
 
 
 def compute_topk_scores_and_seq(
-        sequences: torch.LongTensor,
-        scores: torch.Tensor,
-        scores_to_gather: torch.Tensor,
-        flags: torch.ByteTensor,
-        beam_size: int,
-        batch_size: int,
-        states_to_gather: Optional[State] = None,
+    sequences: torch.LongTensor,
+    scores: torch.Tensor,
+    scores_to_gather: torch.Tensor,
+    flags: torch.ByteTensor,
+    beam_size: int,
+    batch_size: int,
+    states_to_gather: Optional[State] = None,
 ) -> Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor, Optional[State]]:
     r"""Given sequences and scores, will gather the top-k (`k = beam`) size
     sequences.
@@ -222,15 +222,15 @@ def beam_search(
 
 
 def beam_search(
-        symbols_to_logits_fn,
-        initial_ids,
-        beam_size,
-        decode_length,
-        vocab_size,
-        alpha,
-        eos_id,
-        states=None,
-        stop_early=True,
+    symbols_to_logits_fn,
+    initial_ids,
+    beam_size,
+    decode_length,
+    vocab_size,
+    alpha,
+    eos_id,
+    states=None,
+    stop_early=True,
 ):
     r"""Beam search with length penalties.
 
@@ -311,12 +311,12 @@ def beam_search(
     finished_flags = finished_flags.to(device=initial_ids.device)
 
     def grow_finished(
-            finished_seq: torch.LongTensor,
-            finished_scores: torch.Tensor,
-            finished_flags: torch.ByteTensor,
-            curr_seq: torch.LongTensor,
-            curr_scores: torch.Tensor,
-            curr_finished: torch.ByteTensor
+        finished_seq: torch.LongTensor,
+        finished_scores: torch.Tensor,
+        finished_flags: torch.ByteTensor,
+        curr_seq: torch.LongTensor,
+        curr_scores: torch.Tensor,
+        curr_finished: torch.ByteTensor,
     ) -> Tuple[torch.LongTensor, torch.Tensor, torch.ByteTensor]:
         r"""Given sequences and scores, will gather the top-k (`k = beam`) size
         sequences.
@@ -509,13 +509,13 @@ def beam_search(
         return topk_seq, topk_log_probs, topk_scores, topk_finished, states
 
     def inner_loop(
-            i: int,
-            alive_seq: torch.LongTensor,
-            alive_log_probs: torch.Tensor,
-            finished_seq: torch.LongTensor,
-            finished_scores: torch.Tensor,
-            finished_flags: torch.ByteTensor,
-            states: Optional[State]
+        i: int,
+        alive_seq: torch.LongTensor,
+        alive_log_probs: torch.Tensor,
+        finished_seq: torch.LongTensor,
+        finished_scores: torch.Tensor,
+        finished_flags: torch.ByteTensor,
+        states: Optional[State],
     ) -> Tuple[int, torch.LongTensor, torch.Tensor, torch.LongTensor,
                torch.Tensor, torch.ByteTensor, Optional[State]]:
         r"""Inner beam search loop.
