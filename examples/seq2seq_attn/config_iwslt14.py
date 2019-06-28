@@ -1,5 +1,5 @@
 num_epochs = 15
-display = 1
+display = 50
 
 source_vocab_file = './data/iwslt14/vocab.de'
 target_vocab_file = './data/iwslt14/vocab.en'

@@ -1,5 +1,5 @@
 num_epochs = 4
-display = 1
+display = 50
 
 source_vocab_file = './data/toy_copy/train/vocab.sources.txt'
 target_vocab_file = './data/toy_copy/train/vocab.targets.txt'

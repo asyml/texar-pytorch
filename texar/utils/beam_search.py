@@ -20,7 +20,7 @@ Implementation of beam search with penalties.
 Adapted from:
     `https://github.com/tensorflow/tensor2tensor/blob/eb048f69c7ea860324122b87cb9caf59c52a27f3/tensor2tensor/utils/beam_search.py`
 """
-from typing import Callable, Optional, Tuple, TypeVar, overload
+from typing import Callable, Optional, Tuple, TypeVar, Union, overload
 
 import torch
 
@@ -36,8 +36,10 @@ State = TypeVar('State')
 INF = 1.0 * 1e7
 
 
-def gather_nd(params: torch.Tensor, indices: torch.Tensor) -> torch.Tensor:
-
+def gather_nd(params: Union[torch.Tensor, int],
+              indices: torch.Tensor) -> Union[torch.Tensor, int]:
+    if isinstance(params, int):
+        return params
     assert len(indices.size()) == 3
     orig_size = params.size()
     index = indices[:, :, 1].view(-1) + indices[:, :, 0].view(-1) * orig_size[1]
@@ -49,7 +51,8 @@ def gather_nd(params: torch.Tensor, indices: torch.Tensor) -> torch.Tensor:
     return ret
 
 
-def _merge_beam_dim(tensor: torch.Tensor) -> torch.Tensor:
+def _merge_beam_dim(tensor: Optional[Union[torch.Tensor, int]]) -> \
+        Optional[Union[torch.Tensor, int]]:
     r"""Reshapes first two dimensions in to single dimension.
 
     Args:
@@ -58,14 +61,16 @@ def _merge_beam_dim(tensor: torch.Tensor) -> torch.Tensor:
     Returns:
         Reshaped tensor of shape `[A * B, ...]`.
     """
+    if tensor is None or isinstance(tensor, int):
+        return tensor
     shape = list(tensor.size())
     shape[0] *= shape[1]  # batch -> batch * beam_size
     shape.pop(1)  # Remove beam dim
     return tensor.view(tuple(shape))
 
 
-def _unmerge_beam_dim(tensor: torch.Tensor, batch_size: int,
-                      beam_size: int) -> torch.Tensor:
+def _unmerge_beam_dim(tensor: Union[torch.Tensor, int], batch_size: int,
+                      beam_size: int) -> Union[torch.Tensor, int]:
     r"""Reshapes first dimension back to `[batch_size, beam_size]`.
 
     Args:
@@ -76,12 +81,15 @@ def _unmerge_beam_dim(tensor: torch.Tensor, batch_size: int,
     Returns:
         Reshaped tensor of shape `[batch_size, beam_size, ...]`.
     """
+    if isinstance(tensor, int):
+        return tensor
     shape = list(tensor.size())
     new_shape = [batch_size] + [beam_size] + shape[1:]
     return tensor.view(tuple(new_shape))
 
 
-def _expand_to_beam_size(tensor: torch.Tensor, beam_size: int) -> torch.Tensor:
+def _expand_to_beam_size(tensor: Optional[Union[torch.Tensor, int]],
+                         beam_size: int) -> Optional[Union[torch.Tensor, int]]:
     r"""Tiles a given tensor by :attr:`beam_size`.
 
     Args:
@@ -91,6 +99,8 @@ def _expand_to_beam_size(tensor: torch.Tensor, beam_size: int) -> torch.Tensor:
     Returns:
         Tiled tensor of shape `[batch_size, beam_size, ...]`.
     """
+    if tensor is None or isinstance(tensor, int):
+        return tensor
     tensor = torch.unsqueeze(tensor, dim=1)
     tile_dims = [1] * len(tensor.size())
     tile_dims[1] = beam_size
@@ -186,7 +196,8 @@ def compute_topk_scores_and_seq(
         )
     else:
         topk_gathered_states = states_to_gather
-    return topk_seq, topk_gathered_scores, topk_flags, topk_gathered_states
+    return (topk_seq, topk_gathered_scores,  # type: ignore
+            topk_flags, topk_gathered_states)
 
 
 # TODO: Remove these once pylint supports function stubs.
@@ -502,7 +513,9 @@ def beam_search(
             )
 
         # Append the most probable alive
-        topk_seq = torch.cat([topk_seq, topk_ids.unsqueeze(dim=2)], dim=2)
+        topk_seq = torch.cat([topk_seq,  # type: ignore
+                              topk_ids.unsqueeze(dim=2)],
+                             dim=2)
 
         topk_finished = topk_ids == eos_id
 

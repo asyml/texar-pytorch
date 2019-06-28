@@ -18,10 +18,10 @@ import argparse
 import importlib
 
 import torch
+import torch.nn as nn
 
 import texar as tx
-from texar.core.optimization import get_optimizer, get_train_op
-from texar.module_base import ModuleBase
+from texar.core import optimization
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_model',
@@ -37,8 +37,10 @@ args = parser.parse_args()
 config_model = importlib.import_module(args.config_model)
 config_data = importlib.import_module(args.config_data)
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-class Seq2SeqAttn(ModuleBase):
+
+class Seq2SeqAttn(nn.Module):
 
     def __init__(self, train_data):
 
@@ -81,11 +83,14 @@ class Seq2SeqAttn(ModuleBase):
             inputs=self.source_embedder(batch['source_text_ids']),
             sequence_length=batch['source_length'])
 
+        memory = torch.cat(enc_outputs, dim=2)
+
         if mode == "train":
-            helper_train = self.decoder.create_helper()
+            helper_train = self.decoder.create_helper(
+                decoding_strategy="train_greedy")
 
             training_outputs, _, _ = self.decoder(
-                memory=torch.cat(enc_outputs, dim=2),
+                memory=memory,
                 memory_sequence_length=batch['source_length'],
                 helper=helper_train,
                 inputs=self.target_embedder(batch['target_text_ids'][:, :-1]),
@@ -101,17 +106,13 @@ class Seq2SeqAttn(ModuleBase):
             start_tokens = torch.ones_like(batch['target_length']) * \
                            self.bos_token_id
 
-            helper_infer = self.decoder.create_helper(
-                decoding_strategy="infer_greedy",
-                embedding=self.target_embedder,
+            infer_outputs = self.decoder(
                 start_tokens=start_tokens,
-                end_token=self.eos_token_id.item())
-
-            infer_outputs, _, _ = self.decoder(
-                helper=helper_infer,
-                memory=torch.cat(enc_outputs, dim=2),
+                end_token=self.eos_token_id.item(),
+                embedding=self.target_embedder,
+                memory=memory,
                 memory_sequence_length=batch['source_length'],
-                max_decoding_length=60)
+                beam_width=config_model.beam_width)
 
             return infer_outputs
 
@@ -119,22 +120,25 @@ class Seq2SeqAttn(ModuleBase):
 def main():
     """Entrypoint.
     """
-    train_data = tx.data.PairedTextData(hparams=config_data.train)
-    val_data = tx.data.PairedTextData(hparams=config_data.val)
-    test_data = tx.data.PairedTextData(hparams=config_data.test)
+    train_data = tx.data.PairedTextData(hparams=config_data.train,
+                                        device=device)
+    val_data = tx.data.PairedTextData(hparams=config_data.val,
+                                      device=device)
+    test_data = tx.data.PairedTextData(hparams=config_data.test,
+                                       device=device)
     data_iterator = tx.data.TrainTestDataIterator(
         train=train_data, val=val_data, test=test_data)
 
     model = Seq2SeqAttn(train_data)
-    optimizer = get_optimizer(model.parameters(), config_model.opt)
-    train_op = get_train_op(optimizer, config_model.opt)
+    model.to(device)
+    train_op = optimization.get_train_op(params=model.parameters(),
+                                         hparams=config_model.opt)
 
     def _train_epoch():
         data_iterator.switch_to_train_data()
-        iterator = data_iterator.get_iterator()
 
         step = 0
-        for batch in iterator:
+        for batch in data_iterator:
             loss = model(batch, mode="train")
             loss.backward()
             train_op()
@@ -145,15 +149,13 @@ def main():
     def _eval_epoch(mode):
         if mode == 'val':
             data_iterator.switch_to_val_data()
-            iterator = data_iterator.get_iterator()
         else:
             data_iterator.switch_to_test_data()
-            iterator = data_iterator.get_iterator()
 
         refs, hypos = [], []
-        for batch in iterator:
-            infer_outputs = model(batch, mode="infer")
-            output_ids = infer_outputs.sample_id.cpu()
+        for batch in data_iterator:
+            infer_outputs = model(batch, mode="val")
+            output_ids = infer_outputs["sample_id"][:, :, 0].cpu()
             target_texts_ori = [text[1:] for text in batch['target_text']]
             target_texts = tx.utils.strip_special_tokens(
                 target_texts_ori, is_token_list=True)

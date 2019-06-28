@@ -271,12 +271,17 @@ def get_grad_clip_fn(hparams: Optional[Union[HParams,
     return grad_clip_fn
 
 
-def get_train_op(optimizer: Optimizer,
+def get_train_op(params: Optional[Union[List[torch.Tensor],
+                                        List[Dict[str,
+                                                  List[torch.Tensor]]]]] = None,
+                 optimizer: Optional[Optimizer] = None,
                  hparams: Optional[Union[HParams, Dict[str, Any]]] = None) -> \
         Callable[[], None]:
     r"""Creates a training op.
 
     Args:
+        params: an iterable of :class:`torch.Tensor` or
+            :class:`dict`. Specifies what Tensors should be optimized.
         optimizer: A :torch_docs:`torch.optim.Optimizer
             <optim.html#torch.optim.Optimizer>` instance.
         hparams (dict or HParams, optional): hyperparameters. Missing
@@ -289,15 +294,22 @@ def get_train_op(optimizer: Optimizer,
     """
     hparams = HParams(hparams, default_optimization_hparams())
 
-    scheduler = get_scheduler(optimizer, hparams)
+    if params is None and optimizer is None:
+        raise ValueError("'params' and 'optimizer' must not be None "
+                         "simultaneously.")
+
+    if optimizer is None and params is not None:
+        optimizer = get_optimizer(params, hparams)
+    if optimizer is not None:
+        scheduler = get_scheduler(optimizer, hparams)
     grad_clip_fn = get_grad_clip_fn(hparams)
 
-    params_list = []
+    params_list: List = []
     for param_group in optimizer.param_groups:  # type: ignore
         params = param_group["params"]
         if isinstance(params, torch.Tensor):
             params_list.append(params)
-        else:
+        elif isinstance(params, list):
             params_list += params
 
     def _train_op():

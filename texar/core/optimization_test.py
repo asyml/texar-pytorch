@@ -222,8 +222,18 @@ class OptimizationTest(unittest.TestCase):
             "name": None
         }
 
+        # Case 1
         optimizer = get_optimizer(self.model.parameters(), hparams)
-        train_op = get_train_op(optimizer, hparams)
+        train_op = get_train_op(optimizer=optimizer, hparams=hparams)
+
+        for t in range(50):
+            y_pred = self.model(self.x)
+            loss = self.loss_fn(y_pred, self.y)
+            loss.backward()
+            train_op()
+
+        # Case 2
+        train_op = get_train_op(params=self.model.parameters(), hparams=hparams)
 
         for t in range(50):
             y_pred = self.model(self.x)
