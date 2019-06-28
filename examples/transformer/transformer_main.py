@@ -146,9 +146,9 @@ class Transformer(ModuleBase):
 
         # Position embedding (shared b/w source and target)
         src_seq_len = torch.full(
-            (batch_size,), encoder_input.size()[1], dtype=torch.int32
+            (batch_size,), encoder_input.size()[1], dtype=torch.int32,
+            device=encoder_input.device
         )
-        src_seq_len = src_seq_len.to(device=encoder_input.device)
 
         src_pos_embeds = self.pos_embedder(sequence_length=src_seq_len)
         src_input_embedding = src_word_embeds + src_pos_embeds
