@@ -16,7 +16,9 @@
 # ==============================================================================
 """
 Implementation of beam search with penalties.
-Adapted from tensor2tensor repository.
+
+Adapted from:
+    `https://github.com/tensorflow/tensor2tensor/blob/eb048f69c7ea860324122b87cb9caf59c52a27f3/tensor2tensor/utils/beam_search.py`
 """
 from typing import Callable, Optional, Tuple, TypeVar, overload
 
@@ -263,8 +265,8 @@ def beam_search(
         vocab_size: Size of the vocab, must equal the size of the logits
             returned by :attr:`symbols_to_logits_fn`.
         alpha: alpha for length penalty.
-        states: (possibly nested structure of) decoding states.
         eos_id: ID for end of sentence.
+        states: (possibly nested structure of) decoding states.
         stop_early: a boolean - stop once best sequence is provably
             determined.
 
@@ -603,8 +605,7 @@ def beam_search(
     def _is_finished(
         i: int,
         alive_log_probs: torch.Tensor,
-        finished_scores: torch.Tensor,
-        finished_in_finished: torch.ByteTensor,
+        finished_scores: torch.Tensor
     ) -> bool:
         r"""Check termination condition.
 
@@ -618,35 +619,34 @@ def beam_search(
                 Shape: `[batch_size, beam_size]`.
             finished_scores: Scores for each of these sequences.
                 Shape: `[batch_size, beam_size]`.
-            finished_in_finished: Finished boolean tensors for each of these
-                sequences. Shape: `[batch_size, beam_size]`.
 
         Returns:
             Bool.
         """
-        if not stop_early:
-            return i < decode_length
         max_length_penalty = ((5.0 + float(decode_length)) / 6.0) ** alpha
         # The best possible score of the most likely alive sequence
         lower_bound_alive_scores = alive_log_probs[:, 0] / max_length_penalty
 
-        # Now to compute the lowest score of a finished sequence in
-        # finished
-        # If the sequence isn't finished, we multiply it's score by 0.
-        # since scores are all -ve, taking the min will give us the score
-        # of the lowest finished item.
-        lowest_score_of_finished_in_finished = torch.min(
-            finished_scores * finished_in_finished.float(), dim=1,
-            keepdim=False, out=None)[0]
-
-        # If none of the sequences have finished, then the min will be 0
-        # and we have to replace it by -ve INF if it is. The score of any
-        # seq in alive will be much higher than -ve INF and the
-        # termination condition will not be met.
-        lowest_score_of_finished_in_finished = (
-            lowest_score_of_finished_in_finished
-            + (1.0 - finished_in_finished.any(dim=1).float()) * -INF
-        )
+        if not stop_early:
+            # by considering the min score (in the top N beams) we ensure that
+            # the decoder will keep decoding until there is at least one beam
+            # (in the top N) that can be improved (w.r.t. the alive beams).
+            # any unfinished beam will have score -INF - thus the min
+            # will always be -INF if there is at least one unfinished beam -
+            # which means the bound_is_met condition cannot be true in this
+            # case.
+            lowest_score_of_finished_in_finished = torch.min(finished_scores)
+        else:
+            # by taking the max score we only care about the first beam;
+            # as soon as this first beam cannot be beaten from the alive beams
+            # the beam decoder can stop.
+            # similarly to the above, if the top beam is not completed, its
+            # finished_score is -INF, thus it will not activate the
+            # bound_is_met condition. (i.e., decoder will keep going on).
+            # note we need to find the max for every sequence eparately - so,
+            # we need to keep the batch dimension (see axis=1)
+            lowest_score_of_finished_in_finished, _ = torch.max(finished_scores,
+                                                                dim=1)
 
         bound_is_met = (
             (lowest_score_of_finished_in_finished > lower_bound_alive_scores)
@@ -659,7 +659,7 @@ def beam_search(
         return ret
 
     step = 0
-    while _is_finished(step, alive_log_probs, finished_scores, finished_flags):
+    while _is_finished(step, alive_log_probs, finished_scores):
         step, alive_seq, alive_log_probs, finished_seq, finished_scores, \
                 finished_flags, states = inner_loop(
             step,

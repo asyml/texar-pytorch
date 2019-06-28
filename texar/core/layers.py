@@ -525,9 +525,9 @@ class _ReducePool1d(nn.Module):
         # :torch_docs:`torch.mean <torch.html#torch.mean>`
         # does not return a tuple
         if self._reduce_function == torch.mean:
-            output = self._reduce_function(input, dim=2, keepdim=True)
+            output = self._reduce_function(input, dim=2)
         else:
-            output, _ = self._reduce_function(input, dim=2, keepdim=True)
+            output, _ = self._reduce_function(input, dim=2)
         return output
 
 
@@ -629,18 +629,29 @@ class MergeLayer(nn.Module):
             :attr:`'elemwise_sum'` and :attr:`'elemwise_mul'`.
     """
 
+    _functions: Dict[str, Callable[[torch.Tensor, int], torch.Tensor]] = {
+        "sum": torch.sum,
+        "mean": torch.mean,
+        "prod": torch.prod,
+        "max": lambda tensors, dim: torch.max(tensors, dim)[0],
+        "min": lambda tensors, dim: torch.min(tensors, dim)[0],
+        "and": torch.all,
+        "or": torch.any,
+        "logsumexp": torch.logsumexp
+    }
+
     def __init__(self, layers: Optional[List[nn.Module]] = None,
-                 mode: str = 'concat', dim: int = 2):
+                 mode: str = 'concat', dim: Optional[int] = None):
         super().__init__()
         self._mode = mode
         self._dim = dim
 
-        self._layers: Optional[List[nn.Module]] = None
+        self._layers: Optional[nn.ModuleList] = None
         if layers is not None:
             if len(layers) == 0:
                 raise ValueError(
                     "'layers' must be either None or a non-empty list.")
-            self._layers = []
+            self._layers = nn.ModuleList()
             for layer in layers:
                 if isinstance(layer, nn.Module):
                     self._layers.append(layer)
@@ -656,16 +667,26 @@ class MergeLayer(nn.Module):
         Returns:
             The merged tensor.
         """
+        layer_outputs: List[torch.Tensor]
         if self._layers is None:
-            layer_outputs: Union[torch.Tensor, List[torch.Tensor]] = input
+            layer_outputs = input
+            if not isinstance(layer_outputs, (list, tuple)):
+                layer_outputs = [layer_outputs]
         else:
             layer_outputs = []
             for layer in self._layers:
                 layer_output = layer(input)
                 layer_outputs.append(layer_output)
 
+        # the merge dimension cannot be determined until we get the output from
+        # individual layers.
+        # In case of reduce pooling operations, feature dim is removed and
+        # channel dim is merged.
+        # In non-reduce pooling operations, feature dim is merged.
+        dim = self._dim if self._dim is not None else -1
+
         if self._mode == 'concat':
-            outputs = torch.cat(tensors=layer_outputs, dim=self._dim)
+            outputs = torch.cat(tensors=layer_outputs, dim=dim)
         elif self._mode == 'elemwise_sum':
             outputs = layer_outputs[0]
             for i in range(1, len(layer_outputs)):
@@ -674,37 +695,16 @@ class MergeLayer(nn.Module):
             outputs = layer_outputs[0]
             for i in range(1, len(layer_outputs)):
                 outputs = torch.mul(outputs, layer_outputs[i])
-        elif self._mode == 'sum':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs = torch.sum(_concat, dim=self._dim)
-        elif self._mode == 'mean':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs = torch.mean(_concat, dim=self._dim)
-        elif self._mode == 'prod':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs = torch.prod(_concat, dim=self._dim)
-        elif self._mode == 'max':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs, _ = torch.max(_concat, dim=self._dim)  # type: ignore
-        elif self._mode == 'min':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs, _ = torch.min(_concat, dim=self._dim)  # type: ignore
-        elif self._mode == 'and':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs = torch.all(_concat, dim=self._dim)
-        elif self._mode == 'or':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs = torch.any(_concat, dim=self._dim)
-        elif self._mode == 'logsumexp':
-            _concat = torch.cat(tensors=layer_outputs, dim=self._dim)
-            outputs = torch.logsumexp(_concat, dim=self._dim)
+        elif self._mode in self._functions:
+            _concat = torch.cat(tensors=layer_outputs, dim=dim)
+            outputs = self._functions[self._mode](_concat, dim)
         else:
             raise ValueError("Unknown merge mode: '%s'" % self._mode)
 
         return outputs
 
     @property
-    def layers(self) -> Optional[List[nn.Module]]:
+    def layers(self) -> Optional[nn.ModuleList]:
         r"""The list of parallel layers.
         """
         return self._layers
