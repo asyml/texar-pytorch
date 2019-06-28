@@ -23,91 +23,67 @@ import torch
 from torch import nn
 
 import texar as tx
-from texar.modules import WordEmbedder, PositionEmbedder, TransformerDecoder
+from texar.modules.embedders.embedders import WordEmbedder
+from texar.modules.embedders.position_embedders import PositionEmbedder
+from texar.modules.decoders.transformer_decoders import TransformerDecoder
 from utils import model_utils, processor
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    '--checkpoint',
-    type=str,
-    default=None,
+    '--checkpoint', type=str, default=None,
     help="Model checkpoint to load model weights from. Use "
-         "`--pretrain_checkpoint` instead if loading OpenAI "
-         "pretrained checkpoint.")
+         "`--pretrain_checkpoint` instead if loading OpenAI pretrained "
+         "checkpoint.")
 parser.add_argument(
-    '--pretrain_checkpoint',
-    type=str,
+    '--pretrain_checkpoint', type=str,
     default="gpt2_pretrained_models/model_117M/model.ckpt",
-    help="OpenAI pretrained model checkpoint. Ignored if "
-         "'--checkpoint' is specified.")
+    help="OpenAI pretrained model checkpoint. Ignored if '--checkpoint' "
+         "is specified.")
 parser.add_argument(
-    '--pretrain_model_dir',
-    type=str,
+    '--pretrain_model_dir', type=str,
     default="gpt2_pretrained_models/model_117M",
-    help="The directory of pretrained model, for loading "
-         "vocabuary, etc.")
+    help="The directory of pretrained model, for loading vocabuary, etc.")
 parser.add_argument(
-    '--seed',
-    type=int,
-    default=None,
+    '--seed', type=int, default=None,
     help="Random seed.")
 parser.add_argument(
-    '--nsamples',
-    type=int,
-    default=1,
+    '--nsamples', type=int, default=1,
     help="The number of samples per input.")
 parser.add_argument(
-    '--batch_size',
-    type=int,
-    default=1,
+    '--batch_size', type=int, default=1,
     help="The batch size of input.")
 parser.add_argument(
-    '--max_decoding_length',
-    type=int,
-    default=128,
+    '--max_decoding_length', type=int, default=128,
     help="The maximun length of generated text.")
 parser.add_argument(
-    '--temperature',
-    type=float,
-    default=0.7,
-    help="Softmax temperature for top-k sample decoding. "
-         "Must be strictly greater than 0. Defaults to 0.7.")
+    '--temperature', type=float, default=0.7,
+    help="Softmax temperature for top-k sample decoding. Must be strictly "
+         "greater than 0. Defaults to 0.7.")
 parser.add_argument(
-    '--top_k',
-    type=int,
-    default=40,
-    help="The number of top most likely candidates from a "
-         "vocab distribution.")
+    '--top_k', type=int, default=40,
+    help="The number of top most likely candidates from a vocab distribution.")
 parser.add_argument(
-    '--is_interactive',
-    action='store_true',
+    '--is_interactive', action='store_true',
     help="Interactive mode or not.")
 parser.add_argument(
-    '--config_type',
-    type=str,
-    default="texar",
-    help="The configuration file type. Set to 'json' if the "
-         "GPT-2 config file is in the same type of the "
-         "official GPT-2 config file. Set to 'texar' "
-         "if GPT-2 config file is in Texar type.")
+    '--config_type', type=str, default="texar",
+    help="The configuration file type. Set to 'json' if the GPT-2 config file "
+         "is in the same type of the official GPT-2 config file. Set to "
+         "'texar' if GPT-2 config file is in Texar type.")
 parser.add_argument(
-    '--config_model',
-    type=str,
-    default="configs.config_model_117M",
-    help="The model configuration file to configure the "
-         "model. The config file type is define by the "
-         "'config_type',it be of texar type or json type."
-         "For '--config_type=json', set the json "
-         "config file path like: '--config_model "
-         "gpt2_pretrained_models/model_117M/hparams.json';"
-         "For '--config_type=texar', set the texar "
-         "config file like: "
+    '--config_model', type=str, default="configs.config_model_117M",
+    help="The model configuration file to configure the model. The config "
+         "file type is define by the 'config_type',it be of texar type "
+         "or json type. For '--config_type=json', set the json config "
+         "file path like: "
+         "'--config_model gpt2_pretrained_models/model_117M/hparams.json';"
+         "For '--config_type=texar', set the texar config file like: "
          "'--config_model configs.config_model_117M'.")
 
 args = parser.parse_args()
 
 
-class GPT2(tx.ModuleBase):
+class GPT2(nn.Module):
     def __init__(self, gpt2_config, top_k, temperature):
         super().__init__()
         self.word_embedder = WordEmbedder(
@@ -205,7 +181,7 @@ def run_model():
                     print('Input should not be empty!')
                     raw_text = input("Model input >>> ")
             except EOFError:
-                print("Input not supported.")
+                print("EOF entered, quitting.")
                 exit(0)
 
             context_tokens = proc.encode(raw_text)
