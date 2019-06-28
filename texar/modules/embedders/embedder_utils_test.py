@@ -17,8 +17,8 @@ class GetEmbeddingTest(unittest.TestCase):
         """
         vocab_size = 100
         emb = embedder_utils.get_embedding(num_embeds=vocab_size)
-        self.assertEqual(emb.shape[0], vocab_size)
-        self.assertEqual(emb.shape[1],
+        self.assertEqual(emb.size(0), vocab_size)
+        self.assertEqual(emb.size(1),
                          embedder_utils.default_embedding_hparams()["dim"])
 
         hparams = {
@@ -29,8 +29,8 @@ class GetEmbeddingTest(unittest.TestCase):
         }
         emb = embedder_utils.get_embedding(
             hparams=hparams, num_embeds=vocab_size, )
-        self.assertEqual(emb.shape[0], vocab_size)
-        self.assertEqual(emb.shape[1],
+        self.assertEqual(emb.size(0), vocab_size)
+        self.assertEqual(emb.size(1),
                          embedder_utils.default_embedding_hparams()["dim"])
 
 

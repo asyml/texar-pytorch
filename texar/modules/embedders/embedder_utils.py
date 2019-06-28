@@ -185,7 +185,4 @@ def soft_embedding_lookup(embedding, soft_ids):
         soft_seq_emb = soft_embedding_lookup(
             embedding, softmax(decoder_outputs.logits))
     """
-    return torch.tensordot(
-        soft_ids.type(torch.float),
-        embedding,
-        dims=([-1], [0]))
+    return torch.tensordot(soft_ids, embedding, dims=([-1], [0]))
