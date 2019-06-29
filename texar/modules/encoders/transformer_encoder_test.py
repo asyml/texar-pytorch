@@ -9,7 +9,7 @@ from texar.modules.encoders import TransformerEncoder
 
 
 class TransformerEncoderTest(unittest.TestCase):
-    r"""Tests :class:`~texar.modules.TransformerDecoder`
+    r"""Tests :class:`~texar.modules.TransformerEecoder`
     """
 
     def setUp(self):
