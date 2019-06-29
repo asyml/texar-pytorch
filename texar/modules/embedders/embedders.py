@@ -14,8 +14,10 @@
 """
 Various embedders.
 """
+from typing import Optional
 
 import torch
+from torch.nn import functional as F
 
 from texar.modules.embedders import embedder_utils
 from texar.modules.embedders.embedder_base import (
@@ -88,22 +90,24 @@ class WordEmbedder(EmbedderBase):
     .. document private functions
     """
 
-    def __init__(self, init_value=None, vocab_size=None, hparams=None):
+    def __init__(self, init_value: Optional[torch.Tensor] = None,
+                 vocab_size: Optional[int] = None, hparams=None):
 
         if init_value is None and vocab_size is None:
             raise ValueError(
                 "Either `init_value` or `vocab_size` is required.")
 
-        EmbedderBase.__init__(self, init_value=init_value,
-                              num_embeds=vocab_size, hparams=hparams)
+        super().__init__(init_value=init_value,
+                         num_embeds=vocab_size, hparams=hparams)
 
-        self._vocab_size = vocab_size
         if vocab_size is None:
             self._vocab_size = self._num_embeds
+        else:
+            self._vocab_size = vocab_size
         if self._vocab_size != self._num_embeds:
             raise ValueError(
-                'vocab_size must equal to init_value.shape[0].'
-                'Got %d and %d' % (self._vocab_size, self._num_embeds))
+                f"vocab_size must equal to init_value.shape[0]. "
+                f"Got {self._vocab_size} and {self._num_embeds}")
 
         self._built = True
         self._dropout_layer = EmbeddingDropout(self._hparams.dropout_rate)
@@ -167,7 +171,10 @@ class WordEmbedder(EmbedderBase):
         hparams["name"] = "word_embedder"
         return hparams
 
-    def forward(self, ids=None, soft_ids=None, **kwargs):
+    def forward(self,  # type: ignore
+                ids: Optional[torch.LongTensor] = None,
+                soft_ids: Optional[torch.Tensor] = None,
+                **kwargs) -> torch.Tensor:
         r"""Embeds (soft) ids.
 
         Either :attr:`ids` or :attr:`soft_ids` must be given, and they
@@ -198,54 +205,51 @@ class WordEmbedder(EmbedderBase):
             if soft_ids is not None:
                 raise ValueError(
                     'Must not specify `ids` and `soft_ids` at the same time.')
-            ids_rank = len(ids.shape)
+            ids_rank = ids.dim()
         elif soft_ids is not None:
-            ids_rank = len(soft_ids.shape) - 1
+            ids_rank = soft_ids.dim() - 1
         else:
             raise ValueError('Either `ids` or `soft_ids` must be given.')
 
         embedding = self._embedding
 
         if self._hparams.dropout_strategy == 'item_type':
-            noise_shape = self._get_noise_shape(
-                self._hparams)
+            noise_shape = self._get_noise_shape(self._hparams.dropout_strategy)
             embedding = self._dropout_layer(embedding, noise_shape)
 
         if ids is not None:
-            outputs = torch.nn.functional.embedding(
-                ids.type(torch.long), embedding, **kwargs)
+            outputs = F.embedding(ids, embedding, **kwargs)
         else:
             outputs = embedder_utils.soft_embedding_lookup(embedding, soft_ids)
 
         if self._hparams.dropout_strategy != 'item_type':
             noise_shape = self._get_noise_shape(
-                self._hparams,
-                ids_rank=ids_rank,
-                dropout_input=outputs)
+                self._hparams.dropout_strategy,
+                ids_rank=ids_rank, dropout_input=outputs)
             outputs = self._dropout_layer(outputs, noise_shape)
 
         return outputs
 
     @property
-    def embedding(self):
+    def embedding(self) -> torch.Tensor:
         r"""The embedding tensor, of shape ``[vocab_size] + dim``.
         """
         return self._embedding
 
     @property
-    def dim(self):
+    def dim(self) -> int:
         r"""The embedding dimension.
         """
         return self._dim
 
     @property
-    def vocab_size(self):
+    def vocab_size(self) -> int:
         r"""The vocabulary size.
         """
         return self._vocab_size
 
     @property
-    def num_embeddings(self):
+    def num_embeddings(self) -> int:
         r"""The vocabulary size. This interface matches
         :class:`~torch.nn.Embedding`.
         """

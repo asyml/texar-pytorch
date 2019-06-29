@@ -59,7 +59,8 @@ class PositionEmbedder(EmbedderBase):
     .. document private functions
     """
 
-    def __init__(self, init_value=None, position_size=None, hparams=None):
+    def __init__(self, init_value: Optional[torch.Tensor] = None,
+                 position_size: Optional[int] = None, hparams=None):
 
         if init_value is None and position_size is None:
             raise ValueError(
@@ -73,8 +74,8 @@ class PositionEmbedder(EmbedderBase):
             self._position_size = self._num_embeds
         if self._position_size != self._num_embeds:
             raise ValueError(
-                'position_size must equal to init_value.shape[0].'
-                'Got %d and %d' % (self._position_size, self._num_embeds))
+                f"position_size must be equal to init_value.shape[0]. "
+                f"Got {self._position_size} and {self._num_embeds}")
 
         self._built = True
         self._dropout_layer = EmbeddingDropout(self._hparams.dropout_rate)
@@ -106,7 +107,9 @@ class PositionEmbedder(EmbedderBase):
         hparams["name"] = "position_embedder"
         return hparams
 
-    def forward(self, positions=None, sequence_length=None, **kwargs):
+    def forward(self,  # type: ignore
+                positions: Optional[torch.LongTensor] = None,
+                sequence_length: Optional[torch.LongTensor] = None, **kwargs):
         r"""Embeds the positions.
 
         Either :attr:`positions` or :attr:`sequence_length` is required:
@@ -131,7 +134,6 @@ class PositionEmbedder(EmbedderBase):
             A `Tensor` of shape `shape(inputs) + embedding dimension`.
         """
         # Gets embedder inputs
-        inputs = positions
         if positions is None:
             if sequence_length is None:
                 raise ValueError(
@@ -141,8 +143,10 @@ class PositionEmbedder(EmbedderBase):
             # Expands `single_inputs` to have shape [batch_size, max_length]
             inputs = single_inputs.unsqueeze(0)
             inputs = inputs.expand(len(sequence_length), -1).contiguous()
+        else:
+            inputs = positions
 
-        ids_rank = len(list(inputs.shape))
+        ids_rank = inputs.dim()
         embedding = self._embedding
         inputs = inputs.to(device=embedding.device)
         # Gets dropout strategy
@@ -151,7 +155,7 @@ class PositionEmbedder(EmbedderBase):
         # Dropouts as 'item_type' before embedding
         if st == 'item_type':
             noise_shape = self._get_noise_shape(
-                self._hparams, dropout_strategy=st, dropout_input=embedding)
+                dropout_strategy=st, dropout_input=embedding)
             embedding = self._dropout_layer(embedding, noise_shape)
 
         # Embeds
@@ -161,8 +165,7 @@ class PositionEmbedder(EmbedderBase):
         # Dropouts as 'item' or 'elements' after embedding
         if st != 'item_type':
             noise_shape = self._get_noise_shape(
-                self._hparams, dropout_strategy=st,
-                dropout_input=outputs, ids_rank=ids_rank)
+                dropout_strategy=st, dropout_input=outputs, ids_rank=ids_rank)
             outputs = self._dropout_layer(outputs, noise_shape)
 
         # Optionally masks
@@ -219,30 +222,30 @@ class SinusoidsPositionEmbedder(EmbedderBase):
     .. document private functions
     """
 
-    def __init__(self, position_size: int, hparams=None):
+    def __init__(self, position_size: Optional[int] = None, hparams=None):
         super().__init__(hparams=hparams)
-        self._num_embeds = position_size
+        self._num_embeds = position_size  # type: ignore
         self._dim = self._hparams.dim
+        self._cache_embeddings = self._hparams.cache_embeddings
 
-        dim = self._hparams.dim
-        num_timescales = dim // 2
+        num_timescales = self._dim // 2
         min_timescale = self._hparams.min_timescale
         max_timescale = self._hparams.max_timescale
 
-        positions = torch.arange(position_size, dtype=torch.float)
         log_timescale_increment = (math.log(max_timescale / min_timescale) /
                                    (num_timescales - 1))
         inv_timescales = min_timescale * torch.exp(
             (torch.arange(num_timescales, dtype=torch.float) *
              -log_timescale_increment))
-        scaled_time = positions.unsqueeze(1) * inv_timescales.unsqueeze(0)
-        signal = torch.cat(
-            [torch.sin(scaled_time), torch.cos(scaled_time)], dim=1)
-        if dim % 2 == 1:
-            signal = torch.cat(
-                [signal, signal.new_zeros(signal.size(0), 1)], dim=1)
-        signal = signal.reshape(position_size, dim)
-        self.register_buffer('signal', signal)
+        if self._cache_embeddings:
+            if position_size is None:
+                raise ValueError("'position_size' must not be None when "
+                                 "'cache_embeddings' is set to True")
+            positions = torch.arange(position_size, dtype=torch.float)
+            signal = self._compute_embeddings(positions, inv_timescales)
+            self.register_buffer('signal', signal)
+        else:
+            self.register_buffer('inv_timescales', inv_timescales)
 
     @staticmethod
     def default_hparams():
@@ -257,15 +260,41 @@ class SinusoidsPositionEmbedder(EmbedderBase):
                 'min_timescale': 1.0,
                 'max_timescale': 10000.0,
                 'dim': 512,
+                'cache_embeddings': True,
                 'name':'sinusoid_position_embedder',
             }
+
+        Here:
+
+        `"cache_embeddings"`: bool
+            If `True`, precompute embeddings for positions in range
+            `[0, position_size - 1]`. This leads to faster lookup but requires
+            lookup indices to be within this range.
+
+            If `False`, embeddings are computed on-the-fly during lookup. Set to
+            `False` if your application needs to handle sequences of arbitrary
+            length, or requires embeddings at negative positions.
         """
         return {
             'min_timescale': 1.0,
             'max_timescale': 1.0e4,
             'dim': 512,
+            'cache_embeddings': True,
             'name': 'sinusoid_position_embedder',
         }
+
+    def _compute_embeddings(self, positions: torch.Tensor,
+                            inv_timescales: torch.Tensor) -> torch.Tensor:
+        scaled_time = (positions.type_as(inv_timescales).view(-1, 1) *
+                       inv_timescales.unsqueeze(0))
+        signal = torch.cat(
+            [torch.sin(scaled_time), torch.cos(scaled_time)], dim=1)
+        if self._dim % 2 == 1:
+            # An extra dimension must be added when dimension is odd.
+            signal = torch.cat(
+                [signal, signal.new_zeros(signal.size(0), 1)], dim=1)
+        signal = signal.view(*positions.size(), -1).contiguous()
+        return signal
 
     def forward(self,  # type: ignore
                 positions: Optional[torch.LongTensor] = None,
@@ -302,7 +331,11 @@ class SinusoidsPositionEmbedder(EmbedderBase):
         else:
             inputs = positions
 
-        outputs = F.embedding(inputs, self.signal, **kwargs)
+        if self._cache_embeddings:
+            outputs = F.embedding(inputs, self.signal, **kwargs)
+        else:
+            outputs = self._compute_embeddings(inputs, self.inv_timescales)
+
         if sequence_length is not None:
             outputs = mask_sequences(outputs, sequence_length)
 
