@@ -14,9 +14,10 @@
 """
 The base embedder class.
 """
+from typing import Optional, Tuple
 
 import torch
-from torch.nn.parameter import Parameter
+from torch import nn
 
 from texar.module_base import ModuleBase
 from texar.modules.embedders import embedder_utils
@@ -42,35 +43,39 @@ class EmbedderBase(ModuleBase):
             default values.
     """
 
-    def __init__(self, num_embeds=None, init_value=None, hparams=None):
-        ModuleBase.__init__(self, hparams)
+    def __init__(self, num_embeds: Optional[int] = None,
+                 init_value: Optional[torch.Tensor] = None, hparams=None):
+        super().__init__(hparams)
 
         if num_embeds is not None or init_value is not None:
-            self._embedding = Parameter(embedder_utils.get_embedding(
+            self._embedding = nn.Parameter(embedder_utils.get_embedding(
                 num_embeds, init_value, hparams))
 
-            self._num_embeds = self._embedding.shape[0]
+            self._num_embeds = self._embedding.size(0)
 
-            self._dim = self._embedding.shape[1:]
-            self._dim_rank = len(self._dim)
+            self._dim_rank = self._embedding.dim() - 1
             if self._dim_rank == 1:
-                self._dim = self._dim[0]
+                self._dim = self._embedding.size(1)
+            else:
+                self._dim = self._embedding.size()[1:]  # type: ignore
 
-    def _get_noise_shape(self, hparams, ids_rank=None, dropout_input=None,
-                         dropout_strategy=None):
+    def _get_noise_shape(self, dropout_strategy: str,
+                         ids_rank: Optional[int] = None,
+                         dropout_input: Optional[torch.Tensor] = None) \
+            -> Optional[Tuple[int, ...]]:
 
-        st = dropout_strategy
-        st = hparams.dropout_strategy if st is None else st
-        if st == 'element':
+        if dropout_strategy == 'element':
             noise_shape = None
-        elif st == 'item':
-            shape_a = list(dropout_input.shape[:ids_rank])
-            shape_b = [1] * self._dim_rank
+        elif dropout_strategy == 'item':
+            assert dropout_input is not None
+            assert ids_rank is not None
+            shape_a = dropout_input.size()[:ids_rank]
+            shape_b = (1,) * self._dim_rank
             noise_shape = shape_a + shape_b
-        elif st == 'item_type':
-            noise_shape = [self._num_embeds] + [1] * self._dim_rank
+        elif dropout_strategy == 'item_type':
+            noise_shape = (self._num_embeds,) + (1,) * self._dim_rank
         else:
-            raise ValueError('Unknown dropout strategy: {}'.format(st))
+            raise ValueError(f"Unknown dropout strategy: {dropout_strategy}")
         return noise_shape
 
     @staticmethod
@@ -91,7 +96,7 @@ class EmbedderBase(ModuleBase):
         raise NotImplementedError
 
     @property
-    def num_embeds(self):
+    def num_embeds(self) -> int:
         r"""The number of embedding elements.
         """
         return self._num_embeds
@@ -111,11 +116,13 @@ class EmbeddingDropout(ModuleBase):
             default values.
     """
 
-    def __init__(self, rate=None, hparams=None):
-        ModuleBase.__init__(self, hparams)
+    def __init__(self, rate: float, hparams=None):
+        super().__init__(hparams)
         self._rate = rate
 
-    def forward(self, input_tensor=None, noise_shape=None):
+    def forward(self,  # type: ignore
+                input_tensor: torch.Tensor,
+                noise_shape: Optional[torch.Size] = None) -> torch.Tensor:
         r"""Apply dropout on the tensor.
 
         Args:
@@ -129,7 +136,7 @@ class EmbeddingDropout(ModuleBase):
         if not self.training or self._rate == 0.0:
             return input_tensor
         if noise_shape is None:
-            noise_shape = input_tensor.shape
+            noise_shape = input_tensor.size()
         keep_rate = 1 - self._rate
         mask = input_tensor.new_full(noise_shape, keep_rate)
         mask += input_tensor.new_empty(noise_shape).uniform_(0, 1)
