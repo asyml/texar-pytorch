@@ -55,4 +55,5 @@ PyTorch
 pytorch
 torch
 fastly
+CUDA
 precompute

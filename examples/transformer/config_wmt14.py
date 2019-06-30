@@ -1,4 +1,4 @@
-batch_size = 3072
+max_batch_tokens = 3072
 test_batch_size = 32
 
 max_train_epoch = 10
