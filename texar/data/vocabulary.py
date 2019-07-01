@@ -146,7 +146,7 @@ class Vocab:
         id_to_token_map_py = dict(zip(vocab_idx, vocab))
         token_to_id_map_py = dict(zip(vocab, vocab_idx))
 
-        return id_to_token_map_py, token_to_id_map_py  # type: ignore
+        return id_to_token_map_py, token_to_id_map_py
 
     def map_ids_to_tokens_py(self, ids: np.ndarray) -> np.ndarray:
         r"""Maps ids into text tokens.
