@@ -236,6 +236,8 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
     Args:
         hparams (dict): Hyperparameters. See :meth:`default_hparams`
             for the defaults.
+        device: The device of the produces batches. For GPU training, set to
+            current CUDA device.
 
     The module reads and restores data from TFRecord files and
     results in a TF Dataset whose element is a Python `dict` that maps feature
@@ -317,7 +319,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
     """
 
-    def __init__(self, hparams):
+    def __init__(self, hparams=None, device: Optional[torch.device] = None):
         self._hparams = HParams(hparams, self.default_hparams())
 
         feature_types = self._hparams.dataset.feature_original_types
@@ -345,7 +347,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
         data_source = PickleDataSource(self._hparams.dataset.files)
 
-        super().__init__(data_source, hparams)
+        super().__init__(data_source, hparams, device)
 
     @classmethod
     def _construct(cls, hparams):
