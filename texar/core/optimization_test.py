@@ -241,6 +241,18 @@ class OptimizationTest(unittest.TestCase):
             loss.backward()
             train_op()
 
+        # Case 3
+        optimizer = get_optimizer(self.model.parameters(), hparams)
+        scheduler = get_scheduler(optimizer=optimizer,
+                                  hparams=hparams)
+        train_op = get_train_op(scheduler=scheduler, hparams=hparams)
+
+        for t in range(50):
+            y_pred = self.model(self.x)
+            loss = self.loss_fn(y_pred, self.y)
+            loss.backward()
+            train_op()
+
 
 if __name__ == "__main__":
     unittest.main()

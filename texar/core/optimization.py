@@ -16,9 +16,10 @@ Various optimization related utilities.
 """
 
 import functools
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, Iterable
 
 import torch
+import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.optimizer import Optimizer  # pylint: disable=no-name-in-module
 
@@ -146,7 +147,7 @@ def default_optimization_hparams() -> Dict[str, Any]:
 
 
 def get_optimizer(
-        params: Union[List[torch.Tensor], List[Dict[str, List[torch.Tensor]]]],
+        params: Iterable[Union[torch.Tensor, Dict[str, Any]]],
         hparams: Optional[Union[HParams, Dict[str, Any]]] = None) -> \
         Optimizer:
     r"""Creates a optimizer instance.
@@ -271,10 +272,10 @@ def get_grad_clip_fn(hparams: Optional[Union[HParams,
     return grad_clip_fn
 
 
-def get_train_op(params: Optional[Union[List[torch.Tensor],
-                                        List[Dict[str,
-                                                  List[torch.Tensor]]]]] = None,
+def get_train_op(params: Optional[Iterable[Union[torch.Tensor,
+                                                 Dict[str, Any]]]] = None,
                  optimizer: Optional[Optimizer] = None,
+                 scheduler: Optional[_LRScheduler] = None,
                  hparams: Optional[Union[HParams, Dict[str, Any]]] = None) -> \
         Callable[[], None]:
     r"""Creates a training op.
@@ -284,6 +285,8 @@ def get_train_op(params: Optional[Union[List[torch.Tensor],
             :class:`dict`. Specifies what Tensors should be optimized.
         optimizer: A :torch_docs:`torch.optim.Optimizer
             <optim.html#torch.optim.Optimizer>` instance.
+        scheduler: A :torch_docs:`torch.optim.lr_scheduler._LRScheduler
+            <optim.html#how-to-adjust-learning-rate>` instance.
         hparams (dict or HParams, optional): hyperparameters. Missing
             hyperparameters are set to default values automatically. See
             :func:`~texar.core.default_optimization_hparams` for
@@ -294,17 +297,22 @@ def get_train_op(params: Optional[Union[List[torch.Tensor],
     """
     hparams = HParams(hparams, default_optimization_hparams())
 
-    if params is None and optimizer is None:
-        raise ValueError("'params' and 'optimizer' must not be None "
-                         "simultaneously.")
+    if params is None and optimizer is None and scheduler is None:
+        raise ValueError("'params', 'optimizer' and 'scheduler' must not be "
+                         "None simultaneously.")
 
-    if optimizer is None and params is not None:
-        optimizer = get_optimizer(params, hparams)
-    if optimizer is not None:
-        scheduler = get_scheduler(optimizer, hparams)
+    if scheduler is None:
+        if optimizer is None and params is not None:
+            optimizer = get_optimizer(params, hparams)
+        if optimizer is not None:
+            scheduler = get_scheduler(optimizer, hparams)
+    else:
+        optimizer = scheduler.optimizer  # type: ignore
+
     grad_clip_fn = get_grad_clip_fn(hparams)
 
-    params_list: List = []
+    # TODO: Support per-parameter options in the future.
+    params_list: List[nn.Parameter] = []
     for param_group in optimizer.param_groups:  # type: ignore
         params = param_group["params"]
         if isinstance(params, torch.Tensor):

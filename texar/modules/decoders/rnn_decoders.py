@@ -20,6 +20,7 @@ from typing import Callable, Dict, NamedTuple, Optional, Tuple, Union
 import torch
 from torch import nn
 
+from texar.core import layers
 from texar.core.attention_mechanism import (
     AttentionMechanism, AttentionWrapperState)
 from texar.core.cell_wrappers import AttentionWrapper, HiddenState, RNNCellBase
@@ -308,9 +309,6 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                                                   torch.Tensor]] = None,
                  hparams=None):
 
-        # TODO: Determine the correct input_size internally
-        #  (Depends on cell_input_fn).
-
         super().__init__(cell=cell,
                          input_size=input_size,
                          vocab_size=vocab_size,
@@ -319,6 +317,25 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
 
         attn_hparams = self._hparams['attention']
         attn_kwargs = attn_hparams['kwargs'].todict()
+
+        # Compute the correct input_size internally.
+        if cell is None:
+            if cell_input_fn is None:
+                if attn_hparams["attention_layer_size"] is None:
+                    input_size += encoder_output_size
+                else:
+                    input_size += attn_hparams["attention_layer_size"]
+            else:
+                if attn_hparams["attention_layer_size"] is None:
+                    input_size = cell_input_fn(
+                        torch.empty(input_size),
+                        torch.empty(encoder_output_size)).shape[-1]
+                else:
+                    input_size = cell_input_fn(
+                        torch.empty(input_size),
+                        torch.empty(
+                            attn_hparams["attention_layer_size"])).shape[-1]
+            self._cell = layers.get_rnn_cell(input_size, self._hparams.rnn_cell)
 
         # Parse the `probability_fn` argument
         if 'probability_fn' in attn_kwargs:
@@ -335,6 +352,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         attn_kwargs.update({"encoder_output_size": encoder_output_size})
 
         attn_modules = ['texar.core']
+        # TODO: Support multiple attention mechanisms.
         self.attention_mechanism: AttentionMechanism
         self.attention_mechanism = check_or_get_instance(
             attn_hparams["type"], attn_kwargs, attn_modules,
@@ -733,14 +751,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                     length_penalty: float = 0.6):
 
         def _prepare_beam_search(x):
-            x = torch.unsqueeze(x, dim=1)
-            tile_dims = [1] * x.dim()
-            tile_dims[1] = beam_width
-            x = x.repeat(tile_dims)
-            shape = list(x.size())
-            shape[0] *= shape[1]
-            shape.pop(1)
-            x = x.view(shape)
+            x = x.unsqueeze(1).repeat(1, beam_width, *([1] * (x.dim() - 1)))
+            x = x.view(-1, *x.size()[2:])
             return x
 
         memory_beam_search = _prepare_beam_search(self.memory)
@@ -756,7 +768,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             logits = self._output_layer(wrapper_outputs)
             return logits, wrapper_state
 
-        outputs, log_prob = beam_search(  # type: ignore
+        assert self._vocab_size is not None
+        outputs, log_prob = beam_search(
             symbols_to_logits_fn=_symbols_to_logits_fn,
             initial_ids=start_tokens,
             beam_size=beam_width,

@@ -21,7 +21,6 @@ import torch
 import torch.nn as nn
 
 import texar as tx
-from texar.core import optimization
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_model',
@@ -67,17 +66,11 @@ class Seq2SeqAttn(nn.Module):
         self.decoder = tx.modules.AttentionRNNDecoder(
             encoder_output_size=(self.encoder.cell_fw.hidden_size +
                                  self.encoder.cell_bw.hidden_size),
-            input_size=self.target_embedder.dim + config_model.decoder
-            ['attention']['attention_layer_size'],
+            input_size=self.target_embedder.dim,
             vocab_size=self.target_vocab_size,
             hparams=config_model.decoder)
 
     def forward(self, batch, mode):
-
-        if mode == "train":
-            self.train()
-        else:
-            self.eval()
 
         enc_outputs, _ = self.encoder(
             inputs=self.source_embedder(batch['source_text_ids']),
@@ -103,8 +96,9 @@ class Seq2SeqAttn(nn.Module):
 
             return mle_loss
         else:
-            start_tokens = torch.ones_like(batch['target_length']) * \
-                           self.bos_token_id
+            start_tokens = memory.new_full(batch['target_length'].size(),
+                                           self.bos_token_id,
+                                           dtype=torch.int64)
 
             infer_outputs = self.decoder(
                 start_tokens=start_tokens,
@@ -131,11 +125,12 @@ def main():
 
     model = Seq2SeqAttn(train_data)
     model.to(device)
-    train_op = optimization.get_train_op(params=model.parameters(),
-                                         hparams=config_model.opt)
+    train_op = tx.core.get_train_op(params=model.parameters(),
+                                    hparams=config_model.opt)
 
     def _train_epoch():
         data_iterator.switch_to_train_data()
+        model.train()
 
         step = 0
         for batch in data_iterator:
@@ -151,6 +146,7 @@ def main():
             data_iterator.switch_to_val_data()
         else:
             data_iterator.switch_to_test_data()
+        model.eval()
 
         refs, hypos = [], []
         for batch in data_iterator:
