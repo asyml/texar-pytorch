@@ -379,6 +379,11 @@ class MultiAlignedData(
         hparams["datasets"] = []
         return hparams
 
+    def to(self, device: torch.device):
+        for dataset in self._databases:
+            dataset.to(device)
+        return super().to(device)
+
     @staticmethod
     def _raise_sharing_error(err_data, share_data, hparam_name):
         raise ValueError(
