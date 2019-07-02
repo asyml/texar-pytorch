@@ -44,43 +44,43 @@ class CtrlGenModel(ModuleBase):
         self.vocab = vocab
         self.embedder = WordEmbedder(
             vocab_size=vocab.size,
-            hparams=self._hparams.embedder)
+            hparams=self._hparams.embedder).cuda()
 
         self.encoder = UnidirectionalRNNEncoder(
-            input_size=100, hparams=self._hparams.encoder)
+            input_size=100, hparams=self._hparams.encoder).cuda()
 
         self.label_connector = MLPTransformConnector(
-            self._hparams.dim_c, linear_layer_dim=1)
+            self._hparams.dim_c, linear_layer_dim=1).cuda()
 
         self.decoder = AttentionRNNDecoder(
             input_size=100,
             encoder_output_size=700,
             vocab_size=self.vocab.size,
             cell_input_fn=lambda inputs, attention: inputs,
-            hparams=self._hparams.decoder)
+            hparams=self._hparams.decoder).cuda()
 
         self.classifier = Conv1DClassifier(
             in_channels=100,
-            hparams=self._hparams.classifier)
+            hparams=self._hparams.classifier).cuda()
 
         self.clas_embedder = WordEmbedder(
             vocab_size=self.vocab.size,
-            hparams=self._hparams.embedder)
+            hparams=self._hparams.embedder).cuda()
 
         self.connector = MLPTransformConnector(
-            self.decoder.state_size, linear_layer_dim=700)
-        self.loss_fn_d = torch.nn.BCEWithLogitsLoss()
-        self.loss_fn_g = torch.nn.BCEWithLogitsLoss()
+            self.decoder.state_size, linear_layer_dim=700).cuda()
+        self.loss_fn_d = torch.nn.BCEWithLogitsLoss().to("cuda:0")
+        self.loss_fn_g = torch.nn.BCEWithLogitsLoss().to("cuda:0")
 
     def forward(self, inputs, gamma, lambda_g, mode='train'):
         """Builds the model.
         """
 
         # text_ids for encoder, with BOS token removed
-        enc_text_ids = inputs['text_ids'][:, 1:]
+        enc_text_ids = inputs['text_ids'][:, 1:].cuda()
         enc_outputs, final_state = self.encoder(self.embedder(enc_text_ids),
-                                           sequence_length=inputs['length']-1)
-        z = final_state[:, self._hparams.dim_c:]
+                                           sequence_length=(inputs['length']-1).cuda())
+        z = final_state[:, self._hparams.dim_c:].cuda()
 
         # Encodes label
 
@@ -99,17 +99,17 @@ class CtrlGenModel(ModuleBase):
         helper = self.decoder.create_helper(
             embedding=self.embedder)
         g_outputs, _, _ = self.decoder(
-            memory=enc_outputs,
-            memory_sequence_length=inputs['length']-1,
-            inputs=inputs['text_ids'],
-            sequence_length=inputs['length']-1,
+            memory=enc_outputs.cuda(),
+            memory_sequence_length=(inputs['length']-1).cuda(),
+            inputs=inputs['text_ids'].cuda(),
+            sequence_length=(inputs['length']-1).cuda(),
             initial_state=state_d,
             helper=helper)
 
         loss_g_ae = tx.losses.sequence_sparse_softmax_cross_entropy(
-            labels=inputs['text_ids'][:, 1:],
+            labels=inputs['text_ids'][:, 1:].cuda(),
             logits=g_outputs.logits,
-            sequence_length=inputs['length']-1,
+            sequence_length=(inputs['length']-1).cuda(),
             average_across_timesteps=True,
             sum_over_timesteps=False)
 
@@ -117,7 +117,7 @@ class CtrlGenModel(ModuleBase):
         start_tokens = torch.ones_like(
             inputs['labels']) * self.vocab.bos_token_id
         end_token = self.vocab.eos_token_id
-        start_tokens = start_tokens.type(torch.long)
+        start_tokens = start_tokens.type(torch.long).cuda()
         end_token = int(end_token)
 
         gumbel_helper = GumbelSoftmaxEmbeddingHelper(
@@ -126,16 +126,19 @@ class CtrlGenModel(ModuleBase):
         state_g = self.decoder._cell.zero_state(64)
         state_g = state_g._replace(cell_state=self.connector(h_))
         soft_outputs_, _, soft_length_, = self.decoder(
-            memory=enc_outputs,
-            memory_sequence_length=inputs['length']-1,
+            memory=enc_outputs.cuda(),
+            memory_sequence_length=(inputs['length']-1).cuda(),
             helper=gumbel_helper,
             initial_state=state_g)
 
         # Greedy decoding, used in eval
 
+        print("enc_outputs", enc_outputs.device)
+        print("start_tokens", start_tokens.device)
+        print("inputs['length']-1", (inputs['length']-1).device)
         greedy_helper = self.decoder.create_helper(
             decoding_strategy='infer_greedy',
-            start_tokens=start_tokens,
+            start_tokens=start_tokens.cuda(),
             end_token=end_token,
             embedding=self.embedder)
         outputs_, _, length_ = self.decoder(
@@ -146,22 +149,21 @@ class CtrlGenModel(ModuleBase):
 
         # Classification loss for the classifier
         id_inputs = inputs['text_ids'][:, 1:]
-
         clas_logits, clas_preds = self.classifier(
             input=self.clas_embedder(ids=inputs['text_ids'][:, 1:]).transpose(1, 2),
             sequence_length=inputs['length']-1)
         #print("clas_logits", clas_logits)
-        loss_d_clas = self.loss_fn_d(clas_logits, inputs['labels'].type(torch.FloatTensor))
+        loss_d_clas = self.loss_fn_d(clas_logits, inputs['labels'].type(torch.FloatTensor).cuda())
         accu_d = tx.evals.accuracy(labels=inputs['labels'], preds=clas_preds)
 
         # Classification loss for the generator, based on soft samples
         soft_logits, soft_preds = self.classifier(
-            input=self.clas_embedder(soft_ids=soft_outputs_.sample_id).transpose(1, 2),
+            input=self.clas_embedder(soft_ids=soft_outputs_.sample_id).transpose(1, 2).cuda(),
             sequence_length=soft_length_)
-
+        print("soft_logits", soft_logits.device)
         loss_g_clas = self.loss_fn_g(
             soft_logits,
-            (1 - inputs['labels']).type(torch.FloatTensor))
+            (1 - inputs['labels']).type(torch.FloatTensor).cuda())
 
         # Accuracy on soft samples, for training progress monitoring
         accu_g = tx.evals.accuracy(labels=1-inputs['labels'], preds=soft_preds)

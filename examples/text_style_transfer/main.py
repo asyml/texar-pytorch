@@ -70,12 +70,12 @@ def main():
 
     # Model
     model = CtrlGenModel(vocab, config.model)
-
+    model.cuda()
     vars_d = []
     vars_g = []
 
     for name, param in model.named_parameters():
-
+        print("model", name, param.device)
         if name.startswith("clas"):
             vars_d.append(param)
         else:
@@ -95,19 +95,24 @@ def main():
 
         it_d = iterator.get_iterator("train_d")
         it_g = iterator.get_iterator("train_g")
-
+        
         while True:
             try:
                 step += 1
                 print("step: {}".format(step))
-
                 batch_d = it_d.next()._batch
+                for key in batch_d:
+                    if isinstance(batch_d[key], torch.Tensor):
+                        batch_d[key] = batch_d[key].cuda()
                 vals_d, _, _= model(batch_d, gamma_, lambda_g_, mode="train")
                 vals_d["loss_d"].backward()
                 train_op_d()
                 avg_meters_d.add(vals_d, detach=True)
 
                 batch_g = it_g.next()._batch
+                for key in batch_g:
+                    if isinstance(batch_g[key], torch.Tensor):
+                        batch_g[key] = batch_g[key].cuda()
                 _, vals_g, _ = model(batch_g, gamma_, lambda_g_, mode="train")
                 vals_g["loss_g"].backward(retain_graph=True)
                 vals_g["loss_g_ae"].backward(retain_graph=True)
@@ -122,6 +127,7 @@ def main():
 
                 if verbose and step % config.display_eval == 0:
                     _eval_epoch(gamma_, lambda_g_, epoch)
+                    break
 
             except:
                 print('epoch: {}, {}'.format(epoch, avg_meters_d.to_str(4)))
@@ -132,10 +138,15 @@ def main():
     def _eval_epoch(gamma_, lambda_g_, epoch, val_or_test='val'):
         avg_meters = tx.utils.AverageRecorder()
         it = iterator.get_iterator(val_or_test)
-
+        step = 0
         while True:
             try:
+                step += 1
+                print("eval_step", step)
                 batch = it.next()._batch
+                for key in batch:
+                    if isinstance(batch[key], torch.Tensor):
+                        batch[key] = batch[key].cuda()
                 _, _, vals = model(batch, gamma_, lambda_g_, mode='eval')
                 batch_size = vals.pop('batch_size')
 
@@ -143,12 +154,12 @@ def main():
                 samples = vals['samples']
                 vals.pop('samples')
                 #samples = tx.utils.dict_pop(vals, list(vals['sample'].keys()))
-
+                #print("vocab: ", vocab.device)
                 hyps = tx.data.vocabulary.map_ids_to_strs(
-                    ids=samples['transferred'], vocab=vocab)
+                    ids=samples['transferred'].cpu(), vocab=vocab)
 
                 refs = tx.data.vocabulary.map_ids_to_strs(
-                    ids=samples['original'], vocab=vocab)
+                    ids=samples['original'].cpu(), vocab=vocab)
                 refs = np.expand_dims(refs, axis=1)
 
                 bleu = tx.evals.corpus_bleu_moses(refs, hyps)
@@ -177,7 +188,8 @@ def main():
     gamma_ = 1.
     lambda_g_ = 0.
 
-    for epoch in range(1, config.max_nepochs+1):
+    #for epoch in range(1, config.max_nepochs+1):
+    for epoch in range(1, 2):
         if epoch > config.pretrain_nepochs:
             # Anneals the gumbel-softmax temperature
             gamma_ = max(0.001, gamma_ * config.gamma_decay)
