@@ -44,15 +44,25 @@ import traceback
 
 
 parser = argparse.ArgumentParser()
+
 parser.add_argument(
     "--config", default="config",
     help="The config to use.")
+'''parser.add_argument(
+    "--output_dir", default="output/",
+    help="The output directory where the model checkpoints will be written.")'''
 
 args = parser.parse_args()
 
 config = importlib.import_module(args.config)
 
 def main():
+    """
+    Builds the model and runs.
+    """
+
+    #tx.utils.maybe_create_dir(args.output_dir)
+
     # Data
     train_data = tx.data.MultiAlignedData(config.train_data)
     val_data = tx.data.MultiAlignedData(config.val_data)
@@ -75,7 +85,6 @@ def main():
     vars_g = []
 
     for name, param in model.named_parameters():
-        print("model", name, param.device)
         if name.startswith("clas"):
             vars_d.append(param)
         else:
@@ -99,7 +108,7 @@ def main():
         while True:
             try:
                 step += 1
-                print("step: {}".format(step))
+                print(f"step: {step}")
                 batch_d = it_d.next()._batch
                 for key in batch_d:
                     if isinstance(batch_d[key], torch.Tensor):
@@ -119,8 +128,8 @@ def main():
                 train_op_g()
                 avg_meters_g.add(vals_g, detach=True)
 
-                print('step: {}, {}'.format(step, avg_meters_d.to_str(4)))
-                print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))
+                '''print('step: {}, {}'.format(step, avg_meters_d.to_str(4)))
+                print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))'''
                 if verbose and (step == 1 or step % config.display == 0):
                     print('step: {}, {}'.format(step, avg_meters_d.to_str(4)))
                     print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))
@@ -129,7 +138,7 @@ def main():
                     _eval_epoch(gamma_, lambda_g_, epoch)
                     break
 
-            except:
+            except StopIteration:
                 print('epoch: {}, {}'.format(epoch, avg_meters_d.to_str(4)))
                 print('epoch: {}, {}'.format(epoch, avg_meters_g.to_str(4)))
                 traceback.print_exc()
@@ -138,11 +147,9 @@ def main():
     def _eval_epoch(gamma_, lambda_g_, epoch, val_or_test='val'):
         avg_meters = tx.utils.AverageRecorder()
         it = iterator.get_iterator(val_or_test)
-        step = 0
+
         while True:
             try:
-                step += 1
-                print("eval_step", step)
                 batch = it.next()._batch
                 for key in batch:
                     if isinstance(batch[key], torch.Tensor):
@@ -154,7 +161,6 @@ def main():
                 samples = vals['samples']
                 vals.pop('samples')
                 #samples = tx.utils.dict_pop(vals, list(vals['sample'].keys()))
-                #print("vocab: ", vocab.device)
                 hyps = tx.data.vocabulary.map_ids_to_strs(
                     ids=samples['transferred'].cpu(), vocab=vocab)
 
@@ -172,9 +178,8 @@ def main():
                     refs.squeeze(), hyps,
                     os.path.join(config.sample_path, 'val.%d'%epoch),
                     append=True, mode='v')
-            except:
-                print('{}: {}'.format(
-                    val_or_test, avg_meters.to_str(precision=4)))
+            except StopIteration:
+                print(f'{val_or_test}: {avg_meters.to_str(precision=4)}')
                 traceback.print_exc()
                 break
         return avg_meters.avg()
@@ -188,8 +193,7 @@ def main():
     gamma_ = 1.
     lambda_g_ = 0.
 
-    #for epoch in range(1, config.max_nepochs+1):
-    for epoch in range(1, 2):
+    for epoch in range(1, config.max_nepochs+1):
         if epoch > config.pretrain_nepochs:
             # Anneals the gumbel-softmax temperature
             gamma_ = max(0.001, gamma_ * config.gamma_decay)
@@ -203,7 +207,7 @@ def main():
             'optimizer_d': optimizer_d.state_dict(),
             'optimizer_g': optimizer_g.state_dict(),
         }
-        torch.save(states, os.path.join(args.output_dir + '/model.ckpt'))
+        torch.save(states, os.path.join(config.checkpoint_path, 'model.ckpt'))
         _eval_epoch(sess, gamma_, lambda_g_, epoch, 'test')
 
 if __name__ == '__main__':
