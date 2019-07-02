@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,13 +13,9 @@
 # limitations under the License.
 """Text style transfer
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 # pylint: disable=invalid-name, too-many-locals
 
-#import tensorflow as tf
 import torch
 from torch import nn
 
@@ -133,9 +129,6 @@ class CtrlGenModel(ModuleBase):
 
         # Greedy decoding, used in eval
 
-        print("enc_outputs", enc_outputs.device)
-        print("start_tokens", start_tokens.device)
-        print("inputs['length']-1", (inputs['length']-1).device)
         greedy_helper = self.decoder.create_helper(
             decoding_strategy='infer_greedy',
             start_tokens=start_tokens.cuda(),
@@ -152,7 +145,6 @@ class CtrlGenModel(ModuleBase):
         clas_logits, clas_preds = self.classifier(
             input=self.clas_embedder(ids=inputs['text_ids'][:, 1:]).transpose(1, 2),
             sequence_length=inputs['length']-1)
-        #print("clas_logits", clas_logits)
         loss_d_clas = self.loss_fn_d(clas_logits, inputs['labels'].type(torch.FloatTensor).cuda())
         accu_d = tx.evals.accuracy(labels=inputs['labels'], preds=clas_preds)
 
@@ -160,7 +152,6 @@ class CtrlGenModel(ModuleBase):
         soft_logits, soft_preds = self.classifier(
             input=self.clas_embedder(soft_ids=soft_outputs_.sample_id).transpose(1, 2).cuda(),
             sequence_length=soft_length_)
-        print("soft_logits", soft_logits.device)
         loss_g_clas = self.loss_fn_g(
             soft_logits,
             (1 - inputs['labels']).type(torch.FloatTensor).cuda())

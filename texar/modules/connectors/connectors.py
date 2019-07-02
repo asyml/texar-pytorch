@@ -151,7 +151,6 @@ def _mlp_transform(inputs: TensorStruct,
         size_list = flat_output_size
 
     concat_input.to("cuda:0")
-    #print("concat_input", concat_input.device)
     
     fc_output = linear_layer(concat_input)
     if activation_fn is not None:
