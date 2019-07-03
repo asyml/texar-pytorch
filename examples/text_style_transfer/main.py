@@ -79,8 +79,13 @@ def main():
     )
 
     # Model
-    model = CtrlGenModel(vocab, config.model)
-    model.cuda()
+    if torch.cuda.is_available():
+        device = torch.cuda.current_device()
+    else:
+        device = None
+    model = CtrlGenModel(vocab, config.model, device=device)
+    if device is not None:
+        model.cuda()
     vars_d = []
     vars_g = []
 
@@ -108,7 +113,7 @@ def main():
         while True:
             try:
                 step += 1
-                print(f"step: {step}")
+
                 batch_d = it_d.next()._batch
                 for key in batch_d:
                     if isinstance(batch_d[key], torch.Tensor):
@@ -208,7 +213,7 @@ def main():
             'optimizer_g': optimizer_g.state_dict(),
         }
         torch.save(states, os.path.join(config.checkpoint_path, 'model.ckpt'))
-        _eval_epoch(sess, gamma_, lambda_g_, epoch, 'test')
+        _eval_epoch(gamma_, lambda_g_, epoch, 'test')
 
 if __name__ == '__main__':
     main()

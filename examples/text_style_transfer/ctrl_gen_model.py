@@ -18,6 +18,7 @@
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 import texar as tx
 from texar.modules import WordEmbedder, UnidirectionalRNNEncoder, \
@@ -32,7 +33,7 @@ class CtrlGenModel(ModuleBase):
     """Control
     """
 
-    def __init__(self, vocab, hparams=None):
+    def __init__(self, vocab, hparams=None, device=None):
 
         super().__init__()
 
@@ -40,43 +41,45 @@ class CtrlGenModel(ModuleBase):
         self.vocab = vocab
         self.embedder = WordEmbedder(
             vocab_size=vocab.size,
-            hparams=self._hparams.embedder).cuda()
+            hparams=self._hparams.embedder)
 
         self.encoder = UnidirectionalRNNEncoder(
-            input_size=100, hparams=self._hparams.encoder).cuda()
+            input_size=self._hparams.embedder.dim, hparams=self._hparams.encoder)
 
         self.label_connector = MLPTransformConnector(
-            self._hparams.dim_c, linear_layer_dim=1).cuda()
+            self._hparams.dim_c, linear_layer_dim=1)
 
         self.decoder = AttentionRNNDecoder(
-            input_size=100,
-            encoder_output_size=700,
+            input_size=self._hparams.embedder.dim,
+            encoder_output_size=self._hparams.encoder.rnn_cell.kwargs.num_units,
             vocab_size=self.vocab.size,
             cell_input_fn=lambda inputs, attention: inputs,
-            hparams=self._hparams.decoder).cuda()
+            hparams=self._hparams.decoder)
 
         self.classifier = Conv1DClassifier(
-            in_channels=100,
-            hparams=self._hparams.classifier).cuda()
+            in_channels=self._hparams.embedder.dim,
+            hparams=self._hparams.classifier)
 
         self.clas_embedder = WordEmbedder(
             vocab_size=self.vocab.size,
-            hparams=self._hparams.embedder).cuda()
+            hparams=self._hparams.embedder)
 
         self.connector = MLPTransformConnector(
-            self.decoder.state_size, linear_layer_dim=700).cuda()
-        self.loss_fn_d = torch.nn.BCEWithLogitsLoss().to("cuda:0")
-        self.loss_fn_g = torch.nn.BCEWithLogitsLoss().to("cuda:0")
+            self.decoder.state_size, linear_layer_dim=self._hparams.decoder.rnn_cell.kwargs.num_units)
+        self.loss_fn_d = torch.nn.BCEWithLogitsLoss()
+        self.loss_fn_g = torch.nn.BCEWithLogitsLoss()
+        self.device = device
 
     def forward(self, inputs, gamma, lambda_g, mode='train'):
         """Builds the model.
         """
 
         # text_ids for encoder, with BOS token removed
-        enc_text_ids = inputs['text_ids'][:, 1:].cuda()
+        enc_text_ids = inputs['text_ids'][:, 1:].to(self.device)
+        sequence_length = (inputs['length']-1).to(self.device)
         enc_outputs, final_state = self.encoder(self.embedder(enc_text_ids),
-                                           sequence_length=(inputs['length']-1).cuda())
-        z = final_state[:, self._hparams.dim_c:].cuda()
+                                           sequence_length=sequence_length)
+        z = final_state[:, self._hparams.dim_c:]
 
         # Encodes label
 
@@ -95,17 +98,17 @@ class CtrlGenModel(ModuleBase):
         helper = self.decoder.create_helper(
             embedding=self.embedder)
         g_outputs, _, _ = self.decoder(
-            memory=enc_outputs.cuda(),
-            memory_sequence_length=(inputs['length']-1).cuda(),
-            inputs=inputs['text_ids'].cuda(),
-            sequence_length=(inputs['length']-1).cuda(),
+            memory=enc_outputs,
+            memory_sequence_length=sequence_length,
+            inputs=inputs['text_ids'],
+            sequence_length=sequence_length,
             initial_state=state_d,
             helper=helper)
 
         loss_g_ae = tx.losses.sequence_sparse_softmax_cross_entropy(
-            labels=inputs['text_ids'][:, 1:].cuda(),
+            labels=inputs['text_ids'][:, 1:],
             logits=g_outputs.logits,
-            sequence_length=(inputs['length']-1).cuda(),
+            sequence_length=sequence_length,
             average_across_timesteps=True,
             sum_over_timesteps=False)
 
@@ -113,7 +116,7 @@ class CtrlGenModel(ModuleBase):
         start_tokens = torch.ones_like(
             inputs['labels']) * self.vocab.bos_token_id
         end_token = self.vocab.eos_token_id
-        start_tokens = start_tokens.type(torch.long).cuda()
+        start_tokens = start_tokens.to(dtype=torch.long, device=self.device)
         end_token = int(end_token)
 
         gumbel_helper = GumbelSoftmaxEmbeddingHelper(
@@ -122,8 +125,8 @@ class CtrlGenModel(ModuleBase):
         state_g = self.decoder._cell.zero_state(64)
         state_g = state_g._replace(cell_state=self.connector(h_))
         soft_outputs_, _, soft_length_, = self.decoder(
-            memory=enc_outputs.cuda(),
-            memory_sequence_length=(inputs['length']-1).cuda(),
+            memory=enc_outputs,
+            memory_sequence_length=sequence_length,
             helper=gumbel_helper,
             initial_state=state_g)
 
@@ -131,7 +134,7 @@ class CtrlGenModel(ModuleBase):
 
         greedy_helper = self.decoder.create_helper(
             decoding_strategy='infer_greedy',
-            start_tokens=start_tokens.cuda(),
+            start_tokens=start_tokens,
             end_token=end_token,
             embedding=self.embedder)
         outputs_, _, length_ = self.decoder(
@@ -145,27 +148,33 @@ class CtrlGenModel(ModuleBase):
         clas_logits, clas_preds = self.classifier(
             input=self.clas_embedder(ids=inputs['text_ids'][:, 1:]).transpose(1, 2),
             sequence_length=inputs['length']-1)
-        loss_d_clas = self.loss_fn_d(clas_logits, inputs['labels'].type(torch.FloatTensor).cuda())
+        loss_d_clas = self.loss_fn_d(clas_logits, inputs['labels'].to(dtype=torch.float, device=self.device))
         accu_d = tx.evals.accuracy(labels=inputs['labels'], preds=clas_preds)
 
         # Classification loss for the generator, based on soft samples
         soft_logits, soft_preds = self.classifier(
-            input=self.clas_embedder(soft_ids=soft_outputs_.sample_id).transpose(1, 2).cuda(),
+            input=self.clas_embedder(soft_ids=soft_outputs_.sample_id).transpose(1, 2).to(self.device),
             sequence_length=soft_length_)
         loss_g_clas = self.loss_fn_g(
             soft_logits,
-            (1 - inputs['labels']).type(torch.FloatTensor).cuda())
+            (1 - inputs['labels']).to(dtype=torch.float, device=self.device))
 
         # Accuracy on soft samples, for training progress monitoring
         accu_g = tx.evals.accuracy(labels=1-inputs['labels'], preds=soft_preds)
 
         # Accuracy on greedy-decoded samples, for training progress monitoring
-        '''print("self.clas_embedder(ids=outputs_.sample_id).transpose(1, 2)", self.clas_embedder(ids=outputs_.sample_id).transpose(1, 2).size(), length_.size())
+        max_dim = 5
+        input_gdy = self.clas_embedder(ids=outputs_.sample_id).transpose(1, 2)
+        if max_dim > input_gdy.size()[-1]:
+            pad = (0, max_dim - input_gdy.size()[-1])
+            input_gdy =  F.pad(input_gdy, pad, 'constant', 0)
+            print("input_gdy", input_gdy.size())
+
         _, gdy_preds = self.classifier(
-            input=self.clas_embedder(ids=outputs_.sample_id).transpose(1, 2),
+            input=input_gdy,
             sequence_length=length_)
         accu_g_gdy = tx.evals.accuracy(
-            labels=1-inputs['labels'], preds=gdy_preds)'''
+            labels=1-inputs['labels'], preds=gdy_preds)
 
         # Aggregates losses
         loss_g = loss_g_ae + lambda_g * loss_g_clas
@@ -182,7 +191,8 @@ class CtrlGenModel(ModuleBase):
             "loss_g": loss_g,
             "loss_g_ae": loss_g_ae,
             "loss_g_clas": loss_g_clas,
-            "accu_g": accu_g
+            "accu_g": accu_g,
+            "accu_g_gdy": accu_g_gdy
         }
 
         fetches_eval = {}
@@ -196,6 +206,7 @@ class CtrlGenModel(ModuleBase):
             metrics = {
                 "accu_d": accu_d,
                 "accu_g": accu_g,
+                "accu_g_gdy": accu_g_gdy
             }
             samples = {
                 "original": inputs['text_ids'][:, 1:],

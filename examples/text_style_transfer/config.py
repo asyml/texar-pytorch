@@ -12,7 +12,7 @@ max_nepochs = 12 # Total number of training epochs
                  # (including pre-train and full-train)
 pretrain_nepochs = 10 # Number of pre-train epochs (training as autoencoder)
 display = 500  # Display the training results every N training steps.
-display_eval = 10 # Display the dev results every N training steps (set to a
+display_eval = 1e10 # Display the dev results every N training steps (set to a
                     # very large value to disable it).
 sample_path = './samples'
 checkpoint_path = './checkpoints'
