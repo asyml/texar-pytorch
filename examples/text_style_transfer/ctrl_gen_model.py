@@ -44,14 +44,16 @@ class CtrlGenModel(ModuleBase):
             hparams=self._hparams.embedder)
 
         self.encoder = UnidirectionalRNNEncoder(
-            input_size=self._hparams.embedder.dim, hparams=self._hparams.encoder)
+            input_size=self._hparams.embedder.dim,
+            hparams=self._hparams.encoder)
 
         self.label_connector = MLPTransformConnector(
             self._hparams.dim_c, linear_layer_dim=1)
 
+        encoder_kwargs = self._hparams.encoder.rnn_cell.kwargs
         self.decoder = AttentionRNNDecoder(
             input_size=self._hparams.embedder.dim,
-            encoder_output_size=self._hparams.encoder.rnn_cell.kwargs.num_units,
+            encoder_output_size=encoder_kwargs.num_units,
             vocab_size=self.vocab.size,
             cell_input_fn=lambda inputs, attention: inputs,
             hparams=self._hparams.decoder)
@@ -64,10 +66,13 @@ class CtrlGenModel(ModuleBase):
             vocab_size=self.vocab.size,
             hparams=self._hparams.embedder)
 
+        decoder_kwargs = self._hparams.decoder.rnn_cell.kwargs
         self.connector = MLPTransformConnector(
-            self.decoder.state_size, linear_layer_dim=self._hparams.decoder.rnn_cell.kwargs.num_units)
-        self.loss_fn_d = torch.nn.BCEWithLogitsLoss()
-        self.loss_fn_g = torch.nn.BCEWithLogitsLoss()
+            self.decoder.state_size,
+            linear_layer_dim=decoder_kwargs.num_units)
+
+        self.loss_fn = torch.nn.BCEWithLogitsLoss()
+
         self.device = device
 
     def forward(self, inputs, gamma, lambda_g, mode='train'):
@@ -148,14 +153,14 @@ class CtrlGenModel(ModuleBase):
         clas_logits, clas_preds = self.classifier(
             input=self.clas_embedder(ids=inputs['text_ids'][:, 1:]).transpose(1, 2),
             sequence_length=inputs['length']-1)
-        loss_d_clas = self.loss_fn_d(clas_logits, inputs['labels'].to(dtype=torch.float, device=self.device))
+        loss_d_clas = self.loss_fn(clas_logits, inputs['labels'].to(dtype=torch.float, device=self.device))
         accu_d = tx.evals.accuracy(labels=inputs['labels'], preds=clas_preds)
 
         # Classification loss for the generator, based on soft samples
         soft_logits, soft_preds = self.classifier(
             input=self.clas_embedder(soft_ids=soft_outputs_.sample_id).transpose(1, 2).to(self.device),
             sequence_length=soft_length_)
-        loss_g_clas = self.loss_fn_g(
+        loss_g_clas = self.loss_fn(
             soft_logits,
             (1 - inputs['labels']).to(dtype=torch.float, device=self.device))
 
@@ -163,12 +168,11 @@ class CtrlGenModel(ModuleBase):
         accu_g = tx.evals.accuracy(labels=1-inputs['labels'], preds=soft_preds)
 
         # Accuracy on greedy-decoded samples, for training progress monitoring
-        max_dim = 5
+        max_dim = max(self._hparams.classifier.kernel_size)
         input_gdy = self.clas_embedder(ids=outputs_.sample_id).transpose(1, 2)
         if max_dim > input_gdy.size()[-1]:
             pad = (0, max_dim - input_gdy.size()[-1])
             input_gdy =  F.pad(input_gdy, pad, 'constant', 0)
-            print("input_gdy", input_gdy.size())
 
         _, gdy_preds = self.classifier(
             input=input_gdy,

@@ -31,16 +31,13 @@ $ python main.py --config config
 
 import os
 import importlib
-import numpy as np
+import argparse
 import torch
+import numpy as np
+
 import texar as tx
 from texar.core.optimization import get_optimizer, get_train_op
-
-import argparse
-
 from ctrl_gen_model import CtrlGenModel
-
-import traceback
 
 
 parser = argparse.ArgumentParser()
@@ -48,9 +45,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--config", default="config",
     help="The config to use.")
-'''parser.add_argument(
-    "--output_dir", default="output/",
-    help="The output directory where the model checkpoints will be written.")'''
 
 args = parser.parse_args()
 
@@ -60,8 +54,6 @@ def main():
     """
     Builds the model and runs.
     """
-
-    #tx.utils.maybe_create_dir(args.output_dir)
 
     # Data
     train_data = tx.data.MultiAlignedData(config.train_data)
@@ -115,6 +107,8 @@ def main():
                 step += 1
 
                 batch_d = it_d.next()._batch
+                print("type", type(next(iter(it_d))))
+                raise Exception
                 for key in batch_d:
                     if isinstance(batch_d[key], torch.Tensor):
                         batch_d[key] = batch_d[key].cuda()
@@ -133,8 +127,6 @@ def main():
                 train_op_g()
                 avg_meters_g.add(vals_g, detach=True)
 
-                '''print('step: {}, {}'.format(step, avg_meters_d.to_str(4)))
-                print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))'''
                 if verbose and (step == 1 or step % config.display == 0):
                     print('step: {}, {}'.format(step, avg_meters_d.to_str(4)))
                     print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))
@@ -146,7 +138,6 @@ def main():
             except StopIteration:
                 print('epoch: {}, {}'.format(epoch, avg_meters_d.to_str(4)))
                 print('epoch: {}, {}'.format(epoch, avg_meters_g.to_str(4)))
-                traceback.print_exc()
                 break
 
     def _eval_epoch(gamma_, lambda_g_, epoch, val_or_test='val'):
@@ -185,7 +176,6 @@ def main():
                     append=True, mode='v')
             except StopIteration:
                 print(f'{val_or_test}: {avg_meters.to_str(precision=4)}')
-                traceback.print_exc()
                 break
         return avg_meters.avg()
 

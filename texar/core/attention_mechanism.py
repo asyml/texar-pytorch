@@ -914,9 +914,8 @@ def compute_attention(attention_mechanism: AttentionMechanism,
     context = torch.squeeze(context, dim=1)
 
     if attention_layer is not None:
-        #print("attention_layer", attention_layer, torch.cat((cell_output, context), dim=1).cuda().device)
-        attention_layer.to("cuda:0")
-        attention = attention_layer(torch.cat((cell_output, context), dim=1).cuda())
+        attention_layer
+        attention = attention_layer(torch.cat((cell_output, context), dim=1))
     else:
         attention = context
 
