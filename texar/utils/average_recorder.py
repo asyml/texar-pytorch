@@ -182,7 +182,8 @@ class AverageRecorder:
             record_dict = {self._default_metric_name: record}
         return record_dict
 
-    def add(self, record: Record, weight: Optional[Scalar] = None, detach: bool = True):
+    def add(self, record: Record,
+            weight: Optional[Scalar] = None, detach: bool = True):
         r"""Appends a new record.
 
         :attr:`record` can be a ``list``, ``dict``, or a single scalar. The

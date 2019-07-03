@@ -5,18 +5,26 @@
 
 import copy
 
-max_nepochs = 12 # Total number of training epochs
-                 # (including pre-train and full-train)
-pretrain_nepochs = 10 # Number of pre-train epochs (training as autoencoder)
-display = 500  # Display the training results every N training steps.
-display_eval = 1e10 # Display the dev results every N training steps (set to a
-                    # very large value to disable it).
+# Total number of training epochs
+# (including pre-train and full-train)
+max_nepochs = 12
+
+# Number of pre-train epochs (training as autoencoder)
+pretrain_nepochs = 10
+
+# Display the training results every N training steps.
+display = 500
+
+# Display the dev results every N training steps (set to a
+# very large value to disable it).
+display_eval = 1e10
+
 sample_path = './samples'
 checkpoint_path = './checkpoints'
 restore = ''   # Model snapshot to restore from
 
-lambda_g = 0.1    # Weight of the classification loss
-gamma_decay = 0.5 # Gumbel-softmax temperature anneal rate
+lambda_g = 0.1     # Weight of the classification loss
+gamma_decay = 0.5  # Gumbel-softmax temperature anneal rate
 
 train_data = {
     'batch_size': 64,

@@ -50,6 +50,7 @@ args = parser.parse_args()
 
 config = importlib.import_module(args.config)
 
+
 def main():
     """
     Builds the model and runs.
@@ -101,32 +102,32 @@ def main():
 
         it_d = iterator.get_iterator("train_d")
         it_g = iterator.get_iterator("train_g")
-        
+
         while True:
             try:
                 step += 1
 
-                batch_d = it_d.next()._batch
-                print("type", type(next(iter(it_d))))
-                raise Exception
+                batch_d = next(iter(it_d)).__dict__["_batch"]
                 for key in batch_d:
                     if isinstance(batch_d[key], torch.Tensor):
-                        batch_d[key] = batch_d[key].cuda()
-                vals_d, _, _= model(batch_d, gamma_, lambda_g_, mode="train")
+                        batch_d[key] = batch_d[key].to(device)
+                vals_d, _, _ = model(batch_d, gamma_, lambda_g_, mode="train")
                 vals_d["loss_d"].backward()
                 train_op_d()
                 avg_meters_d.add(vals_d, detach=True)
 
-                batch_g = it_g.next()._batch
+                batch_g = next(iter(it_g)).__dict__["_batch"]
                 for key in batch_g:
                     if isinstance(batch_g[key], torch.Tensor):
-                        batch_g[key] = batch_g[key].cuda()
+                        batch_g[key] = batch_g[key].to(device)
                 _, vals_g, _ = model(batch_g, gamma_, lambda_g_, mode="train")
                 vals_g["loss_g"].backward(retain_graph=True)
                 vals_g["loss_g_ae"].backward(retain_graph=True)
                 train_op_g()
                 avg_meters_g.add(vals_g, detach=True)
 
+                print('step: {}, {}'.format(step, avg_meters_d.to_str(4)))
+                print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))
                 if verbose and (step == 1 or step % config.display == 0):
                     print('step: {}, {}'.format(step, avg_meters_d.to_str(4)))
                     print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))
@@ -146,17 +147,16 @@ def main():
 
         while True:
             try:
-                batch = it.next()._batch
+                batch = next(iter(it)).__dict__["_batch"]
                 for key in batch:
                     if isinstance(batch[key], torch.Tensor):
                         batch[key] = batch[key].cuda()
                 _, _, vals = model(batch, gamma_, lambda_g_, mode='eval')
                 batch_size = vals.pop('batch_size')
 
-                 # Computes BLEU
+                # Computes BLEU
                 samples = vals['samples']
                 vals.pop('samples')
-                #samples = tx.utils.dict_pop(vals, list(vals['sample'].keys()))
                 hyps = tx.data.vocabulary.map_ids_to_strs(
                     ids=samples['transferred'].cpu(), vocab=vocab)
 
@@ -172,7 +172,7 @@ def main():
                 # Writes samples
                 tx.utils.write_paired_text(
                     refs.squeeze(), hyps,
-                    os.path.join(config.sample_path, 'val.%d'%epoch),
+                    os.path.join(config.sample_path, f'val.{epoch}'),
                     append=True, mode='v')
             except StopIteration:
                 print(f'{val_or_test}: {avg_meters.to_str(precision=4)}')
@@ -188,14 +188,14 @@ def main():
     gamma_ = 1.
     lambda_g_ = 0.
 
-    for epoch in range(1, config.max_nepochs+1):
+    for epoch in range(1, config.max_nepochs + 1):
         if epoch > config.pretrain_nepochs:
             # Anneals the gumbel-softmax temperature
             gamma_ = max(0.001, gamma_ * config.gamma_decay)
             lambda_g_ = config.lambda_g
         print('gamma: {}, lambda_g: {}'.format(gamma_, lambda_g_))
+
         _train_epoch(gamma_, lambda_g_, epoch)
-    
         _eval_epoch(gamma_, lambda_g_, epoch, 'val')
         states = {
             'model': model.state_dict(),
@@ -204,6 +204,7 @@ def main():
         }
         torch.save(states, os.path.join(config.checkpoint_path, 'model.ckpt'))
         _eval_epoch(gamma_, lambda_g_, epoch, 'test')
+
 
 if __name__ == '__main__':
     main()

@@ -381,8 +381,6 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
 
         while (not torch.all(finished).item() and
                (max_decoding_length is None or time < max_decoding_length)):
-            #print("step", step_inputs.device)
-            #print(helper)
             (next_outputs, decoder_state, next_inputs,
              decoder_finished) = self.step(helper, time, step_inputs, state)
 

@@ -914,7 +914,6 @@ def compute_attention(attention_mechanism: AttentionMechanism,
     context = torch.squeeze(context, dim=1)
 
     if attention_layer is not None:
-        attention_layer
         attention = attention_layer(torch.cat((cell_output, context), dim=1))
     else:
         attention = context
