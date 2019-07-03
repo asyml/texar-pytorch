@@ -629,8 +629,19 @@ class MergeLayer(nn.Module):
             :attr:`'elemwise_sum'` and :attr:`'elemwise_mul'`.
     """
 
-    def __init__(self, layers: Optional[nn.ModuleList] = None,
-                 mode: str = 'concat', dim: int = 2):
+    _functions: Dict[str, Callable[[torch.Tensor, int], torch.Tensor]] = {
+        "sum": torch.sum,
+        "mean": torch.mean,
+        "prod": torch.prod,
+        "max": lambda tensors, dim: torch.max(tensors, dim)[0],
+        "min": lambda tensors, dim: torch.min(tensors, dim)[0],
+        "and": torch.all,
+        "or": torch.any,
+        "logsumexp": torch.logsumexp
+    }
+
+    def __init__(self, layers: Optional[List[nn.Module]] = None,
+                 mode: str = 'concat', dim: Optional[int] = None):
         super().__init__()
         self._mode = mode
         self._dim = dim
