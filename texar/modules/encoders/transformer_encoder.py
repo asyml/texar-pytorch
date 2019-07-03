@@ -220,7 +220,6 @@ class TransformerEncoder(EncoderBase):
                 'multihead_attention': {
                     'name': 'multihead_attention',
                     'num_units': 512,
-                    'output_dim': 512,
                     'num_heads': 8,
                     'dropout_rate': 0.1,
                     'output_dim': 512,

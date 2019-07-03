@@ -7,8 +7,9 @@ import unittest
 from typing import List, Tuple, no_type_check
 
 import numpy as np
-
 import torch
+
+import texar as tx
 from texar.data.data.data_base import (
     DataBase, DataSource, IterDataSource, SequenceDataSource, ZipDataSource)
 from texar.data.data.data_iterators import (
@@ -245,6 +246,35 @@ class DataIteratorTest(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             data_iterator.switch_to_val_data()
         self.assertTrue('Val data not provided' in str(context.exception))
+
+    def test_dynamic_batching(self):
+        r"""Tests dynamic batching using :class:`texar.data.BatchingStrategy`.
+        """
+        sent_lengths = np.random.randint(10, 20, size=(100,))
+        sentences = [['a'] * length for length in sent_lengths]
+        data_source = tx.data.SequenceDataSource(sentences)
+
+        class CustomData(tx.data.DataBase):
+            def __init__(self, source):
+                super().__init__(source)
+
+            def process(self, raw_example):
+                return raw_example
+
+            def collate(self, examples):
+                return Batch(len(examples), text=examples)
+
+        train_data = CustomData(data_source)
+
+        batch_size = 5
+        max_tokens = 75
+        strategy = tx.data.TokenCountBatchingStrategy(
+            max_tokens, batch_size, len)
+        iterator = tx.data.DataIterator(train_data, strategy)
+
+        for batch in iterator:
+            self.assertLessEqual(len(batch), batch_size)
+            self.assertLessEqual(sum(len(s) for s in batch.text), max_tokens)
 
 
 RawExample = Tuple[List[int], str]

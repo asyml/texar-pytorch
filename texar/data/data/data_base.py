@@ -259,7 +259,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
     _source: DataSource[RawExample]
     _dataset_size: Optional[int]
 
-    def __init__(self, source: DataSource[RawExample], hparams,
+    def __init__(self, source: DataSource[RawExample], hparams=None,
                  device: Optional[torch.device] = None):
         self._source = source
         self._hparams = HParams(hparams, self.default_hparams())
@@ -608,13 +608,8 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
     def __len__(self) -> int:
         if self._dataset_size is None:
-            warnings.warn(
-                "The provided data source does not support random access. To "
-                "obtain dataset size, a full traversal must be performed. "
-                "This is often unnecessary and slow, consider redesigning your "
-                "use case.")
-            self._prefetch_all_source()
-            assert self._dataset_size is not None
+            raise TypeError(
+                "__len__ not supported for datasets with undetermined size")
         return self._dataset_size
 
     def process(self, raw_example: RawExample) -> Example:
