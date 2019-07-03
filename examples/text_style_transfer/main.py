@@ -126,8 +126,6 @@ def main():
                 train_op_g()
                 avg_meters_g.add(vals_g, detach=True)
 
-                print('step: {}, {}'.format(step, avg_meters_d.to_str(4)))
-                print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))
                 if verbose and (step == 1 or step % config.display == 0):
                     print('step: {}, {}'.format(step, avg_meters_d.to_str(4)))
                     print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))

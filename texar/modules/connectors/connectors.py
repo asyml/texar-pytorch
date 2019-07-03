@@ -108,6 +108,7 @@ def _mlp_transform(inputs: TensorStruct,
                    output_size: OutputSize,
                    linear_layer,
                    activation_fn: Optional[ActivationFn] = layers.identity,
+                   device: Optional[str] = None
                    ) -> Any:
     r"""Transforms inputs through a fully-connected layer that creates
     the output with specified size.
@@ -133,7 +134,6 @@ def _mlp_transform(inputs: TensorStruct,
     """
     # Flatten inputs
     flat_input = nest.flatten(inputs)
-    device = flat_input[0].device
     if len(flat_input[0].size()) == 1:
         batch_size = 1
     else:
@@ -151,8 +151,7 @@ def _mlp_transform(inputs: TensorStruct,
     else:
         size_list = flat_output_size
 
-    concat_input.to(device)
-
+    concat_input = concat_input.to(device)
     fc_output = linear_layer(concat_input)
     if activation_fn is not None:
         fc_output = activation_fn(fc_output)
@@ -406,11 +405,12 @@ class MLPTransformConnector(ConnectorBase):
     def __init__(self,
                  output_size: OutputSize,
                  linear_layer_dim: int,
-                 hparams: Optional[HParamsType] = None):
+                 hparams: Optional[HParamsType] = None,
+                 device: Optional[str] = None):
         ConnectorBase.__init__(self, output_size, hparams)
         self._linear_layer = nn.Linear(
             linear_layer_dim, _sum_output_size(output_size))
-
+        self.device = device
     @staticmethod
     def default_hparams() -> dict:
         r"""Returns a dictionary of hyperparameters with default values.
@@ -453,9 +453,9 @@ class MLPTransformConnector(ConnectorBase):
             same structure of :attr:`output_size`.
         """
         activation_fn = layers.get_activation_fn(self.hparams.activation_fn)
-
         output = _mlp_transform(
-            inputs, self._output_size, self._linear_layer, activation_fn)
+            inputs, self._output_size, self._linear_layer,
+            activation_fn, device=self.device)
 
         return output
 

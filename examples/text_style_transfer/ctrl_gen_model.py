@@ -44,9 +44,10 @@ class CtrlGenModel(ModuleBase):
         self.encoder = UnidirectionalRNNEncoder(
             input_size=self._hparams.embedder.dim,
             hparams=self._hparams.encoder)
-
+        print("MLPTransformConnector", device)
         self.label_connector = MLPTransformConnector(
-            self._hparams.dim_c, linear_layer_dim=1)
+            self._hparams.dim_c, linear_layer_dim=1,
+            device=device)
 
         encoder_kwargs = self._hparams.encoder.rnn_cell.kwargs
         self.decoder = AttentionRNNDecoder(
@@ -65,9 +66,11 @@ class CtrlGenModel(ModuleBase):
             hparams=self._hparams.embedder)
 
         decoder_kwargs = self._hparams.decoder.rnn_cell.kwargs
+
         self.connector = MLPTransformConnector(
             self.decoder.state_size,
-            linear_layer_dim=decoder_kwargs.num_units)
+            linear_layer_dim=decoder_kwargs.num_units,
+            device=device)
 
         self.loss_fn = torch.nn.BCEWithLogitsLoss()
 
