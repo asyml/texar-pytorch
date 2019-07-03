@@ -139,17 +139,14 @@ class Vocab:
         vocab = [self._pad_token, self._bos_token, self._eos_token,
                  self._unk_token] + vocab
         # Must make sure this is consistent with the above line
-        unk_token_idx = 3
         vocab_size = len(vocab)
         vocab_idx = np.arange(vocab_size)
 
         # Creates python maps to interface with python code
-        id_to_token_map_py = _make_defaultdict(vocab_idx, vocab,
-                                               self._unk_token)
-        token_to_id_map_py = _make_defaultdict(vocab, vocab_idx,
-                                               unk_token_idx)
+        id_to_token_map_py = dict(zip(vocab_idx, vocab))
+        token_to_id_map_py = dict(zip(vocab, vocab_idx))
 
-        return id_to_token_map_py, token_to_id_map_py  # type: ignore
+        return id_to_token_map_py, token_to_id_map_py
 
     def map_ids_to_tokens_py(self, ids: np.ndarray) -> np.ndarray:
         r"""Maps ids into text tokens.

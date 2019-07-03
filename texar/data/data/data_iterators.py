@@ -461,9 +461,8 @@ class SingleDatasetIterator(DataLoader):
         else:
             sampler = SequentialSampler(dataset)
 
-        num_parallel_calls = dataset.hparams.num_parallel_calls
+        num_workers = dataset.hparams.num_parallel_calls
         collate_fn = dataset._collate_and_maybe_return
-        num_workers = (0 if num_parallel_calls == 1 else num_parallel_calls)
 
         if batching_strategy is not None:
             batch_sampler = DynamicBatchSampler(
