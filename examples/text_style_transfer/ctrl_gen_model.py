@@ -166,7 +166,8 @@ class CtrlGenModel(ModuleBase):
             (1 - inputs['labels']).to(dtype=torch.float, device=self.device))
 
         # Accuracy on soft samples, for training progress monitoring
-        accu_g = tx.evals.accuracy(labels=1 - inputs['labels'], preds=soft_preds)
+        accu_g = tx.evals.accuracy(
+            labels=1 - inputs['labels'], preds=soft_preds)
 
         # Accuracy on greedy-decoded samples, for training progress monitoring
         max_dim = max(self._hparams.classifier.kernel_size)
