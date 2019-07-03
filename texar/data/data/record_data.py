@@ -239,7 +239,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
     Args:
         hparams (dict): Hyperparameters. See :meth:`default_hparams`
             for the defaults.
-        device: The device of the produces batches. For GPU training, set to
+        device: The device of the produced batches. For GPU training, set to
             current CUDA device.
 
     The module reads and restores data from TFRecord files and

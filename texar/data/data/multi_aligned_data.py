@@ -96,7 +96,7 @@ class MultiAlignedData(
     Args:
         hparams (dict): Hyperparameters. See :meth:`default_hparams` for the
             defaults.
-        device: The device of the produces batches. For GPU training, set to
+        device: The device of the produced batches. For GPU training, set to
             current CUDA device.
 
     The processor can read any number of parallel fields as specified in

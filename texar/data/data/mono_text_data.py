@@ -77,7 +77,7 @@ class MonoTextData(TextDataBase[str, List[str]]):
     Args:
         hparams: A `dict` or instance of :class:`~texar.HParams` containing
             hyperparameters. See :meth:`default_hparams` for the defaults.
-        device: The device of the produces batches. For GPU training, set to
+        device: The device of the produced batches. For GPU training, set to
             current CUDA device.
 
     By default, the processor reads raw data files, performs tokenization,
