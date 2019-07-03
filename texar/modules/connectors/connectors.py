@@ -123,6 +123,8 @@ def _mlp_transform(inputs: TensorStruct,
         output_size: Can be an ``Integer``, a ``torch.Size``, or a (nested)
             ``tuple`` of ``Integers`` or ``torch.Size``.
         activation_fn: Activation function applied to the output.
+        device: A `str`, the device that attr:`_mlp_transform` will
+            be inplemented on.
 
     :returns:
         If :attr:`output_size` is an ``Integer`` or a ``torch.Size``,
@@ -398,6 +400,8 @@ class MLPTransformConnector(ConnectorBase):
             hyperparamerter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter sturcture and
             default values.
+        device (str, optional): Name of device that
+            attr:`MLPTransformConnector` will be implemented on.
 
     The input to the connector can have arbitrary structure and size.
     """
