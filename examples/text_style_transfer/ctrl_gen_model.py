@@ -44,7 +44,6 @@ class CtrlGenModel(ModuleBase):
         self.encoder = UnidirectionalRNNEncoder(
             input_size=self._hparams.embedder.dim,
             hparams=self._hparams.encoder)
-        print("MLPTransformConnector", device)
         self.label_connector = MLPTransformConnector(
             self._hparams.dim_c, linear_layer_dim=1,
             device=device)

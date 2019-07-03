@@ -411,6 +411,7 @@ class MLPTransformConnector(ConnectorBase):
         self._linear_layer = nn.Linear(
             linear_layer_dim, _sum_output_size(output_size))
         self.device = device
+
     @staticmethod
     def default_hparams() -> dict:
         r"""Returns a dictionary of hyperparameters with default values.
