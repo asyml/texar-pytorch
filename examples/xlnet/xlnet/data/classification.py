@@ -37,7 +37,8 @@ class Yelp5Processor(DataProcessor):
     def get_test_examples(self):
         raise TypeError("The Yelp 5 dataset does not have a test set.")
 
-    def _create_examples(self, input_file: str) -> List[InputExample]:
+    @staticmethod
+    def _create_examples(input_file: str) -> List[InputExample]:
         """Creates examples for the training and dev sets."""
         examples = []
         with open(input_file) as f:
@@ -63,7 +64,8 @@ class ImdbProcessor(DataProcessor):
     def get_test_examples(self) -> List[InputExample]:
         raise TypeError("The IMDB dataset does not have a test set.")
 
-    def _create_examples(self, data_dir: str) -> List[InputExample]:
+    @staticmethod
+    def _create_examples(data_dir: str) -> List[InputExample]:
         examples = []
         for label in ["neg", "pos"]:
             cur_dir = os.path.join(data_dir, label)

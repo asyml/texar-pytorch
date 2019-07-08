@@ -20,11 +20,11 @@ https://github.com/zihangdai/xlnet/blob/master/modeling.py
 import itertools
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 
-import texar as tx
 import torch
 from torch import LongTensor, Tensor
 from torch import nn
 from torch.nn import functional as F
+import texar as tx
 
 from xlnet.model import utils
 from xlnet.model.modules import (
@@ -68,7 +68,7 @@ class XLNet(tx.ModuleBase):
             self._hparams, RelativeMultiheadAttention.default_hparams())
         ff_hparams = tx.utils.dict_fetch(
             self._hparams, PositionWiseFF.default_hparams())
-        for idx in range(num_layers):
+        for _ in range(num_layers):
             self.attn_layers.append(
                 RelativeMultiheadAttention(hparams=rel_attn_hparams))
             self.ff_layers.append(PositionWiseFF(hparams=ff_hparams))

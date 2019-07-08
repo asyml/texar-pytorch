@@ -35,7 +35,6 @@ class StreamingMetric(Generic[T]):
 
     def __init__(self):
         self.count = 0
-        self.reset()
 
     def add(self, gold: List[T], pred: List[T]):
         assert len(gold) == len(pred)
@@ -44,14 +43,12 @@ class StreamingMetric(Generic[T]):
     def value(self) -> float:
         raise NotImplementedError
 
-    def reset(self):
-        raise NotImplementedError
-
 
 class StreamingAccuracy(StreamingMetric[T]):
     name = "accuracy"
 
-    def reset(self):
+    def __init__(self):
+        super().__init__()
         self.correct = 0
 
     def add(self, gold: List[T], pred: List[T]):
@@ -67,7 +64,8 @@ class StreamingAccuracy(StreamingMetric[T]):
 class StreamingPearsonR(StreamingMetric[float]):
     name = "pearsonR"
 
-    def reset(self):
+    def __init__(self):
+        super().__init__()
         self.x_sum = 0.0
         self.x2_sum = 0.0
         self.y_sum = 0.0

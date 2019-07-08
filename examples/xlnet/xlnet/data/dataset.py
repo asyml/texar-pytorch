@@ -22,9 +22,9 @@ import logging
 import os
 from typing import Optional, Dict
 
-import texar as tx
 import torch
 import tqdm
+import texar as tx
 
 from xlnet.data import utils
 from xlnet.data.processor import DataProcessor, get_processor_class
@@ -81,7 +81,7 @@ def construct_dataset(processor: DataProcessor, output_dir: str,
     for split, examples in split_examples.items():
         output_file = os.path.join(output_dir, f"{file_prefix}{split}.pkl")
         writer = tx.data.RecordData.writer(output_file, feature_types)
-        for ex_index, example in enumerate(tqdm.tqdm(examples, ncols=80)):
+        for example in tqdm.tqdm(examples, ncols=80):
             feature = utils.convert_single_example(
                 example, processor.labels, max_seq_length, tokenize_fn)
 

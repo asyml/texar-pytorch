@@ -21,9 +21,9 @@ https://github.com/zihangdai/xlnet/blob/master/prepro_utils.py
 import unicodedata
 from typing import Callable, Iterator, List, TypeVar, Union
 
-import sentencepiece as spm
-import torch
 from mypy_extensions import TypedDict
+import torch
+import sentencepiece as spm
 
 __all__ = [
     "Example",

@@ -19,11 +19,11 @@ https://github.com/zihangdai/xlnet/blob/master/modeling.py
 
 from typing import Dict, Any, Optional
 
-import texar as tx
 import torch
 from torch import Tensor
 from torch import nn
 from torch.nn import functional as F
+import texar as tx
 
 __all__ = [
     "PositionWiseFF",

@@ -21,10 +21,10 @@ import time
 from typing import Optional, Dict
 
 import numpy as np
-import sentencepiece as spm
-import texar as tx
 import torch
 import tqdm
+import sentencepiece as spm
+import texar as tx
 
 import xlnet
 
@@ -245,5 +245,5 @@ def main(args):
 
 if __name__ == '__main__':
     logging.root.setLevel(logging.INFO)
-    args = parse_args()
-    main(args)
+    _args = parse_args()
+    main(_args)

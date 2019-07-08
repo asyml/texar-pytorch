@@ -42,4 +42,3 @@ eval_steps = 500
 # Save model per this many steps. Set to -1 to only evaluate
 # at end of training.
 save_steps = 500
-
