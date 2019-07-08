@@ -582,13 +582,14 @@ class ReparameterizedStochasticConnector(ConnectorBase):
 
 
         :returns:
-            If :attr:`transform` is ``True``, returns a ``tuple``
-            (:attr:`output`, :attr:`sample`), where
+            A tuple (:attr:`output`, :attr:`sample`), where
 
             - output: A ``Tensor`` or a (nested) ``tuple`` of Tensors with
               the same structure and size of :attr:`output_size`.
               The batch dimension equals :attr:`num_samples` if specified,
               or is determined by the distribution dimensionality.
+              If :attr:`transform` is `False`, it will be
+              equal to :attr:`sample`.
             - sample: The sample from the distribution, prior to transformation.
 
             Otherwise, returns a ``Tensor`` :attr:`sample`, where
@@ -624,9 +625,11 @@ class ReparameterizedStochasticConnector(ConnectorBase):
                 self._linear_layer,
                 activation_fn)
             _assert_same_size(output, self._output_size)
-            return (output, sample)
+
         else:
-            return (sample, sample)
+            output = sample
+
+        return output, sample
 
 
 class StochasticConnector(ConnectorBase):
@@ -729,18 +732,19 @@ class StochasticConnector(ConnectorBase):
                 already been included in :attr:`distribution`'s dimensionality,
                 :attr:`num_samples` should be left as ``None``.
             transform (bool): Whether to perform MLP transformation of the
-                distribution samples. If ``True``, the structure/shape of a
-                sample must match :attr:`output_size`. Otherwise, the size of
-                a sample will be determined by :attr:`distribution`'s
-                dimensionality.
+                distribution samples. If ``False``, the structure/shape of a
+                sample must match :attr:`output_size`.
 
         :returns:
-            A ``Tensor`` or a (nested) ``tuple`` output, where
+            A tuple (:attr:`output`, :attr:`sample`), where
 
-            - output: A ``Tensor`` or a (nested) ``tuple`` of Tensors
-              with the same structure and size of :attr:`output_size`.
+            - output: A ``Tensor`` or a (nested) ``tuple`` of Tensors with
+              the same structure and size of :attr:`output_size`.
               The batch dimension equals :attr:`num_samples` if specified,
               or is determined by the distribution dimensionality.
+              If :attr:`transform` is `False`, it will be
+              equal to :attr:`sample`.
+            - sample: The sample from the distribution, prior to transformation.
 
         Raises:
             ValueError: If distribution can be reparameterizable.
@@ -748,30 +752,32 @@ class StochasticConnector(ConnectorBase):
         """
 
         if num_samples:
-            output = self._dstr.sample([num_samples])
+            sample = self._dstr.sample([num_samples])
         else:
-            output = self._dstr.sample()
+            sample = self._dstr.sample()
 
         if self._dstr.event_shape == []:
-            output = torch.reshape(
-                input=output, shape=output.size() + torch.Size([1]))
+            sample = torch.reshape(
+                input=sample, shape=sample.size() + torch.Size([1]))
 
         # Disable gradients through samples
-        output = output.detach().float()
+        sample = sample.detach().float()
         if transform:
             fn_modules = ['torch', 'torch.nn', 'texar.custom']
             activation_fn = utils.get_function(
                 self.hparams.activation_fn, fn_modules)
 
             output = _mlp_transform(
-                output,
+                sample,
                 self._output_size,
                 self._linear_layer,
                 activation_fn)
-
             _assert_same_size(output, self._output_size)
 
-        return output
+        else:
+            output = sample
+
+        return output, sample
 
 
 # class ConcatConnector(ConnectorBase):
