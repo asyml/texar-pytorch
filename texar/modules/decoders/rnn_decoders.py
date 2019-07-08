@@ -243,7 +243,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
     r"""RNN decoder with attention mechanism.
 
     Args:
-        input_size (int): Input size of the decoder cell.
+        input_size (int): Dimension of input embeddings.
         encoder_output_size (int): The output size of the encoder cell.
         cell (RNNCellBase, optional): An instance of
             :class:`~texar.core.RNNCellBase`. If `None`, a cell
@@ -290,11 +290,14 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             # Decodes while attending to the source
             dec_embedder = WordEmbedder(vocab_size=data.target_vocab.size, ...)
             decoder = AttentionRNNDecoder(
-                memory=enc_outputs,
-                memory_sequence_length=data_batch['source_length'],
+                encoder_output_size=(self.encoder.cell_fw.hidden_size +
+                                     self.encoder.cell_bw.hidden_size),
+                input_size=dec_embedder.dim,
                 vocab_size=data.target_vocab.size)
             outputs, _, _ = decoder(
                 decoding_strategy='train_greedy',
+                memory=enc_outputs,
+                memory_sequence_length=data_batch['source_length'],
                 inputs=dec_embedder(data_batch['target_text_ids']),
                 sequence_length=data_batch['target_length']-1)
     """
