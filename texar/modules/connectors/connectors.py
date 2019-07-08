@@ -601,7 +601,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             - sample: The sample from the distribution, prior to transformation.
 
         Raises:
-            ValueError: If distribution cannot be reparameterizable.
+            ValueError: If distribution is not reparameterizable.
             ValueError: The output does not match :attr:`output_size`.
         """
         if isinstance(self._dstr_type, str):
@@ -611,6 +611,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
         else:
             dstr = self._dstr_type
 
+<<<<<<< HEAD
 <<<<<<< HEAD
         if not dstr.has_rsample:
             raise ValueError("Distribution should be reparameterizable")
@@ -628,6 +629,10 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             raise ValueError("Distribution should be reparameterizable")
 >>>>>>> Fix spell checking
 >>>>>>> Fix spell checking
+=======
+        if not dstr.has_rsample:
+            raise ValueError("Distribution should be reparameterizable")
+>>>>>>> Polish connector for type check
 
         if num_samples:
             sample = dstr.rsample([num_samples])
@@ -669,6 +674,7 @@ class StochasticConnector(ConnectorBase):
         distribution: A instance of subclass of
             :torch:`distributions.distribution.Distribution`,
             Can be a class, its name or module path, or a class instance.
+            The :attr:`distribution` should not be reparameterizable.
         distribution_kwargs (dict, optional): ``dict`` of keyword arguments
             for the :attr:`distribution`. Its keys are `str`, which are names
             of keyword arguments; Its values are corresponding values for each
@@ -696,23 +702,8 @@ class StochasticConnector(ConnectorBase):
         else:
             self._dstr = distribution
 
-<<<<<<< HEAD
         if self._dstr.has_rsample:
             raise ValueError("Distribution should not be reparameterizable")
-=======
-        self._dstr = utils.check_or_get_instance(
-            distribution, self._dstr_kwargs,
-            ["torch.distributions", "torch.distributions.multivariate_normal",
-             "texar.custom"])
-
-<<<<<<< HEAD
-        if distribution.has_rsample == True:    # type: ignore
-            raise ValueError("Distribution should not be reparametrized")
-=======
-        if distribution.has_rsample:    # type: ignore
-            raise ValueError("Distribution should not be reparameterizable")
->>>>>>> Fix spell checking
->>>>>>> Fix spell checking
 
         if isinstance(mlp_input_size, int):
             input_feature = mlp_input_size
@@ -781,14 +772,8 @@ class StochasticConnector(ConnectorBase):
             - sample: The sample from the distribution, prior to transformation.
 
         Raises:
-<<<<<<< HEAD
+
             ValueError: If distribution can be reparameterizable.
-=======
-<<<<<<< HEAD
-=======
-            ValueError: If distribution can be reparameterizable.
->>>>>>> Fix spell checking
->>>>>>> Fix spell checking
             ValueError: The output does not match :attr:`output_size`.
         """
 
