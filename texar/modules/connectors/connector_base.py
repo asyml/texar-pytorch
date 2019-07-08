@@ -31,7 +31,7 @@ HParamsType = Optional[HParams]
 class ConnectorBase(ModuleBase, Generic[OutputSize], ABC):
     r"""Base class inherited by all connector classes. A connector is to
     transform inputs into outputs with any specified structure and shape.
-    For example, tranforming the final state of an encoder to the initial
+    For example, transforming the final state of an encoder to the initial
     state of a decoder, and performing stochastic sampling in between as
     in Variational Autoencoders (VAEs).
 
@@ -39,13 +39,13 @@ class ConnectorBase(ModuleBase, Generic[OutputSize], ABC):
         output_size: Size of output **excluding** the batch dimension. For
             example, set ``output_size`` to ``dim`` to generate output of
             shape ``[batch_size, dim]``.
-            Can be an `int`, a tuple of `int`, a Tensorshape, or a tuple of
-            TensorShapes.
+            Can be an `int`, a tuple of `int`, a torch.Size, or a tuple of
+            torch.Sizes.
             For example, to transform inputs to have decoder state size, set
             :python:`output_size=decoder.state_size`.
         hparams (dict, optional): Hyperparameters. Missing
-            hyperparamerter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameter will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
     """
 

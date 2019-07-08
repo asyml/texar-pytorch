@@ -122,7 +122,7 @@ def _mlp_transform(inputs: TensorStruct,
     :returns:
         If :attr:`output_size` is an ``Integer`` or a ``torch.Size``,
         returns a ``Tensor`` of shape ``[batch_size, *, output_size]``.
-        If :attr:`output_size` is a ``tuple`` of Integers or TensorShape,
+        If :attr:`output_size` is a ``tuple`` of Integers or torch.Size,
         returns a ``tuple`` having the same structure as:attr:`output_size`,
         where each element ``Tensor`` has the same size as
         defined in :attr:`output_size`.
@@ -187,8 +187,8 @@ class ConstantConnector(ConnectorBase):
             If :attr:`output_size` is ``torch.Size([1, 2, 3])``, then the
             output structure will be ``[batch_size, 1, 2, 3]``.
         hparams (dict, optional): Hyperparameters. Missing
-            hyperparamerter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameter will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
     This connector does not have trainable parameters.
 
@@ -254,7 +254,7 @@ class ConstantConnector(ConnectorBase):
 
         :returns:
             A (structure of) ``Tensor`` whose structure is the same as
-            :attr:`output_size`, with value speicified by
+            :attr:`output_size`, with value specified by
             ``value`` or :attr:`hparams`.
         """
 
@@ -293,8 +293,8 @@ class ForwardConnector(ConnectorBase):
             For example, to transform inputs to have decoder state size, set
             :python:`output_size=decoder.state_size`.
         hparams (dict, optional): Hyperparameters. Missing
-            hyperparamerter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameter will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
     This connector does not have trainable parameters.
@@ -392,8 +392,8 @@ class MLPTransformConnector(ConnectorBase):
         linear_layer_dim: Integer, Value of finale ``dim`` of the input
             tensors. Which is the input dim of the mlp linear layer.
         hparams (dict, optional): Hyperparameters. Missing
-            hyperparamerter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameter will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
     The input to the connector can have arbitrary structure and size.
@@ -504,12 +504,12 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             :torch:`distributions.distribution.Distribution`,
             Can be a distribution class instance or ``str``.
         distribution_kwargs (dict, optional): ``dict`` of keyword arguments
-            for the attr:`distribution`. Its keys are `str`, which are names
+            for the :attr:`distribution`. Its keys are `str`, which are names
             of keyword arguments; Its values are corresponding values for each
             argument.
         hparams (dict, optional): Hyperparameters. Missing
-            hyperparamerter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameter will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
     """
 
@@ -582,8 +582,8 @@ class ReparameterizedStochasticConnector(ConnectorBase):
 
 
         :returns:
-            If attr:`transform` is ``True``, returns a ``tuple``
-            (attr:`output`, attr:`sample`), where
+            If :attr:`transform` is ``True``, returns a ``tuple``
+            (:attr:`output`, :attr:`sample`), where
 
             - output: A ``Tensor`` or a (nested) ``tuple`` of Tensors with
               the same structure and size of :attr:`output_size`.
@@ -591,11 +591,11 @@ class ReparameterizedStochasticConnector(ConnectorBase):
               or is determined by the distribution dimensionality.
             - sample: The sample from the distribution, prior to transformation.
 
-            Otherwise, returns a ``Tensor`` attr:`sample`, where
+            Otherwise, returns a ``Tensor`` :attr:`sample`, where
             - sample: The sample from the distribution, prior to transformation.
 
         Raises:
-            ValueError: If distribution cannot be reparametrized.
+            ValueError: If distribution cannot be reparameterizable.
             ValueError: The output does not match :attr:`output_size`.
         """
 
@@ -604,8 +604,8 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             ["torch.distributions", "torch.distributions.multivariate_normal",
              "texar.custom"])
 
-        if distribution.has_rsample == False:    # type: ignore
-            raise ValueError("Distribution should be reparametrized")
+        if not distribution.has_rsample:    # type: ignore
+            raise ValueError("Distribution should be reparameterizable")
 
         if num_samples:
             sample = distribution.rsample([num_samples])    # type: ignore
@@ -639,7 +639,7 @@ class StochasticConnector(ConnectorBase):
         output_size: Size of output **excluding** the batch dimension. For
             example, set ``output_size`` to ``dim`` to generate output of
             shape ``[batch_size, dim]``.
-            Can be an ``int``, a tuple of ``int``, a Tensorshape, or a tuple of
+            Can be an ``int``, a tuple of ``int``, a torch.Size, or a tuple of
             torch.Size.
             For example, to transform inputs to have decoder state size, set
             :python:`output_size=decoder.state_size`.
@@ -650,12 +650,12 @@ class StochasticConnector(ConnectorBase):
             :torch:`distributions.distribution.Distribution`,
             Can be a class, its name or module path, or a class instance.
         distribution_kwargs (dict, optional): ``dict`` of keyword arguments
-            for the attr:`distribution`. Its keys are `str`, which are names
+            for the :attr:`distribution`. Its keys are `str`, which are names
             of keyword arguments; Its values are corresponding values for each
             argument.
         hparams (dict, optional): Hyperparameters. Missing
-            hyperparamerter will be set to default values. See
-            :meth:`default_hparams` for the hyperparameter sturcture and
+            hyperparameter will be set to default values. See
+            :meth:`default_hparams` for the hyperparameter structure and
             default values.
     """
 
@@ -675,8 +675,8 @@ class StochasticConnector(ConnectorBase):
             ["torch.distributions", "torch.distributions.multivariate_normal",
              "texar.custom"])
 
-        if distribution.has_rsample == True:    # type: ignore
-            raise ValueError("Distribution should not be reparametrized")
+        if distribution.has_rsample:    # type: ignore
+            raise ValueError("Distribution should not be reparameterizable")
 
         if isinstance(mlp_input_size, int):
             input_feature = mlp_input_size
@@ -741,6 +741,7 @@ class StochasticConnector(ConnectorBase):
               or is determined by the distribution dimensionality.
 
         Raises:
+            ValueError: If distribution can be reparameterizable.
             ValueError: The output does not match :attr:`output_size`.
         """
 
@@ -779,7 +780,7 @@ class StochasticConnector(ConnectorBase):
 #    Args:
 #        output_size: Size of output excluding the batch dimension (eg.
 #            :attr:`output_size = p` if :attr:`output.shape` is :attr:`[N, p]`).
-#            Can be an int, a tuple of int, a Tensorshape, or a tuple of
+#            Can be an int, a tuple of int, a torch.Size, or a tuple of
 #            torch.Size.
 #            For example, to transform to decoder state size, set
 #            `output_size=decoder.cell.state_size`.

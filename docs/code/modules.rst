@@ -245,3 +245,37 @@ Pre-trained
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.GPT2Base
     :members:
+
+Connectors
+==========
+
+.. spelling::
+    reparameterized
+    reparameterization
+    reparameterizable
+    Reparameterization
+    Autoencoders
+    mlp
+
+:hidden:`ConnectorBase`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.ConnectorBase
+    :members:
+
+:hidden:`ConstantConnector`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.ConstantConnector
+    :members:
+
+.. spelling::
+    pooler
+
+:hidden:`BertBase`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.BertBase
+    :members:
+
+:hidden:`GPT2Base`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.GPT2Base
+    :members:
