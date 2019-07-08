@@ -611,8 +611,23 @@ class ReparameterizedStochasticConnector(ConnectorBase):
         else:
             dstr = self._dstr_type
 
+<<<<<<< HEAD
         if not dstr.has_rsample:
             raise ValueError("Distribution should be reparameterizable")
+=======
+        distribution = utils.check_or_get_instance(
+            self._dstr_type, self._dstr_kwargs,
+            ["torch.distributions", "torch.distributions.multivariate_normal",
+             "texar.custom"])
+
+<<<<<<< HEAD
+        if distribution.has_rsample == False:    # type: ignore
+            raise ValueError("Distribution should be reparametrized")
+=======
+        if not distribution.has_rsample:    # type: ignore
+            raise ValueError("Distribution should be reparameterizable")
+>>>>>>> Fix spell checking
+>>>>>>> Fix spell checking
 
         if num_samples:
             sample = dstr.rsample([num_samples])
@@ -681,8 +696,23 @@ class StochasticConnector(ConnectorBase):
         else:
             self._dstr = distribution
 
+<<<<<<< HEAD
         if self._dstr.has_rsample:
             raise ValueError("Distribution should not be reparameterizable")
+=======
+        self._dstr = utils.check_or_get_instance(
+            distribution, self._dstr_kwargs,
+            ["torch.distributions", "torch.distributions.multivariate_normal",
+             "texar.custom"])
+
+<<<<<<< HEAD
+        if distribution.has_rsample == True:    # type: ignore
+            raise ValueError("Distribution should not be reparametrized")
+=======
+        if distribution.has_rsample:    # type: ignore
+            raise ValueError("Distribution should not be reparameterizable")
+>>>>>>> Fix spell checking
+>>>>>>> Fix spell checking
 
         if isinstance(mlp_input_size, int):
             input_feature = mlp_input_size
@@ -751,7 +781,14 @@ class StochasticConnector(ConnectorBase):
             - sample: The sample from the distribution, prior to transformation.
 
         Raises:
+<<<<<<< HEAD
             ValueError: If distribution can be reparameterizable.
+=======
+<<<<<<< HEAD
+=======
+            ValueError: If distribution can be reparameterizable.
+>>>>>>> Fix spell checking
+>>>>>>> Fix spell checking
             ValueError: The output does not match :attr:`output_size`.
         """
 
