@@ -114,12 +114,12 @@ class BertEncoder(BertBase, EncoderBase):
 
         * The encoder arch is determined by the constructor argument
           :attr:`pretrained_model_name` if it's specified. In this case,
-          hparams are ignored.
+          `hparams` are ignored.
         * Otherwise, the encoder arch is determined by
           `hparams['pretrained_model_name']` if it's specified. All other
-          configurations in hparams are ignored.
+          configurations in `hparams` are ignored.
         * If the above two are `None`, the encoder arch is defined by the
-          configurations in hparams and weights are randomly initialized.
+          configurations in `hparams` and weights are randomly initialized.
 
         .. code-block:: python
 
@@ -188,7 +188,7 @@ class BertEncoder(BertBase, EncoderBase):
         The default parameters are values for uncased BERT-Base model.
 
         `pretrained_model_name` : str or None
-            The name of the pretrained bert model. If None, the model
+            The name of the pre-trained BERT model. If None, the model
             will be randomly initialized.
 
         `embed` : dict
@@ -287,7 +287,7 @@ class BertEncoder(BertBase, EncoderBase):
             '@no_typecheck': ['pretrained_model_name']
         }
 
-    def forward(self,
+    def forward(self,  # type: ignore
                 inputs: torch.Tensor,
                 sequence_length: Optional[torch.LongTensor] = None,
                 segment_ids: Optional[torch.LongTensor] = None,
@@ -314,7 +314,7 @@ class BertEncoder(BertBase, EncoderBase):
 
             - :attr:`pooled_output`: A Tensor of size
               `[batch_size, hidden_size]` which is the output of a pooler
-              pretrained on top of the hidden state associated to the first
+              pre-trained on top of the hidden state associated to the first
               character of the input (`CLS`), see BERT's paper.
         """
         if segment_ids is None:
@@ -325,14 +325,15 @@ class BertEncoder(BertBase, EncoderBase):
         segment_embeds = self.segment_embedder(segment_ids)
 
         batch_size = inputs.shape[0]
-        pos_length = torch.ones(batch_size, dtype=torch.int64) * inputs.shape[1]
+        pos_length = torch.full((batch_size,), inputs.shape[1],
+                                dtype=torch.int64)
         pos_embeds = self.position_embedder(sequence_length=pos_length)
 
         inputs_embeds = word_embeds + segment_embeds + pos_embeds
 
         if sequence_length is None:
-            sequence_length = torch.ones(batch_size, dtype=torch.int64) \
-                              * inputs.shape[1]
+            sequence_length = torch.full((batch_size,), inputs.shape[1],
+                                         dtype=torch.int64)
 
         output = self.encoder(inputs_embeds, sequence_length)
 

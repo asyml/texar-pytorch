@@ -22,17 +22,14 @@ import torch.nn.functional as F
 
 from texar.hyperparams import HParams
 from texar.modules.classifiers.classifier_base import ClassifierBase
-from texar.modules.embedders.embedders import WordEmbedder
-from texar.modules.embedders.position_embedders import PositionEmbedder
 from texar.modules.encoders.bert_encoders import BertEncoder
-from texar.modules.encoders.transformer_encoder import TransformerEncoder
 from texar.utils import utils
 
 __all__ = ["BertClassifier"]
 
 
 class BertClassifier(ClassifierBase):
-    r"""Classifier based on bert modules.
+    r"""Classifier based on BERT modules.
 
     This is a combination of the
     :class:`~texar.modules.BertEncoder` with a classification
@@ -149,12 +146,12 @@ class BertClassifier(ClassifierBase):
 
             `clas_strategy` : str
                 The classification strategy, one of:
-                - **`cls_time`**: Sequence-level classification based on the \
-                output of the first time step (which is the `CLS` token). \
+                - **`cls_time`**: Sequence-level classification based on the
+                output of the first time step (which is the `CLS` token).
                 Each sequence has a class.
-                - **`all_time`**: Sequence-level classification based on \
+                - **`all_time`**: Sequence-level classification based on
                 the output of all time steps. Each sequence has a class.
-                - **`time_wise`**: Step-wise classification, i.e., make \
+                - **`time_wise`**: Step-wise classification, i.e., make
                 classification for each time step based on its output.
 
             `max_seq_length` : int, optional
@@ -162,7 +159,7 @@ class BertClassifier(ClassifierBase):
                 `clas_strategy` is `all_time`.
 
             `dropout` : float
-                The dropout rate of the bert encoder output.
+                The dropout rate of the BERT encoder output.
 
             `name` : str
                 Name of the classifier.

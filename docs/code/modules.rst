@@ -210,8 +210,8 @@ Networks
 .. autoclass:: texar.modules.Conv1DNetwork
     :members: default_hparams,forward,append_layer,has_layer,layer_by_name,layers_by_name,layers,layer_names
 
-Bert
-=========
+Pre-trained
+===========
 
 .. spelling::
     pooler

@@ -26,7 +26,7 @@ __all__ = [
 
 
 class BertBase(ModuleBase):
-    r"""Base class for all Bert classes to inherit.
+    r"""Base class for all BERT classes to inherit.
 
     Args:
         pretrained_model_name (optional): a str with the name
@@ -50,14 +50,14 @@ class BertBase(ModuleBase):
                  hparams=None):
         super().__init__(hparams)
 
+        self.pretrained_model_dir: Optional[str] = None
+
         if pretrained_model_name:
             self.pretrained_model_dir = bert_utils.load_pretrained_model(
                 pretrained_model_name, cache_dir)
         elif self._hparams.pretrained_model_name is not None:
             self.pretrained_model_dir = bert_utils.load_pretrained_model(
                 self._hparams.pretrained_model_name, cache_dir)
-        else:
-            self.pretrained_model_dir = None
 
         if self.pretrained_model_dir:
             self.pretrained_model_hparams = bert_utils.\
@@ -83,7 +83,7 @@ class BertBase(ModuleBase):
         r"""Encodes the inputs and (optionally) conduct downstream prediction.
 
         Args:
-            inputs: Inputs to the bert module.
+            inputs: Inputs to the BERT module.
             *args: Other arguments.
             **kwargs: Keyword arguments.
 

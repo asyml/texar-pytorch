@@ -11,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Example of building a sentence classifier based on pre-trained BERT
-model.
+"""Example of building a sentence classifier based on pre-trained BERT model.
 """
-
-import sys
-sys.path.append("/Users/pengzhi.gao/Desktop/my_git/texar-pytorch/")
 
 import argparse
 import functools
@@ -28,13 +24,11 @@ import torch
 import torch.nn.functional as F
 
 import texar as tx
-from texar.core import BertAdam
-from texar.modules import BertClassifier
+
 from utils import model_utils
 
 
 parser = argparse.ArgumentParser()
-
 parser.add_argument(
     "--config_downstream", default="config_classifier",
     help="Configuration of the downstream part of the model")
@@ -54,15 +48,15 @@ parser.add_argument(
 parser.add_argument(
     "--do_test", action="store_true",
     help="Whether to run test on the test set.")
-
 args = parser.parse_args()
 
 config_data = importlib.import_module(args.config_data)
-
 config_downstream = importlib.import_module(args.config_downstream)
 config_downstream = {
     k: v for k, v in config_downstream.__dict__.items()
     if not k.startswith('__')}
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 logging.root.setLevel(logging.INFO)
 
@@ -71,19 +65,15 @@ def main():
     """
     Builds the model and runs.
     """
-
     tx.utils.maybe_create_dir(args.output_dir)
 
     # Loads data
     num_train_data = config_data.num_train_data
 
     # Builds BERT
-    hparams = {
-        'clas_strategy': 'cls_time'
-    }
-    model = BertClassifier(hparams=hparams)
-    if torch.cuda.is_available():
-        model = model.cuda()
+    model = tx.modules.BertClassifier(cache_dir='bert_pretrained_models',
+                                      hparams=config_downstream)
+    model.to(device)
 
     # Builds learning rate decay scheduler
     static_lr = 2e-5
@@ -100,26 +90,26 @@ def main():
         else:
             vars_with_decay.append(param)
 
-    opt_params = [
-        {
-            'params': vars_with_decay,
-            'weight_decay': 0.01,
-        },
-        {
-            'params': vars_without_decay,
-            'weight_decay': 0.0,
-        }
-    ]
-    optim = BertAdam(opt_params, betas=(0.9, 0.999), eps=1e-6, lr=static_lr)
+    opt_params = [{'params': vars_with_decay,
+                   'weight_decay': 0.01},
+                  {'params': vars_without_decay,
+                   'weight_decay': 0.0}]
+    optim = tx.core.BertAdam(opt_params,
+                             betas=(0.9, 0.999),
+                             eps=1e-6,
+                             lr=static_lr)
 
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optim, functools.partial(
             model_utils.get_lr_multiplier, total_steps=num_train_steps,
             warmup_steps=num_warmup_steps))
 
-    train_dataset = tx.data.RecordData(hparams=config_data.train_hparam)
-    eval_dataset = tx.data.RecordData(hparams=config_data.eval_hparam)
-    test_dataset = tx.data.RecordData(hparams=config_data.test_hparam)
+    train_dataset = tx.data.RecordData(hparams=config_data.train_hparam,
+                                       device=device)
+    eval_dataset = tx.data.RecordData(hparams=config_data.eval_hparam,
+                                      device=device)
+    test_dataset = tx.data.RecordData(hparams=config_data.test_hparam,
+                                      device=device)
 
     iterator = tx.data.DataIterator(
         {"train": train_dataset, "eval": eval_dataset, "test": test_dataset}
@@ -130,18 +120,13 @@ def main():
         periodically.
         """
         iterator.switch_to_dataset("train")
-
         model.train()
+
         for batch in iterator:
             optim.zero_grad()
             input_ids = batch["input_ids"]
             segment_ids = batch["segment_ids"]
             labels = batch["label_ids"]
-
-            if torch.cuda.is_available():
-                input_ids = input_ids.cuda()
-                segment_ids = segment_ids.cuda()
-                labels = labels.cuda()
 
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
@@ -175,6 +160,7 @@ def main():
         """
         iterator.switch_to_dataset("eval")
         model.eval()
+
         cum_acc = 0.0
         cum_loss = 0.0
         nsamples = 0
@@ -182,11 +168,6 @@ def main():
             input_ids = batch["input_ids"]
             segment_ids = batch["segment_ids"]
             labels = batch["label_ids"]
-
-            if torch.cuda.is_available():
-                input_ids = input_ids.cuda()
-                segment_ids = segment_ids.cuda()
-                labels = labels.cuda()
 
             batch_size = input_ids.size()[0]
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
@@ -215,13 +196,11 @@ def main():
         """
         iterator.switch_to_dataset("test")
         model.eval()
+
         _all_preds = []
         for batch in iterator:
             input_ids = batch["input_ids"]
             segment_ids = batch["segment_ids"]
-            if torch.cuda.is_available():
-                input_ids = input_ids.cuda()
-                segment_ids = segment_ids.cuda()
 
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
