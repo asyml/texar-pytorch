@@ -16,11 +16,12 @@ Various connectors.
 """
 
 from typing import (Optional, Union, Callable, Tuple, List,
-                    Any, Dict, TypeVar)
+                    Any, Dict)
 import numpy as np
 
 import torch
 from torch import nn, split
+from torch.distributions.distribution import Distribution
 
 from texar.hyperparams import HParams
 from texar.modules.connectors.connector_base import ConnectorBase
@@ -39,7 +40,6 @@ __all__ = [
     # "ConcatConnector"
 ]
 
-T = TypeVar('T')
 TensorStruct = Union[List[torch.Tensor],
                      Dict[Any, torch.Tensor],
                      MaybeTuple[torch.Tensor]]
@@ -516,7 +516,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
     def __init__(self,
                  output_size: OutputSize,
                  mlp_input_size: Union[torch.Size, MaybeTuple[int], int],
-                 distribution: Union[T, str] = 'MultivariateNormal',
+                 distribution: Union[Distribution, str] = 'MultivariateNormal',
                  distribution_kwargs: Optional[Dict[str, Any]] = None,
                  hparams: Optional[HParams] = None):
         super().__init__(output_size, hparams)
@@ -598,19 +598,20 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             ValueError: If distribution cannot be reparameterizable.
             ValueError: The output does not match :attr:`output_size`.
         """
+        if isinstance(self._dstr_type, str):
+            dstr: Distribution = utils.check_or_get_instance(
+                self._dstr_type, self._dstr_kwargs,
+                ["torch.distributions", "texar.custom"])
+        else:
+            dstr = self._dstr_type
 
-        distribution = utils.check_or_get_instance(
-            self._dstr_type, self._dstr_kwargs,
-            ["torch.distributions", "torch.distributions.multivariate_normal",
-             "texar.custom"])
-
-        if not distribution.has_rsample:    # type: ignore
+        if not dstr.has_rsample:
             raise ValueError("Distribution should be reparameterizable")
 
         if num_samples:
-            sample = distribution.rsample([num_samples])    # type: ignore
+            sample = dstr.rsample([num_samples])
         else:
-            sample = distribution.rsample()  # type: ignore
+            sample = dstr.rsample()
 
         if transform:
             fn_modules = ['torch', 'torch.nn', 'texar.custom']
@@ -662,20 +663,21 @@ class StochasticConnector(ConnectorBase):
     def __init__(self,
                  output_size: OutputSize,
                  mlp_input_size: Union[torch.Size, MaybeTuple[int], int],
-                 distribution: Union[T, str] = 'MultivariateNormal',
+                 distribution: Union[Distribution, str] = 'MultivariateNormal',
                  distribution_kwargs: Optional[Dict[str, Any]] = None,
                  hparams: Optional[HParams] = None):
         super().__init__(output_size, hparams)
         if distribution_kwargs is None:
             distribution_kwargs = {}
         self._dstr_kwargs = distribution_kwargs
+        if isinstance(distribution, str):
+            self._dstr: Distribution = utils.check_or_get_instance(
+                distribution, self._dstr_kwargs,
+                ["torch.distributions", "texar.custom"])
+        else:
+            self._dstr = distribution
 
-        self._dstr = utils.check_or_get_instance(
-            distribution, self._dstr_kwargs,
-            ["torch.distributions", "torch.distributions.multivariate_normal",
-             "texar.custom"])
-
-        if distribution.has_rsample:    # type: ignore
+        if self._dstr.has_rsample:
             raise ValueError("Distribution should not be reparameterizable")
 
         if isinstance(mlp_input_size, int):
@@ -746,11 +748,11 @@ class StochasticConnector(ConnectorBase):
         """
 
         if num_samples:
-            output = self._dstr.sample([num_samples])    # type: ignore
+            output = self._dstr.sample([num_samples])
         else:
-            output = self._dstr.sample()    # type: ignore
+            output = self._dstr.sample()
 
-        if self._dstr.event_shape == []:    # type: ignore
+        if self._dstr.event_shape == []:
             output = torch.reshape(
                 input=output, shape=output.size() + torch.Size([1]))
 
