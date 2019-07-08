@@ -125,6 +125,8 @@ def map_structure(fn: Callable[[T], R], obj: Collection[T]) -> Collection[R]:
     if isinstance(obj, list):
         return [map_structure(fn, x) for x in obj]
     if isinstance(obj, tuple):
+        if isinstance(obj, torch.Size):
+            return fn(obj)
         if hasattr(obj, '_fields'):  # namedtuple
             return type(obj)(*[map_structure(fn, x) for x in obj])
         else:
