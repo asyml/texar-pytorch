@@ -9,12 +9,12 @@ max_seq_len = 128
 batch_size = 4
 # Accumulate gradients across multiple batches before performing an
 # optimizer step.
-backwards_per_batch = 8
+backwards_per_step = 8
 # Batch size during evaluation.
 eval_batch_size = 64
 
 # Number of steps to train.
-train_step = 1200
+train_steps = 1200
 # Base (maximum) learning rate.
 lr = 5e-5
 # Number of warm-up steps. Learning rate linearly grows to base LR from zero in
@@ -42,3 +42,4 @@ eval_steps = 500
 # Save model per this many steps. Set to -1 to only evaluate
 # at end of training.
 save_steps = 500
+
