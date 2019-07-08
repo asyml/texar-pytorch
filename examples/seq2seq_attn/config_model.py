@@ -2,7 +2,7 @@
 # Hyperparameters not specified here will take the default values.
 
 num_units = 256
-# beam_width = 10  # TODO: implement beam search in the decoding
+beam_width = 10
 
 embedder = {
     'dim': num_units
@@ -27,7 +27,8 @@ decoder = {
             'num_units': num_units,
         },
         'attention_layer_size': num_units
-    }
+    },
+    'max_decoding_length_infer': 60,
 }
 
 opt = {

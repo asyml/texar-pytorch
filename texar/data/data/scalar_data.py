@@ -55,6 +55,8 @@ class ScalarData(DataBase[str, Union[int, float]]):
     Args:
         hparams (dict): Hyperparameters. See :meth:`default_hparams` for the
             defaults.
+        device: The device of the produced batches. For GPU training, set to
+            current CUDA device.
 
     The processor reads and processes raw data and results in a dataset
     whose element is a python `dict` including one field. The field name is

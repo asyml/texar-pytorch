@@ -104,9 +104,9 @@ class ReducePoolingLayerTest(unittest.TestCase):
         pool_layer = layers.MaxReducePool1d()
         inputs = torch.randn(self._batch_size, self._emb_dim, self._seq_length)
         output = pool_layer(inputs)
-        output_reduce, _ = torch.max(inputs, dim=2, keepdim=True)
+        output_reduce, _ = torch.max(inputs, dim=2)
         self.assertEqual(output.shape, torch.Size([self._batch_size,
-                                                   self._emb_dim, 1]))
+                                                   self._emb_dim]))
         self.assertEqual(torch.all(torch.eq(output, output_reduce)), 1)
 
     def test_average_reduce_pooling_layer(self):
@@ -115,9 +115,9 @@ class ReducePoolingLayerTest(unittest.TestCase):
         pool_layer = layers.AvgReducePool1d()
         inputs = torch.randn(self._batch_size, self._emb_dim, self._seq_length)
         output = pool_layer(inputs)
-        output_reduce = torch.mean(inputs, dim=2, keepdim=True)
+        output_reduce = torch.mean(inputs, dim=2)
         self.assertEqual(output.shape, torch.Size([self._batch_size,
-                                                   self._emb_dim, 1]))
+                                                   self._emb_dim]))
         self.assertEqual(torch.all(torch.eq(output, output_reduce)), 1)
 
 
@@ -125,23 +125,46 @@ class MergeLayerTest(unittest.TestCase):
     r"""Tests MergeLayer.
     """
 
-    def test_layer_logics(self):
+    def test_layer_logic(self):
         r"""Test the logic of MergeLayer.
         """
         layers_ = list()
         layers_.append(nn.Conv1d(in_channels=32, out_channels=32,
                                  kernel_size=3))
         layers_.append(nn.Conv1d(in_channels=32, out_channels=32,
-                                 kernel_size=4))
+                                 kernel_size=3))
         layers_.append(nn.Conv1d(in_channels=32, out_channels=32,
-                                 kernel_size=5))
-        layers_.append(nn.Linear(in_features=10, out_features=64))
-        layers_.append(nn.Linear(in_features=10, out_features=64))
-        m_layer = layers.MergeLayer(layers_)
+                                 kernel_size=3))
 
+        modes = ["concat", "sum", "mean", "prod", "max", "min", "logsumexp",
+                 "elemwise_sum", "elemwise_mul"]
+
+        for mode in modes:
+            m_layer = layers.MergeLayer(layers_, mode=mode)
+            input = torch.randn(32, 32, 10)
+            output = m_layer(input)
+
+            if mode == "concat":
+                self.assertEqual(output.shape, torch.Size([32, 32, 24]))
+            elif mode == "elemwise_sum" or mode == "elemwise_mul":
+                self.assertEqual(output.shape, torch.Size([32, 32, 8]))
+            else:
+                self.assertEqual(output.shape, torch.Size([32, 32]))
+
+        for mode in ["and", "or"]:
+            m_layer = layers.MergeLayer(layers=None, mode=mode)
+            input = torch.ones(32, 32, 10, dtype=torch.uint8)
+            output = m_layer(input)
+
+            self.assertEqual(output.shape, torch.Size([32, 32]))
+
+    def test_empty_merge_layer(self):
+        r"""Test the output of MergeLayer with empty layers.
+        """
+        m_layer = layers.MergeLayer(layers=None)
         input = torch.randn(32, 32, 10)
         output = m_layer(input)
-        self.assertEqual(output.shape, torch.Size([32, 32, 149]))
+        self.assertEqual(torch.all(torch.eq(output, input)), 1)
 
 
 if __name__ == "__main__":
