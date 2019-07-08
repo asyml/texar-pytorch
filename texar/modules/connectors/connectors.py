@@ -30,9 +30,6 @@ from texar.utils import nest
 from texar.utils.types import MaybeTuple
 
 
-# pylint: disable=too-many-locals, arguments-differ
-# pylint: disable=too-many-arguments, invalid-name, no-member
-
 __all__ = [
     "ConstantConnector",
     "ForwardConnector",
@@ -69,7 +66,7 @@ def _assert_same_size(outputs: TensorStruct,
             if output[0].size() != size:
                 raise ValueError("The output size does not match"
                                  "the the required output_size")
-        elif output[0].size() != torch.Size([size]):
+        elif output[0].size()[-1:] != torch.Size([size]):
             raise ValueError(
                 "The output size does not match the the required output_size")
 
@@ -137,7 +134,6 @@ def _mlp_transform(inputs: TensorStruct,
     else:
         batch_size = flat_input[0].size(0)
     flat_input = [x.view(-1, x.size(-1)) for x in flat_input]
-
     concat_input = torch.cat(flat_input, 0)
     # Get output dimension
     flat_output_size = nest.flatten(output_size)
@@ -236,9 +232,9 @@ class ConstantConnector(ConnectorBase):
 
         Here:
 
-        "value" : float
+        `"value"`: float
             The constant scalar that the output tensor(s) has.
-        "name" : str
+        `"name"`: str
             Name of the connector.
         """
         return {
@@ -248,7 +244,7 @@ class ConstantConnector(ConnectorBase):
 
     def forward(self,    # type: ignore
                 batch_size: Union[int, torch.Tensor]) -> Any:
-        """Creates output tensor(s) that has the given value.
+        r"""Creates output tensor(s) that has the given value.
 
         Args:
             batch_size: An ``int`` or ``int`` scalar ``Tensor``, the
@@ -276,7 +272,7 @@ class ConstantConnector(ConnectorBase):
 
 
 class ForwardConnector(ConnectorBase):
-    """Transforms inputs to have specified structure.
+    r"""Transforms inputs to have specified structure.
 
     Example:
 
@@ -328,7 +324,7 @@ class ForwardConnector(ConnectorBase):
 
         Here:
 
-        "name" : str
+        `"name"`: str
             Name of the connector.
         """
         return {
@@ -424,11 +420,11 @@ class MLPTransformConnector(ConnectorBase):
 
         Here:
 
-        "activation_fn" : str or callable
+        `"activation_fn"`: str or callable
             The activation function applied to the outputs of the MLP
             transformation layer. Can
             be a function, or its name or module path.
-        "name" : str
+        `"name"`: str
             Name of the connector.
         """
         return {
@@ -474,37 +470,24 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             cell = LSTMCell(num_units=256)
             # cell.state_size == LSTMStateTuple(c=256, h=256)
             mu = torch.zeros([16, 100])
-            var = torch.ones([16, 100])
-            #var = torch.stack([torch.diag(x) for x in var], 0)
-            f_mu = torch.flatten(mu)
-            f_var = torch.flatten(var)
-            gauss_ds = tds.multivariate_normal.MultivariateNormal(
-                loc=f_mu,
-                scale_tril=torch.diag(f_var))
-            connector = ReparameterizedStochasticConnector(
-                cell.state_size,
-                mlp_input_size=f_mu.size(),
-                distribution="MultivariateNormal",
-                distribution_kwargs={
-                    "loc": f_mu,
-                    "scale_tril": torch.diag(f_var)})
-            output, sample = connector()
-            # output == LSTMStateTuple(c=tensor_of_shape_(1, 256),
-            #                          h=tensor_of_shape_(1, 256))
-            # sample == Tensor([16 * 100])
+            var = torch.ones([100])
 
-            # Initialized with num_samples
             connector = ReparameterizedStochasticConnector(
                 cell.state_size,
-                mlp_input_size=f_mu.size(),
+                mlp_input_size=mu.size()[-1],
                 distribution="MultivariateNormal",
                 distribution_kwargs={
-                    "loc": f_mu,
-                    "scale_tril": torch.diag(f_var)})
+                    "loc": mu,
+                    "scale_tril": torch.diag(var)})
+            output, sample = connector()
+            # output == LSTMStateTuple(c=tensor_of_shape_(16, 256),
+            #                          h=tensor_of_shape_(16, 256))
+            # sample == Tensor([16, 100])
+
             output_, sample_ = connector(num_samples=4)
-            # output_ == LSTMStateTuple(c=tensor_of_shape_(4, 256),
-            #                           h=tensor_of_shape_(4, 256))
-            # sample == Tensor([4, 16 * 100])
+            # output_ == LSTMStateTuple(c=tensor_of_shape_(4, 16, 256),
+            #                           h=tensor_of_shape_(4, 16, 256))
+            # sample == Tensor([4, 16, 100])
 
     Args:
         output_size: Size of output **excluding** the batch dimension. For
@@ -516,7 +499,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             :python:`output_size=decoder.state_size`.
         mlp_input_size: Size of MLP transfer process input, which is equal to
             the distribution result size **excluding** the batch dimension,
-            Can be ``torch.Size`` or a ``tuple`` of ``int``.
+            Can be ``int`` or ``torch.Size`` or a ``tuple`` of ``int``.
         distribution: A instance or name ``str`` of subclass of
             :torch:`distributions.distribution.Distribution`,
             Can be a distribution class instance or ``str``.
@@ -532,7 +515,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
 
     def __init__(self,
                  output_size: OutputSize,
-                 mlp_input_size: Union[torch.Size, MaybeTuple[int]],
+                 mlp_input_size: Union[torch.Size, MaybeTuple[int], int],
                  distribution: Union[T, str] = 'MultivariateNormal',
                  distribution_kwargs: Optional[Dict[str, Any]] = None,
                  hparams: Optional[HParams] = None):
@@ -547,8 +530,10 @@ class ReparameterizedStochasticConnector(ConnectorBase):
                 dstr_param = nn.Parameter(dstr_val)
                 distribution_kwargs[dstr_attr] = dstr_param
                 self.register_parameter(dstr_attr, dstr_param)
-
-        input_feature = np.prod(mlp_input_size)
+        if isinstance(mlp_input_size, int):
+            input_feature = mlp_input_size
+        else:
+            input_feature = np.prod(mlp_input_size)
         self._linear_layer = nn.Linear(
             input_feature, _sum_output_size(output_size))
 
@@ -565,11 +550,11 @@ class ReparameterizedStochasticConnector(ConnectorBase):
 
         Here:
 
-        "activation_fn" : str
+        `"activation_fn"`: str
             The activation function applied to the outputs of the MLP
             transformation layer. Can be a function,
             or its name or module path.
-        "name" : str
+        `"name"`: str
             Name of the connector.
         """
         return {
@@ -599,6 +584,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
         :returns:
             If attr:`transform` is ``True``, returns a ``tuple``
             (attr:`output`, attr:`sample`), where
+
             - output: A ``Tensor`` or a (nested) ``tuple`` of Tensors with
               the same structure and size of :attr:`output_size`.
               The batch dimension equals :attr:`num_samples` if specified,
@@ -618,7 +604,8 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             ["torch.distributions", "torch.distributions.multivariate_normal",
              "texar.custom"])
 
-        assert distribution.has_rsample    # type: ignore
+        if distribution.has_rsample == False:    # type: ignore
+            raise ValueError("Distribution should be reparametrized")
 
         if num_samples:
             sample = distribution.rsample([num_samples])    # type: ignore
@@ -635,7 +622,6 @@ class ReparameterizedStochasticConnector(ConnectorBase):
                 self._output_size,
                 self._linear_layer,
                 activation_fn)
-
             _assert_same_size(output, self._output_size)
             return (output, sample)
         else:
@@ -659,7 +645,7 @@ class StochasticConnector(ConnectorBase):
             :python:`output_size=decoder.state_size`.
         mlp_input_size: Size of MLP transfer process input, which is equal to
             the distribution result size **excluding** the batch dimension,
-            Can be ``torch.Size`` or a ``tuple`` of ``int``.
+            Can be ``int`` or ``torch.Size`` or a ``tuple`` of ``int``.
         distribution: A instance of subclass of
             :torch:`distributions.distribution.Distribution`,
             Can be a class, its name or module path, or a class instance.
@@ -675,7 +661,7 @@ class StochasticConnector(ConnectorBase):
 
     def __init__(self,
                  output_size: OutputSize,
-                 mlp_input_size: Union[torch.Size, MaybeTuple[int]],
+                 mlp_input_size: Union[torch.Size, MaybeTuple[int], int],
                  distribution: Union[T, str] = 'MultivariateNormal',
                  distribution_kwargs: Optional[Dict[str, Any]] = None,
                  hparams: Optional[HParams] = None):
@@ -689,9 +675,13 @@ class StochasticConnector(ConnectorBase):
             ["torch.distributions", "torch.distributions.multivariate_normal",
              "texar.custom"])
 
-        assert not self._dstr.has_rsample    # type: ignore
+        if distribution.has_rsample == True:    # type: ignore
+            raise ValueError("Distribution should not be reparametrized")
 
-        input_feature = np.prod(mlp_input_size)
+        if isinstance(mlp_input_size, int):
+            input_feature = mlp_input_size
+        else:
+            input_feature = np.prod(mlp_input_size)
         self._linear_layer = nn.Linear(
             input_feature, _sum_output_size(output_size))
 
@@ -708,11 +698,11 @@ class StochasticConnector(ConnectorBase):
 
         Here:
 
-        "activation_fn" : str
+        `"activation_fn"`: str
             The activation function applied to the outputs of the MLP
             transformation layer. Can
             be a function, or its name or module path.
-        "name" : str
+        `"name"`: str
             Name of the connector.
         """
         return {
@@ -744,6 +734,7 @@ class StochasticConnector(ConnectorBase):
 
         :returns:
             A ``Tensor`` or a (nested) ``tuple`` output, where
+
             - output: A ``Tensor`` or a (nested) ``tuple`` of Tensors
               with the same structure and size of :attr:`output_size`.
               The batch dimension equals :attr:`num_samples` if specified,
@@ -781,7 +772,7 @@ class StochasticConnector(ConnectorBase):
 
 
 # class ConcatConnector(ConnectorBase):
-#    """Concatenates multiple connectors into one connector. Used in, e.g.,
+#    r"""Concatenates multiple connectors into one connector. Used in, e.g.,
 #    semi-supervised variational autoencoders, disentangled representation
 #    learning, and other models.
 #
@@ -800,7 +791,7 @@ class StochasticConnector(ConnectorBase):
 #
 #    @staticmethod
 #    def default_hparams():
-#        """Returns a dictionary of hyperparameters with default values.
+#        r"""Returns a dictionary of hyperparameters with default values.
 #
 #        :returns:
 #
@@ -813,7 +804,7 @@ class StochasticConnector(ConnectorBase):
 #
 #            Here:
 #
-#            "activation_fn" : (str or callable)
+#            `"activation_fn"`: (str or callable)
 #                The name or full path to the activation function applied to
 #                the outputs of the MLP layer. The activation functions can be:
 #
@@ -825,7 +816,7 @@ class StochasticConnector(ConnectorBase):
 #                The default value is :attr:`"identity"`, i.e., the MLP
 #                transformation is linear.
 #
-#            "name" : str
+#            `"name"`: str
 #                Name of the connector.
 #
 #                The default value is "concat_connector".
@@ -836,7 +827,7 @@ class StochasticConnector(ConnectorBase):
 #        }
 #
 #    def forward(self, connector_inputs, transform=True):
-#        """Concatenate multiple input connectors
+#        r"""Concatenate multiple input connectors
 #
 #        Args:
 #            connector_inputs: a list of connector states

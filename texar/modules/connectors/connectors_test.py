@@ -1,4 +1,3 @@
-#
 """
 Unit tests for connectors.
 """
@@ -163,37 +162,33 @@ class TestConnectors(unittest.TestCase):
         sample_num = 10
 
         mu = torch.zeros([self._batch_size, variable_size])
-        var = torch.ones([self._batch_size, variable_size])
-
-        f_mu = torch.flatten(mu)
-        f_var = torch.flatten(var)
-
-        mu_vec = torch.zeros([variable_size])
-        var_vec = torch.ones([variable_size])
+        var = torch.ones([variable_size])
 
         state_size = (10, 11)
         gauss_connector = ReparameterizedStochasticConnector(
             state_size,
-            mlp_input_size=f_mu.size(),
+            mlp_input_size=mu.size()[-1:],
             distribution="MultivariateNormal",
-            distribution_kwargs={"loc": f_mu, "scale_tril": torch.diag(f_var)})
-        output, samples = gauss_connector(num_samples=self._batch_size,)
+            distribution_kwargs={"loc": mu, "scale_tril": torch.diag(var)})
+        output, samples = gauss_connector()
 
-        self.assertEqual(output[0].shape,
+        self.assertEqual(output[0].size(),
                          torch.Size([self._batch_size, state_size[0]]))
-        self.assertEqual(output[1].shape,
+        self.assertEqual(output[1].size(),
                          torch.Size([self._batch_size, state_size[1]]))
+        self.assertEqual(samples.size(),
+                         torch.Size([self._batch_size, variable_size]))
 
         output, _ = gauss_connector(num_samples=12, transform=False)
-        self.assertEqual(output.shape,
-                         torch.Size([12, self._batch_size * variable_size]))
+        self.assertEqual(output.size(),
+                         torch.Size([12, self._batch_size, variable_size]))
 
         state_size_ts = (torch.Size([10, 10]), torch.Size([2, 3, 4]))
         gauss_connector_ts = ReparameterizedStochasticConnector(
             state_size_ts,
-            mlp_input_size=f_mu.size(),
+            mlp_input_size=mu.size()[-1:],
             distribution="MultivariateNormal",
-            distribution_kwargs={"loc": f_mu, "scale_tril": torch.diag(f_var)})
+            distribution_kwargs={"loc": mu, "scale_tril": torch.diag(var)})
         output, samples = gauss_connector_ts()
 
         _assert_same_size(output, state_size_ts)

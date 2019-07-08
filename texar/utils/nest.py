@@ -1,7 +1,5 @@
 # Apply from
-# pylint:disable=line-too-long
 # Tensorflow(https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/util/nest.py)
-# pylint:enable=line-too-long
 
 """This module can perform operations on nested structures. A nested
 structure is a Python sequence, tuple (including `namedtuple`), or

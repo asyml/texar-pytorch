@@ -15,7 +15,5 @@
 Modules of texar library connectors.
 """
 
-# pylint: disable=wildcard-import
-
 from texar.modules.connectors.connector_base import *
 from texar.modules.connectors.connectors import *

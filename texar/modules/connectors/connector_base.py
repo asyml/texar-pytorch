@@ -15,7 +15,6 @@
 Base class for connectors that transform inputs into specified output shape.
 """
 
-# pylint: disable=arguments-differ
 from abc import ABC
 from typing import Generic, Optional, TypeVar
 from texar.hyperparams import HParams
