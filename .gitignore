@@ -222,6 +222,7 @@ docs/_build
 
 ### Project ###
 /data/
+/texar_download/
 checkpoints/
 /language_models/
 /examples/language_model_ptb/simple-examples/

@@ -313,7 +313,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
         decoder = AttentionRNNDecoder(
             encoder_output_size=64,
             vocab_size=self._vocab_size,
-            input_size=self._emb_dim + 64,
+            input_size=self._emb_dim,
             hparams=self._hparams_rnn)
 
         sequence_length = torch.tensor([self._max_time] * self._batch_size)
@@ -340,7 +340,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
         decoder = AttentionRNNDecoder(
             encoder_output_size=64,
             vocab_size=self._vocab_size,
-            input_size=self._emb_dim + 64,
+            input_size=self._emb_dim,
             hparams=self._hparams_rnn)
 
         decoder.eval()
@@ -369,7 +369,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
         decoder = AttentionRNNDecoder(
             encoder_output_size=64,
             vocab_size=self._vocab_size,
-            input_size=self._emb_dim + 64,
+            input_size=self._emb_dim,
             hparams=self._hparams_lstm)
 
         sequence_length = torch.tensor([self._max_time] * self._batch_size)
@@ -396,7 +396,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
         decoder = AttentionRNNDecoder(
             encoder_output_size=64,
             vocab_size=self._vocab_size,
-            input_size=self._emb_dim + 64,
+            input_size=self._emb_dim,
             hparams=self._hparams_lstm)
 
         decoder.eval()
@@ -425,7 +425,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
         decoder = AttentionRNNDecoder(
             encoder_output_size=64,
             vocab_size=self._vocab_size,
-            input_size=self._emb_dim + 64,
+            input_size=self._emb_dim,
             hparams=self._hparams_gru)
 
         sequence_length = torch.tensor([self._max_time] * self._batch_size)
@@ -452,7 +452,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
         decoder = AttentionRNNDecoder(
             encoder_output_size=64,
             vocab_size=self._vocab_size,
-            input_size=self._emb_dim + 64,
+            input_size=self._emb_dim,
             hparams=self._hparams_gru)
 
         decoder.eval()
@@ -481,7 +481,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
         decoder = AttentionRNNDecoder(
             encoder_output_size=64,
             vocab_size=self._vocab_size,
-            input_size=self._emb_dim + 64,
+            input_size=self._emb_dim,
             hparams=self._hparams_multicell)
 
         sequence_length = torch.tensor([self._max_time] * self._batch_size)
@@ -509,7 +509,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
         decoder = AttentionRNNDecoder(
             encoder_output_size=64,
             vocab_size=self._vocab_size,
-            input_size=self._emb_dim + 64,
+            input_size=self._emb_dim,
             hparams=self._hparams_multicell)
 
         decoder.eval()
