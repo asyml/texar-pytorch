@@ -611,28 +611,8 @@ class ReparameterizedStochasticConnector(ConnectorBase):
         else:
             dstr = self._dstr_type
 
-<<<<<<< HEAD
-<<<<<<< HEAD
         if not dstr.has_rsample:
             raise ValueError("Distribution should be reparameterizable")
-=======
-        distribution = utils.check_or_get_instance(
-            self._dstr_type, self._dstr_kwargs,
-            ["torch.distributions", "torch.distributions.multivariate_normal",
-             "texar.custom"])
-
-<<<<<<< HEAD
-        if distribution.has_rsample == False:    # type: ignore
-            raise ValueError("Distribution should be reparametrized")
-=======
-        if not distribution.has_rsample:    # type: ignore
-            raise ValueError("Distribution should be reparameterizable")
->>>>>>> Fix spell checking
->>>>>>> Fix spell checking
-=======
-        if not dstr.has_rsample:
-            raise ValueError("Distribution should be reparameterizable")
->>>>>>> Polish connector for type check
 
         if num_samples:
             sample = dstr.rsample([num_samples])
@@ -793,7 +773,11 @@ class StochasticConnector(ConnectorBase):
                 sample,
                 self._output_size,
                 self._linear_layer,
+<<<<<<< HEAD
                 self._activation_fn)
+=======
+                activation_fn)
+>>>>>>> Update on Connector
             _assert_same_size(output, self._output_size)
 
         else:
