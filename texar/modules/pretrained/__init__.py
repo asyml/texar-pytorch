@@ -17,5 +17,5 @@ Modules of Texar library bert.
 
 # pylint: disable=wildcard-import
 
-from texar.modules.berts.bert_base import *
-from texar.modules.berts.bert_utils import *
+from texar.modules.pretrained.bert_base import *
+from texar.modules.pretrained.bert_utils import *

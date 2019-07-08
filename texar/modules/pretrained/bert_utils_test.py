@@ -5,7 +5,7 @@ Unit tests for bert utils.
 import os
 import unittest
 
-from texar.modules.berts.bert_utils import *
+from texar.modules.pretrained.bert_utils import *
 
 
 class BertUtilsTest(unittest.TestCase):

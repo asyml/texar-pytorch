@@ -36,7 +36,6 @@ setuptools.setup(
     ],
     extras_require={
         'torch': ['torch>=1.0'],
-        'tensorflow': ['tensorflow>=1.7.0'],
         'examples': [],
         'extras': ['Pillow>=3.0'],
     },

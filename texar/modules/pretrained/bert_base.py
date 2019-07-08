@@ -15,8 +15,10 @@
 Base class for Bert Modules.
 """
 
+from typing import Optional
+
 from texar.module_base import ModuleBase
-from texar.modules.berts import bert_utils
+from texar.modules.pretrained import bert_utils
 
 __all__ = [
     "BertBase",
@@ -43,10 +45,10 @@ class BertBase(ModuleBase):
     """
 
     def __init__(self,
-                 pretrained_model_name=None,
-                 cache_dir=None,
+                 pretrained_model_name: Optional[str] = None,
+                 cache_dir: Optional[str] = None,
                  hparams=None):
-        ModuleBase.__init__(self, hparams)
+        super().__init__(hparams)
 
         if pretrained_model_name:
             self.pretrained_model_dir = bert_utils.load_pretrained_model(

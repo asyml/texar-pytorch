@@ -182,14 +182,9 @@ Decoders
 Classifiers
 ============
 
-:hidden:`BertClassifierV1`
+:hidden:`BertClassifier`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.BertClassifierV1
-    :members:
-
-:hidden:`BertClassifierV2`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.BertClassifierV2
+.. autoclass:: texar.modules.BertClassifier
     :members:
 
 :hidden:`Conv1DClassifier`
@@ -219,10 +214,7 @@ Bert
 =========
 
 .. spelling::
-    pretrained
     pooler
-    hparams
-    bert
 
 :hidden:`BertBase`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -15,7 +15,7 @@
 Modules of Texar library module.
 """
 
-from texar.modules.berts import *
+from texar.modules.pretrained import *
 from texar.modules.classifiers import *
 from texar.modules.decoders import *
 from texar.modules.embedders import *  # type: ignore  # same name submodule

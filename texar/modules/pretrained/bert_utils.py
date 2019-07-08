@@ -54,8 +54,7 @@ _MODEL2URL = {
 
 
 def init_bert_checkpoint(model: nn.Module, cache_dir: str):
-    r"""
-    Initializes BERT model parameters from a checkpoint provided by Google.
+    r"""Initializes BERT model parameters from a checkpoint provided by Google.
     """
     try:
         import numpy as np
@@ -157,8 +156,7 @@ def init_bert_checkpoint(model: nn.Module, cache_dir: str):
 
 
 def name_to_variable(model: nn.Module, name: str) -> nn.Module:
-    r"""
-    Find the corresponding variable given the specified name.
+    r"""Find the corresponding variable given the specified name.
     """
     pointer = model
     name = name.split(".")
@@ -172,8 +170,7 @@ def name_to_variable(model: nn.Module, name: str) -> nn.Module:
 
 
 def _default_download_dir() -> str:
-    r"""
-    Return the directory to which packages will be downloaded by default.
+    r"""Return the directory to which packages will be downloaded by default.
     """
     package_dir = os.path.dirname(os.path.dirname(
         os.path.dirname(os.path.dirname(__file__))))
@@ -200,8 +197,7 @@ def _default_download_dir() -> str:
 
 def load_pretrained_model(pretrained_model_name: str,
                           cache_dir: Optional[str] = None) -> str:
-    r"""
-    Return the directory in which the pretrained model is cached.
+    r"""Return the directory in which the pretrained model is cached.
     """
     if pretrained_model_name in _MODEL2URL:
         download_path = _MODEL2URL[pretrained_model_name]
@@ -224,8 +220,8 @@ def load_pretrained_model(pretrained_model_name: str,
 
 
 def transform_bert_to_texar_config(cache_dir: str) -> Dict:
-    r"""
-    Load the Json config file and transform it into Texar style configuration.
+    r"""Load the Json config file and transform it into Texar style
+    configuration.
     """
     info = list(os.walk(cache_dir))
     root, _, files = info[0]

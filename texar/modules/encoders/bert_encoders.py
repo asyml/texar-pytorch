@@ -15,12 +15,14 @@
 BERT encoders.
 """
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 
 from texar.core import layers
 from texar.hyperparams import HParams
-from texar.modules.berts import BertBase, bert_utils
+from texar.modules.pretrained import BertBase, bert_utils
 from texar.modules.embedders import PositionEmbedder, WordEmbedder
 from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.encoders.transformer_encoder import TransformerEncoder
@@ -59,8 +61,8 @@ class BertEncoder(BertBase, EncoderBase):
     """
 
     def __init__(self,
-                 pretrained_model_name=None,
-                 cache_dir=None,
+                 pretrained_model_name: Optional[str] = None,
+                 cache_dir: Optional[str] = None,
                  hparams=None):
         EncoderBase.__init__(self,
                              hparams=hparams)
@@ -286,9 +288,9 @@ class BertEncoder(BertBase, EncoderBase):
         }
 
     def forward(self,
-                inputs,
-                sequence_length=None,
-                segment_ids=None,
+                inputs: torch.Tensor,
+                sequence_length: Optional[torch.LongTensor] = None,
+                segment_ids: Optional[torch.LongTensor] = None,
                 **kwargs):
         r"""Encodes the inputs.
 
