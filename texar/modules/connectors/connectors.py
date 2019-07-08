@@ -66,7 +66,7 @@ def _assert_same_size(outputs: TensorStruct,
             if output[0].size() != size:
                 raise ValueError("The output size does not match"
                                  "the the required output_size")
-        elif output[0].size()[-1:] != torch.Size([size]):
+        elif output[0].size()[-1] != size:
             raise ValueError(
                 "The output size does not match the the required output_size")
 
