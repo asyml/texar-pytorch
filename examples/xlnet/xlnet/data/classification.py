@@ -34,7 +34,7 @@ class Yelp5Processor(DataProcessor):
     def get_dev_examples(self) -> List[InputExample]:
         return self._create_examples(self.data_dir / "test.csv")
 
-    def get_test_examples(self):
+    def get_test_examples(self):  # pylint: disable=no-self-use
         raise TypeError("The Yelp 5 dataset does not have a test set.")
 
     @staticmethod
@@ -61,7 +61,7 @@ class ImdbProcessor(DataProcessor):
     def get_dev_examples(self) -> List[InputExample]:
         return self._create_examples(self.data_dir / "test")
 
-    def get_test_examples(self) -> List[InputExample]:
+    def get_test_examples(self):  # pylint: disable=no-self-use
         raise TypeError("The IMDB dataset does not have a test set.")
 
     @staticmethod

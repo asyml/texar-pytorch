@@ -56,7 +56,7 @@ Note that this is a regression task, the evaluation metric is Pearson's r correl
 
 To fine-tune the model on the dataset, run the following command:
 ```bash
-python run.py \
+python xlnet_classification_main.py \
     --config-data configs/config_data_stsb.py \
     --pretrained pretrained/xlnet_cased_L-24_H-1024_A-16/xlnet_model.ckpt \
     --spm-model-path pretrained/xlnet_cased_L-24_H-1024_A-16/spiece.model
@@ -86,7 +86,7 @@ to -1.
 An example of training output is as follows:
 
 ```
-$ python run.py --config-data configs/config_data_stsb.py
+$ python xlnet_classification_main.py --config-data configs/config_data_stsb.py
 Random seed set to 19260817
 Using CUDA device 0
 INFO:root:Creating dataset in directory processed_data/STS-B.
@@ -160,7 +160,7 @@ Pearsonr: nan
 
 To evaluate a saved model, run the following command:
 ```bash
-python run.py \
+python xlnet_classification_main.py \
     --config-data configs/config_data_stsb.py \
     --checkpoint saved_models/path_to_checkpoint \
     --mode eval

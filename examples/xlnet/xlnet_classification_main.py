@@ -29,6 +29,16 @@ import texar as tx
 import xlnet
 
 
+def load_config_into_args(config_path: str, args):
+    config_module_path = config_path.replace('/', '.').replace('\\', '.')
+    if config_module_path.endswith(".py"):
+        config_module_path = config_module_path[:-3]
+    config_data = importlib.import_module(config_module_path)
+    for key in dir(config_data):
+        if not key.startswith('__'):
+            setattr(args, key, getattr(config_data, key))
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -65,13 +75,7 @@ def parse_args():
         help="Whether the pretrained model is an uncased model")
 
     args = parser.parse_args()
-    config_module_path = args.config_data.replace('/', '.').replace('\\', '.')
-    if config_module_path.endswith(".py"):
-        config_module_path = config_module_path[:-3]
-    config_data = importlib.import_module(config_module_path)
-    for key in dir(config_data):
-        if not key.startswith('__'):
-            setattr(args, key, getattr(config_data, key))
+    load_config_into_args(args.config_data, args)
     return args
 
 
