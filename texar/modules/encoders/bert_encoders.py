@@ -33,7 +33,7 @@ __all__ = [
 ]
 
 
-class BertEncoder(BertBase, EncoderBase):
+class BertEncoder(BertBase):
     r"""Raw BERT Transformer for encoding sequences.
 
     This module basically stacks
@@ -64,13 +64,10 @@ class BertEncoder(BertBase, EncoderBase):
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None):
-        EncoderBase.__init__(self,
-                             hparams=hparams)
 
-        BertBase.__init__(self,
-                          pretrained_model_name=pretrained_model_name,
-                          cache_dir=cache_dir,
-                          hparams=hparams)
+        super().__init__(pretrained_model_name=pretrained_model_name,
+                         cache_dir=cache_dir,
+                         hparams=hparams)
 
         if self.pretrained_model_dir:
             self._hparams = HParams(self.pretrained_model_hparams,
@@ -325,15 +322,15 @@ class BertEncoder(BertBase, EncoderBase):
         segment_embeds = self.segment_embedder(segment_ids)
 
         batch_size = inputs.shape[0]
-        pos_length = torch.full((batch_size,), inputs.shape[1],
-                                dtype=torch.int64)
+        pos_length = inputs.new_full((batch_size,), inputs.shape[1],
+                                     dtype=torch.int64)
         pos_embeds = self.position_embedder(sequence_length=pos_length)
 
         inputs_embeds = word_embeds + segment_embeds + pos_embeds
 
         if sequence_length is None:
-            sequence_length = torch.full((batch_size,), inputs.shape[1],
-                                         dtype=torch.int64)
+            sequence_length = inputs.new_full((batch_size,), inputs.shape[1],
+                                              dtype=torch.int64)
 
         output = self.encoder(inputs_embeds, sequence_length)
 

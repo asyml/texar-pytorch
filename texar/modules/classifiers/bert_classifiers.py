@@ -58,11 +58,11 @@ class BertClassifier(ClassifierBase):
     """
 
     def __init__(self,
-                 pretrained_model_name=None,
-                 cache_dir=None,
+                 pretrained_model_name: Optional[str] = None,
+                 cache_dir: Optional[str] = None,
                  hparams=None):
 
-        ClassifierBase.__init__(self, hparams)
+        super().__init__(hparams)
 
         # Create the underlying encoder
         encoder_hparams = utils.dict_fetch(hparams,
