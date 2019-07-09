@@ -75,12 +75,12 @@ def main():
                                       hparams=config_downstream)
     model.to(device)
 
-    # Builds learning rate decay scheduler
-    static_lr = 2e-5
-
     num_train_steps = int(num_train_data / config_data.train_batch_size *
                           config_data.max_train_epoch)
     num_warmup_steps = int(num_train_steps * config_data.warmup_proportion)
+
+    # Builds learning rate decay scheduler
+    static_lr = 2e-5
 
     vars_with_decay = []
     vars_without_decay = []
@@ -90,19 +90,24 @@ def main():
         else:
             vars_with_decay.append(param)
 
-    opt_params = [{'params': vars_with_decay,
-                   'weight_decay': 0.01},
-                  {'params': vars_without_decay,
-                   'weight_decay': 0.0}]
+    opt_params = [
+        {
+            'params': vars_with_decay,
+            'weight_decay': 0.01,
+        },
+        {
+            'params': vars_without_decay,
+            'weight_decay': 0.0,
+        }]
     optim = tx.core.BertAdam(opt_params,
                              betas=(0.9, 0.999),
                              eps=1e-6,
                              lr=static_lr)
 
     scheduler = torch.optim.lr_scheduler.LambdaLR(
-        optim, functools.partial(
-            model_utils.get_lr_multiplier, total_steps=num_train_steps,
-            warmup_steps=num_warmup_steps))
+        optim, functools.partial(model_utils.get_lr_multiplier,
+                                 total_steps=num_train_steps,
+                                 warmup_steps=num_warmup_steps))
 
     train_dataset = tx.data.RecordData(hparams=config_data.train_hparam,
                                        device=device)
@@ -116,7 +121,7 @@ def main():
     )
 
     def _train_epoch():
-        """Trains on the training set, and evaluates on the dev set
+        r"""Trains on the training set, and evaluates on the dev set
         periodically.
         """
         iterator.switch_to_dataset("train")
@@ -161,15 +166,13 @@ def main():
         iterator.switch_to_dataset("eval")
         model.eval()
 
-        cum_acc = 0.0
-        cum_loss = 0.0
         nsamples = 0
+        avg_rec = tx.utils.AverageRecorder()
         for batch in iterator:
             input_ids = batch["input_ids"]
             segment_ids = batch["segment_ids"]
             labels = batch["label_ids"]
 
-            batch_size = input_ids.size()[0]
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
             logits, preds = model(input_ids, input_length, segment_ids)
@@ -184,11 +187,11 @@ def main():
                                        reduction='mean')
 
             accu = tx.evals.accuracy(labels, preds)
-            cum_acc += accu * batch_size
-            cum_loss += loss * batch_size
+            batch_size = input_ids.size()[0]
+            avg_rec.add([accu, loss], batch_size)
             nsamples += batch_size
         logging.info("eval accu: %.4f; loss: %.4f; nsamples: %d",
-                     cum_acc / nsamples, cum_loss / nsamples, nsamples)
+                     avg_rec.avg(0), avg_rec.avg(1), nsamples)
 
     @torch.no_grad()
     def _test_epoch():
