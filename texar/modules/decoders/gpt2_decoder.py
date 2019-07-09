@@ -11,13 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Modules of Texar library module.
-"""
-
-from texar.modules.pretrained import *
-from texar.modules.classifiers import *
-from texar.modules.decoders import *
-from texar.modules.embedders import *  # type: ignore  # same name submodule
-from texar.modules.encoders import *
-from texar.modules.networks import *  # type: ignore  # same name submodule
