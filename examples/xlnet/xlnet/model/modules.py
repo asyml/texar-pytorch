@@ -17,7 +17,7 @@ Modules used in XLNet. Adapted from
 https://github.com/zihangdai/xlnet/blob/master/modeling.py
 """
 
-from typing import Dict, Any, Optional, Union, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 from torch import Tensor
@@ -60,7 +60,7 @@ class PositionWiseFF(tx.ModuleBase):
             "activation": 'relu',
         }
 
-    def forward(self, input: Tensor) -> Tensor:
+    def forward(self, input: Tensor) -> Tensor:  # type: ignore
         # position-wise feed-forward
         output = self.linear1(input)
         output = self.activation_fn(output)
@@ -80,7 +80,7 @@ class PositionalEmbedding(nn.Module):
         inv_freq = 1 / (10000 ** (freq_seq / embed_dim))
         self.register_buffer('inv_freq', inv_freq)
 
-    def forward(self, pos_seq: Tensor) -> Tensor:
+    def forward(self, pos_seq: Tensor) -> Tensor:  # type: ignore
         sinusoid = torch.ger(pos_seq, self.inv_freq)
         pos_embed = torch.cat([sinusoid.sin(), sinusoid.cos()], dim=-1)
         return pos_embed
@@ -116,7 +116,8 @@ class RelativePositionalEncoding(tx.ModuleBase):
         pos_embed = pos_embed.unsqueeze(1).expand(-1, batch_size, -1)
         return pos_embed
 
-    def forward(self, batch_size: int, seq_len: int, total_len: int,
+    def forward(self,  # type: ignore
+                batch_size: int, seq_len: int, total_len: int,
                 clamp_len: Optional[int] = None, attn_type: str = 'bi',
                 bi_data: bool = True) -> Tensor:
         if attn_type == 'bi':
@@ -258,7 +259,8 @@ class RelativeMultiheadAttention(tx.ModuleBase):
         attn_out = self.dropout(attn_out)
         return attn_out
 
-    def forward(self, states_h: Tensor, states_g: Optional[Tensor],
+    def forward(self,  # type: ignore
+                states_h: Tensor, states_g: Optional[Tensor],
                 pos_embed: Tensor, segment_mat: Optional[Tensor],
                 attn_mask_h: Optional[Tensor] = None,
                 attn_mask_g: Optional[Tensor] = None,
@@ -293,7 +295,8 @@ class RelativeMultiheadAttention(tx.ModuleBase):
 
         # Core attention ops.
         attn_vec_h = self._compute_attention_score(
-            q_head_h, k_head_h, v_head_h, k_head_r, segment_mat, attn_mask_h)
+            q_head_h, k_head_h, v_head_h, k_head_r,
+            segment_mat, attn_mask_h)
 
         # Post attention processing.
         attn_out_h = self._post_attention(attn_vec_h)
@@ -310,7 +313,8 @@ class RelativeMultiheadAttention(tx.ModuleBase):
                 q_head_g = torch.einsum(
                     'mbnd,mlb->lbnd', [q_head_g, target_mapping])
             attn_vec_g = self._compute_attention_score(
-                q_head_g, k_head_h, v_head_h, k_head_r, segment_mat, attn_mask_g)
+                q_head_g, k_head_h, v_head_h, k_head_r,
+                segment_mat, attn_mask_g)
             if target_mapping is not None:
                 attn_vec_g = torch.einsum(
                     'lbnd,mlb->mbnd', [attn_vec_g, target_mapping])

@@ -136,9 +136,9 @@ class XLNet(tx.ModuleBase):
         `(seq_len, mem_len + seq_len)`.
         """
         device = self.r_w_bias.device
-        attn_mask = torch.ones([seq_len, seq_len], device=device)
+        attn_mask = torch.ones(seq_len, seq_len, device=device)
         mask_u = torch.triu(attn_mask, diagonal=1)
-        attn_mask_pad = torch.zeros([seq_len, mem_len], device=device)
+        attn_mask_pad = torch.zeros(seq_len, mem_len, device=device)
         ret = torch.cat([attn_mask_pad, mask_u], dim=1)
         if same_length:
             mask_l = torch.tril(attn_mask, diagonal=-1)
@@ -209,7 +209,8 @@ class XLNet(tx.ModuleBase):
             repr_str = output_str
         return '\n'.join(repr_str)
 
-    def forward(self, token_ids: LongTensor, segment_ids: Optional[LongTensor],
+    def forward(self,  # type: ignore
+                token_ids: LongTensor, segment_ids: Optional[LongTensor],
                 input_mask: Optional[Tensor] = None,
                 memory: Optional[List[Tensor]] = None,
                 permute_mask: Optional[Tensor] = None,
@@ -256,8 +257,8 @@ class XLNet(tx.ModuleBase):
             - **`output`**: The final layer output representations. Shape
               `(seq_len, batch_size, hidden_dim)`.
             - **`new_memory`**: The memory of the current batch.
-              If `cache_len` is 0, then `new_memory` is `None`. Otherwise, it is a
-              list of length `num_layers`, each a tensor of shape
+              If `cache_len` is 0, then `new_memory` is `None`. Otherwise, it is
+              a list of length `num_layers`, each a tensor of shape
               `(cache_len, batch_size, hidden_dim)`.
               This can be used as the :attr:`memory` argument in the next batch.
         """
@@ -267,14 +268,14 @@ class XLNet(tx.ModuleBase):
         reuse_len = self._hparams.reuse_len
 
         # Construct masks.
-        masks: List[Tensor] = []
+        masks: List[Optional[Tensor]] = []
 
         # Causal attention mask.
         if attn_type == 'uni':
-            attn_mask = self._create_mask(seq_len, mem_len, same_length)
+            causal_mask = self._create_mask(seq_len, mem_len, same_length)
             # attn_mask: (seq_len, tot_len, 1, 1)
-            attn_mask = attn_mask.unsqueeze(2).unsqueeze(3)
-            masks.append(attn_mask)
+            causal_mask = causal_mask.unsqueeze(2).unsqueeze(3)
+            masks.append(causal_mask)
         elif attn_type == 'bi':
             pass
         else:
@@ -293,7 +294,9 @@ class XLNet(tx.ModuleBase):
 
         # Exclude the main diagonal (target tokens) from the mask.
         attn_mask = utils.sum_tensors(masks)
-        if attn_mask is not None:
+        if attn_mask is None:
+            final_mask = None
+        else:
             attn_mask = (attn_mask > 0)
             final_mask = -torch.eye(seq_len, device=attn_mask.device)
             final_mask = torch.cat([
@@ -301,8 +304,6 @@ class XLNet(tx.ModuleBase):
             final_mask = final_mask.unsqueeze(2).unsqueeze(3)
             # final_mask: (seq_len, tot_len, batch_size, 1)
             final_mask = ((attn_mask.float() + final_mask) > 0)
-        else:
-            final_mask = None
 
         # Construct segment embedding.
         if segment_ids is not None:
@@ -330,8 +331,6 @@ class XLNet(tx.ModuleBase):
             states_g = self.dropout(word_embed_q)
         else:
             states_g = None
-        if memory is None:
-            memory = [None] * self._hparams.num_layers
         new_memory = []
 
         for idx in range(self._hparams.num_layers):
@@ -402,7 +401,10 @@ class XLNetLM(XLNet):
                 tokens.append(CLS_ID)
             token_ids = torch.tensor([tokens], device=self.lm_bias.device).t()
             segment_ids = torch.zeros_like(token_ids)
-            if not initial:
+            if initial:
+                target_mapping = None
+                permute_mask = None
+            else:
                 seq_len = len(tokens)
                 # Only the dummy token is considered target.
                 target_mapping = torch.cat([
@@ -414,9 +416,6 @@ class XLNetLM(XLNet):
                     torch.zeros(seq_len, seq_len - 1, 1),
                     torch.ones(seq_len, 1, 1),
                 ], dim=1).to(device=token_ids.device)
-            else:
-                target_mapping = None
-                permute_mask = None
 
             return {
                 "token_ids": token_ids,
@@ -427,18 +426,18 @@ class XLNetLM(XLNet):
 
         if not recompute_memory and len(start_tokens) > 1:
             _, memory = self.forward(
-                **create_input(start_tokens[:-1], initial=True), memory=memory,
-                cache_len=cache_len)
+                memory=memory, cache_len=cache_len,
+                **create_input(start_tokens[:-1], initial=True))
         predict_tokens = start_tokens.copy()
         while len(predict_tokens) < max_length:
             if not recompute_memory:
                 output, memory = self.forward(
-                    **create_input([predict_tokens[-1]]), memory=memory,
-                    cache_len=cache_len, two_stream=True)
+                    memory=memory, cache_len=cache_len, two_stream=True,
+                    **create_input([predict_tokens[-1]]))
             else:
                 output, memory = self.forward(
-                    **create_input(predict_tokens[-cache_len:]),
-                    two_stream=True)
+                    two_stream=True,
+                    **create_input(predict_tokens[-cache_len:]))
             logits = F.linear(output, self.word_embed.weight, self.lm_bias)
             logits = logits[-1]
             if top_k is not None:
@@ -448,6 +447,7 @@ class XLNetLM(XLNet):
             sample_id = Categorical(logits=logits).sample()
             predict_tokens.append(sample_id.item())
             if not recompute_memory:
+                assert memory is not None
                 # Omit memory for the dummy token.
                 memory = [mem[:-1] for mem in memory]
         return predict_tokens, memory
@@ -542,7 +542,8 @@ class XLNetSummary(tx.ModuleBase):
             param_groups = self.parameters()
         return param_groups
 
-    def forward(self, token_ids: LongTensor, segment_ids: Optional[LongTensor],
+    def forward(self,  # type: ignore
+                token_ids: LongTensor, segment_ids: Optional[LongTensor],
                 input_mask: Optional[Tensor] = None) -> Tensor:
         # output: (seq_len, batch_size, hidden_dim)
         output, _ = self.xlnet(token_ids, segment_ids, input_mask=input_mask)
@@ -570,7 +571,8 @@ class XLNetClassifier(XLNetSummary, tx.modules.ClassifierBase):
             "num_classes": 2,
         }
 
-    def forward(self, token_ids: LongTensor, segment_ids: Optional[LongTensor],
+    def forward(self,  # type: ignore
+                token_ids: LongTensor, segment_ids: Optional[LongTensor],
                 labels: LongTensor, input_mask: Optional[Tensor] = None) \
             -> Tuple[Tensor, Tensor]:
         summary = super().forward(token_ids, segment_ids, input_mask)
@@ -593,7 +595,8 @@ class XLNetRegressor(XLNetSummary, tx.ModuleBase):
     def default_hparams() -> Dict[str, Any]:
         return XLNetSummary.default_hparams()
 
-    def forward(self, token_ids: LongTensor, segment_ids: Optional[LongTensor],
+    def forward(self,  # type: ignore
+                token_ids: LongTensor, segment_ids: Optional[LongTensor],
                 labels: Tensor, input_mask: Optional[Tensor] = None) \
             -> Tuple[Tensor, Tensor]:
         summary = super().forward(token_ids, segment_ids, input_mask)

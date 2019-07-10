@@ -84,6 +84,7 @@ def evaluate(model, iterator, is_regression: bool = False, print_fn=None,
              tqdm_kwargs=None):
     if print_fn is None:
         print_fn = print
+    metric: xlnet.model.StreamingMetric
     if is_regression:
         metric = xlnet.model.StreamingPearsonR()
     else:
@@ -91,7 +92,6 @@ def evaluate(model, iterator, is_regression: bool = False, print_fn=None,
     avg_loss = tx.utils.AverageRecorder()
     progress = tqdm.tqdm(iterator, ncols=80, **(tqdm_kwargs or {}))
     for batch in progress:
-        batch: xlnet.data.Example  # Add a type annotation for the batch.
         loss, logits = model(
             batch.input_ids.t(), batch.segment_ids.t(),
             batch.label_ids, batch.input_mask.t())
@@ -205,7 +205,6 @@ def main(args):
         lambda: iterator.get_iterator('train')), ncols=80)
     for batch in progress:
         model.train()
-        batch: xlnet.data.Example  # Add a type annotation for the batch.
         loss, _ = model(
             batch.input_ids.t(), batch.segment_ids.t(),
             batch.label_ids, batch.input_mask.t())
