@@ -20,6 +20,8 @@ https://github.com/zihangdai/xlnet/blob/master/modeling.py
 import itertools
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 
+from torch.distributions import Categorical
+
 import torch
 from torch import LongTensor, Tensor
 from torch import nn
@@ -54,13 +56,15 @@ class XLNet(tx.ModuleBase):
             })
         self.dropout = nn.Dropout(self._hparams.dropout)
 
-        if self._hparams.untie_r:
-            bias_shape = (num_layers, num_heads, head_dim)
+        if not self._hparams.untie_r:
+            self.r_r_bias = nn.Parameter(torch.Tensor(num_heads, head_dim))
+            self.r_w_bias = nn.Parameter(torch.Tensor(num_heads, head_dim))
+            self.r_s_bias = (nn.Parameter(torch.Tensor(num_heads, head_dim))
+                             if self._hparams.use_segments else None)
         else:
-            bias_shape = (num_heads, head_dim)
-        self.r_w_bias = nn.Parameter(torch.Tensor(*bias_shape))
-        self.r_r_bias = nn.Parameter(torch.Tensor(*bias_shape))
-        self.r_s_bias = nn.Parameter(torch.Tensor(*bias_shape))
+            self.r_r_bias = None
+            self.r_w_bias = None
+            self.r_s_bias = None
 
         self.attn_layers = nn.ModuleList()
         self.ff_layers = nn.ModuleList()
@@ -69,16 +73,22 @@ class XLNet(tx.ModuleBase):
         ff_hparams = tx.utils.dict_fetch(
             self._hparams, PositionWiseFF.default_hparams())
         for _ in range(num_layers):
-            self.attn_layers.append(
-                RelativeMultiheadAttention(hparams=rel_attn_hparams))
+            self.attn_layers.append(RelativeMultiheadAttention(
+                self.r_r_bias, self.r_w_bias, self.r_s_bias,
+                hparams=rel_attn_hparams))
             self.ff_layers.append(PositionWiseFF(hparams=ff_hparams))
+
+        self.mask_emb = nn.Parameter(torch.Tensor(
+            1, 1, self._hparams.hidden_dim))
 
         self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.normal_(self.r_w_bias, 0.0, 0.02)
-        nn.init.normal_(self.r_r_bias, 0.0, 0.02)
-        nn.init.normal_(self.r_s_bias, 0.0, 0.02)
+        if not self._hparams.untie_r:
+            nn.init.normal_(self.r_w_bias, 0.0, 0.02)
+            nn.init.normal_(self.r_r_bias, 0.0, 0.02)
+            if self._hparams.use_segments:
+                nn.init.normal_(self.r_s_bias, 0.0, 0.02)
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
@@ -203,8 +213,11 @@ class XLNet(tx.ModuleBase):
                 input_mask: Optional[Tensor] = None,
                 memory: Optional[List[Tensor]] = None,
                 permute_mask: Optional[Tensor] = None,
+                target_mapping: Optional[Tensor] = None,
                 bi_data: bool = False, clamp_len: Optional[int] = None,
-                same_length: bool = False, attn_type: str = 'bi') \
+                cache_len: int = 0,
+                same_length: bool = False, attn_type: str = 'bi',
+                two_stream: bool = False) \
             -> Tuple[Tensor, Optional[List[Tensor]]]:
         r"""
 
@@ -219,22 +232,33 @@ class XLNet(tx.ModuleBase):
                 `(seq_len, seq_len, batch_size)`.
                 A value of 0 for ``permute_mask[i, j, k]`` indicates that
                 position `i` attends to position `j` in batch `k`.
+            target_mapping: The target token mapping. Float tensor of shape
+                `(num_targets, seq_len, batch_size)`.
+                A value of 1 for ``target_mapping[i, j, k]`` indicates that
+                the `i`-th target token (in order of permutation) in batch `k`
+                is the token at position `j`.
+                Each row ``target_mapping[i, :, k]`` can have no more than one
+                value of 1.
             bi_data (bool): Whether to use bidirectional data input pipeline.
             clamp_len (int): Clamp all relative distances larger than
                 :attr:`clamp_len`. A value of -1 means no clamping.
+            cache_len (int): Length of memory (number of tokens) to cache.
             same_length (bool): Whether to use the same attention length for
                 each token.
             attn_type (str): Attention type. Supported values are `"uni"`
                 and `"bi"`.
+            two_stream (bool): Whether to use two-stream attention. Only set to
+                `True` when pre-training or generating text. Defaults to
+                `False`.
 
         :returns: A tuple of `(output, new_memory)`:
 
             - **`output`**: The final layer output representations. Shape
               `(seq_len, batch_size, hidden_dim)`.
             - **`new_memory`**: The memory of the current batch.
-              If `mem_len` is 0, then `new_memory` is `None`. Otherwise, it is a
+              If `cache_len` is 0, then `new_memory` is `None`. Otherwise, it is a
               list of length `num_layers`, each a tensor of shape
-              `(mem_len, batch_size, hidden_dim)`.
+              `(cache_len, batch_size, hidden_dim)`.
               This can be used as the :attr:`memory` argument in the next batch.
         """
         seq_len, batch_size = token_ids.size()
@@ -257,13 +281,12 @@ class XLNet(tx.ModuleBase):
             raise ValueError(f"Unsupported attention type: {attn_type}")
 
         # Data mask: input mask & permutation mask.
+        if input_mask is not None:
+            input_mask = input_mask.expand(seq_len, -1, -1)
         data_mask = utils.sum_tensors([input_mask, permute_mask])
         if data_mask is not None:
             # All positions in memory can be attended to.
-            if data_mask.dim() == 2:
-                data_mask = data_mask.unsqueeze(0)
-            memory_mask = data_mask.new_zeros(
-                data_mask.size(0), mem_len, batch_size)
+            memory_mask = data_mask.new_zeros(seq_len, mem_len, batch_size)
             # data_mask: (seq_len, tot_len, batch_size, 1)
             data_mask = torch.cat([memory_mask, data_mask], dim=1).unsqueeze(3)
             masks.append(data_mask)
@@ -271,13 +294,13 @@ class XLNet(tx.ModuleBase):
         # Exclude the main diagonal (target tokens) from the mask.
         attn_mask = utils.sum_tensors(masks)
         if attn_mask is not None:
-            attn_mask = (attn_mask > 0).float()
+            attn_mask = (attn_mask > 0)
             final_mask = -torch.eye(seq_len, device=attn_mask.device)
             final_mask = torch.cat([
                 final_mask.new_zeros(seq_len, mem_len), final_mask], dim=-1)
             final_mask = final_mask.unsqueeze(2).unsqueeze(3)
             # final_mask: (seq_len, tot_len, batch_size, 1)
-            final_mask = ((attn_mask + final_mask) > 0)
+            final_mask = ((attn_mask.float() + final_mask) > 0)
         else:
             final_mask = None
 
@@ -298,31 +321,136 @@ class XLNet(tx.ModuleBase):
         pos_embed = self.dropout(pos_embed)
 
         states_h = self.dropout(word_embed)
+        if two_stream:
+            if target_mapping is not None:
+                word_embed_q = self.mask_emb.expand(
+                    target_mapping.size(0), batch_size, -1)
+            else:
+                word_embed_q = word_embed
+            states_g = self.dropout(word_embed_q)
+        else:
+            states_g = None
         if memory is None:
             memory = [None] * self._hparams.num_layers
         new_memory = []
 
-        untie_r = self._hparams.untie_r
         for idx in range(self._hparams.num_layers):
             cur_memory = memory[idx] if memory is not None else None
-            if mem_len > 0:
+            if cache_len > 0:
                 new_memory.append(self._cache_mem(
-                    states_h, cur_memory, mem_len, reuse_len))
-            r_w_bias = self.r_w_bias if not untie_r else self.r_w_bias[idx]
-            r_r_bias = self.r_r_bias if not untie_r else self.r_r_bias[idx]
-            if segment_ids is None:
-                r_s_bias = None
-            else:
-                r_s_bias = self.r_s_bias if not untie_r else self.r_s_bias[idx]
-            states_h = self.attn_layers[idx](
-                states_h, pos_embed, segment_matrix, r_w_bias, r_r_bias,
-                r_s_bias, final_mask, cur_memory)
+                    states_h, cur_memory, cache_len, reuse_len))
+            attn_layer: RelativeMultiheadAttention = self.attn_layers[idx]
+            states_h, states_g = attn_layer(
+                states_h=states_h, states_g=states_g,
+                pos_embed=pos_embed, segment_mat=segment_matrix,
+                attn_mask_h=final_mask, attn_mask_g=attn_mask,
+                target_mapping=target_mapping, memory=cur_memory)
             states_h = self.ff_layers[idx](states_h)
+            if states_g is not None:
+                states_g = self.ff_layers[idx](states_g)
 
-        output = self.dropout(states_h)
-        if mem_len == 0:
+        output = self.dropout(states_h if states_g is None else states_g)
+        if cache_len == 0:
             return output, None
         return output, new_memory
+
+
+class XLNetLM(XLNet):
+    def __init__(self, hparams=None):
+        super().__init__(hparams)
+
+        self.lm_bias = nn.Parameter(torch.zeros(self._hparams.vocab_size))
+
+    @torch.no_grad()
+    def decode(self, start_tokens: List[int], max_length: int = 500,
+               memory: Optional[List[Tensor]] = None, cache_len: int = 512,
+               recompute_memory: bool = True,
+               temperature: Optional[float] = None,
+               top_k: Optional[int] = None) \
+            -> Tuple[List[int], Optional[List[Tensor]]]:
+        r"""Perform autoregressive decoding using XLNet. The algorithm is
+        largely inspired by: https://github.com/rusiaaman/XLNet-gen.
+
+        Args:
+            start_tokens: A list of `int`s representing the tokenized initial
+                prompt.
+            max_length (int): Maximum number of tokens to decode.
+            memory (optional): The initial memory.
+            cache_len: Length of memory (number of tokens) to cache.
+            recompute_memory (bool): If `True`, the entire memory is recomputed
+                for each token to generate. This leads to better performance
+                because it enables every generated token to attend to each
+                other, compared to reusing previous memory which is equivalent
+                to using a causal attention mask. However, it is computationally
+                more expensive. Defaults to `True`.
+            temperature (float, optional): Softmax temperature.
+            top_k (int, optional): If specified, will only sample from the top-K
+                logits.
+
+        :returns: A tuple of `(output, new_memory)`:
+
+            - **`output`**: The sampled tokens as a list of `int`s.
+            - **`new_memory`**: The memory of the sampled tokens.
+        """
+        from texar.modules.decoders.decoder_helpers import _top_k_logits
+        from xlnet.data.utils import CLS_ID
+
+        def create_input(tokens: List[int], initial: bool = False):
+            if not initial:
+                # Add a dummy token at the end that stands for the token
+                # to predict.
+                tokens.append(CLS_ID)
+            token_ids = torch.tensor([tokens], device=self.lm_bias.device).t()
+            segment_ids = torch.zeros_like(token_ids)
+            if not initial:
+                seq_len = len(tokens)
+                # Only the dummy token is considered target.
+                target_mapping = torch.cat([
+                    torch.zeros(1, seq_len - 1, 1),
+                    torch.ones(1, 1, 1)
+                ], dim=1).to(device=token_ids.device)
+                # Dummy token attends to nothing; actual tokens attend to all.
+                permute_mask = torch.cat([
+                    torch.zeros(seq_len, seq_len - 1, 1),
+                    torch.ones(seq_len, 1, 1),
+                ], dim=1).to(device=token_ids.device)
+            else:
+                target_mapping = None
+                permute_mask = None
+
+            return {
+                "token_ids": token_ids,
+                "segment_ids": segment_ids,
+                "target_mapping": target_mapping,
+                "permute_mask": permute_mask,
+            }
+
+        if not recompute_memory and len(start_tokens) > 1:
+            _, memory = self.forward(
+                **create_input(start_tokens[:-1], initial=True), memory=memory,
+                cache_len=cache_len)
+        predict_tokens = start_tokens.copy()
+        while len(predict_tokens) < max_length:
+            if not recompute_memory:
+                output, memory = self.forward(
+                    **create_input([predict_tokens[-1]]), memory=memory,
+                    cache_len=cache_len, two_stream=True)
+            else:
+                output, memory = self.forward(
+                    **create_input(predict_tokens[-cache_len:]),
+                    two_stream=True)
+            logits = F.linear(output, self.word_embed.weight, self.lm_bias)
+            logits = logits[-1]
+            if top_k is not None:
+                logits = _top_k_logits(logits, top_k)
+            if temperature is not None:
+                logits /= temperature
+            sample_id = Categorical(logits=logits).sample()
+            predict_tokens.append(sample_id.item())
+            if not recompute_memory:
+                # Omit memory for the dummy token.
+                memory = [mem[:-1] for mem in memory]
+        return predict_tokens, memory
 
 
 class XLNetSummary(tx.ModuleBase):
