@@ -17,7 +17,7 @@ class BertEncoderTest(unittest.TestCase):
     def test_hparams(self):
         r"""Tests the priority of the encoder arch parameter.
         """
-        inputs = torch.zeros(32, 16)
+        inputs = torch.zeros(32, 16, dtype=torch.int64)
 
         # case 1: set "pretrained_mode_name" by constructor argument
         hparams = {
@@ -59,7 +59,7 @@ class BertEncoderTest(unittest.TestCase):
         r"""Tests the functionality of automatically collecting trainable
         variables.
         """
-        inputs = torch.zeros(32, 16)
+        inputs = torch.zeros(32, 16, dtype=torch.int64)
 
         # case 1: bert base
         encoder = BertEncoder()

@@ -1,5 +1,5 @@
 """
-Unit tests for GPT utils.
+Unit tests for GPT2 utils.
 """
 
 import os
@@ -9,7 +9,7 @@ from texar.modules.pretrained.gpt2_utils import *
 
 
 class GPTUtilsTest(unittest.TestCase):
-    r"""Tests GPT utils.
+    r"""Tests GPT2 utils.
     """
 
     def test_load_pretrained_model_AND_transform_gpt2_to_texar_config(self):

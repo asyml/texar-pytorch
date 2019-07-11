@@ -43,8 +43,8 @@ class GPT2Classifier(ClassifierBase):
     Args:
         pretrained_model_name (optional): a str with the name
             of a pre-trained model to load selected in the list of:
-            `117M`, `345M`.
-            If `None`, will use the model name in :attr:`hparams`.
+            `117M`, `345M`. If `None`, will use the model name in
+            :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
             a default directory will be used.
@@ -110,36 +110,37 @@ class GPT2Classifier(ClassifierBase):
         r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
-        {
-            # (1) Same hyperparameters as in GPT2Encoder
-            ...
-            # (2) Additional hyperparameters
-            "num_classes": 2,
-            "logit_layer_kwargs": None,
-            "clas_strategy": `cls_time`,
-            "max_seq_length": None,
-            "dropout": 0.1,
-            "name": `gpt2_classifier`
+
+            {
+                # (1) Same hyperparameters as in GPT2Encoder
+                ...
+                # (2) Additional hyperparameters
+                "num_classes": 2,
+                "logit_layer_kwargs": None,
+                "clas_strategy": `cls_time`,
+                "max_seq_length": None,
+                "dropout": 0.1,
+                "name": `gpt2_classifier`
             }
 
         Here:
 
         1. Same hyperparameters as in
-        :class:`~texar.modules.GPT2Encoder`.
-        See the :meth:`~texar.modules.GPT2Encoder.default_hparams`.
-        An instance of GPT2Encoder is created for feature extraction.
+           :class:`~texar.modules.GPT2Encoder`.
+           See the :meth:`~texar.modules.GPT2Encoder.default_hparams`.
+           An instance of GPT2Encoder is created for feature extraction.
 
         2. Additional hyperparameters:
 
             `num_classes`: int
                 Number of classes:
 
-                - If **`> 0`**, an additional `Linear`
-                    layer is appended to the encoder to compute the logits over
-                    classes.
-                - If **`<= 0`**, no dense layer is appended. The number of
-                    classes is assumed to be the final dense layer size of the
-                    encoder.
+                - If **> 0**, an additional `Linear`
+                  layer is appended to the encoder to compute the logits over
+                  classes.
+                - If **<= 0**, no dense layer is appended. The number of
+                  classes is assumed to be the final dense layer size of the
+                  encoder.
 
             `logit_layer_kwargs`: dict
                 Keyword arguments for the logit Dense layer constructor,
@@ -148,19 +149,20 @@ class GPT2Classifier(ClassifierBase):
 
             `clas_strategy`: str
                 The classification strategy, one of:
-                - **`cls_time`**: Sequence-level classification based on the
-                output of the last time step. Each sequence has a class.
-                - **`all_time`**: Sequence-level classification based on
-                the output of all time steps. Each sequence has a class.
-                - **`time_wise`**: Step-wise classification, i.e., make
-                classification for each time step based on its output.
+
+                - **cls_time**: Sequence-level classification based on the
+                  output of the last time step. Each sequence has a class.
+                - **all_time**: Sequence-level classification based on
+                  the output of all time steps. Each sequence has a class.
+                - **time_wise**: Step-wise classification, i.e., make
+                  classification for each time step based on its output.
 
             `max_seq_length`: int, optional
                 Maximum possible length of input sequences. Required if
                 `clas_strategy` is `all_time`.
 
             `dropout`: float
-                The dropout rate of the BERT encoder output.
+                The dropout rate of the GPT2 encoder output.
 
             `name`: str
                 Name of the classifier.
@@ -196,21 +198,21 @@ class GPT2Classifier(ClassifierBase):
             A tuple `(logits, preds)`, containing the logits over classes and
             the predictions, respectively.
 
-            - If `clas_strategy`==`cls_time` or `all_time`
+            - If ``clas_strategy`` is ``cls_time`` or ``all_time``:
 
-                - If `num_classes==1`, `logits` and `pred` are of both
-                  shape `[batch_size]`
-                - If `num_classes>1`, `logits` is of shape
-                  `[batch_size, num_classes]` and `pred` is of shape
-                  `[batch_size]`.
+                - If ``num_classes`` == 1, ``logits`` and ``pred`` are of both
+                  shape ``[batch_size]``.
+                - If ``num_classes`` >1, ``logits`` is of shape
+                  ``[batch_size, num_classes]`` and ``pred`` is of shape
+                  ``[batch_size]``.
 
-            - If `clas_strategy`==`time_wise`,
+            - If ``clas_strategy`` is ``time_wise``:
 
-                - If `num_classes==1`, `logits` and `pred` are of both
-                  shape `[batch_size, max_time]`
-                - If `num_classes>1`, `logits` is of shape
-                  `[batch_size, max_time, num_classes]` and `pred` is of shape
-                  `[batch_size, max_time]`.
+                - If ``num_classes`` == 1, ``logits`` and ``pred`` are of both
+                  shape ``[batch_size, max_time]``.
+                - If ``num_classes`` > 1, ``logits`` is of shape
+                  ``[batch_size, max_time, num_classes]`` and ``pred`` is of
+                  shape ``[batch_size, max_time]``.
         """
         enc_outputs = self._encoder(inputs, sequence_length)
 

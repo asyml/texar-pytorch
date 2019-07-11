@@ -46,8 +46,8 @@ class GPT2Encoder(GPT2Base):
     Args:
         pretrained_model_name (optional): a str with the name
             of a pre-trained model to load selected in the list of:
-            `117M`, `345M`.
-            If `None`, will use the model name in :attr:`hparams`.
+            `117M`, `345M`. If `None`, will use the model name in
+            :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
             a default directory will be used.
@@ -112,73 +112,73 @@ class GPT2Encoder(GPT2Base):
         .. code-block:: python
 
             {
-            "pretrained_model_name": "117M",
-            "vocab_size": 50257,
-            "context_size": 1024,
-            "embedding_size": 768,
-            "embed": {
-                "dim": 768,
-                "name": "word_embeddings"
+                "pretrained_model_name": "117M",
+                "vocab_size": 50257,
+                "context_size": 1024,
+                "embedding_size": 768,
+                "embed": {
+                    "dim": 768,
+                    "name": "word_embeddings"
                 },
-            "position_size": 1024,
-            "position_embed": {
-                "dim": 768,
-                "name": "position_embeddings"
+                "position_size": 1024,
+                "position_embed": {
+                    "dim": 768,
+                    "name": "position_embeddings"
                 },
 
-            "decoder": {
-                "dim": 768,
-                "num_blocks": 12,
-                "use_gpt_config": True,
-                "embedding_dropout": 0,
-                "residual_dropout": 0,
-                "multihead_attention": {
-                    "use_bias": True,
-                    "num_units": 768,
-                    "num_heads": 12,
-                    "output_dim": 768
+                "decoder": {
+                    "dim": 768,
+                    "num_blocks": 12,
+                    "use_gpt_config": True,
+                    "embedding_dropout": 0,
+                    "residual_dropout": 0,
+                    "multihead_attention": {
+                        "use_bias": True,
+                        "num_units": 768,
+                        "num_heads": 12,
+                        "output_dim": 768
                     },
-                "initializer": {
-                    "type": "variance_scaling_initializer",
-                    "kwargs": {
-                        "factor": 1.0,
-                        "mode": "FAN_AVG",
-                        "uniform": True
+                    "initializer": {
+                        "type": "variance_scaling_initializer",
+                        "kwargs": {
+                            "factor": 1.0,
+                            "mode": "FAN_AVG",
+                            "uniform": True
                         }
                     },
-                "poswise_feedforward": {
-                    "layers": [
-                        {
-                            "type": "Linear",
-                            "kwargs": {
-                                "in_features": 768,
-                                "out_features": 3072,
-                                "bias": True
+                    "poswise_feedforward": {
+                        "layers": [
+                            {
+                                "type": "Linear",
+                                "kwargs": {
+                                    "in_features": 768,
+                                    "out_features": 3072,
+                                    "bias": True
                                 }
                             },
-                        {
-                            "type": "GPTGELU",
-                            "kwargs": {}
+                            {
+                                "type": "GPTGELU",
+                                "kwargs": {}
                             },
-                        {
-                            "type": "Linear",
-                            "kwargs": {
-                                "in_features": 3072,
-                                "out_features": 768,
-                                "bias": True
+                            {
+                                "type": "Linear",
+                                "kwargs": {
+                                    "in_features": 3072,
+                                    "out_features": 768,
+                                    "bias": True
                                 }
                             }
                         ],
-                    "name": "ffn"
+                        "name": "ffn"
                     }
                 },
-            "initializer": None,
-            "name": "gpt2_encoder",
+                "initializer": None,
+                "name": "gpt2_encoder",
             }
 
         Here:
 
-        The default parameters are values for uncased BERT-Base model.
+        The default parameters are values for 117M GPT2 model.
 
         `pretrained_model_name`: str or None
             The name of the pre-trained GPT2 model. If None, the model
@@ -188,7 +188,7 @@ class GPT2Encoder(GPT2Base):
             Hyperparameters for word embedding layer.
 
         `vocab_size`: int
-            The vocabulary size of `inputs` in `BertModel`.
+            The vocabulary size of `inputs` in `GPT2Model`.
 
         `position_embed`: dict
             Hyperparameters for position embedding layer.
@@ -293,7 +293,6 @@ class GPT2Encoder(GPT2Base):
             outputs:  A Tensor of shape
             `[batch_size, max_time, dim]` containing the encoded vectors.
         """
-
         word_embeds = self.word_embedder(inputs)
         batch_size = inputs.shape[0]
         pos_length = inputs.new_full((batch_size,),

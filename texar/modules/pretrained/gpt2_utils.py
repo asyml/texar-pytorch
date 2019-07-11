@@ -44,7 +44,6 @@ _MODEL2URL = {
 def init_gpt2_checkpoint(model: nn.Module, cache_dir: str):
     r"""Initializes GPT2 model parameters from a checkpoint provided by Google.
     """
-
     try:
         import numpy as np
         import tensorflow as tf
@@ -242,7 +241,6 @@ def load_pretrained_model(pretrained_model_name: str,
     file_name = download_path.split('/')[-1]
 
     cache_path = os.path.join(cache_dir, file_name.split('.')[0])
-
     if not os.path.exists(cache_path):
         for filename in ["checkpoint", "encoder.json", "hparams.json",
                          "model.ckpt.data-00000-of-00001", "model.ckpt.index",

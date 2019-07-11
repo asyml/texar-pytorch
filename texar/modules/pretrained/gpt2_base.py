@@ -14,6 +14,7 @@
 """
 Base class for GPT2 Modules.
 """
+
 from typing import Optional
 
 from texar.module_base import ModuleBase
@@ -30,8 +31,8 @@ class GPT2Base(ModuleBase):
     Args:
         pretrained_model_name (optional): a str with the name
             of a pre-trained model to load selected in the list of:
-            `117M`, `345M`.
-            If `None`, will use the model name in :attr:`hparams`.
+            `117M`, `345M`. If `None`, will use the model name in
+            :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
             a default directory will be used.
@@ -72,7 +73,7 @@ class GPT2Base(ModuleBase):
         """
         return {
             'pretrained_model_name': '117M',
-            'name': 'gpt_base',
+            'name': 'gpt2_base',
             '@no_typecheck': ['pretrained_model_name']
         }
 

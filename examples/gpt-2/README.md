@@ -2,7 +2,7 @@
 
 This is a Texar implementation of [OpenAI GPT-2 (Generative Pre-Trainning)](https://github.com/openai/gpt-2) language model, which allows to load official pre-trained model parameters, generate samples, and fine-tune the model, etc.
 
-With Texar, building the GPT-2 model is as simple as creating a [`TransformerDecoder`](https://texar.readthedocs.io/en/latest/code/modules.html#transformerdecoder) instance. We can initialize the parameters of the TransformerDecoder using a pre-trained GPT-2 checkpoint by calling `init_gpt2_checkpoint(path_to_gpt2_checkpoint)` .
+With Texar, building the GPT-2 model is as simple as creating a [`TransformerDecoder`](https://texar.readthedocs.io/en/latest/code/modules.html#transformerdecoder) instance. We can initialize the parameters of the GPT-2 model by specifying `pretrained_model_name` in `GPT2Decoder`. The pre-trained model can be retrieved from a list of: `117M`, and `345M`.
 
 In sum, this example showcases:
 
@@ -12,19 +12,6 @@ In sum, this example showcases:
 * Examples of other use cases
 
 ## Quick Start (I) - Generation with the Pre-trained Model
-
-### Download GPT-2 Pre-trained Model
-
-Download the GPT-2 `117M` model checkpoint with the following command:
-```
-sh gpt2_pretrained_models/download_model.sh model_117M
-```
-By default, it will download a pretrained model named `model_117M` to `gpt2_pretrained_models/`.
-
-To download the GPT-2 `345M` model checkpoint, use:
-```
-sh gpt2_pretrained_models/download_model.sh model_345M
-```
 
 ### Usage
 | WARNING: Samples are unfiltered and may contain offensive content. |
@@ -49,20 +36,18 @@ Here:
 - `top_k`: Number of top most likely candidates from a vocab distribution in each decoding step. Defaults to `40`.
 - `nsamples`: Number of samples to generate for each input. 
 
-To use the GPT-2 `345M` model, specify `--pretrain_checkpoint` and `--config_model`:
+To use the GPT-2 `345M` model, specify `--config_model`:
 
 ```
 python gpt2_generate_main.py --is_interactive \
 --max_decoding_length=100 \
 --temperature=0.7 \
 --top_k=40 \
---config_model=configs.config_model_345M \
---pretrain_checkpoint=gpt2_pretrained_models/model_345M/model.ckpt
+--config_model=configs.config_model_345M 
 ```
 
 Here:
 
-- `pretrain_checkpoint`: Path to the model checkpoints. Default to `gpt2_pretrained_models/model_117M/model.ckpt`.
 - `config_model`: Model configuration file. Default to `configs.config_model_117M`. 
 
 **Example input:**
