@@ -120,105 +120,105 @@ class BertEncoder(BertBase):
         .. code-block:: python
 
             {
-            'pretrained_model_name': 'bert-base-uncased',
-            'embed': {
-                'dim': 768,
-                'name': 'word_embeddings'
+            "pretrained_model_name": "bert-base-uncased",
+            "embed": {
+                "dim": 768,
+                "name": "word_embeddings"
                 },
-            'vocab_size': 30522,
-            'segment_embed': {
-                'dim': 768,
-                'name': 'token_type_embeddings'
+            "vocab_size": 30522,
+            "segment_embed": {
+                "dim": 768,
+                "name": "token_type_embeddings"
                 },
-            'type_vocab_size': 2,
-            'position_embed': {
-                'dim': 768,
-                'name': 'position_embeddings'
+            "type_vocab_size": 2,
+            "position_embed": {
+                "dim": 768,
+                "name": "position_embeddings"
                 },
-            'position_size': 512,
+            "position_size": 512,
 
-            'encoder': {
-                'dim': 768,
-                'embedding_dropout': 0.1,
-                'multihead_attention': {
-                    'dropout_rate': 0.1,
-                    'name': 'self',
-                    'num_heads': 12,
-                    'num_units': 768,
-                    'output_dim': 768,
-                    'use_bias': True
+            "encoder": {
+                "dim": 768,
+                "embedding_dropout": 0.1,
+                "multihead_attention": {
+                    "dropout_rate": 0.1,
+                    "name": "self",
+                    "num_heads": 12,
+                    "num_units": 768,
+                    "output_dim": 768,
+                    "use_bias": True
                     },
-                'name': 'encoder',
-                'num_blocks': 12,
-                'poswise_feedforward': {
-                    'layers': [
+                "name": "encoder",
+                "num_blocks": 12,
+                "poswise_feedforward": {
+                    "layers": [
                         {
-                            'kwargs': {
-                                'in_features': 768,
-                                'out_features': 3072,
-                                'bias': True
+                            "kwargs": {
+                                "in_features": 768,
+                                "out_features": 3072,
+                                "bias": True
                                 },
-                            'type': 'Linear'
+                            "type": "Linear"
                             },
                         {"type": "BertGELU"},
                         {
-                            'kwargs': {
-                                'in_features': 3072,
-                                'out_features': 768,
-                                'bias': True
+                            "kwargs": {
+                                "in_features": 3072,
+                                "out_features": 768,
+                                "bias": True
                                 },
-                            'type': 'Linear'
+                            "type": "Linear"
                             }
                         ]
                     },
-                'residual_dropout': 0.1,
-                'use_bert_config': True
+                "residual_dropout": 0.1,
+                "use_bert_config": True
                 },
-            'hidden_size': 768,
-            'initializer': None,
-            'name': 'bert_encoder',
+            "hidden_size": 768,
+            "initializer": None,
+            "name": "bert_encoder",
             }
 
         Here:
 
         The default parameters are values for uncased BERT-Base model.
 
-        `pretrained_model_name` : str or None
+        `pretrained_model_name`: str or None
             The name of the pre-trained BERT model. If None, the model
             will be randomly initialized.
 
-        `embed` : dict
+        `embed`: dict
             Hyperparameters for word embedding layer.
 
-        `vocab_size` : int
+        `vocab_size`: int
             The vocabulary size of `inputs` in `BertModel`.
 
-        `segment_embed` : dict
+        `segment_embed`: dict
             Hyperparameters for segment embedding layer.
 
-        `type_vocab_size` : int
+        `type_vocab_size`: int
             The vocabulary size of the `segment_ids` passed into `BertModel`.
 
-        `position_embed` : dict
+        `position_embed`: dict
             Hyperparameters for position embedding layer.
 
-        `position_size` :  int
+        `position_size`: int
             The maximum sequence length that this model might ever be used with.
 
-        `encoder` : dict
+        `encoder`: dict
             Hyperparameters for the TransformerEncoder.
             See :func:`~texar.modules.TransformerEncoder.default_harams`
             for details.
 
-        `hidden_size` : int
+        `hidden_size`: int
             Size of the pooler dense layer.
 
-        `initializer` : dict, optional
+        `initializer`: dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
             See :func:`~texar.core.get_initializer` for details.
 
-        `name` : str
+        `name`: str
             Name of the module.
         """
 

@@ -50,7 +50,7 @@ class BertClassifier(ClassifierBase):
             pre-trained models will be cached. If `None` (default),
             a default directory will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
-            hyperparameter will be set to default values. See
+            hyperparameters will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
 
@@ -100,7 +100,10 @@ class BertClassifier(ClassifierBase):
                 self._logits_layer = nn.Linear(self._hparams.hidden_size,
                                                self.num_classes,
                                                **logit_kwargs)
-        self.is_binary = None
+
+        self.is_binary = (self.num_classes == 1) or \
+                         (self.num_classes <= 0 and
+                          self._hparams.encoder.dim == 1)
 
     @staticmethod
     def default_hparams():
@@ -108,28 +111,28 @@ class BertClassifier(ClassifierBase):
 
         .. code-block:: python
 
-        {
+            {
             # (1) Same hyperparameters as in BertEncoder
             ...
             # (2) Additional hyperparameters
-            `num_classes`: 2,
-            `logit_layer_kwargs`: None,
-            `clas_strategy`: `cls_time`,
-            `max_seq_length`: None,
-            `dropout`: 0.1,
-            `name`: `bert_classifier`
+            "num_classes": 2,
+            "logit_layer_kwargs": None,
+            "clas_strategy": "cls_time",
+            "max_seq_length": None,
+            "dropout": 0.1,
+            "name": "bert_classifier"
             }
 
         Here:
 
         1. Same hyperparameters as in
-        :class:`~texar.modules.BertEncoder`.
-        See the :meth:`~texar.modules.BertEncoder.default_hparams`.
-        An instance of BertEncoder is created for feature extraction.
+            :class:`~texar.modules.BertEncoder`.
+            See the :meth:`~texar.modules.BertEncoder.default_hparams`.
+            An instance of BertEncoder is created for feature extraction.
 
         2. Additional hyperparameters:
 
-            `num_classes` : int
+            `num_classes`: int
                 Number of classes:
 
                 - If **`> 0`**, an additional `Linear`
@@ -139,12 +142,12 @@ class BertClassifier(ClassifierBase):
                     classes is assumed to be the final dense layer size of the
                     encoder.
 
-            `logit_layer_kwargs` : dict
+            `logit_layer_kwargs`: dict
                 Keyword arguments for the logit Dense layer constructor,
                 except for argument "units" which is set to `num_classes`.
                 Ignored if no extra logit layer is appended.
 
-            `clas_strategy` : str
+            `clas_strategy`: str
                 The classification strategy, one of:
                 - **`cls_time`**: Sequence-level classification based on the
                 output of the first time step (which is the `CLS` token).
@@ -154,14 +157,14 @@ class BertClassifier(ClassifierBase):
                 - **`time_wise`**: Step-wise classification, i.e., make
                 classification for each time step based on its output.
 
-            `max_seq_length` : int, optional
+            `max_seq_length`: int, optional
                 Maximum possible length of input sequences. Required if
                 `clas_strategy` is `all_time`.
 
-            `dropout` : float
+            `dropout`: float
                 The dropout rate of the BERT encoder output.
 
-            `name` : str
+            `name`: str
                 Name of the classifier.
         """
 
@@ -241,10 +244,6 @@ class BertClassifier(ClassifierBase):
             logits = self._logits_layer(logits)
 
         # Compute predictions
-        self.is_binary = self.num_classes == 1
-        self.is_binary = self.is_binary or (self.num_classes <= 0 and
-                                            logits.shape[-1] == 1)
-
         if strategy == "time_wise":
             if self.is_binary:
                 logits = torch.squeeze(logits, -1)

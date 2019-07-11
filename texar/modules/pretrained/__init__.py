@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of Texar library bert.
+Pre-trained modules of Texar library.
 """
-
-# pylint: disable=wildcard-import
 
 from texar.modules.pretrained.bert_base import *
 from texar.modules.pretrained.bert_utils import *
