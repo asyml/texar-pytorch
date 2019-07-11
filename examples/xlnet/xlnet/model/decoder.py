@@ -2,7 +2,7 @@ from typing import Dict, List, NamedTuple, Optional, Tuple, Type, Union
 
 import torch
 from torch import nn
-from torch import LongTensor, Tensor
+from torch import Tensor
 from torch.nn import functional as F
 
 import texar as tx
@@ -35,7 +35,8 @@ class XLNetDecoder(XLNet, tx.modules.DecoderBase[State, Output]):
     _state_recompute_memory: bool
     _state_previous_inputs: List[Tensor]  # required for recomputing memory
 
-    def _create_input(self, inputs: List[Tensor], initial: bool = False) \
+    @staticmethod
+    def _create_input(inputs: List[Tensor], initial: bool = False) \
             -> Dict[str, Tensor]:
         r"""Create input tensors given the list of prompt tokens.
         """
@@ -73,7 +74,8 @@ class XLNetDecoder(XLNet, tx.modules.DecoderBase[State, Output]):
             "permute_mask": permute_mask,
         }
 
-    def initialize(self, helper: Helper, inputs: Optional[Tensor],
+    def initialize(self,  # pylint: disable=no-self-use
+                   helper: Helper, inputs: Optional[Tensor],
                    sequence_length: Optional[torch.LongTensor],
                    initial_state: Optional[State]) \
             -> Tuple[torch.ByteTensor, Tensor, Optional[State]]:

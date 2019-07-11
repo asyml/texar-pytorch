@@ -283,7 +283,8 @@ class XLNet(tx.ModuleBase):
 
         # Causal attention mask.
         if attn_type == 'uni':
-            causal_mask = self._create_causal_attn_mask(seq_len, mem_len, same_length)
+            causal_mask = self._create_causal_attn_mask(
+                seq_len, mem_len, same_length)
             # attn_mask: (seq_len, tot_len, 1, 1)
             causal_mask = causal_mask.unsqueeze(2).unsqueeze(3)
             masks.append(causal_mask)

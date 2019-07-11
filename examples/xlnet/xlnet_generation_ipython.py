@@ -1,5 +1,5 @@
-import sentencepiece as spm
 import torch
+import sentencepiece as spm
 
 import xlnet
 import xlnet.model.decoder

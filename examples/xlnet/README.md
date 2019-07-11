@@ -173,13 +173,13 @@ an example to showcase text generation abilities of XLNet.
 
 To run the text generation, run the following command:
 ```bash
-python xlnet_generation_main.py
+python xlnet_generation_ipython.py
 ```
 It is recommended to install IPython before running the command. If IPython is installed, you will enter an interactive
 console in which you can perform sampling with different options. Here we show an example output:
 ```
 Generate text by calling: sample("<your prompt text>", ...).
-For options, refer to `decode` method of `XLNetLM`.
+For options, refer to `decode` method of `XLNetDecoder`.
 
 Python 3.7.3 (default, Mar 27 2019, 22:11:17)
 Type 'copyright', 'credits' or 'license' for more information
@@ -187,16 +187,18 @@ IPython 7.4.0 -- An enhanced Interactive Python. Type '?' for help.
 
 In [1]: sample("In a shocking finding, scientist discovered a herd of unicorns living in a remote, previously un
    ...: explored valley, in the Andes Mountains. Even more surprising to the researchers was the fact that the unicorn
-   ...: s spoke perfect English.", cache_len=512)
+   ...: s spoke perfect English.", cache_len=512, n_samples=1)
+=== Prompt ===
 In a shocking finding, scientist discovered a herd of unicorns living in a remote, previously unexplored valley, in the
- Andes Mountains. Even more surprising to the researchers was the fact that the unicorns spoke perfect English. The rea
-son for this astonishing find is an odd enough one - "i.e. horses talk, but don't drink...."
-When researching an "impression of the human brain schema" which resembled that of the unicorns, researchers discovered
- that these animals were not only adapted to live in a particular environment, but were able to communicate and communi
-cate with one another; this was the result of brain mutation. The "brain schema" of the unicorn included a number of pa
-rts which were compatible with English speaking, people of that time. This had an interesting effect on the species, al
-lowing them to communicate better, including giving them a "little bit of a leg up" on the English speaking people of t
-he time, from whom many "English-speaking" ("in many respects") settlers became.
+ Andes Mountains. Even more surprising to the researchers was the fact that the unicorns spoke perfect English.
+=== Sample 0 ===
+The reason for this astonishing find is an odd enough one - "i.e. horses talk, but don't drink...." When researching an
+ "impression of the human brain schema" which resembled that of the unicorns, researchers discovered that these animals
+ were not only adapted to live in a particular environment, but were able to communicate and communicate with one anoth
+er; this was the result of brain mutation. The "brain schema" of the unicorn included a number of parts which were comp
+atible with English speaking, people of that time. This had an interesting effect on the species, allowing them to comm
+unicate better, including giving them a "little bit of a leg up" on the English speaking people of the time, from whom 
+many "English-speaking" ("in many respects") settlers became.
 ```
 
 This text generation example is largely inspired by the works of: https://github.com/rusiaaman/XLNet-gen.
