@@ -120,6 +120,19 @@ def main():
         {"train": train_dataset, "eval": eval_dataset, "test": test_dataset}
     )
 
+    def _compute_loss(logits, labels):
+        r"""Compute loss.
+        """
+        if model.is_binary:
+            loss = F.binary_cross_entropy(logits.view(-1),
+                                          labels.view(-1),
+                                          reduction='mean')
+        else:
+            loss = F.cross_entropy(logits.view(-1, model.num_classes),
+                                   labels.view(-1),
+                                   reduction='mean')
+        return loss
+
     def _train_epoch():
         r"""Trains on the training set, and evaluates on the dev set
         periodically.
@@ -137,15 +150,7 @@ def main():
 
             logits, _ = model(input_ids, input_length, segment_ids)
 
-            if model.is_binary:
-                loss = F.binary_cross_entropy(logits.view(-1),
-                                              labels.view(-1),
-                                              reduction='mean')
-            else:
-                loss = F.cross_entropy(logits.view(-1, model.num_classes),
-                                       labels.view(-1),
-                                       reduction='mean')
-
+            loss = _compute_loss(logits, labels)
             loss.backward()
             optim.step()
             scheduler.step()
@@ -177,15 +182,7 @@ def main():
 
             logits, preds = model(input_ids, input_length, segment_ids)
 
-            if model.is_binary:
-                loss = F.binary_cross_entropy(logits.view(-1),
-                                              labels.view(-1),
-                                              reduction='mean')
-            else:
-                loss = F.cross_entropy(logits.view(-1, model.num_classes),
-                                       labels.view(-1),
-                                       reduction='mean')
-
+            loss = _compute_loss(logits, labels)
             accu = tx.evals.accuracy(labels, preds)
             batch_size = input_ids.size()[0]
             avg_rec.add([accu, loss], batch_size)
