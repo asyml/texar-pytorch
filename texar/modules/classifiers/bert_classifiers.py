@@ -112,35 +112,35 @@ class BertClassifier(ClassifierBase):
         .. code-block:: python
 
             {
-            # (1) Same hyperparameters as in BertEncoder
-            ...
-            # (2) Additional hyperparameters
-            "num_classes": 2,
-            "logit_layer_kwargs": None,
-            "clas_strategy": "cls_time",
-            "max_seq_length": None,
-            "dropout": 0.1,
-            "name": "bert_classifier"
+                # (1) Same hyperparameters as in BertEncoder
+                ...
+                # (2) Additional hyperparameters
+                "num_classes": 2,
+                "logit_layer_kwargs": None,
+                "clas_strategy": "cls_time",
+                "max_seq_length": None,
+                "dropout": 0.1,
+                "name": "bert_classifier"
             }
 
         Here:
 
         1. Same hyperparameters as in
-            :class:`~texar.modules.BertEncoder`.
-            See the :meth:`~texar.modules.BertEncoder.default_hparams`.
-            An instance of BertEncoder is created for feature extraction.
+           :class:`~texar.modules.BertEncoder`.
+           See the :meth:`~texar.modules.BertEncoder.default_hparams`.
+           An instance of BertEncoder is created for feature extraction.
 
         2. Additional hyperparameters:
 
             `num_classes`: int
                 Number of classes:
 
-                - If **`> 0`**, an additional `Linear`
-                    layer is appended to the encoder to compute the logits over
-                    classes.
-                - If **`<= 0`**, no dense layer is appended. The number of
-                    classes is assumed to be the final dense layer size of the
-                    encoder.
+                - If **> 0**, an additional `Linear`
+                  layer is appended to the encoder to compute the logits over
+                  classes.
+                - If **<= 0**, no dense layer is appended. The number of
+                  classes is assumed to be the final dense layer size of the
+                  encoder.
 
             `logit_layer_kwargs`: dict
                 Keyword arguments for the logit Dense layer constructor,
@@ -149,13 +149,14 @@ class BertClassifier(ClassifierBase):
 
             `clas_strategy`: str
                 The classification strategy, one of:
-                - **`cls_time`**: Sequence-level classification based on the
-                output of the first time step (which is the `CLS` token).
-                Each sequence has a class.
-                - **`all_time`**: Sequence-level classification based on
-                the output of all time steps. Each sequence has a class.
-                - **`time_wise`**: Step-wise classification, i.e., make
-                classification for each time step based on its output.
+
+                - **cls_time**: Sequence-level classification based on the
+                  output of the first time step (which is the `CLS` token).
+                  Each sequence has a class.
+                - **all_time**: Sequence-level classification based on
+                  the output of all time steps. Each sequence has a class.
+                - **time_wise**: Step-wise classification, i.e., make
+                  classification for each time step based on its output.
 
             `max_seq_length`: int, optional
                 Maximum possible length of input sequences. Required if
@@ -203,21 +204,21 @@ class BertClassifier(ClassifierBase):
             A tuple `(logits, preds)`, containing the logits over classes and
             the predictions, respectively.
 
-            - If `clas_strategy`==`cls_time` or `all_time`
+            - If ``clas_strategy`` is ``cls_time`` or ``all_time``:
 
-                - If `num_classes==1`, `logits` and `pred` are of both
-                  shape `[batch_size]`
-                - If `num_classes>1`, `logits` is of shape
-                  `[batch_size, num_classes]` and `pred` is of shape
-                  `[batch_size]`.
+                - If ``num_classes`` == 1, ``logits`` and ``pred`` are both of
+                  shape ``[batch_size]``.
+                - If ``num_classes`` > 1, ``logits`` is of shape
+                  ``[batch_size, num_classes]`` and ``pred`` is of shape
+                  ``[batch_size]``.
 
-            - If `clas_strategy`==`time_wise`,
+            - If ``clas_strategy`` is ``time_wise``:
 
-                - If `num_classes==1`, `logits` and `pred` are of both
-                  shape `[batch_size, max_time]`
-                - If `num_classes>1`, `logits` is of shape
-                  `[batch_size, max_time, num_classes]` and `pred` is of shape
-                  `[batch_size, max_time]`.
+                - ``num_classes`` == 1, ``logits`` and ``pred`` are both of
+                  shape ``[batch_size, max_time]``.
+                - If ``num_classes`` > 1, ``logits`` is of shape
+                  ``[batch_size, max_time, num_classes]`` and ``pred`` is of
+                  shape ``[batch_size, max_time]``.
         """
         enc_outputs, pooled_output = self._encoder(inputs,
                                                    sequence_length,
