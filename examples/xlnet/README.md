@@ -136,24 +136,24 @@ Step: 300, LR = 4.167e-05, loss = 0.5697
 Step: 400, LR = 3.704e-05, loss = 0.4628
 Step: 500, LR = 3.241e-05, loss = 0.3435
 Model at 500 steps saved to saved_models/STS-B_step500_20190703_120310
-Pearsonr: 0.9014549605576836
+Pearsonr: 0.9014549605576836, loss: 0.4714
 Step: 600, LR = 2.778e-05, loss = 0.2814
 Step: 700, LR = 2.315e-05, loss = 0.2319
 Step: 800, LR = 1.852e-05, loss = 0.2023
 Step: 900, LR = 1.389e-05, loss = 0.1897
 Step: 1000, LR = 9.259e-06, loss = 0.1441
 Model at 1000 steps saved to saved_models/STS-B_step1000_20190703_122056
-Pearsonr: 0.9149586649636707
+Pearsonr: 0.9149586649636707, loss: 0.3806
 Step: 1100, LR = 4.630e-06, loss = 0.1279
 Step: 1200, LR = 0.000e+00, loss = 0.1111
 9599it [42:23,  4.14it/s]
 Model at 1200 steps saved to saved_models/STS-B_step1200_20190703_122818
 Evaluating on dev
 100%|██████████████████████████| 24/24 [00:25<00:00,  1.10it/s, pearsonR=0.9168]
-Pearsonr: 0.9167765866800505
+Pearsonr: 0.9167765866800505, loss: 0.3682
 Evaluating on test
 22it [00:24,  1.04it/s, pearsonR=nan]
-Pearsonr: nan
+Pearsonr: nan, loss: 9.1475
 ```
 
 ### Evaluate saved models

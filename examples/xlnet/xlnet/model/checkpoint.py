@@ -22,7 +22,8 @@ import numpy as np
 import torch
 from torch import nn
 
-from xlnet.model.model import XLNet, XLNetLM, XLNetSummary
+from xlnet.model.model import XLNet, XLNetSummary
+from xlnet.model.decoder import XLNetDecoder
 from xlnet.model.modules import PositionWiseFF, RelativeMultiheadAttention
 
 __all__ = [
@@ -135,7 +136,7 @@ def load_from_tf_checkpoint(model: Union[XLNet, XLNetSummary], path: str,
         for idx in range(n_layers):
             assign(xlnet.attn_layers[idx].segment_embed, seg_embeds[idx])
 
-        if isinstance(xlnet, XLNetLM):
+        if isinstance(xlnet, XLNetDecoder):
             assign(xlnet.mask_emb, "transformer/mask_emb/mask_emb")
             assign(xlnet.lm_bias, "lm_loss/bias")
 

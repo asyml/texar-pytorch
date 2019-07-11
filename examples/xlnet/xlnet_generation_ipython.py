@@ -1,13 +1,20 @@
 import sentencepiece as spm
+import torch
 
 import xlnet
+import xlnet.model.decoder
 
 
 def main():
-    model = xlnet.model.model.XLNetLM()
+    if torch.cuda.is_available():
+        device = torch.device(torch.cuda.current_device())
+    else:
+        device = 'cpu'
+
+    model = xlnet.model.decoder.XLNetDecoder()
     xlnet.model.load_from_tf_checkpoint(
         model, "pretrained/xlnet_cased_L-24_H-1024_A-16/xlnet_model.ckpt")
-    model = model.cuda()
+    model = model.to(device)
     sp_model = spm.SentencePieceProcessor()
     sp_model.Load("pretrained/xlnet_cased_L-24_H-1024_A-16/spiece.model")
     tokenize_fn = xlnet.data.create_tokenize_fn(sp_model, False)
@@ -40,22 +47,27 @@ def main():
         if len(xs) - p > 0:
             yield xs[p:]
 
-    def sample(text: str, length: int = 200, **kwargs):
+    def sample(text: str, length: int = 200, n_samples=3, **kwargs):
+        print("=== Prompt ===")
+        print(text)
         model.eval()
         text = text.replace("\n", "<eop>")
-        tokens = tokenize_fn(text)
-        decode_tokens, _ = model.decode(
-            pad_ids + tokens, max_length=(len(pad_ids + tokens) + length),
-            **kwargs)
-        decode_tokens = decode_tokens[len(pad_ids):]
-        output = "\n\n".join(sp_model.DecodeIds(xs) for xs in split_by(
-            decode_tokens, xlnet.data.utils.special_symbols["<eop>"]))
-        print(output)
+        tokens = pad_ids + tokenize_fn(text)
+        tokens = torch.tensor(tokens, device=device).expand(n_samples, -1)
+        kwargs.setdefault("print_steps", True)
+        decode_output, _ = model.decode(
+            tokens, max_decoding_length=length, **kwargs)
+        decode_samples = decode_output.sample_id.tolist()
+        for idx, sample_tokens in enumerate(decode_samples):
+            print(f"=== Sample {idx} ===")
+            output = "\n".join(sp_model.DecodeIds(xs) for xs in split_by(
+                sample_tokens, xlnet.data.utils.special_symbols["<eop>"]))
+            print(output)
 
     try:
         from IPython import embed
         print("Generate text by calling: sample(\"<your prompt text>\", ...).\n"
-              "For options, refer to `decode` method of `XLNetLM`.\n")
+              "For options, refer to `decode` method of `XLNetDecoder`.\n")
         embed()
     except ImportError:
         print("To be able to specify sampling options, please install IPython.")
