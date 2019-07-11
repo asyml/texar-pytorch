@@ -10,6 +10,7 @@ from texar.modules.decoders.gpt2_decoder import GPT2Decoder
 from texar.modules.decoders.transformer_decoders import TransformerDecoderOutput
 
 
+@unittest.skip("Manual test only")
 class GPT2DecoderTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.GPT2Decoder`
     """

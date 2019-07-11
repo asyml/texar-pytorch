@@ -22,9 +22,6 @@ import numpy as np
 
 import torch
 
-import sys
-sys.path.append("/Users/pengzhi.gao/Desktop/my_git/texar-pytorch/")
-
 import texar as tx
 
 from utils import processor
