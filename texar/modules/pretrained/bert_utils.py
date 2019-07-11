@@ -163,7 +163,7 @@ def name_to_variable(model: nn.Module, name: str) -> nn.Module:
     for m_name in name:
         if m_name.isdigit():
             num = int(m_name)
-            pointer = pointer[num]  # type: ignore
+            pointer = pointer[num]
         else:
             pointer = getattr(pointer, m_name)
     return pointer
