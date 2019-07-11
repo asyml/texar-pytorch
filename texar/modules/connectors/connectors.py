@@ -25,7 +25,7 @@ from torch.distributions.distribution import Distribution
 
 from texar.hyperparams import HParams
 from texar.modules.connectors.connector_base import ConnectorBase
-from texar.core import layers
+from texar.core import get_activation_fn
 from texar.utils import utils
 from texar.utils import nest
 from texar.utils.types import MaybeTuple
@@ -406,6 +406,8 @@ class MLPTransformConnector(ConnectorBase):
         super().__init__(output_size, hparams)
         self._linear_layer = nn.Linear(
             linear_layer_dim, _sum_output_size(output_size))
+        self._activation_fn = get_activation_fn(
+            self.hparams.activation_fn)
 
     @staticmethod
     def default_hparams() -> dict:
@@ -448,10 +450,10 @@ class MLPTransformConnector(ConnectorBase):
             A ``Tensor`` or a (nested) ``tuple`` of Tensors of the
             same structure of :attr:`output_size`.
         """
-        activation_fn = layers.get_activation_fn(self.hparams.activation_fn)
 
         output = _mlp_transform(
-            inputs, self._output_size, self._linear_layer, activation_fn)
+            inputs, self._output_size,
+            self._linear_layer, self._activation_fn)
 
         return output
 
@@ -537,6 +539,9 @@ class ReparameterizedStochasticConnector(ConnectorBase):
         self._linear_layer = nn.Linear(
             input_feature, _sum_output_size(output_size))
 
+        self._activation_fn = get_activation_fn(
+            self.hparams.activation_fn)
+
     @staticmethod
     def default_hparams() -> dict:
         r"""Returns a dictionary of hyperparameters with default values.
@@ -615,15 +620,11 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             sample = dstr.rsample()
 
         if transform:
-            fn_modules = ['torch', 'torch.nn', 'texar.custom']
-            activation_fn = utils.get_function(
-                self.hparams.activation_fn, fn_modules)
-
             output = _mlp_transform(
                 sample,
                 self._output_size,
                 self._linear_layer,
-                activation_fn)
+                self._activation_fn)
             _assert_same_size(output, self._output_size)
 
         else:
@@ -689,6 +690,9 @@ class StochasticConnector(ConnectorBase):
             input_feature = np.prod(mlp_input_size)
         self._linear_layer = nn.Linear(
             input_feature, _sum_output_size(output_size))
+
+        self._activation_fn = get_activation_fn(
+            self.hparams.activation_fn)
 
     @staticmethod
     def default_hparams():
@@ -763,15 +767,11 @@ class StochasticConnector(ConnectorBase):
         # Disable gradients through samples
         sample = sample.detach().float()
         if transform:
-            fn_modules = ['torch', 'torch.nn', 'texar.custom']
-            activation_fn = utils.get_function(
-                self.hparams.activation_fn, fn_modules)
-
             output = _mlp_transform(
                 sample,
                 self._output_size,
                 self._linear_layer,
-                activation_fn)
+                self._activation_fn)
             _assert_same_size(output, self._output_size)
 
         else:
