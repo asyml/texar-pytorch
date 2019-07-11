@@ -15,6 +15,7 @@
 Modules of Texar library encoders.
 """
 
+from texar.modules.encoders.bert_encoders import *
 from texar.modules.encoders.conv_encoders import *
 from texar.modules.encoders.encoder_base import *
 from texar.modules.encoders.multihead_attention import *

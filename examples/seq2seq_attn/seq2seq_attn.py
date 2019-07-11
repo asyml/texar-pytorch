@@ -141,6 +141,7 @@ def main():
                 print("step={}, loss={:.4f}".format(step, loss))
             step += 1
 
+    @torch.no_grad()
     def _eval_epoch(mode):
         if mode == 'val':
             data_iterator.switch_to_val_data()

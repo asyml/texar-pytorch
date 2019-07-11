@@ -21,7 +21,7 @@ import unicodedata
 
 
 def convert_to_unicode(text):
-    """Returns the given argument as a unicode string."""
+    r"""Returns the given argument as a unicode string."""
     if isinstance(text, bytes):
         return text.decode('utf-8')
     if isinstance(text, str):
@@ -30,14 +30,14 @@ def convert_to_unicode(text):
 
 
 def printable_text(text):
-    """Returns text encoded in a way suitable for print or `tf.logging`."""
+    r"""Returns text encoded in a way suitable for print or `tf.logging`."""
     if isinstance(text, bytes):
         return text.decode('utf-8')
     return str(text)
 
 
 def load_vocab(vocab_file):
-    """Loads a vocabulary file into a dictionary."""
+    r"""Loads a vocabulary file into a dictionary."""
     vocab = collections.OrderedDict()
     index = 0
     with open(vocab_file, "r") as reader:
@@ -52,7 +52,7 @@ def load_vocab(vocab_file):
 
 
 def convert_by_vocab(vocab, items):
-    """Converts a sequence of [tokens|ids] using the vocab."""
+    r"""Converts a sequence of [tokens|ids] using the vocab."""
     output = []
     for item in items:
         output.append(vocab[item])
@@ -68,7 +68,7 @@ def convert_ids_to_tokens(inv_vocab, ids):
 
 
 def whitespace_tokenize(text):
-    """Runs basic whitespace cleaning and splitting on a peice of text."""
+    r"""Runs basic whitespace cleaning and splitting on a peice of text."""
     text = text.strip()
     if not text:
         return []
@@ -77,7 +77,7 @@ def whitespace_tokenize(text):
 
 
 class FullTokenizer:
-    """Runs end-to-end tokenziation."""
+    r"""Runs end-to-end tokenziation."""
 
     def __init__(self, vocab_file, do_lower_case=True):
         self.vocab = load_vocab(vocab_file)
@@ -101,10 +101,10 @@ class FullTokenizer:
 
 
 class BasicTokenizer:
-    """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
+    r"""Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
 
     def __init__(self, do_lower_case=True):
-        """Constructs a BasicTokenizer.
+        r"""Constructs a BasicTokenizer.
 
         Args:
             do_lower_case: Whether to lower case the input.
@@ -112,7 +112,7 @@ class BasicTokenizer:
         self.do_lower_case = do_lower_case
 
     def tokenize(self, text):
-        """Tokenizes a piece of text."""
+        r"""Tokenizes a piece of text."""
         if isinstance(text, bytes):
             text = text.decode('utf-8')
         text = self._clean_text(text)
@@ -138,7 +138,7 @@ class BasicTokenizer:
 
     @staticmethod
     def _run_strip_accents(text):
-        """Strips accents from a piece of text."""
+        r"""Strips accents from a piece of text."""
         text = unicodedata.normalize("NFD", text)
         output = []
         for char in text:
@@ -150,7 +150,7 @@ class BasicTokenizer:
 
     @staticmethod
     def _run_split_on_punc(text):
-        """Splits punctuation on a piece of text."""
+        r"""Splits punctuation on a piece of text."""
         chars = list(text)
         i = 0
         start_new_word = True
@@ -170,7 +170,7 @@ class BasicTokenizer:
         return ["".join(x) for x in output]
 
     def _tokenize_chinese_chars(self, text):
-        """Adds whitespace around any CJK character."""
+        r"""Adds whitespace around any CJK character."""
         output = []
         for char in text:
             cp = ord(char)
@@ -184,7 +184,7 @@ class BasicTokenizer:
 
     @staticmethod
     def _is_chinese_char(cp):
-        """Checks whether CP is the codepoint of a CJK character."""
+        r"""Checks whether CP is the codepoint of a CJK character."""
         # This defines a "chinese character" as anything in the CJK Unicode
         # block:
         # https://en.wikipedia.org/wiki/CJK_Unified_Ideographs_(Unicode_block)
@@ -209,7 +209,8 @@ class BasicTokenizer:
 
     @staticmethod
     def _clean_text(text):
-        """Performs invalid character removal and whitespace cleanup on text."""
+        r"""Performs invalid character removal and whitespace cleanup on text.
+        """
         output = []
         for char in text:
             cp = ord(char)
@@ -223,7 +224,7 @@ class BasicTokenizer:
 
 
 class WordpieceTokenizer:
-    """Runs WordPiece tokenziation."""
+    r"""Runs WordPiece tokenziation."""
 
     def __init__(self, vocab, unk_token="[UNK]", max_input_chars_per_word=100):
         self.vocab = vocab
@@ -231,7 +232,7 @@ class WordpieceTokenizer:
         self.max_input_chars_per_word = max_input_chars_per_word
 
     def tokenize(self, text):
-        """Tokenizes a piece of text into its word pieces.
+        r"""Tokenizes a piece of text into its word pieces.
 
         This uses a greedy longest-match-first algorithm to perform tokenization
         using the given vocabulary.
@@ -239,6 +240,7 @@ class WordpieceTokenizer:
         For example:
             input = "unaffable"
             output = ["un", "##aff", "##able"]
+
         Args:
             text: A single token or whitespace separated tokens.
                 This should have already been passed through `BasicTokenizer.
@@ -285,7 +287,7 @@ class WordpieceTokenizer:
 
 
 def _is_whitespace(char):
-    """Checks whether `chars` is a whitespace character."""
+    r"""Checks whether `chars` is a whitespace character."""
     # \t, \n, and \r are technically control characters but we treat them
     # as whitespace since they are generally considered as such.
     if char in (' ', '\t', '\n', '\r'):
@@ -297,7 +299,7 @@ def _is_whitespace(char):
 
 
 def _is_control(char):
-    """Checks whether `chars` is a control character."""
+    r"""Checks whether `chars` is a control character."""
     # These are technically control characters but we count them as whitespace
     # characters.
     if char in ('\t', '\n', '\r'):
@@ -309,7 +311,7 @@ def _is_control(char):
 
 
 def _is_punctuation(char):
-    """Checks whether `chars` is a punctuation character."""
+    r"""Checks whether `chars` is a punctuation character."""
     cp = ord(char)
     # We treat all non-letter/number ASCII as punctuation.
     # Characters such as "^", "$", and "`" are not in the Unicode

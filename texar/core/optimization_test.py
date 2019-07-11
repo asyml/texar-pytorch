@@ -253,6 +253,17 @@ class OptimizationTest(unittest.TestCase):
             loss.backward()
             train_op()
 
+    def test_BertAdam(self):
+        r"""Tests BertAdam.
+        """
+        optimizer = BertAdam(self.model.parameters())
+
+        for t in range(50):
+            y_pred = self.model(self.x)
+            loss = self.loss_fn(y_pred, self.y)
+            loss.backward()
+            optimizer.step()
+
 
 if __name__ == "__main__":
     unittest.main()
