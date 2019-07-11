@@ -43,9 +43,9 @@ class VocabularyTest(unittest.TestCase):
         # import pdb
         # pdb.set_trace()
         # Tests UNK token
-        unk_token_id = vocab.token_to_id_map_py['new']
-        unk_token_text = vocab.id_to_token_map_py[unk_token_id]
-        self.assertEqual(unk_token_text, vocab.unk_token)
+        unk_token_id = vocab.map_tokens_to_ids_py(['new'])
+        unk_token_text = vocab.map_ids_to_tokens_py(unk_token_id)
+        self.assertEqual(unk_token_text[0], vocab.unk_token)
 
 
 if __name__ == "__main__":

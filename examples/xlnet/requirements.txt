@@ -1,0 +1,5 @@
+numpy >= 1.16
+torch >= 1.1.0
+tensorflow >= 1.8
+sentencepiece
+tqdm

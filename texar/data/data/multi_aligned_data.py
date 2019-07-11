@@ -96,6 +96,8 @@ class MultiAlignedData(
     Args:
         hparams (dict): Hyperparameters. See :meth:`default_hparams` for the
             defaults.
+        device: The device of the produced batches. For GPU training, set to
+            current CUDA device.
 
     The processor can read any number of parallel fields as specified in
     the "datasets" list of :attr:`hparams`, and result in a Dataset whose
@@ -376,6 +378,11 @@ class MultiAlignedData(
         hparams["name"] = "multi_aligned_data"
         hparams["datasets"] = []
         return hparams
+
+    def to(self, device: torch.device):
+        for dataset in self._databases:
+            dataset.to(device)
+        return super().to(device)
 
     @staticmethod
     def _raise_sharing_error(err_data, share_data, hparam_name):

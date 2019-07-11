@@ -20,7 +20,7 @@ Implementation of beam search with penalties.
 Adapted from:
     `https://github.com/tensorflow/tensor2tensor/blob/eb048f69c7ea860324122b87cb9caf59c52a27f3/tensor2tensor/utils/beam_search.py`
 """
-from typing import Callable, Optional, Tuple, TypeVar, overload
+from typing import Any, Callable, Optional, Tuple, TypeVar, overload
 
 import torch
 
@@ -36,8 +36,9 @@ State = TypeVar('State')
 INF = 1.0 * 1e7
 
 
-def gather_nd(params: torch.Tensor, indices: torch.Tensor) -> torch.Tensor:
-
+def gather_nd(params: Any, indices: torch.Tensor) -> Any:
+    if not isinstance(params, torch.Tensor):
+        return params
     assert len(indices.size()) == 3
     orig_size = params.size()
     index = indices[:, :, 1].view(-1) + indices[:, :, 0].view(-1) * orig_size[1]
@@ -49,7 +50,7 @@ def gather_nd(params: torch.Tensor, indices: torch.Tensor) -> torch.Tensor:
     return ret
 
 
-def _merge_beam_dim(tensor: torch.Tensor) -> torch.Tensor:
+def _merge_beam_dim(tensor: Any) -> Any:
     r"""Reshapes first two dimensions in to single dimension.
 
     Args:
@@ -58,14 +59,16 @@ def _merge_beam_dim(tensor: torch.Tensor) -> torch.Tensor:
     Returns:
         Reshaped tensor of shape `[A * B, ...]`.
     """
+    if not isinstance(tensor, torch.Tensor):
+        return tensor
     shape = list(tensor.size())
     shape[0] *= shape[1]  # batch -> batch * beam_size
     shape.pop(1)  # Remove beam dim
     return tensor.view(tuple(shape))
 
 
-def _unmerge_beam_dim(tensor: torch.Tensor, batch_size: int,
-                      beam_size: int) -> torch.Tensor:
+def _unmerge_beam_dim(tensor: Any, batch_size: int,
+                      beam_size: int) -> Any:
     r"""Reshapes first dimension back to `[batch_size, beam_size]`.
 
     Args:
@@ -76,12 +79,15 @@ def _unmerge_beam_dim(tensor: torch.Tensor, batch_size: int,
     Returns:
         Reshaped tensor of shape `[batch_size, beam_size, ...]`.
     """
+    if not isinstance(tensor, torch.Tensor):
+        return tensor
     shape = list(tensor.size())
     new_shape = [batch_size] + [beam_size] + shape[1:]
     return tensor.view(tuple(new_shape))
 
 
-def _expand_to_beam_size(tensor: torch.Tensor, beam_size: int) -> torch.Tensor:
+def _expand_to_beam_size(tensor: Any,
+                         beam_size: int) -> Any:
     r"""Tiles a given tensor by :attr:`beam_size`.
 
     Args:
@@ -91,6 +97,8 @@ def _expand_to_beam_size(tensor: torch.Tensor, beam_size: int) -> torch.Tensor:
     Returns:
         Tiled tensor of shape `[batch_size, beam_size, ...]`.
     """
+    if not isinstance(tensor, torch.Tensor):
+        return tensor
     tensor = torch.unsqueeze(tensor, dim=1)
     tile_dims = [1] * len(tensor.size())
     tile_dims[1] = beam_size

@@ -102,6 +102,19 @@ Data Iterators
 .. autoclass:: texar.data.TrainTestDataIterator
     :members:
 
+:hidden:`BatchingStrategy`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: texar.data.BatchingStrategy
+    :members:
+
+:hidden:`TokenCountBatchingStrategy`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: texar.data.TokenCountBatchingStrategy
+    :members:
+
+
 
 Data Utilities
 ===============

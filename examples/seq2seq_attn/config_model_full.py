@@ -4,7 +4,7 @@
 # `config_model.py`.
 
 num_units = 256
-# beam_width = 10  # TODO: implement beam search in the decoding
+beam_width = 10
 
 # --------------------- Embedder --------------------- #
 embedder = {
@@ -94,7 +94,7 @@ decoder = {
         "kwargs": {
             "num_units": 256,
         },
-        "attention_layer_size": None,
+        "attention_layer_size": 256,
         "alignment_history": False,
         "output_attention": True,
     },
@@ -107,7 +107,7 @@ decoder = {
         'kwargs': {}
     },
     'max_decoding_length_train': None,
-    'max_decoding_length_infer': None,
+    'max_decoding_length_infer': 60,
     'output_layer_bias': True,
     'name': 'attention_rnn_decoder'
 }

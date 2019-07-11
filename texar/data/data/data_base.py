@@ -256,10 +256,84 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
     r"""Base class inherited by all data classes.
     """
 
+    # pylint: disable=line-too-long
+
+    # The `DataBase` is used in combination with Texar `DataIterator`, which internally uses the PyTorch `DataLoader`
+    # for multi-processing support.
+    #
+    # We divide the entire data pipeline into three stages, namely *load*, *process*, and *batch*:
+    # - **Load** refers to loading data from the data source (e.g., a file, a Python list or iterator). In Texar,
+    #   loading is handled by `DataSource` classes.
+    # - **Process** refers to preprocessing routines for each data example (e.g., vocabulary mapping, tokenization). In
+    #   Texar, this is the `process` function of each `DataBase` class.
+    # - **Batch** refers to combining multiple examples to form a batch, which typically includes padding and moving
+    #   data across devices. In Texar, this is the `collate` function of each `DataBase` class.
+    #
+    # PyTorch DataLoader only performs batching, and since multi-processing is used, the entire dataset is expected to
+    # be in memory before iteration, i.e. loading and processing cannot be lazy. The DataBase class is carefully crafted
+    # to provide laziness and caching options at all possible stages.
+    #
+    # To support laziness, we pass data examples (either raw or processed, depending on whether processing is lazy) to
+    # the worker processes. To prevent modifying the underlying `DataLoader` implementation, we hack the PyTorch
+    # `Sampler` classes (responsible for sampling the next data example from the dataset, and returning its index) to
+    # also return data examples. To support caching, the worker may also need to return the processed examples through
+    # pipes.
+    #
+    # The following table describes the intended behavior of each combination of lazy/caching modes, and the exact
+    # behaviors of the sampler and workers. `<X>` means the mode combination does not make sense (e.g. with `Lazy.None`,
+    # processed data examples are effectively cached, so `Cache.None` makes no sense). Parts in `*[blah]*` hold true
+    # only for the first epoch.
+    #
+    # +---------------+-------------------------------+-------------------------------+-------------------------------+
+    # |               | Cache.None                    | Cache.Loaded                  | Cache.Processed               |
+    # |               | no caching                    | only cache loaded examples    | only cache processed examples |
+    # +===============+===============================+===============================+===============================+
+    # | Lazy.None     | <X>                           | <X>                           | Sampler returns indices.      |
+    # | eager load,   |                               |                               | Worker only does batching.    |
+    # | eager process |                               |                               | Worker returns batch.         |
+    # +---------------+-------------------------------+-------------------------------+-------------------------------+
+    # | Lazy.Process  | <X>                           | Sampler returns indices.      | Sampler returns indices.      |
+    # | eager load,   |                               | Worker does batching and      | Worker does batching          |
+    # | lazy process  |                               |   processing.                 |   *[and processing]*.         |
+    # |               |                               | Worker returns batch.         | Worker returns batch          |
+    # |               |                               |                               |   *[and processed examples]*. |
+    # +---------------+-------------------------------+-------------------------------+-------------------------------+
+    # | Lazy.All      | Sampler returns indices and   | Sampler returns indices       | Sampler returns indices       |
+    # | lazy load,    |   data examples.              |   *[and data examples]*.      |   *[and data examples]*.      |
+    # | lazy process  | Worker does batching and      | Worker does batching and      | Worker does batching          |
+    # |               |   processing.                 |   processing.                 |   *[and processing]*.         |
+    # |               | Worker returns batch.         | Worker returns batch.         | Worker returns batch          |
+    # |               |                               |                               |   *[and processed examples]*. |
+    # +---------------+-------------------------------+-------------------------------+-------------------------------+
+    #
+    # Note that in the above table we assume `parallelize_processing` to be True. In rare cases this may not be desired,
+    # for instance, when `process` depends on some shared variable that must be modified during iteration, e.g. a
+    # vocabulary constructed on-the-fly. When `parallelize_processing` is False, behaviors are as the following (much
+    # simpler) table. Although, note that compared to the above cases, this often results in worse performance.
+    #
+    # +---------------+-------------------------------+-------------------------------+-------------------------------+
+    # |               | Cache.None                    | Cache.Loaded                  | Cache.Processed               |
+    # |               | no caching                    | only cache loaded examples    | only cache processed examples |
+    # +===============+===============================+===============================+===============================+
+    # | Lazy.None     | <X>                           | <X>                           | Sampler returns indices.      |
+    # | eager load,   |                               |                               | Worker only does batching.    |
+    # | eager process |                               |                               | Worker returns batch.         |
+    # +---------------+-------------------------------+-------------------------------+-------------------------------+
+    # | Lazy.Process  | <X>                           | Sampler returns indices and processed examples.               |
+    # | eager load,   |                               | Worker only does batching.                                    |
+    # | lazy process  |                               | Worker returns batch.                                         |
+    # +---------------+-------------------------------+---------------------------------------------------------------+
+    # | Lazy.All      | Sampler returns indices and processed examples.                                               |
+    # | lazy load,    | Worker only does batching.                                                                    |
+    # | lazy process  | Worker returns batch.                                                                         |
+    # +---------------+-----------------------------------------------------------------------------------------------+
+
+    # pylint: enable=line-too-long
+
     _source: DataSource[RawExample]
     _dataset_size: Optional[int]
 
-    def __init__(self, source: DataSource[RawExample], hparams,
+    def __init__(self, source: DataSource[RawExample], hparams=None,
                  device: Optional[torch.device] = None):
         self._source = source
         self._hparams = HParams(hparams, self.default_hparams())
@@ -286,7 +360,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                     f"strategy. This will be equivalent to 'loaded' cache "
                     f"strategy.")
                 self._cache_strategy = _CacheStrategy.LOADED
-        self._uses_multi_processing = self._hparams.num_parallel_calls > 1
+        self._uses_multi_processing = self._hparams.num_parallel_calls > 0
         self._parallelize_processing = self._hparams.parallelize_processing
 
         self._processed_cache: List[Example] = []
@@ -437,10 +511,9 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
         `"num_parallel_calls"`: int
             Number of elements from the datasets to process in parallel.
-            When ``"num_parallel_calls"`` equals 1, no worker threads will
-            be created; however, when the value is greater than 1, the
-            number of worker threads will be equal to
-            ``"num_parallel_calls"``.
+            When ``"num_parallel_calls"`` equals 0, no worker processes will
+            be created; when the value is greater than 0, the number of worker
+            processes will be equal to ``"num_parallel_calls"``.
 
         `"prefetch_buffer_size"`: int
             The maximum number of elements that will be buffered when
@@ -514,9 +587,6 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             `none`. If `lazy_strategy` is `none`, processing will be
             performed on a single process regardless of this value.
         """
-        # TODO: Find a way to embed that big table here. Also change the table
-        #   to include different behaviors when `parallelize_processing` is
-        #   `False`.
         # TODO: Sharding not yet supported.
         # TODO: `seed` is not yet applied.
         # TODO: `prefetch_buffer_size` will not be supported, but could remain
@@ -529,7 +599,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             "shuffle": True,
             "shuffle_buffer_size": None,
             "shard_and_shuffle": False,
-            "num_parallel_calls": 1,
+            "num_parallel_calls": 0,
             "prefetch_buffer_size": 0,
             "max_dataset_size": -1,
             "seed": None,
@@ -608,13 +678,8 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
     def __len__(self) -> int:
         if self._dataset_size is None:
-            warnings.warn(
-                "The provided data source does not support random access. To "
-                "obtain dataset size, a full traversal must be performed. "
-                "This is often unnecessary and slow, consider redesigning your "
-                "use case.")
-            self._prefetch_all_source()
-            assert self._dataset_size is not None
+            raise TypeError(
+                "__len__ not supported for datasets with undetermined size")
         return self._dataset_size
 
     def process(self, raw_example: RawExample) -> Example:
