@@ -9,7 +9,7 @@ from texar.modules.decoders.decoder_helpers import GreedyEmbeddingHelper, \
     TopKSampleEmbeddingHelper, TopPSampleEmbeddingHelper
 
 
-class TransformerDecoderTest(unittest.TestCase):
+class SamplerTest(unittest.TestCase):
     r"""Tests decoder helper utilities.
     """
 
