@@ -32,6 +32,7 @@ __all__ = [
     'GreedyEmbeddingHelper',
     'SampleEmbeddingHelper',
     'TopKSampleEmbeddingHelper',
+    'TopPSampleEmbeddingHelper',
     'SoftmaxEmbeddingHelper',
     'GumbelSoftmaxEmbeddingHelper',
     'default_helper_train_hparams',
@@ -457,8 +458,7 @@ def _top_k_logits(logits: torch.Tensor, k: int) -> torch.Tensor:
 
 def _top_p_logits(logits: torch.Tensor, p: float) -> torch.Tensor:
     r"""Adapted from
-    https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317#file-top-k
-    -top-p-py-L16-L27"""
+    https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317#file-top-k-top-p-py-L16-L27"""
     sorted_logits, sorted_indices = torch.sort(logits, descending=True)
     cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
 
@@ -470,7 +470,7 @@ def _top_p_logits(logits: torch.Tensor, p: float) -> torch.Tensor:
     sorted_indices_to_remove[:, 0] = 0
 
     indices_to_remove = sorted_indices[sorted_indices_to_remove]
-    logits[indices_to_remove] = float('-inf')
+    logits[:, indices_to_remove] = float('-inf')
     return logits
 
 
@@ -542,7 +542,9 @@ class TopPSampleEmbeddingHelper(SingleEmbeddingHelper):
 
     Samples from candidates that have a cumulative probability of at most `p`
     when arranged in decreasing order, and passes the result through an
-    embedding layer to get the next input.
+    embedding layer to get the next input. This is also named as
+    "*Nucleus Sampling*" as proposed in the paper
+    "*The Curious Case of Neural Text Degeneration(Holtzman et al.)*".
 
     Args:
         embedding: A callable or the ``params`` argument for
@@ -583,7 +585,8 @@ class TopPSampleEmbeddingHelper(SingleEmbeddingHelper):
 
     def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
         del time  # unused by sample_fn
-        # Outputs are logits, we sample from the top-k candidates
+        # Outputs are logits, we sample from tokens with cumulative
+        # probability at most p when arranged in decreasing order
         if not torch.is_tensor(outputs):
             raise TypeError(
                 f"Expected outputs to be a single Tensor, got: {type(outputs)}")
