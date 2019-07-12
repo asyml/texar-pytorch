@@ -17,7 +17,7 @@ Modules used in XLNet. Adapted from
 https://github.com/zihangdai/xlnet/blob/master/modeling.py
 """
 
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 from torch import Tensor
@@ -60,7 +60,7 @@ class PositionWiseFF(tx.ModuleBase):
             "activation": 'relu',
         }
 
-    def forward(self, input: Tensor) -> Tensor:
+    def forward(self, input: Tensor) -> Tensor:  # type: ignore
         # position-wise feed-forward
         output = self.linear1(input)
         output = self.activation_fn(output)
@@ -80,7 +80,7 @@ class PositionalEmbedding(nn.Module):
         inv_freq = 1 / (10000 ** (freq_seq / embed_dim))
         self.register_buffer('inv_freq', inv_freq)
 
-    def forward(self, pos_seq: Tensor) -> Tensor:
+    def forward(self, pos_seq: Tensor) -> Tensor:  # type: ignore
         sinusoid = torch.ger(pos_seq, self.inv_freq)
         pos_embed = torch.cat([sinusoid.sin(), sinusoid.cos()], dim=-1)
         return pos_embed
@@ -116,7 +116,8 @@ class RelativePositionalEncoding(tx.ModuleBase):
         pos_embed = pos_embed.unsqueeze(1).expand(-1, batch_size, -1)
         return pos_embed
 
-    def forward(self, batch_size: int, seq_len: int, total_len: int,
+    def forward(self,  # type: ignore
+                batch_size: int, seq_len: int, total_len: int,
                 clamp_len: Optional[int] = None, attn_type: str = 'bi',
                 bi_data: bool = True) -> Tensor:
         if attn_type == 'bi':
@@ -141,7 +142,11 @@ class RelativePositionalEncoding(tx.ModuleBase):
 
 
 class RelativeMultiheadAttention(tx.ModuleBase):
-    def __init__(self, hparams=None):
+    def __init__(self,
+                 r_r_bias: Optional[nn.Parameter] = None,
+                 r_w_bias: Optional[nn.Parameter] = None,
+                 r_s_bias: Optional[nn.Parameter] = None,
+                 hparams=None):
         super().__init__(hparams)
 
         self.num_heads = self._hparams.num_heads
@@ -158,18 +163,32 @@ class RelativeMultiheadAttention(tx.ModuleBase):
         self.output_projection = nn.Linear(
             self.num_heads * self.head_dim, hidden_dim, bias=False)
 
-        self.layer_norm = nn.LayerNorm(hidden_dim, eps=1e-12)
+        bias_shape = (self.num_heads, self.head_dim)
+        self.untie_r = r_r_bias is None
+        self.r_r_bias = (r_r_bias if r_r_bias is not None
+                         else nn.Parameter(torch.Tensor(*bias_shape)))
+        self.r_w_bias = (r_w_bias if r_w_bias is not None
+                         else nn.Parameter(torch.Tensor(*bias_shape)))
 
         if self._hparams.use_segments:
             self.segment_embed = nn.Parameter(torch.Tensor(
                 2, self.num_heads, self.head_dim))
+            self.r_s_bias = (r_s_bias if r_s_bias is not None
+                             else nn.Parameter(torch.Tensor(*bias_shape)))
+
+        self.layer_norm = nn.LayerNorm(hidden_dim, eps=1e-12)
 
         self.scale = 1 / (self.head_dim ** 0.5)
         self.reset_parameters()
 
     def reset_parameters(self):
+        if self.untie_r:
+            nn.init.normal_(self.r_w_bias, 0.0, 0.02)
+            nn.init.normal_(self.r_r_bias, 0.0, 0.02)
         if self._hparams.use_segments:
             nn.init.normal_(self.segment_embed, 0.0, 0.02)
+            if self.untie_r:
+                nn.init.normal_(self.r_s_bias, 0.0, 0.02)
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
@@ -192,15 +211,14 @@ class RelativeMultiheadAttention(tx.ModuleBase):
     def _compute_attention_score(
             self, q_head: Tensor, k_head_h: Tensor, v_head_h: Tensor,
             k_head_r: Tensor, segment_mat: Optional[Tensor],
-            r_w_bias: Tensor, r_r_bias: Tensor, r_s_bias: Optional[Tensor],
             attn_mask: Optional[Tensor] = None) -> Tensor:
         # Content based attention score.
-        q_head_rw = q_head + r_w_bias
+        q_head_rw = q_head + self.r_w_bias
         # attn_ac: (seq_len, tot_len, batch_size, n_head)
         attn_ac = torch.einsum('ibnd,jbnd->ijbn', [q_head_rw, k_head_h])
 
         # Position based attention score.
-        q_head_rr = q_head + r_r_bias
+        q_head_rr = q_head + self.r_r_bias
         # attn_bd: (seq_len, tot_len, batch_size, n_head)
         attn_bd = torch.einsum('ibnd,jbnd->ijbn', [q_head_rr, k_head_r])
         attn_bd = self._rel_shift(attn_bd, klen=attn_ac.size(1))
@@ -209,7 +227,7 @@ class RelativeMultiheadAttention(tx.ModuleBase):
         if segment_mat is None:
             attn_ef = 0
         else:
-            q_head_rs = q_head + r_s_bias
+            q_head_rs = q_head + self.r_s_bias
             attn_ef = torch.einsum(
                 'ibnd,snd->ibns', [q_head_rs, self.segment_embed])
             attn_ef = torch.einsum('ijbs,ibns->ijbn', [segment_mat, attn_ef])
@@ -235,18 +253,27 @@ class RelativeMultiheadAttention(tx.ModuleBase):
         attn_vec = torch.einsum('ijbn,jbnd->ibnd', [attn_prob, v_head_h])
         return attn_vec.contiguous()
 
-    def forward(self, states: Tensor, pos_embed: Tensor,
-                segment_mat: Optional[Tensor],
-                r_w_bias: Tensor, r_r_bias: Tensor, r_s_bias: Optional[Tensor],
-                attn_mask: Optional[Tensor] = None,
-                memory: Optional[Tensor] = None) -> Tensor:
-        seq_len, batch_size = states.size()[:2]
+    def _post_attention(self, attn_vec: Tensor) -> Tensor:
+        attn_vec = attn_vec.view(*attn_vec.size()[:2], -1)
+        attn_out = self.output_projection(attn_vec)
+        attn_out = self.dropout(attn_out)
+        return attn_out
+
+    def forward(self,  # type: ignore
+                states_h: Tensor, states_g: Optional[Tensor],
+                pos_embed: Tensor, segment_mat: Optional[Tensor],
+                attn_mask_h: Optional[Tensor] = None,
+                attn_mask_g: Optional[Tensor] = None,
+                target_mapping: Optional[Tensor] = None,
+                memory: Optional[Tensor] = None) \
+            -> Tuple[Tensor, Optional[Tensor]]:
+        seq_len, batch_size = states_h.size()[:2]
         pos_len = pos_embed.size(0)
 
         if memory is not None and memory.dim() > 1:
-            concat_input = torch.cat([memory, states], dim=0)
+            concat_input = torch.cat([memory, states_h], dim=0)
         else:
-            concat_input = states
+            concat_input = states_h
 
         # Content heads.
         heads = self.head_projection(concat_input)
@@ -267,15 +294,33 @@ class RelativeMultiheadAttention(tx.ModuleBase):
             pos_len, batch_size, self.num_heads, self.head_dim)
 
         # Core attention ops.
-        attn_vec = self._compute_attention_score(
-            q_head_h, k_head_h, v_head_h, k_head_r, segment_mat,
-            r_w_bias, r_r_bias, r_s_bias, attn_mask)
+        attn_vec_h = self._compute_attention_score(
+            q_head_h, k_head_h, v_head_h, k_head_r,
+            segment_mat, attn_mask_h)
 
         # Post attention processing.
-        attn_vec = attn_vec.view(*attn_vec.size()[:2], -1)
-        attn_out = self.output_projection(attn_vec)
-        attn_out = self.dropout(attn_out)
+        attn_out_h = self._post_attention(attn_vec_h)
         # residual + layer norm
-        output = self.layer_norm(states + attn_out)
+        output_h = self.layer_norm(states_h + attn_out_h)
 
-        return output
+        if states_g is not None:
+            proj_dim = self.num_heads * self.head_dim
+            proj_weight = self.head_projection.weight[:proj_dim]
+            q_head_g = F.linear(states_g, proj_weight)
+            q_head_g = q_head_g.view(
+                q_head_g.size(0), batch_size, self.num_heads, self.head_dim)
+            if target_mapping is not None:
+                q_head_g = torch.einsum(
+                    'mbnd,mlb->lbnd', [q_head_g, target_mapping])
+            attn_vec_g = self._compute_attention_score(
+                q_head_g, k_head_h, v_head_h, k_head_r,
+                segment_mat, attn_mask_g)
+            if target_mapping is not None:
+                attn_vec_g = torch.einsum(
+                    'lbnd,mlb->mbnd', [attn_vec_g, target_mapping])
+            attn_out_g = self._post_attention(attn_vec_g)
+            output_g = self.layer_norm(states_g + attn_out_g)
+        else:
+            output_g = None
+
+        return output_h, output_g

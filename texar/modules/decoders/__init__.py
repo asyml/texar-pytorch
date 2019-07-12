@@ -15,6 +15,7 @@
 Modules of Texar library decoders.
 """
 
+from texar.modules.decoders.decoder_base import DecoderBase
 from texar.modules.decoders.decoder_helpers import *
 from texar.modules.decoders.rnn_decoder_base import *
 from texar.modules.decoders.gpt2_decoder import *

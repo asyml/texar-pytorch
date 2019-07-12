@@ -173,6 +173,11 @@ Decoders
 .. autoclass:: texar.modules.TopKSampleEmbeddingHelper
     :members:
 
+:hidden:`TopPSampleEmbeddingHelper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.TopPSampleEmbeddingHelper
+    :members:
+
 :hidden:`SoftmaxEmbeddingHelper`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.SoftmaxEmbeddingHelper

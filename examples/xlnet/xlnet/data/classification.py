@@ -18,7 +18,7 @@ https://github.com/zihangdai/xlnet/blob/master/run_classifier.py
 """
 
 import csv
-import os
+from pathlib import Path
 from typing import List
 
 from xlnet.data.processor import DataProcessor, InputExample
@@ -38,10 +38,10 @@ class Yelp5Processor(DataProcessor):
         raise TypeError("The Yelp 5 dataset does not have a test set.")
 
     @staticmethod
-    def _create_examples(input_file: str) -> List[InputExample]:
+    def _create_examples(input_file: Path) -> List[InputExample]:
         """Creates examples for the training and dev sets."""
         examples = []
-        with open(input_file) as f:
+        with input_file.open() as f:
             reader = csv.reader(f)
             for i, line in enumerate(reader):
                 label = line[0]
@@ -65,16 +65,15 @@ class ImdbProcessor(DataProcessor):
         raise TypeError("The IMDB dataset does not have a test set.")
 
     @staticmethod
-    def _create_examples(data_dir: str) -> List[InputExample]:
+    def _create_examples(data_dir: Path) -> List[InputExample]:
         examples = []
         for label in ["neg", "pos"]:
-            cur_dir = os.path.join(data_dir, label)
-            for filename in os.listdir(cur_dir):
-                if not filename.endswith("txt"):
+            cur_dir = data_dir / label
+            for filename in cur_dir.iterdir():
+                if filename.suffix != "txt":
                     continue
-                path = os.path.join(cur_dir, filename)
-                with open(path) as f:
+                with (cur_dir / filename).open() as f:
                     text = f.read().strip().replace("<br />", " ")
                 examples.append(InputExample(
-                    guid=filename, text_a=text, text_b=None, label=label))
+                    guid=str(filename), text_a=text, text_b=None, label=label))
         return examples

@@ -16,14 +16,14 @@
 Utilities for loading TensorFlow checkpoints.
 """
 
-from typing import (
-    Callable, Dict, Optional, Union)
+from typing import Callable, Dict, Optional, Union
 
 import numpy as np
 import torch
 from torch import nn
 
 from xlnet.model.model import XLNet, XLNetSummary
+from xlnet.model.decoder import XLNetDecoder
 from xlnet.model.modules import PositionWiseFF, RelativeMultiheadAttention
 
 __all__ = [
@@ -53,6 +53,7 @@ def load_from_tf_checkpoint(model: Union[XLNet, XLNetSummary], path: str,
     from_params: Dict[str, np.ndarray] = {
         key: ckpt.get_tensor(key)
         for key in ckpt.get_variable_to_shape_map().keys()}
+    del from_params["global_step"]  # useless variable
     to_params: Dict[str, nn.Parameter] = dict(model.named_parameters())
 
     def get_weight(name: str) -> torch.Tensor:
@@ -82,13 +83,29 @@ def load_from_tf_checkpoint(model: Union[XLNet, XLNetSummary], path: str,
                              f"actual size {weight.size()}")
         param.data = weight
 
+    def assign_linear(linear: nn.Linear, prefix: str):
+        trans_fn = lambda p: p.view(p.size(0), -1).t()
+        assign(linear.weight, prefix + "kernel", trans_fn)
+        if linear.bias is not None:
+            assign(linear.bias, prefix + "bias")
+
+    def assign_layer_norm(layer_norm: nn.LayerNorm, prefix: str):
+        assign(layer_norm.weight, prefix + "LayerNorm/gamma")
+        assign(layer_norm.bias, prefix + "LayerNorm/beta")
+
     def load_xlnet_model(xlnet):
+        n_layers = len(xlnet.attn_layers)
         for bias_name in ['r_r_bias', 'r_w_bias', 'r_s_bias']:
-            assign(getattr(xlnet, bias_name), "transformer/" + bias_name)
+            weight = get_weight("transformer/" + bias_name)
+            if xlnet.hparams.untie_r:
+                for idx in range(n_layers):
+                    layer: RelativeMultiheadAttention = xlnet.attn_layers[idx]
+                    assign(getattr(layer, bias_name), weight[idx])
+            else:
+                assign(getattr(xlnet, bias_name), weight)
         assign(xlnet.word_embed.weight,
                "transformer/word_embedding/lookup_table")
 
-        n_layers = len(xlnet.attn_layers)
         for idx in range(n_layers):
             layer: RelativeMultiheadAttention = xlnet.attn_layers[idx]
             prefix = f"transformer/layer_{idx}/rel_attn/"
@@ -98,12 +115,10 @@ def load_from_tf_checkpoint(model: Union[XLNet, XLNetSummary], path: str,
                    torch.cat([
                        p.view(p.size(0), -1) for p in qkv_weights
                    ], dim=1).t())
-            trans_fn = lambda p: p.view(p.size(0), -1).t()
-            assign(layer.pos_projection.weight, prefix + "r/kernel", trans_fn)
+            assign_linear(layer.pos_projection, prefix + "r/")
             assign(layer.output_projection.weight,  # DO NOT TRANSPOSE THIS!!!!
                    prefix + "o/kernel", lambda p: p.view(p.size(0), -1))
-            assign(layer.layer_norm.weight, prefix + "LayerNorm/gamma")
-            assign(layer.layer_norm.bias, prefix + "LayerNorm/beta")
+            assign_layer_norm(layer.layer_norm, prefix)
 
         for idx in range(n_layers):
             layer: PositionWiseFF = xlnet.ff_layers[idx]
@@ -111,11 +126,8 @@ def load_from_tf_checkpoint(model: Union[XLNet, XLNetSummary], path: str,
             for linear_idx in range(1, 2 + 1):
                 linear_prefix = f"{prefix}layer_{linear_idx}/"
                 linear_layer: nn.Linear = getattr(layer, f"linear{linear_idx}")
-                trans_fn = lambda p: p.t()
-                assign(linear_layer.weight, linear_prefix + "kernel", trans_fn)
-                assign(linear_layer.bias, linear_prefix + "bias")
-            assign(layer.layer_norm.weight, prefix + "LayerNorm/gamma")
-            assign(layer.layer_norm.bias, prefix + "LayerNorm/beta")
+                assign_linear(linear_layer, linear_prefix)
+            assign_layer_norm(layer.layer_norm, prefix)
 
         seg_embeds = [
             p.squeeze(0)
@@ -124,15 +136,16 @@ def load_from_tf_checkpoint(model: Union[XLNet, XLNetSummary], path: str,
         for idx in range(n_layers):
             assign(xlnet.attn_layers[idx].segment_embed, seg_embeds[idx])
 
+        if isinstance(xlnet, XLNetDecoder):
+            assign(xlnet.mask_emb, "transformer/mask_emb/mask_emb")
+            assign(xlnet.lm_bias, "lm_loss/bias")
+
     if isinstance(model, XLNetSummary):
-        trans_fn = lambda p: p.t()
         if task_name is not None:
             prefix = "sequnece_summary/summary/"
-            assign(model.projection.weight, prefix + "kernel", trans_fn)
-            assign(model.projection.bias, prefix + "bias")
+            assign_linear(model.projection, prefix)
             prefix = f"classification_{task_name}/logit/"
-            assign(model.hidden_to_logits.weight, prefix + "kernel", trans_fn)
-            assign(model.hidden_to_logits.bias, prefix + "bias")
+            assign_linear(model.hidden_to_logits, prefix)
         load_xlnet_model(model.xlnet)
     elif isinstance(model, XLNet):
         if task_name is not None:
