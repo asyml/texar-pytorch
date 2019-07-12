@@ -469,8 +469,9 @@ def _top_p_logits(logits: torch.Tensor, p: float) -> torch.Tensor:
     sorted_indices_to_remove[:, 1:] = sorted_indices_to_remove[:, :-1].clone()
     sorted_indices_to_remove[:, 0] = 0
 
-    indices_to_remove = sorted_indices[sorted_indices_to_remove]
-    logits[:, indices_to_remove] = float('-inf')
+    for idx in range(logits.size(0)):
+        batch_indices = sorted_indices[idx, sorted_indices_to_remove[idx]]
+        logits[idx, batch_indices] = float("-inf")
     return logits
 
 

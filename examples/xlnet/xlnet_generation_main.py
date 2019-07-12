@@ -38,10 +38,11 @@ parser.add_argument('--pretrain_model_dir', type=str,
                          "vocabulary, etc.")
 parser.add_argument('--seed', type=int, default=None, help="Random seed.")
 parser.add_argument('--nsamples', type=int, default=1,
-                    help="The number of samples per input.")
+                    help="Total number of samples to generate. Used in "
+                         "non-interactive mode.")
 parser.add_argument('--batch_size', type=int, default=1,
                     help="The batch size of input.")
-parser.add_argument('--max_decoding_length', type=int, default=128,
+parser.add_argument('--max_decoding_length', type=int, default=100,
                     help="The maximun length of generated text.")
 parser.add_argument('--temperature', type=float, default=0.7,
                     help="Softmax temperature for top-k sample decoding. Must "
@@ -66,6 +67,7 @@ args = parser.parse_args()
 
 
 def main():
+
     pretrain_checkpoint = args.pretrain_checkpoint
     sentence_piece_model = args.sentence_piece
     if torch.cuda.is_available():
@@ -84,17 +86,17 @@ def main():
     # prompts. Refer to https://github.com/rusiaaman/XLNet-gen for the rationale
     # behind this.
     pad_txt = """
-        In 1991, the remains of Russian Tsar Nicholas II and his family
-        (except for Alexei and Maria) are discovered.
-        The voice of Nicholas's young son, Tsarevich Alexei Nikolaevich,
-        narrates the remainder of the story. 1883 Western Siberia, a young
-        Grigori Rasputin is asked by his father and a group of men to perform
-        magic. Rasputin has a vision and denounces one of the men as a horse
-        thief. Although his father initially slaps him for making such an
-        accusation, Rasputin watches as the man is chased outside and beaten.
-        Twenty years later, Rasputin sees a vision of the Virgin Mary,
-        prompting him to become a priest. Rasputin quickly becomes famous,
-        with people, even a bishop, begging for his blessing. """
+        Texar-PyTorch is an open-source toolkit based on PyTorch, aiming to
+        support a broad set of machine learning, especially text generation
+        tasks, such as machine translation, dialog, summarization, content
+        manipulation, language modeling, and so on. Texar is designed for both
+        researchers and practitioners for fast prototyping and
+        experimentation.
+        With the design goals of modularity, versatility, and extensibility in
+        mind, Texar extracts the common patterns underlying the diverse tasks
+        and methodologies, creates a library of highly reusable modules and
+        functionalities, and facilitates arbitrary model architectures and
+        algorithmic paradigms. """
     pad_ids = tokenize_fn(pad_txt)
     pad_ids.append(xlnet.data.utils.EOD_ID)
 
@@ -108,7 +110,8 @@ def main():
         if len(xs) - p > 0:
             yield xs[p:]
 
-    def sample(text: str, length: int = 200, n_samples=3, **kwargs):
+    @torch.no_grad()
+    def sample(text: str, length: int = 100, n_samples=3, **kwargs):
         model.eval()
         text = text.replace("\n", "<eop>")
         tokens = pad_ids + tokenize_fn(text)
@@ -132,6 +135,12 @@ def main():
                 sample_tokens, xlnet.data.utils.special_symbols["<eop>"]))
             print(output)
 
+    nsamples = args.nsamples
+    batch_size = args.batch_size
+    max_decoding_length = args.max_decoding_length
+    assert nsamples % batch_size == 0, (
+        "nsamples must be dividable by batch_size")
+
     if args.is_interactive:
         while True:
 
@@ -140,16 +149,17 @@ def main():
                 while not raw_text:
                     print('Input should not be empty!')
                     raw_text = input("Model input >>> ")
-                sample(text=raw_text, length=args.max_decoding_length,
-                       n_samples=args.nsamples)
+                sample(text=raw_text, length=max_decoding_length,
+                       n_samples=batch_size)
             except EOFError:
                 print("EOF entered, quitting.")
                 exit(0)
     else:
         # Generate samples from scratch
-        for _ in range(args.batch_size):
-            sample(text="<BOS>", length=args.max_decoding_length,
-                   n_samples=args.nsamples)
+        for _ in range(nsamples // batch_size):
+            for _ in range(args.batch_size):
+                sample(text="<BOS>", length=max_decoding_length,
+                       n_samples=batch_size)
 
 
 if __name__ == '__main__':
