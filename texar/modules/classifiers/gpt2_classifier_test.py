@@ -1,17 +1,17 @@
 """
-Unit tests for BERT classifiers.
+Unit tests for GPT2 classifier.
 """
 
 import unittest
 
 import torch
 
-from texar.modules.classifiers.bert_classifiers import *
+from texar.modules.classifiers.gpt2_classifier import *
 
 
 @unittest.skip("Manual test only")
-class BertClassifierTest(unittest.TestCase):
-    r"""Tests :class:`~texar.modules.BertClassifier` class.
+class GPT2ClassifierTest(unittest.TestCase):
+    r"""Tests :class:`~texar.modules.GPT2Classifier` class.
     """
 
     def test_trainable_variables(self):
@@ -21,26 +21,26 @@ class BertClassifierTest(unittest.TestCase):
         inputs = torch.zeros(32, 16, dtype=torch.int64)
 
         # case 1
-        classifier = BertClassifier()
+        classifier = GPT2Classifier()
         _, _ = classifier(inputs)
-        self.assertEqual(len(classifier.trainable_variables), 199 + 2)
+        self.assertEqual(len(classifier.trainable_variables), 318)
 
         # case 2
         hparams = {
             "clas_strategy": "all_time",
             "max_seq_length": 8,
         }
-        classifier = BertClassifier(hparams=hparams)
+        classifier = GPT2Classifier(hparams=hparams)
         _, _ = classifier(inputs)
-        self.assertEqual(len(classifier.trainable_variables), 199 + 2)
+        self.assertEqual(len(classifier.trainable_variables), 318)
 
         # case 3
         hparams = {
             "clas_strategy": "time_wise",
         }
-        classifier = BertClassifier(hparams=hparams)
+        classifier = GPT2Classifier(hparams=hparams)
         _, _ = classifier(inputs)
-        self.assertEqual(len(classifier.trainable_variables), 199 + 2)
+        self.assertEqual(len(classifier.trainable_variables), 318)
 
     def test_encode(self):
         r"""Tests encoding.
@@ -50,7 +50,7 @@ class BertClassifierTest(unittest.TestCase):
         inputs = torch.randint(30521, (batch_size, max_time), dtype=torch.int64)
 
         # case 1
-        classifier = BertClassifier()
+        classifier = GPT2Classifier()
         logits, preds = classifier(inputs)
 
         self.assertEqual(logits.shape, torch.Size(
@@ -62,7 +62,7 @@ class BertClassifierTest(unittest.TestCase):
             "num_classes": 10,
             "clas_strategy": "time_wise"
         }
-        classifier = BertClassifier(hparams=hparams)
+        classifier = GPT2Classifier(hparams=hparams)
         logits, preds = classifier(inputs)
 
         self.assertEqual(logits.shape, torch.Size(
@@ -74,11 +74,11 @@ class BertClassifierTest(unittest.TestCase):
             "num_classes": 0,
             "clas_strategy": "time_wise"
         }
-        classifier = BertClassifier(hparams=hparams)
+        classifier = GPT2Classifier(hparams=hparams)
         logits, preds = classifier(inputs)
 
         self.assertEqual(logits.shape, torch.Size(
-            [batch_size, max_time, classifier.hparams.encoder.dim]))
+            [batch_size, max_time, classifier.hparams.decoder.dim]))
         self.assertEqual(preds.shape, torch.Size([batch_size, max_time]))
 
         # case 4
@@ -88,7 +88,7 @@ class BertClassifierTest(unittest.TestCase):
             "max_seq_length": max_time
         }
         inputs = torch.randint(30521, (batch_size, 6), dtype=torch.int64)
-        classifier = BertClassifier(hparams=hparams)
+        classifier = GPT2Classifier(hparams=hparams)
         logits, preds = classifier(inputs)
 
         self.assertEqual(logits.shape, torch.Size(
@@ -107,7 +107,7 @@ class BertClassifierTest(unittest.TestCase):
             "num_classes": 1,
             "clas_strategy": "time_wise"
         }
-        classifier = BertClassifier(hparams=hparams)
+        classifier = GPT2Classifier(hparams=hparams)
         logits, preds = classifier(inputs)
 
         self.assertEqual(logits.shape, torch.Size([batch_size, max_time]))
@@ -120,7 +120,7 @@ class BertClassifierTest(unittest.TestCase):
             "max_seq_length": max_time
         }
         inputs = torch.randint(30521, (batch_size, 6), dtype=torch.int64)
-        classifier = BertClassifier(hparams=hparams)
+        classifier = GPT2Classifier(hparams=hparams)
         logits, preds = classifier(inputs)
 
         self.assertEqual(logits.shape, torch.Size([batch_size]))
@@ -133,7 +133,7 @@ class BertClassifierTest(unittest.TestCase):
             "max_seq_length": max_time
         }
         inputs = torch.randint(30521, (batch_size, 6), dtype=torch.int64)
-        classifier = BertClassifier(hparams=hparams)
+        classifier = GPT2Classifier(hparams=hparams)
         logits, preds = classifier(inputs)
 
         self.assertEqual(logits.shape, torch.Size([batch_size]))

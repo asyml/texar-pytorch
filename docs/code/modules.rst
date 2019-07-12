@@ -64,6 +64,11 @@ Encoders
 .. autoclass:: texar.modules.BertEncoder
     :members:
 
+:hidden:`GPT2Encoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.GPT2Encoder
+    :members:
+
 :hidden:`Conv1DEncoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.Conv1DEncoder
@@ -117,6 +122,11 @@ Decoders
 :hidden:`AttentionRNNDecoderOutput`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.AttentionRNNDecoderOutput
+    :members:
+
+:hidden:`GPT2Decoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.GPT2Decoder
     :members:
 
 :hidden:`TransformerDecoder`
@@ -192,6 +202,11 @@ Classifiers
 .. autoclass:: texar.modules.BertClassifier
     :members:
 
+:hidden:`GPT2Classifier`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.GPT2Classifier
+    :members:
+
 :hidden:`Conv1DClassifier`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.Conv1DClassifier
@@ -224,4 +239,9 @@ Pre-trained
 :hidden:`BertBase`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.BertBase
+    :members:
+
+:hidden:`GPT2Base`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.GPT2Base
     :members:

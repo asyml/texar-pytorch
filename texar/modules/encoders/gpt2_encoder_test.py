@@ -1,17 +1,17 @@
 """
-Unit tests for Bert encoders.
+Unit tests for GPT2 encoder.
 """
 
 import unittest
 
 import torch
 
-from texar.modules.encoders.bert_encoders import BertEncoder
+from texar.modules.encoders.gpt2_encoder import GPT2Encoder
 
 
 @unittest.skip("Manual test only")
-class BertEncoderTest(unittest.TestCase):
-    r"""Tests :class:`~texar.modules.BertEncoder` class.
+class GPT2EncoderTest(unittest.TestCase):
+    r"""Tests :class:`~texar.modules.GPT2Encoder` class.
     """
 
     def test_hparams(self):
@@ -21,39 +21,39 @@ class BertEncoderTest(unittest.TestCase):
 
         # case 1: set "pretrained_mode_name" by constructor argument
         hparams = {
-            "pretrained_model_name": "bert-large-uncased",
+            "pretrained_model_name": "345M",
         }
-        encoder = BertEncoder(pretrained_model_name="bert-base-uncased",
+        encoder = GPT2Encoder(pretrained_model_name="117M",
                               hparams=hparams)
-        _, _ = encoder(inputs)
-        self.assertEqual(encoder.hparams.encoder.num_blocks, 12)
+        _ = encoder(inputs)
+        self.assertEqual(encoder.hparams.decoder.num_blocks, 12)
 
         # case 2: set "pretrained_mode_name" by hparams
         hparams = {
-            "pretrained_model_name": "bert-large-uncased",
-            "encoder": {
+            "pretrained_model_name": "117M",
+            "decoder": {
                 "num_blocks": 6
             }
         }
-        encoder = BertEncoder(hparams=hparams)
-        _, _ = encoder(inputs)
-        self.assertEqual(encoder.hparams.encoder.num_blocks, 24)
+        encoder = GPT2Encoder(hparams=hparams)
+        _ = encoder(inputs)
+        self.assertEqual(encoder.hparams.decoder.num_blocks, 12)
 
         # case 3: set to None in both hparams and constructor argument
         hparams = {
             "pretrained_model_name": None,
-            "encoder": {
+            "decoder": {
                 "num_blocks": 6
             },
         }
-        encoder = BertEncoder(hparams=hparams)
-        _, _ = encoder(inputs)
-        self.assertEqual(encoder.hparams.encoder.num_blocks, 6)
+        encoder = GPT2Encoder(hparams=hparams)
+        _ = encoder(inputs)
+        self.assertEqual(encoder.hparams.decoder.num_blocks, 6)
 
         # case 4: using default hparams
-        encoder = BertEncoder()
-        _, _ = encoder(inputs)
-        self.assertEqual(encoder.hparams.encoder.num_blocks, 12)
+        encoder = GPT2Encoder()
+        _ = encoder(inputs)
+        self.assertEqual(encoder.hparams.decoder.num_blocks, 12)
 
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
@@ -61,64 +61,58 @@ class BertEncoderTest(unittest.TestCase):
         """
         inputs = torch.zeros(32, 16, dtype=torch.int64)
 
-        # case 1: bert base
-        encoder = BertEncoder()
-        _, _ = encoder(inputs)
-        self.assertEqual(len(encoder.trainable_variables), 3 + 2 + 12 * 16 + 2)
+        # case 1: GPT2 117M
+        encoder = GPT2Encoder()
+        _ = encoder(inputs)
+        self.assertEqual(len(encoder.trainable_variables), 1 + 1 + 12 * 26 + 2)
 
-        # case 2: bert large
+        # case 2: GPT2 345M
         hparams = {
-            "pretrained_model_name": "bert-large-uncased"
+            "pretrained_model_name": "345M"
         }
-        encoder = BertEncoder(hparams=hparams)
-        _, _ = encoder(inputs)
-        self.assertEqual(len(encoder.trainable_variables), 3 + 2 + 24 * 16 + 2)
+        encoder = GPT2Encoder(hparams=hparams)
+        _ = encoder(inputs)
+        self.assertEqual(len(encoder.trainable_variables), 1 + 1 + 24 * 26 + 2)
 
-        # case 3: self-designed bert
+        # case 3: self-designed GPT2
         hparams = {
-            "encoder": {
+            "decoder": {
                 "num_blocks": 6,
             },
             "pretrained_model_name": None
         }
-        encoder = BertEncoder(hparams=hparams)
-        _, _ = encoder(inputs)
-        self.assertEqual(len(encoder.trainable_variables), 3 + 2 + 6 * 16 + 2)
+        encoder = GPT2Encoder(hparams=hparams)
+        _ = encoder(inputs)
+        self.assertEqual(len(encoder.trainable_variables), 1 + 1 + 6 * 26 + 2)
 
     def test_encode(self):
         r"""Tests encoding.
         """
-        # case 1: bert base
-        encoder = BertEncoder()
+        # case 1: GPT2 117M
+        encoder = GPT2Encoder()
 
         max_time = 8
         batch_size = 16
         inputs = torch.randint(30521, (batch_size, max_time), dtype=torch.int64)
-        outputs, pooled_output = encoder(inputs)
+        outputs = encoder(inputs)
 
-        outputs_dim = encoder.hparams.encoder.dim
-        pooled_output_dim = encoder.hparams.hidden_size
+        outputs_dim = encoder.hparams.decoder.dim
 
         self.assertEqual(outputs.shape, torch.Size([batch_size,
                                                     max_time,
                                                     outputs_dim]))
-        self.assertEqual(pooled_output.shape, torch.Size([batch_size,
-                                                          pooled_output_dim]))
 
-        # case 2: self-designed bert
+        # case 2: self-designed GPT2
         hparams = {
             'pretrained_model_name': None,
             'embed': {
-                'dim': 96
-            },
-            'segment_embed': {
                 'dim': 96
             },
             'position_embed': {
                 'dim': 96
             },
 
-            'encoder': {
+            'decoder': {
                 'dim': 96,
                 'multihead_attention': {
                     'num_units': 96,
@@ -134,7 +128,7 @@ class BertEncoderTest(unittest.TestCase):
                             },
                             'type': 'Linear'
                         },
-                        {"type": "BertGELU"},
+                        {"type": "GPTGELU"},
                         {
                             'kwargs': {
                                 'in_features': 96 * 4,
@@ -145,24 +139,20 @@ class BertEncoderTest(unittest.TestCase):
                         }
                     ]
                 },
-            },
-            'hidden_size': 96
+            }
         }
-        encoder = BertEncoder(hparams=hparams)
+        encoder = GPT2Encoder(hparams=hparams)
 
         max_time = 8
         batch_size = 16
         inputs = torch.randint(30521, (batch_size, max_time), dtype=torch.int64)
-        outputs, pooled_output = encoder(inputs)
+        outputs = encoder(inputs)
 
-        outputs_dim = encoder.hparams.encoder.dim
-        pooled_output_dim = encoder.hparams.hidden_size
+        outputs_dim = encoder.hparams.decoder.dim
 
         self.assertEqual(outputs.shape, torch.Size([batch_size,
                                                     max_time,
                                                     outputs_dim]))
-        self.assertEqual(pooled_output.shape, torch.Size([batch_size,
-                                                          pooled_output_dim]))
 
 
 if __name__ == "__main__":

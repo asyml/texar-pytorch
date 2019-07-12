@@ -1,5 +1,6 @@
 """Texar config file of the GPT-2 model_117M model.
 """
+pretrained_model_name = "117M"
 
 vocab_size = 50257
 dim = 768
@@ -8,7 +9,7 @@ embed = {
     "dim": dim,
 }
 
-pos_embed = {
+position_embed = {
     'dim': dim
 }
 position_size = 1024
