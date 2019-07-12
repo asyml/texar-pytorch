@@ -9,6 +9,7 @@ import torch
 from texar.modules.classifiers.gpt2_classifier import *
 
 
+@unittest.skip("Manual test only")
 class GPT2ClassifierTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.GPT2Classifier` class.
     """

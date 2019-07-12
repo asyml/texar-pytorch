@@ -9,6 +9,7 @@ import torch
 from texar.modules.classifiers.bert_classifiers import *
 
 
+@unittest.skip("Manual test only")
 class BertClassifierTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.BertClassifier` class.
     """
