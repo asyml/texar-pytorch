@@ -20,6 +20,8 @@ import sentencepiece as spm
 
 import xlnet
 import xlnet.model.decoder
+from texar.modules.decoders.decoder_helpers import TopKSampleEmbeddingHelper, \
+    TopPSampleEmbeddingHelper
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', type=str, default=None,
@@ -46,14 +48,20 @@ parser.add_argument('--temperature', type=float, default=0.7,
                     help="Softmax temperature for top-k sample decoding. Must "
                          "be strictly greater than 0. Defaults to 0.7.")
 parser.add_argument('--top_k', type=int, default=40,
-                    help="The number of top most likely candidates from a vocab"
-                         " distribution.")
+                    help="The number of top most likely candidates to choose "
+                         "from at each step. This is use "
+                         "TopKSampleEmbeddingHelper for decoding. Ignored if "
+                         "'p' is given.")
+parser.add_argument('--p', type=int, default=None,
+                    help="Select tokens with cumulative probability of at most "
+                         "'p' when arranged in decreasing order. This will use "
+                         "TopPSampleEmbeddingHelper for decoding.")
 parser.add_argument('--is_interactive', action='store_true',
                     help="Interactive mode or not.")
 parser.add_argument('--sentence_piece', type=str,
                     default="pretrained/xlnet_cased_L-24_H-1024_A-16/"
                             "spiece.model",
-                    help="Location to load sentene piece model from")
+                    help="Location to load sentence piece model from.")
 
 args = parser.parse_args()
 
@@ -106,9 +114,18 @@ def main():
         text = text.replace("\n", "<eop>")
         tokens = pad_ids + tokenize_fn(text)
         tokens = torch.tensor(tokens, device=device).expand(n_samples, -1)
-        kwargs.setdefault("print_steps", True)
-        decode_output, _ = model(
-            tokens, max_decoding_length=length, **kwargs)
+        if args.p:
+            kwargs["p"] = args.p
+            decode_output, _ = model(tokens, max_decoding_length=length,
+                                     print_steps=True,
+                                     helper_type=TopPSampleEmbeddingHelper,
+                                     **kwargs)
+        else:
+            kwargs["top_k"] = args.top_k
+            decode_output, _ = model(tokens, max_decoding_length=length,
+                                     print_steps=True,
+                                     helper_type=TopKSampleEmbeddingHelper,
+                                     **kwargs)
         decode_samples = decode_output.sample_id.tolist()
         for idx, sample_tokens in enumerate(decode_samples):
             print(f"=== Sample {idx} ===")
