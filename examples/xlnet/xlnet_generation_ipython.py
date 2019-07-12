@@ -47,6 +47,7 @@ def main():
         if len(xs) - p > 0:
             yield xs[p:]
 
+    @torch.no_grad()
     def sample(text: str, length: int = 200, n_samples=3, **kwargs):
         print("=== Prompt ===")
         print(text)
@@ -55,7 +56,7 @@ def main():
         tokens = pad_ids + tokenize_fn(text)
         tokens = torch.tensor(tokens, device=device).expand(n_samples, -1)
         kwargs.setdefault("print_steps", True)
-        decode_output, _ = model.decode(
+        decode_output, _ = model(
             tokens, max_decoding_length=length, **kwargs)
         decode_samples = decode_output.sample_id.tolist()
         for idx, sample_tokens in enumerate(decode_samples):
@@ -67,7 +68,7 @@ def main():
     try:
         from IPython import embed
         print("Generate text by calling: sample(\"<your prompt text>\", ...).\n"
-              "For options, refer to `decode` method of `XLNetDecoder`.\n")
+              "For options, refer to `forward` method of `XLNetDecoder`.\n")
         embed()
     except ImportError:
         print("To be able to specify sampling options, please install IPython.")

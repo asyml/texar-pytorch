@@ -131,15 +131,14 @@ class XLNetDecoder(XLNet, tx.modules.DecoderBase[State, Output]):
         del self._state_previous_inputs
         return super().finalize(outputs, final_state, sequence_lengths)
 
-    @torch.no_grad()
-    def decode(self, start_tokens: torch.LongTensor,
-               memory: Optional[State] = None,
-               cache_len: int = 512,
-               max_decoding_length: Optional[int] = 500,
-               recompute_memory: bool = True,
-               print_steps: bool = False,
-               helper_type: Optional[Union[str, Type[Helper]]] = None,
-               **helper_kwargs) \
+    def forward(self, start_tokens: torch.LongTensor,
+                memory: Optional[State] = None,
+                cache_len: int = 512,
+                max_decoding_length: Optional[int] = 500,
+                recompute_memory: bool = True,
+                print_steps: bool = False,
+                helper_type: Optional[Union[str, Type[Helper]]] = None,
+                **helper_kwargs) \
             -> Tuple[Output, Optional[State]]:
         r"""Perform autoregressive decoding using XLNet. The algorithm is
         largely inspired by: https://github.com/rusiaaman/XLNet-gen.
