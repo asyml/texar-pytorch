@@ -1,14 +1,14 @@
 # GPT-2: Pre-trained Langauge Model
 
-This is a Texar implementation of [OpenAI GPT-2 (Generative Pre-Trainning)](https://github.com/openai/gpt-2) language model, which allows to load official pre-trained model parameters, generate samples, and fine-tune the model, etc.
+This is a Texar PyTorch implementation of [OpenAI GPT-2 (Generative Pre-Trainning)](https://github.com/openai/gpt-2) language model, which allows to load official pre-trained model parameters, generate samples, and fine-tune the model, etc.
 
-With Texar, building the GPT-2 model is as simple as creating a [`TransformerDecoder`](https://texar.readthedocs.io/en/latest/code/modules.html#transformerdecoder) instance. We can initialize the parameters of the GPT-2 model by specifying `pretrained_model_name` in `GPT2Decoder`. The pre-trained model can be retrieved from a list of: `117M`, and `345M`.
+Texar provides ready-to-use modules including [`GPT2Decoder`](https://texar-pytorch.readthedocs.io/en/latest/code/modules.html#gpt2decoder), [`GPT2Encoder`](https://texar-pytorch.readthedocs.io/en/latest/code/modules.html#gpt2encoder), [`GPT2Classifier`](https://texar-pytorch.readthedocs.io/en/latest/code/modules.html#gpt2classifier), etc. This example shows the use of `GPT2Decoder` for generation tasks.
 
 In sum, this example showcases:
 
 * Contructing and using pre-trained GPT-2 models in Texar
 * Using GPT-2 to generate text samples with or without context
-* **Train or fine-tune** the model with **distributed GPU**
+* **Train or fine-tune** the model with **distributed GPU** (coming soon)
 * Examples of other use cases
 
 ## Quick Start (I) - Generation with the Pre-trained Model
