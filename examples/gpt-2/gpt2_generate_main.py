@@ -51,7 +51,7 @@ parser.add_argument(
     '--top_k', type=int, default=40,
     help="The number of top most likely candidates from a vocab distribution.")
 parser.add_argument(
-    '--top_p', type=int, default=None,
+    '--top_p', type=float, default=None,
     help="Select tokens with cumulative probability of at most 'p' when "
          "arranged in decreasing order. This will use "
          "TopPSampleEmbeddingHelper for decoding.")
