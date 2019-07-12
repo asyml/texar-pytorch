@@ -469,8 +469,9 @@ def _top_p_logits(logits: torch.Tensor, p: float) -> torch.Tensor:
     sorted_indices_to_remove[:, 1:] = sorted_indices_to_remove[:, :-1].clone()
     sorted_indices_to_remove[:, 0] = 0
 
-    indices_to_remove = sorted_indices[sorted_indices_to_remove]
-    logits[:, indices_to_remove] = float('-inf')
+    for idx in range(logits.size(0)):
+        batch_indices = sorted_indices[idx, sorted_indices_to_remove[idx]]
+        logits[idx, batch_indices] = float("-inf")
     return logits
 
 
@@ -577,7 +578,7 @@ class TopPSampleEmbeddingHelper(SingleEmbeddingHelper):
     """
 
     def __init__(self, embedding: Embedding, start_tokens: torch.LongTensor,
-                 end_token: Union[int, torch.LongTensor], p: float = 0.5,
+                 end_token: Union[int, torch.LongTensor], p: float = 0.9,
                  softmax_temperature: Optional[float] = None):
         super().__init__(embedding, start_tokens, end_token)
         self._p = p
