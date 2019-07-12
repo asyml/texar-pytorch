@@ -51,10 +51,10 @@ parser.add_argument('--top_k', type=int, default=40,
                          "from at each step. This is use "
                          "TopKSampleEmbeddingHelper for decoding. Ignored if "
                          "'p' is given.")
-parser.add_argument('--p', type=int, default=None,
+parser.add_argument('--top_p', type=float, default=None,
                     help="Select tokens with cumulative probability of at most "
-                         "'p' when arranged in decreasing order. This will use "
-                         "TopPSampleEmbeddingHelper for decoding.")
+                         "'top_p' when arranged in decreasing order. This "
+                         "will use TopPSampleEmbeddingHelper for decoding.")
 parser.add_argument('--is_interactive', action='store_true',
                     help="Interactive mode or not.")
 parser.add_argument('--sentence_piece', type=str,
@@ -113,8 +113,8 @@ def main():
         text = text.replace("\n", "<eop>")
         tokens = pad_ids + tokenize_fn(text)
         tokens = torch.tensor(tokens, device=device).expand(n_samples, -1)
-        if args.p:
-            kwargs["p"] = args.p
+        if args.top_p:
+            kwargs["p"] = args.top_p
             decode_output, _ = model(tokens, max_decoding_length=length,
                                      print_steps=True,
                                      helper_type=TopPSampleEmbeddingHelper,
