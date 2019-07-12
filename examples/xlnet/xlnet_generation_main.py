@@ -46,8 +46,8 @@ parser.add_argument('--temperature', type=float, default=0.7,
                     help="Softmax temperature for top-k sample decoding. Must "
                          "be strictly greater than 0. Defaults to 0.7.")
 parser.add_argument('--top_k', type=int, default=40,
-                    help="The number of top most likely candidates from a vocab "
-                         "distribution.")
+                    help="The number of top most likely candidates from a vocab"
+                         " distribution.")
 parser.add_argument('--is_interactive', action='store_true',
                     help="Interactive mode or not.")
 parser.add_argument('--sentence_piece', type=str,
@@ -102,8 +102,6 @@ def main():
             yield xs[p:]
 
     def sample(text: str, length: int = 200, n_samples=3, **kwargs):
-        print("=== Prompt ===")
-        print(text)
         model.eval()
         text = text.replace("\n", "<eop>")
         tokens = pad_ids + tokenize_fn(text)
@@ -119,21 +117,18 @@ def main():
             print(output)
 
     if args.is_interactive:
-        try:
-            from IPython import embed
-            print("Generate text by calling: "
-                  "sample(\"<your prompt text>\", ...).\nFor options, refer to "
-                  "`decode` method of `XLNetDecoder`.\n")
-            embed()
-        except ImportError:
-            print("To be able to specify sampling options, please install "
-                  "IPython.")
+        while True:
+
             try:
-                while True:
-                    prompt = input("Input prompt: ")
-                    print(sample(prompt))
+                raw_text = input("Model input >>> ")
+                while not raw_text:
+                    print('Input should not be empty!')
+                    raw_text = input("Model input >>> ")
+                sample(text=raw_text, length=args.max_decoding_length,
+                       n_samples=args.nsamples)
             except EOFError:
-                pass
+                print("EOF entered, quitting.")
+                exit(0)
     else:
         # Generate samples from scratch
         for _ in range(args.batch_size):
