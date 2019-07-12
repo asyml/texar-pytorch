@@ -201,7 +201,9 @@ unicate better, including giving them a "little bit of a leg up" on the English 
 many "English-speaking" ("in many respects") settlers became.
 ```
 
-This text generation example is largely inspired by the works of: https://github.com/rusiaaman/XLNet-gen.
+This text generation example is largely inspired by the works of: https://github.com/rusiaaman/XLNet-gen. Especially, we
+borrowed the trick of [adding random text for padding](https://github.com/rusiaaman/XLNet-gen#methodology), so
+shorter prompts will not suffer from lack of attentional context.
 
 ## Extend to custom tasks
 
