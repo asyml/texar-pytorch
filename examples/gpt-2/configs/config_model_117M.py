@@ -3,28 +3,29 @@
 pretrained_model_name = "117M"
 
 vocab_size = 50257
+dim = 768
 
 embed = {
-    "dim": 768,
+    "dim": dim,
 }
 
 position_embed = {
-    'dim': 768
+    'dim': dim
 }
 position_size = 1024
 
 decoder = {
-    "dim": 768,
+    "dim": dim,
     "num_blocks": 12,
     "use_gpt_config": True,
     'embedding_dropout': 0.0,
     'residual_dropout': 0.0,
     "multihead_attention": {
         "use_bias": True,
-        "num_units": 768,
+        "num_units": dim,
         "num_heads": 12,
         "dropout_rate": 0.0,
-        "output_dim": 768,
+        "output_dim": dim,
     },
     "initializer": {
         "type": "variance_scaling_initializer",
@@ -39,8 +40,8 @@ decoder = {
             {
                 "type": "Linear",
                 "kwargs": {
-                    "in_features": 768,
-                    "out_features": 768 * 4,
+                    "in_features": dim,
+                    "out_features": dim * 4,
                     "bias": True,
                 }
             },
@@ -52,8 +53,8 @@ decoder = {
             {
                 "type": "Linear",
                 "kwargs": {
-                    "in_features": 768 * 4,
-                    "out_features": 768,
+                    "in_features": dim * 4,
+                    "out_features": dim,
                     "bias": True,
                 }
             }

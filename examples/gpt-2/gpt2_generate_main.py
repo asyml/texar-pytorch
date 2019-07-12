@@ -22,6 +22,9 @@ import numpy as np
 
 import torch
 
+import sys
+sys.path.append("/Users/pengzhi.gao/Desktop/my_git/texar-pytorch")
+
 import texar as tx
 
 from utils import processor
@@ -51,6 +54,11 @@ parser.add_argument(
     '--top_k', type=int, default=40,
     help="The number of top most likely candidates from a vocab distribution.")
 parser.add_argument(
+    '--p', type=int, default=None,
+    help="Select tokens with cumulative probability of at most 'p' when "
+         "arranged in decreasing order. This will use "
+         "TopPSampleEmbeddingHelper for decoding.")
+parser.add_argument(
     '--is_interactive', action='store_true', help="Interactive mode or not.")
 
 args = parser.parse_args()
@@ -59,6 +67,7 @@ config_model = importlib.import_module(args.config_model)
 config_model = {
     k: v for k, v in config_model.__dict__.items()
     if not k.startswith('__')}
+config_model.pop("dim")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -101,6 +110,23 @@ def main():
     _embedding_fn = lambda x, y: (
             model.word_embedder(x) + model.position_embedder(y))
 
+    def _get_helper(start_tokens):
+        if args.p:
+            helper = tx.modules.TopPSampleEmbeddingHelper(
+                embedding=_embedding_fn,
+                start_tokens=start_tokens,
+                end_token=end_token,
+                p=args.p,
+                softmax_temperature=args.temperature)
+        else:
+            helper = tx.modules.TopKSampleEmbeddingHelper(
+                embedding=_embedding_fn,
+                start_tokens=start_tokens,
+                end_token=end_token,
+                top_k=args.top_k,
+                softmax_temperature=args.temperature)
+        return helper
+
     if args.is_interactive:
         # Generate continuations of context
         while True:
@@ -124,12 +150,7 @@ def main():
 
             start_tokens = context[:, 0]
 
-            helper = tx.modules.TopKSampleEmbeddingHelper(
-                embedding=_embedding_fn,
-                start_tokens=start_tokens,
-                end_token=end_token,
-                top_k=args.top_k,
-                softmax_temperature=args.temperature)
+            helper = _get_helper(start_tokens)
 
             generated = 0
             for _ in range(nsamples // batch_size):
@@ -156,12 +177,7 @@ def main():
         generated = 0
         while nsamples == 0 or generated < nsamples:
 
-            helper = tx.modules.TopKSampleEmbeddingHelper(
-                embedding=_embedding_fn,
-                start_tokens=start_tokens,
-                end_token=end_token,
-                top_k=args.top_k,
-                softmax_temperature=args.temperature)
+            helper = _get_helper(start_tokens)
 
             output, _ = model(
                 max_decoding_length=max_decoding_length,
