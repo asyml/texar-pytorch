@@ -19,7 +19,7 @@ In sum, this example showcases:
 
 #### Interactive mode (to generate samples with context)
 
-This mode will initialize an interactive interface, which allows users to type in the context sentence. The model then generates continuation of the context. Top-K sample decoding or Top-P sample decoding can be used. By default, the GPT-2 `117M` model with Top-K sample decoding is used.
+This mode will initialize an interactive interface, which allows users to type in the context sentence. The model then generates continuation of the context. The example supports both Top-K and Top-P sample decoding. By default, the GPT-2 `117M` model with Top-K sample decoding is used.
 
 ```
 python gpt2_generate_main.py --is_interactive \
@@ -32,9 +32,15 @@ Here:
 
 - `is_interactive`: Specifies interactive mode.
 - `max_decoding_length`: The maximum number of tokens in the sample. **Note that this includes tokens in the context**. 
+- `nsamples`: Number of samples to generate for each input. 
+
+For *top-k decoding*: 
+
 - `temperature`: Softmax temperature of top-k sample decoding. Larger values (above 1.0) result in more random samples, while smaller values push the sampling distribution towards the argmax. Must be strictly greater than 0. Defaults to `0.7`.
 - `top_k`: Number of top most likely candidates from a vocab distribution in each decoding step. Defaults to `40`.
-- `nsamples`: Number of samples to generate for each input. 
+
+For *top-p decoding*:
+- `top_p`: Select tokens with cumulative probability of at most 'top_p' as candidates for sampling. Do not specify it if you want to use top-k decoding. 
 
 To use the GPT-2 `345M` model, specify `--config_model`:
 
