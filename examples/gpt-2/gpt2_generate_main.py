@@ -22,9 +22,6 @@ import numpy as np
 
 import torch
 
-import sys
-sys.path.append("/Users/pengzhi.gao/Desktop/my_git/texar-pytorch")
-
 import texar as tx
 
 from utils import processor
@@ -54,7 +51,7 @@ parser.add_argument(
     '--top_k', type=int, default=40,
     help="The number of top most likely candidates from a vocab distribution.")
 parser.add_argument(
-    '--p', type=int, default=None,
+    '--top_p', type=int, default=None,
     help="Select tokens with cumulative probability of at most 'p' when "
          "arranged in decreasing order. This will use "
          "TopPSampleEmbeddingHelper for decoding.")
@@ -111,12 +108,12 @@ def main():
             model.word_embedder(x) + model.position_embedder(y))
 
     def _get_helper(start_tokens):
-        if args.p:
+        if args.top_p:
             helper = tx.modules.TopPSampleEmbeddingHelper(
                 embedding=_embedding_fn,
                 start_tokens=start_tokens,
                 end_token=end_token,
-                p=args.p,
+                p=args.top_p,
                 softmax_temperature=args.temperature)
         else:
             helper = tx.modules.TopKSampleEmbeddingHelper(
