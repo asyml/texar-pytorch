@@ -9,7 +9,7 @@ embed = {
     "dim": dim,
 }
 
-pos_embed = {
+position_embed = {
     "dim": dim
 }
 position_size = 1024

@@ -84,10 +84,9 @@ def main():
     batch_size = args.batch_size
     max_decoding_length = args.max_decoding_length
 
-    assert max_decoding_length <= config_model["position_size"], (
-        "max_decoding_length should not be greater than position size")
-    assert nsamples % batch_size == 0, (
-        "nsamples must be dividable by batch_size")
+    if max_decoding_length > config_model["position_size"]:
+        raise ValueError("max_decoding_length should not be greater than "
+                         "position size")
 
     # Build the GPT-2 model
     model = tx.modules.GPT2Decoder(cache_dir='gpt2_pretrained_models',
