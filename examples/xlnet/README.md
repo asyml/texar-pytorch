@@ -215,8 +215,14 @@ Model input >>> Micheal Jordan is the greatest player in history !
 ```
 ======================================== SAMPLE 1 ========================================
 
-He was born George Jordan March 22, 1928, in Tobago, Trinidad and Tobago. Jordan walked super fast and moved fast. He was also a tremendous downhill skier. He will go down in history with basketball as an ancient foe. 
-Teleprint: This publication provides print service through the help of acertified Inter Print Printer. Teleprint is intended for users who are not physical print service providers ("HSPs") or printers who are not dealers of or in possession of services offered by a specific HP. Note allowed: Users who are in possession of services offered by a specific HP are authorized to use high-speed inter print services.
+He was born George Jordan March 22, 1928, in Tobago, Trinidad and Tobago. Jordan walked super fast 
+and moved fast. He was also a tremendous downhill skier. He will go down in history with basketball as 
+an ancient foe. 
+Teleprint: This publication provides print service through the help of acertified Inter Print Printer. 
+Teleprint is intended for users who are not physical print service providers ("HSPs") or printers 
+who are not dealers of or in possession of services offered by a specific HP. Note allowed: Users 
+who are in possession of services offered by a specific HP are authorized to use high-speed inter print 
+services.
 
 ================================================================================
 ```
