@@ -5,25 +5,25 @@ pre-trained model weights downloaded from the official release and building/fine
 
 To summarize, this example showcases:
 
-- [Fine-tuning XLNet for classification](https://github.com/asyml/texar-pytorch/tree/master/examples/xlnet#classification)
-- [XLNet for text generation](https://github.com/asyml/texar-pytorch/tree/master/examples/xlnet#generation)
-- [XLNet for other custom tasks](https://github.com/asyml/texar-pytorch/tree/master/examples/xlnet#extend-to-custom-tasks)
+- [Fine-tuning XLNet for classification](#classification)
+- [XLNet for text generation](#generation)
+- [XLNet for other custom tasks](#extend-to-custom-tasks)
 
 **Note:**
 - For classification, this example has reproduced the reported results on STS-B and IMDB on GPUs. As per
   [the official repository](https://github.com/zihangdai/xlnet#memory-issue-during-finetuning), computational resources
   (e.g., GPU memory) can affect the results.
 - This example supports classification and GLUE datasets. Other datasets can be supported by adding respective data
-  modules. See [this section](https://github.com/asyml/texar-pytorch/tree/master/examples/xlnet#extend-to-custom-tasks).
+  modules. See [this section](#extend-to-custom-tasks).
 
 **Future Work:**
 - Distributed / Multi-GPU training.
 - Fine-tuning on SQuAD & RACE datasets.
-- *Please raise an issue for what you expect*
+- *Please propose an issue for what you expect*
 
 ## Prerequisite
 
-### Install dependencies
+#### Install dependencies
 
 Apart from requiring Texar-PyTorch, you should also satisfy dependencies in `requirements.txt` by running:
 ```bash
@@ -33,7 +33,7 @@ pip install -r requirements.txt
 Specifically, TensorFlow is required to load the pre-trained models from the official release, and sentencepiece is
 required for tokenization.
 
-### Download pre-trained model
+#### Download pre-trained model
 
 ```bash
 sh scripts/download_model.sh
@@ -43,7 +43,7 @@ By default, the pre-trained model (XLNet-Large Cased) will be downloaded to `pre
 
 ## Classification
 
-### Download dataset
+#### Download dataset
 
 We will use the STS-B sentence pair relevance dataset as an example. Routines for other datasets are similar.
 
@@ -55,7 +55,7 @@ Data will be downloaded to `data/STS-B` along with other GLUE datasets.
 
 Note that this is a regression task, the evaluation metric is Pearson's r correlation.
 
-### Fine-tune the model
+#### Fine-tune the model
 
 To fine-tune the model on the dataset, run the following command:
 ```bash
@@ -159,7 +159,7 @@ Evaluating on test
 Pearsonr: nan, loss: 9.1475
 ```
 
-### Evaluate saved models
+#### Evaluate saved models
 
 To evaluate a saved model, run the following command:
 ```bash
@@ -292,7 +292,7 @@ shorter prompts will not suffer from lack of attentional context.*
 The interfaces of Texar XLNet are designed to be extensible. You can use your own dataset, or use XLNet as a standalone
 module in other tasks.
 
-### Use your own dataset by writing a custom data processor
+#### Use your own dataset by writing a custom data processor
 
 It is easy to adapt the code to fine-tune XLNet on your custom dataset. To do this, you will need to write a custom
 data processor inheriting `xlnet.data.DataProcessor`. For concrete examples, please refer to the built-in processors
@@ -315,7 +315,7 @@ decorator `@DataProcessor.register("task_name")`.
 
 Now, simply import your processor into `run.py`, and run the training command with `--task` flags set to your task name.
 
-### Use XLNet as a standalone module
+#### Use XLNet as a standalone module
 
 `xlnet.model.XLNet` can be used as a standalone module in a similar way to a Texar encoder. For convenience, we also
 provide `XLNetClassifier` and `XLNetRegressor` for classification and regression tasks. Please refer to module
