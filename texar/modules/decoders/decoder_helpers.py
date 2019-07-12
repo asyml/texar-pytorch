@@ -577,7 +577,7 @@ class TopPSampleEmbeddingHelper(SingleEmbeddingHelper):
     """
 
     def __init__(self, embedding: Embedding, start_tokens: torch.LongTensor,
-                 end_token: Union[int, torch.LongTensor], p: float = 0.5,
+                 end_token: Union[int, torch.LongTensor], p: float = 0.9,
                  softmax_temperature: Optional[float] = None):
         super().__init__(embedding, start_tokens, end_token)
         self._p = p
