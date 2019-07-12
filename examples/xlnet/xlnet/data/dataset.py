@@ -20,7 +20,7 @@ https://github.com/zihangdai/xlnet/blob/master/run_classifier.py#L395-L508
 import collections
 import logging
 import os
-from typing import Optional, Dict
+from typing import Any, Dict, Optional
 
 import torch
 import tqdm
@@ -85,7 +85,7 @@ def construct_dataset(processor: DataProcessor, output_dir: str,
             feature = utils.convert_single_example(
                 example, processor.labels, max_seq_length, tokenize_fn)
 
-            features = collections.OrderedDict()
+            features: Dict[str, Any] = collections.OrderedDict()
             features["input_ids"] = feature.input_ids
             features["input_mask"] = feature.input_mask
             features["segment_ids"] = feature.segment_ids

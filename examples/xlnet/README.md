@@ -136,24 +136,24 @@ Step: 300, LR = 4.167e-05, loss = 0.5697
 Step: 400, LR = 3.704e-05, loss = 0.4628
 Step: 500, LR = 3.241e-05, loss = 0.3435
 Model at 500 steps saved to saved_models/STS-B_step500_20190703_120310
-Pearsonr: 0.9014549605576836
+Pearsonr: 0.9014549605576836, loss: 0.4714
 Step: 600, LR = 2.778e-05, loss = 0.2814
 Step: 700, LR = 2.315e-05, loss = 0.2319
 Step: 800, LR = 1.852e-05, loss = 0.2023
 Step: 900, LR = 1.389e-05, loss = 0.1897
 Step: 1000, LR = 9.259e-06, loss = 0.1441
 Model at 1000 steps saved to saved_models/STS-B_step1000_20190703_122056
-Pearsonr: 0.9149586649636707
+Pearsonr: 0.9149586649636707, loss: 0.3806
 Step: 1100, LR = 4.630e-06, loss = 0.1279
 Step: 1200, LR = 0.000e+00, loss = 0.1111
 9599it [42:23,  4.14it/s]
 Model at 1200 steps saved to saved_models/STS-B_step1200_20190703_122818
 Evaluating on dev
 100%|██████████████████████████| 24/24 [00:25<00:00,  1.10it/s, pearsonR=0.9168]
-Pearsonr: 0.9167765866800505
+Pearsonr: 0.9167765866800505, loss: 0.3682
 Evaluating on test
 22it [00:24,  1.04it/s, pearsonR=nan]
-Pearsonr: nan
+Pearsonr: nan, loss: 9.1475
 ```
 
 ### Evaluate saved models
@@ -165,6 +165,45 @@ python xlnet_classification_main.py \
     --checkpoint saved_models/path_to_checkpoint \
     --mode eval
 ```
+
+## Text generation
+
+Since XLNet is in essence a language model, it could be used to autoregressively generate text. We have also provided
+an example to showcase text generation abilities of XLNet.
+
+To run the text generation, run the following command:
+```bash
+python xlnet_generation_ipython.py
+```
+It is recommended to install IPython before running the command. If IPython is installed, you will enter an interactive
+console in which you can perform sampling with different options. Here we show an example output:
+```
+Generate text by calling: sample("<your prompt text>", ...).
+For options, refer to `decode` method of `XLNetDecoder`.
+
+Python 3.7.3 (default, Mar 27 2019, 22:11:17)
+Type 'copyright', 'credits' or 'license' for more information
+IPython 7.4.0 -- An enhanced Interactive Python. Type '?' for help.
+
+In [1]: sample("In a shocking finding, scientist discovered a herd of unicorns living in a remote, previously un
+   ...: explored valley, in the Andes Mountains. Even more surprising to the researchers was the fact that the unicorn
+   ...: s spoke perfect English.", cache_len=512, n_samples=1)
+=== Prompt ===
+In a shocking finding, scientist discovered a herd of unicorns living in a remote, previously unexplored valley, in the
+ Andes Mountains. Even more surprising to the researchers was the fact that the unicorns spoke perfect English.
+=== Sample 0 ===
+The reason for this astonishing find is an odd enough one - "i.e. horses talk, but don't drink...." When researching an
+ "impression of the human brain schema" which resembled that of the unicorns, researchers discovered that these animals
+ were not only adapted to live in a particular environment, but were able to communicate and communicate with one anoth
+er; this was the result of brain mutation. The "brain schema" of the unicorn included a number of parts which were comp
+atible with English speaking, people of that time. This had an interesting effect on the species, allowing them to comm
+unicate better, including giving them a "little bit of a leg up" on the English speaking people of the time, from whom 
+many "English-speaking" ("in many respects") settlers became.
+```
+
+This text generation example is largely inspired by the works of: https://github.com/rusiaaman/XLNet-gen. Especially, we
+borrowed the trick of [adding random text for padding](https://github.com/rusiaaman/XLNet-gen#methodology), so
+shorter prompts will not suffer from lack of attentional context.
 
 ## Extend to custom tasks
 

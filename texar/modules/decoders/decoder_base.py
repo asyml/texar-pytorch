@@ -17,7 +17,7 @@ Base class for decoders.
 
 import copy
 from abc import ABC
-from typing import Generic, Optional, Tuple, TypeVar, Union, overload
+from typing import Generic, Optional, Tuple, TypeVar, Union, overload, Callable
 
 import torch
 from torch import nn
@@ -351,7 +351,8 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                        sequence_length: Optional[torch.LongTensor],
                        initial_state: Optional[State],
                        max_decoding_length: Optional[int] = None,
-                       impute_finished: bool = False) \
+                       impute_finished: bool = False,
+                       step_hook: Optional[Callable[[int], None]] = None) \
             -> Tuple[Output, Optional[State], torch.LongTensor]:
         r"""Generic routine for dynamic decoding. Please check the
         `documentation
@@ -409,6 +410,9 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             finished = next_finished
             step_inputs = next_inputs
             state = next_state
+
+            if step_hook is not None:
+                step_hook(time)
 
         final_outputs = utils.map_structure_zip(
             lambda *tensors: torch.stack(tensors),

@@ -77,10 +77,10 @@ class DataProcessor:
         raise NotImplementedError
 
     @classmethod
-    def _read_tsv(cls, input_file: str,
-                  quotechar: Optional[str] = None) -> List[str]:
+    def _read_tsv(cls, input_file: Path,
+                  quotechar: Optional[str] = None) -> List[List[str]]:
         """Reads a tab separated value file."""
-        with open(input_file, "r") as f:
+        with input_file.open('r') as f:
             reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
             lines = []
             for line in reader:

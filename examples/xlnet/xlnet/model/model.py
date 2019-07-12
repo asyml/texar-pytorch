@@ -54,13 +54,15 @@ class XLNet(tx.ModuleBase):
             })
         self.dropout = nn.Dropout(self._hparams.dropout)
 
-        if self._hparams.untie_r:
-            bias_shape = (num_layers, num_heads, head_dim)
+        if not self._hparams.untie_r:
+            self.r_r_bias = nn.Parameter(torch.Tensor(num_heads, head_dim))
+            self.r_w_bias = nn.Parameter(torch.Tensor(num_heads, head_dim))
+            self.r_s_bias = (nn.Parameter(torch.Tensor(num_heads, head_dim))
+                             if self._hparams.use_segments else None)
         else:
-            bias_shape = (num_heads, head_dim)
-        self.r_w_bias = nn.Parameter(torch.Tensor(*bias_shape))
-        self.r_r_bias = nn.Parameter(torch.Tensor(*bias_shape))
-        self.r_s_bias = nn.Parameter(torch.Tensor(*bias_shape))
+            self.r_r_bias = None
+            self.r_w_bias = None
+            self.r_s_bias = None
 
         self.attn_layers = nn.ModuleList()
         self.ff_layers = nn.ModuleList()
@@ -69,16 +71,22 @@ class XLNet(tx.ModuleBase):
         ff_hparams = tx.utils.dict_fetch(
             self._hparams, PositionWiseFF.default_hparams())
         for _ in range(num_layers):
-            self.attn_layers.append(
-                RelativeMultiheadAttention(hparams=rel_attn_hparams))
+            self.attn_layers.append(RelativeMultiheadAttention(
+                self.r_r_bias, self.r_w_bias, self.r_s_bias,
+                hparams=rel_attn_hparams))
             self.ff_layers.append(PositionWiseFF(hparams=ff_hparams))
+
+        self.mask_emb = nn.Parameter(torch.Tensor(
+            1, 1, self._hparams.hidden_dim))
 
         self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.normal_(self.r_w_bias, 0.0, 0.02)
-        nn.init.normal_(self.r_r_bias, 0.0, 0.02)
-        nn.init.normal_(self.r_s_bias, 0.0, 0.02)
+        if not self._hparams.untie_r:
+            nn.init.normal_(self.r_w_bias, 0.0, 0.02)
+            nn.init.normal_(self.r_r_bias, 0.0, 0.02)
+            if self._hparams.use_segments:
+                nn.init.normal_(self.r_s_bias, 0.0, 0.02)
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
@@ -120,15 +128,15 @@ class XLNet(tx.ModuleBase):
             new_mem = torch.cat([prev_mem, output], dim=0)[-mem_len:]
         return new_mem.detach()
 
-    def _create_mask(self, seq_len: int, mem_len: int,
-                     same_length: bool = False) -> Tensor:
+    def _create_causal_attn_mask(self, seq_len: int, mem_len: int,
+                                 same_length: bool = False) -> Tensor:
         r"""Create causal attention mask of shape
         `(seq_len, mem_len + seq_len)`.
         """
         device = self.r_w_bias.device
-        attn_mask = torch.ones([seq_len, seq_len], device=device)
+        attn_mask = torch.ones(seq_len, seq_len, device=device)
         mask_u = torch.triu(attn_mask, diagonal=1)
-        attn_mask_pad = torch.zeros([seq_len, mem_len], device=device)
+        attn_mask_pad = torch.zeros(seq_len, mem_len, device=device)
         ret = torch.cat([attn_mask_pad, mask_u], dim=1)
         if same_length:
             mask_l = torch.tril(attn_mask, diagonal=-1)
@@ -199,17 +207,34 @@ class XLNet(tx.ModuleBase):
             repr_str = output_str
         return '\n'.join(repr_str)
 
-    def forward(self, token_ids: LongTensor, segment_ids: Optional[LongTensor],
-                input_mask: Optional[Tensor] = None,
-                memory: Optional[List[Tensor]] = None,
-                permute_mask: Optional[Tensor] = None,
-                bi_data: bool = False, clamp_len: Optional[int] = None,
-                same_length: bool = False, attn_type: str = 'bi') \
+    def forward(self,  # type: ignore
+                token_ids: LongTensor, *args, **kwargs) \
             -> Tuple[Tensor, Optional[List[Tensor]]]:
-        r"""
+        r"""A wrapper for :meth:`_forward`. This layer exists because
+        :class:`XLNetDecoder` compute embeddings in the decoder helper.
+        Please refer to :meth:`_forward` for the full list of arguments.
 
         Args:
             token_ids: Shape `(seq_len, batch_size)`.
+            **kwargs: Remaining arguments to pass to :meth:`_forward`.
+        """
+        return self._forward(self.word_embed(token_ids), *args, **kwargs)
+
+    def _forward(self,  # type: ignore
+                 word_embed: Tensor, segment_ids: Optional[LongTensor],
+                 input_mask: Optional[Tensor] = None,
+                 memory: Optional[List[Tensor]] = None,
+                 permute_mask: Optional[Tensor] = None,
+                 target_mapping: Optional[Tensor] = None,
+                 bi_data: bool = False, clamp_len: Optional[int] = None,
+                 cache_len: int = 0,
+                 same_length: bool = False, attn_type: str = 'bi',
+                 two_stream: bool = False) \
+            -> Tuple[Tensor, Optional[List[Tensor]]]:
+        r"""Compute XLNet representations for the input.
+
+        Args:
+            word_embed: Shape `(seq_len, batch_size, word_embed_dim)`.
             segment_ids: Shape `(seq_len, batch_size)`.
             input_mask: Float tensor of shape `(seq_len, batch_size)`. Note that
                 positions with value 1 are masked out.
@@ -219,67 +244,78 @@ class XLNet(tx.ModuleBase):
                 `(seq_len, seq_len, batch_size)`.
                 A value of 0 for ``permute_mask[i, j, k]`` indicates that
                 position `i` attends to position `j` in batch `k`.
+            target_mapping: The target token mapping. Float tensor of shape
+                `(num_targets, seq_len, batch_size)`.
+                A value of 1 for ``target_mapping[i, j, k]`` indicates that
+                the `i`-th target token (in order of permutation) in batch `k`
+                is the token at position `j`.
+                Each row ``target_mapping[i, :, k]`` can have no more than one
+                value of 1.
             bi_data (bool): Whether to use bidirectional data input pipeline.
             clamp_len (int): Clamp all relative distances larger than
                 :attr:`clamp_len`. A value of -1 means no clamping.
+            cache_len (int): Length of memory (number of tokens) to cache.
             same_length (bool): Whether to use the same attention length for
                 each token.
             attn_type (str): Attention type. Supported values are `"uni"`
                 and `"bi"`.
+            two_stream (bool): Whether to use two-stream attention. Only set to
+                `True` when pre-training or generating text. Defaults to
+                `False`.
 
         :returns: A tuple of `(output, new_memory)`:
 
             - **`output`**: The final layer output representations. Shape
               `(seq_len, batch_size, hidden_dim)`.
             - **`new_memory`**: The memory of the current batch.
-              If `mem_len` is 0, then `new_memory` is `None`. Otherwise, it is a
-              list of length `num_layers`, each a tensor of shape
-              `(mem_len, batch_size, hidden_dim)`.
+              If `cache_len` is 0, then `new_memory` is `None`. Otherwise, it is
+              a list of length `num_layers`, each a tensor of shape
+              `(cache_len, batch_size, hidden_dim)`.
               This can be used as the :attr:`memory` argument in the next batch.
         """
-        seq_len, batch_size = token_ids.size()
+        seq_len, batch_size = word_embed.size()[:2]
         mem_len = memory[0].size(0) if memory is not None else 0
         tot_len = seq_len + mem_len
         reuse_len = self._hparams.reuse_len
 
         # Construct masks.
-        masks: List[Tensor] = []
+        masks: List[Optional[Tensor]] = []
 
         # Causal attention mask.
         if attn_type == 'uni':
-            attn_mask = self._create_mask(seq_len, mem_len, same_length)
+            causal_mask = self._create_causal_attn_mask(
+                seq_len, mem_len, same_length)
             # attn_mask: (seq_len, tot_len, 1, 1)
-            attn_mask = attn_mask.unsqueeze(2).unsqueeze(3)
-            masks.append(attn_mask)
+            causal_mask = causal_mask.unsqueeze(2).unsqueeze(3)
+            masks.append(causal_mask)
         elif attn_type == 'bi':
             pass
         else:
             raise ValueError(f"Unsupported attention type: {attn_type}")
 
         # Data mask: input mask & permutation mask.
+        if input_mask is not None:
+            input_mask = input_mask.expand(seq_len, -1, -1)
         data_mask = utils.sum_tensors([input_mask, permute_mask])
         if data_mask is not None:
             # All positions in memory can be attended to.
-            if data_mask.dim() == 2:
-                data_mask = data_mask.unsqueeze(0)
-            memory_mask = data_mask.new_zeros(
-                data_mask.size(0), mem_len, batch_size)
+            memory_mask = data_mask.new_zeros(seq_len, mem_len, batch_size)
             # data_mask: (seq_len, tot_len, batch_size, 1)
             data_mask = torch.cat([memory_mask, data_mask], dim=1).unsqueeze(3)
             masks.append(data_mask)
 
         # Exclude the main diagonal (target tokens) from the mask.
         attn_mask = utils.sum_tensors(masks)
-        if attn_mask is not None:
-            attn_mask = (attn_mask > 0).float()
+        if attn_mask is None:
+            final_mask = None
+        else:
+            attn_mask = (attn_mask > 0)
             final_mask = -torch.eye(seq_len, device=attn_mask.device)
             final_mask = torch.cat([
                 final_mask.new_zeros(seq_len, mem_len), final_mask], dim=-1)
             final_mask = final_mask.unsqueeze(2).unsqueeze(3)
             # final_mask: (seq_len, tot_len, batch_size, 1)
-            final_mask = ((attn_mask + final_mask) > 0)
-        else:
-            final_mask = None
+            final_mask = ((attn_mask.float() + final_mask) > 0)
 
         # Construct segment embedding.
         if segment_ids is not None:
@@ -291,36 +327,39 @@ class XLNet(tx.ModuleBase):
         else:
             segment_matrix = None
 
-        word_embed = self.word_embed(token_ids)
-
         pos_embed = self.pos_embed(
             batch_size, seq_len, tot_len, clamp_len, attn_type, bi_data)
         pos_embed = self.dropout(pos_embed)
 
         states_h = self.dropout(word_embed)
-        if memory is None:
-            memory = [None] * self._hparams.num_layers
+        if two_stream:
+            if target_mapping is not None:
+                word_embed_q = self.mask_emb.expand(
+                    target_mapping.size(0), batch_size, -1)
+            else:
+                word_embed_q = word_embed
+            states_g = self.dropout(word_embed_q)
+        else:
+            states_g = None
         new_memory = []
 
-        untie_r = self._hparams.untie_r
         for idx in range(self._hparams.num_layers):
             cur_memory = memory[idx] if memory is not None else None
-            if mem_len > 0:
+            if cache_len > 0:
                 new_memory.append(self._cache_mem(
-                    states_h, cur_memory, mem_len, reuse_len))
-            r_w_bias = self.r_w_bias if not untie_r else self.r_w_bias[idx]
-            r_r_bias = self.r_r_bias if not untie_r else self.r_r_bias[idx]
-            if segment_ids is None:
-                r_s_bias = None
-            else:
-                r_s_bias = self.r_s_bias if not untie_r else self.r_s_bias[idx]
-            states_h = self.attn_layers[idx](
-                states_h, pos_embed, segment_matrix, r_w_bias, r_r_bias,
-                r_s_bias, final_mask, cur_memory)
+                    states_h, cur_memory, cache_len, reuse_len))
+            attn_layer: RelativeMultiheadAttention = self.attn_layers[idx]
+            states_h, states_g = attn_layer(
+                states_h=states_h, states_g=states_g,
+                pos_embed=pos_embed, segment_mat=segment_matrix,
+                attn_mask_h=final_mask, attn_mask_g=attn_mask,
+                target_mapping=target_mapping, memory=cur_memory)
             states_h = self.ff_layers[idx](states_h)
+            if states_g is not None:
+                states_g = self.ff_layers[idx](states_g)
 
-        output = self.dropout(states_h)
-        if mem_len == 0:
+        output = self.dropout(states_h if states_g is None else states_g)
+        if cache_len == 0:
             return output, None
         return output, new_memory
 
@@ -414,7 +453,8 @@ class XLNetSummary(tx.ModuleBase):
             param_groups = self.parameters()
         return param_groups
 
-    def forward(self, token_ids: LongTensor, segment_ids: Optional[LongTensor],
+    def forward(self,  # type: ignore
+                token_ids: LongTensor, segment_ids: Optional[LongTensor],
                 input_mask: Optional[Tensor] = None) -> Tensor:
         # output: (seq_len, batch_size, hidden_dim)
         output, _ = self.xlnet(token_ids, segment_ids, input_mask=input_mask)
@@ -442,7 +482,8 @@ class XLNetClassifier(XLNetSummary, tx.modules.ClassifierBase):
             "num_classes": 2,
         }
 
-    def forward(self, token_ids: LongTensor, segment_ids: Optional[LongTensor],
+    def forward(self,  # type: ignore
+                token_ids: LongTensor, segment_ids: Optional[LongTensor],
                 labels: LongTensor, input_mask: Optional[Tensor] = None) \
             -> Tuple[Tensor, Tensor]:
         summary = super().forward(token_ids, segment_ids, input_mask)
@@ -465,7 +506,8 @@ class XLNetRegressor(XLNetSummary, tx.ModuleBase):
     def default_hparams() -> Dict[str, Any]:
         return XLNetSummary.default_hparams()
 
-    def forward(self, token_ids: LongTensor, segment_ids: Optional[LongTensor],
+    def forward(self,  # type: ignore
+                token_ids: LongTensor, segment_ids: Optional[LongTensor],
                 labels: Tensor, input_mask: Optional[Tensor] = None) \
             -> Tuple[Tensor, Tensor]:
         summary = super().forward(token_ids, segment_ids, input_mask)

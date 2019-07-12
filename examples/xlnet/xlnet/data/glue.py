@@ -28,35 +28,34 @@ class GLUEProcessor(DataProcessor, ABC):
     train_file = "train.tsv"
     dev_file = "dev.tsv"
     test_file = "test.tsv"
-    label_column = None
-    text_a_column = None
-    text_b_column = None
+    label_column: int
+    text_a_column: int
+    text_b_column: int
     contains_header = True
-    test_text_a_column = None
-    test_text_b_column = None
+    test_text_a_column: int
+    test_text_b_column: int
     test_contains_header = True
 
+    def __init__(self, data_dir: str):
+        super().__init__(data_dir)
+        if not hasattr(self, 'test_text_a_column'):
+            self.test_text_a_column = self.text_a_column
+        if not hasattr(self, 'test_text_b_column'):
+            self.test_text_b_column = self.text_b_column
+
     def get_train_examples(self) -> List[InputExample]:
-        """See base class."""
         return self._create_examples(
             self._read_tsv(self.data_dir / self.train_file), "train")
 
     def get_dev_examples(self) -> List[InputExample]:
-        """See base class."""
         return self._create_examples(
             self._read_tsv(self.data_dir / self.dev_file), "dev")
 
     def get_test_examples(self) -> List[InputExample]:
-        """See base class."""
-        if self.test_text_a_column is None:
-            self.test_text_a_column = self.text_a_column
-        if self.test_text_b_column is None:
-            self.test_text_b_column = self.text_b_column
-
         return self._create_examples(
             self._read_tsv(self.data_dir / self.test_file), "test")
 
-    def _create_examples(self, lines: List[str],
+    def _create_examples(self, lines: List[List[str]],
                          set_type: str) -> List[InputExample]:
         """Creates examples for the training and dev sets."""
         examples = []
@@ -116,14 +115,14 @@ class MnliMismatchedProcessor(MnliMatchedProcessor):
 
 @DataProcessor.register("STS-B", "stsb")
 class StsbProcessor(GLUEProcessor):
-    labels = []
+    labels: List[str] = []
     is_regression = True
 
     label_column = 9
     text_a_column = 7
     text_b_column = 8
 
-    def _create_examples(self, lines: List[str],
+    def _create_examples(self, lines: List[List[str]],
                          set_type: str) -> List[InputExample]:
         """Creates examples for the training and dev sets."""
         examples = []

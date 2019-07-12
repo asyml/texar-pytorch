@@ -21,12 +21,9 @@ https://github.com/zihangdai/xlnet/blob/master/prepro_utils.py
 import unicodedata
 from typing import Callable, Iterator, List, TypeVar, Union
 
-from mypy_extensions import TypedDict
-import torch
 import sentencepiece as spm
 
 __all__ = [
-    "Example",
     "repeat",
     "TokenizeFn",
     "create_tokenize_fn",
@@ -34,14 +31,6 @@ __all__ = [
 ]
 
 T = TypeVar('T')
-
-
-class Example(TypedDict):
-    input_ids: torch.LongTensor
-    input_mask: torch.Tensor
-    segment_ids: torch.LongTensor
-    label_ids: torch.Tensor
-    is_real_example: torch.LongTensor
 
 
 def repeat(fn: Callable[[], Iterator[T]]) -> Iterator[T]:
@@ -52,14 +41,14 @@ def repeat(fn: Callable[[], Iterator[T]]) -> Iterator[T]:
 def preprocess_text(inputs: Union[str, bytes], lower: bool = False,
                     remove_space: bool = True,
                     keep_accents: bool = False) -> str:
+    if isinstance(inputs, bytes):
+        inputs = inputs.decode('utf-8')
+
     if remove_space:
         outputs = ' '.join(inputs.strip().split())
     else:
         outputs = inputs
     outputs = outputs.replace("``", '"').replace("''", '"')
-
-    if isinstance(outputs, bytes):
-        outputs = outputs.decode('utf-8')
 
     if not keep_accents:
         outputs = unicodedata.normalize('NFKD', outputs)
@@ -78,7 +67,7 @@ def encode_pieces(sp_model, text, sample: bool = False):
         pieces = sp_model.EncodeAsPieces(text)
     else:
         pieces = sp_model.SampleEncodeAsPieces(text, 64, 0.1)
-    new_pieces = []
+    new_pieces: List[str] = []
     for piece in pieces:
         if len(piece) > 1 and piece[-1] == ',' and piece[-2].isdigit():
             cur_pieces = sp_model.EncodeAsPieces(
