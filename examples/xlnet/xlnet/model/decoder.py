@@ -171,7 +171,7 @@ class XLNetDecoder(XLNet, tx.modules.DecoderBase[State, Output]):
         self._state_recompute_memory = recompute_memory
         self._state_cache_len = cache_len
         self._state_previous_inputs = list(
-            self.word_embed(start_tokens).unbind(dim=0))
+            self.word_embed(start_tokens).unbind(dim=0))[:-1]
 
         if helper_type is None:
             helper_type = tx.modules.SampleEmbeddingHelper
@@ -180,7 +180,7 @@ class XLNetDecoder(XLNet, tx.modules.DecoderBase[State, Output]):
             _, memory = self._forward(
                 memory=memory, cache_len=cache_len,
                 **self.create_input(
-                    self._state_previous_inputs[:-1], initial=True))
+                    self._state_previous_inputs, initial=True))
         start_tokens = start_tokens[-1]
 
         helper_kwargs.update(
@@ -199,9 +199,5 @@ class XLNetDecoder(XLNet, tx.modules.DecoderBase[State, Output]):
             max_decoding_length=max_decoding_length, step_hook=step_hook)
         if print_steps:
             print("\033[2K\r", end='')
-
-        # Remove the first character since we treat it as warm-up.
-        output = XLNetDecoderOutput(
-            output.logits[:, 1:], output.sample_id[:, 1:])
 
         return output, new_memory
