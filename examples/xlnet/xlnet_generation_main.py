@@ -20,8 +20,7 @@ import sentencepiece as spm
 
 import xlnet
 import xlnet.model.decoder
-from texar.modules.decoders.decoder_helpers import TopKSampleEmbeddingHelper, \
-    TopPSampleEmbeddingHelper
+from texar.modules import TopKSampleEmbeddingHelper, TopPSampleEmbeddingHelper
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', type=str, default=None,
