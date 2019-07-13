@@ -220,7 +220,7 @@ class XLNet(tx.ModuleBase):
         """
         return self._forward(self.word_embed(token_ids), *args, **kwargs)
 
-    def _forward(self,  # type: ignore
+    def _forward(self,
                  word_embed: Tensor, segment_ids: Optional[LongTensor],
                  input_mask: Optional[Tensor] = None,
                  memory: Optional[List[Tensor]] = None,

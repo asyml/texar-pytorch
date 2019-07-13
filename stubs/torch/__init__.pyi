@@ -1,5 +1,6 @@
 import builtins
-from typing import Callable, ContextManager, Iterator, Optional, Sequence, Tuple, Type, TypeVar, Union, overload
+import pickle
+from typing import Any, Callable, Iterator, Optional, Sequence, Tuple, Type, TypeVar, Union, overload, IO, Dict
 
 import numpy as np
 import torch.autograd
@@ -19,25 +20,26 @@ import torch.testing
 import torch.utils.backcompat
 from torch._tensor_str import set_printoptions
 from torch.random import get_rng_state, initial_seed, manual_seed, set_rng_state
-from torch.serialization import load, save
 from torch.storage import _StorageBase
 from torch.tensor import Tensor as TensorBase
 from torch.utils.hooks import RemovableHandle
 
 
-def no_grad() -> ContextManager[None]:
-    ...
+def load(f: Union[str, IO],
+         map_location: Optional[Union[Dict[str, str], str, torch.device, Callable[[str, str], str]]] = None,
+         pickle_module=pickle, **pickle_load_args): ...
 
 
-def enable_grad() -> ContextManager[None]:
-    ...
+def save(obj: Any, f: Union[str, IO], pickle_module=pickle, pickle_protocol=pickle.DEFAULT_PROTOCOL): ...
 
 
-def set_grad_enabled(mode: bool) -> ContextManager[None]:
-    ...
+no_grad: Any = ...
+enable_grad: Any = ...
+set_grad_enabled: Any = ...
 
 
-class device: ...
+class device:
+    def __init__(self, device: Union[builtins.int, builtins.str]): ...
 
 
 class finfo:

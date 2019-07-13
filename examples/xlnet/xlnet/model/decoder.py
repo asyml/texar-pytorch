@@ -38,7 +38,7 @@ Output = XLNetDecoderOutput
 State = List[Tensor]
 
 
-class XLNetDecoder(XLNet, tx.modules.DecoderBase[State, Output]):
+class XLNetDecoder(XLNet, tx.modules.DecoderBase[Optional[State], Output]):
     def __init__(self, hparams=None):
         super().__init__(hparams)
 
@@ -66,10 +66,12 @@ class XLNetDecoder(XLNet, tx.modules.DecoderBase[State, Output]):
             seq_len += 1
         segment_ids = word_embed.new_zeros(
             seq_len, batch_size, dtype=torch.long)
-        if initial:
-            target_mapping = None
-            permute_mask = None
-        else:
+        return_dict = {
+            "word_embed": word_embed,
+            "segment_ids": segment_ids,
+        }
+
+        if not initial:
             # Only the dummy token is considered target.
             target_mapping = torch.cat([
                 torch.zeros(1, seq_len - 1, batch_size),
@@ -80,13 +82,12 @@ class XLNetDecoder(XLNet, tx.modules.DecoderBase[State, Output]):
                 torch.zeros(seq_len, seq_len - 1, batch_size),
                 torch.ones(seq_len, 1, batch_size),
             ], dim=1).to(device=word_embed.device)
+            return_dict.update({
+                "target_mapping": target_mapping,
+                "permute_mask": permute_mask,
+            })
 
-        return {
-            "word_embed": word_embed,
-            "segment_ids": segment_ids,
-            "target_mapping": target_mapping,
-            "permute_mask": permute_mask,
-        }
+        return return_dict
 
     def initialize(self,  # pylint: disable=no-self-use
                    helper: Helper, inputs: Optional[Tensor],
@@ -101,18 +102,19 @@ class XLNetDecoder(XLNet, tx.modules.DecoderBase[State, Output]):
              state: Optional[State]) \
             -> Tuple[Output, Optional[State], Tensor, torch.ByteTensor]:
         self._state_previous_inputs.append(inputs)
-        if not self._state_recompute_memory:
-            assert state is not None
-            net_output, memory = self._forward(
-                memory=state, cache_len=self._state_cache_len, two_stream=True,
-                **self._create_input(self._state_previous_inputs[-1:]))
-            # Omit memory for the dummy token.
-            memory = [mem[:-1] for mem in memory]
-        else:
+        if self._state_recompute_memory:
             net_output, memory = self._forward(
                 two_stream=True,
                 **self._create_input(
                     self._state_previous_inputs[-self._state_cache_len:]))
+        else:
+            assert state is not None
+            net_output, memory = self._forward(
+                memory=state, cache_len=self._state_cache_len, two_stream=True,
+                **self._create_input(self._state_previous_inputs[-1:]))
+            assert memory is not None
+            # Omit memory for the dummy token.
+            memory = [mem[:-1] for mem in memory]
         logits = F.linear(net_output, self.word_embed.weight, self.lm_bias)
         logits = logits[-1]
         sample_ids = helper.sample(time=time, outputs=logits)
@@ -123,15 +125,14 @@ class XLNetDecoder(XLNet, tx.modules.DecoderBase[State, Output]):
         outputs = XLNetDecoderOutput(logits=logits, sample_id=sample_ids)
         return outputs, memory, next_inputs, finished
 
-    def finalize(self, outputs: Output, final_state: Optional[State],
-                 sequence_lengths: torch.LongTensor) \
-            -> Tuple[Output, Optional[State]]:
+    def finalize(self, outputs, final_state, sequence_lengths):
         del self._state_cache_len
         del self._state_recompute_memory
         del self._state_previous_inputs
         return super().finalize(outputs, final_state, sequence_lengths)
 
-    def forward(self, start_tokens: torch.LongTensor,
+    def forward(self,  # type: ignore
+                start_tokens: torch.LongTensor,
                 memory: Optional[State] = None,
                 cache_len: int = 512,
                 max_decoding_length: Optional[int] = 500,

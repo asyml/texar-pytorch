@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """Transformer model.
 """
+
 import argparse
 import functools
 import importlib
 import os
+from typing import Any
 
 import torch
 import tqdm
@@ -49,8 +52,8 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-config_model = importlib.import_module(args.config_model)
-config_data = importlib.import_module(args.config_data)
+config_model: Any = importlib.import_module(args.config_model)
+config_data: Any = importlib.import_module(args.config_data)
 
 utils.set_random_seed(config_model.random_seed)
 

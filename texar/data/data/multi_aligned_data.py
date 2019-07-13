@@ -379,7 +379,7 @@ class MultiAlignedData(
         hparams["datasets"] = []
         return hparams
 
-    def to(self, device: torch.device):
+    def to(self, device: Optional[torch.device]):
         for dataset in self._databases:
             dataset.to(device)
         return super().to(device)
