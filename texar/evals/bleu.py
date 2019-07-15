@@ -206,10 +206,10 @@ def corpus_bleu(list_of_references: List[List[MaybeList[str]]],
         if ratio > 1.0:
             bp = 1.
         else:
-            try:
+            if abs(ratio) < 1e-8:
+                bp = 0.
+            else:
                 bp = math.exp(1 - 1. / ratio)
-            except ZeroDivisionError:
-                bp = math.exp(1 - 1. / (ratio + 1e-8))
     else:
         bp = 1.
 
