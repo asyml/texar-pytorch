@@ -22,7 +22,7 @@ class GetActivationFnTest(unittest.TestCase):
         self.assertEqual(fn, None)
 
         fn = layers.get_activation_fn('relu')
-        self.assertEqual(fn, F.relu)
+        self.assertEqual(fn, torch.relu)
 
         inputs = torch.randn(64, 100)
 

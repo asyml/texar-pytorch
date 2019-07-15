@@ -248,16 +248,16 @@ def dynamic_rnn(
             ``[max_time, batch_size, cell.output_size]``.
 
             Note, if ``cell.output_size`` is a (possibly nested) tuple of
-            integers or ``TensorShape`` objects, then ``outputs``
+            integers or ``torch.Size`` objects, then ``outputs``
             will be a tuple having the same structure as ``cell.output_size``,
             containing Tensors having shapes corresponding to the shape
             data in ``cell.output_size``.
 
         state: The final state.  If ``cell.state_size`` is an int, this
             will be shaped ``[batch_size, cell.state_size]``.  If it is a
-            ``TensorShape``, this will be shaped
+            ``torch.Size``, this will be shaped
             ``[batch_size] + cell.state_size``.
-            If it is a (possibly nested) tuple of ints or ``TensorShape``,
+            If it is a (possibly nested) tuple of ints or ``torch.Size``,
             this will be a tuple having the corresponding shapes.
             If cells are ``LSTMCells``, ``state`` will be a tuple containing
             a ``LSTMStateTuple`` for each cell.
@@ -333,7 +333,7 @@ def _dynamic_rnn_loop(cell: RNNCellBase[State],
         final_outputs:
             A ``Tensor`` of shape ``[time, batch_size, cell.output_size]``. If
             ``cell.output_size`` is a (possibly nested) tuple of ints or
-            ``TensorShape`` objects, then this returns a
+            ``torch.Size`` objects, then this returns a
             (possibly nested) tuple of Tensors matching the corresponding
             shapes.
         final_state:

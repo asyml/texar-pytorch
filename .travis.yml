@@ -10,8 +10,8 @@ python:
 install:
   - pip install --upgrade pip
   - pip install --progress-bar off .[torch,extras] tensorflow
-  - pip install pylint flake8
-  - pip install mypy
+  - pip install pylint==2.3.1 flake8==3.7.7
+  - pip install mypy==0.720
   - pip install pytest
 
 script:
