@@ -17,8 +17,6 @@ Base class for encoders.
 from abc import ABC
 from typing import Any, Dict
 
-import torch
-
 from texar.module_base import ModuleBase
 
 __all__ = [
@@ -37,6 +35,3 @@ class ClassifierBase(ModuleBase, ABC):
         return {
             "name": "classifier"
         }
-
-    def forward(self, *input: torch.Tensor):  # pylint: disable=redefined-builtin
-        raise NotImplementedError

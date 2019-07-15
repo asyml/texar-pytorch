@@ -259,7 +259,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
               by `hparams.output_layer_bias`. This can be used to tie the
               output layer with the input embedding matrix, as proposed in
               https://arxiv.org/pdf/1608.05859.pdf
-            - `None`. A dense layer will be created based on attr:`vocab_size`
+            - `None`. A dense layer will be created based on :attr:`vocab_size`
               and `hparams.output_layer_bias`.
             - If no output layer after the cell output is needed, set
               `(vocab_size=None, output_layer=texar.core.identity)`.
