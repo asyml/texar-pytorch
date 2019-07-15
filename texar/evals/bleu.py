@@ -76,6 +76,7 @@ def sentence_bleu(references: List[MaybeList[str]],
                   max_order: int = 4,
                   lowercase: bool = False,
                   smooth: bool = False,
+                  use_bp: bool = True,
                   return_all: bool = False) -> MaybeList[float]:
     r"""Calculates BLEU score of a hypothesis sentence.
 
@@ -93,6 +94,7 @@ def sentence_bleu(references: List[MaybeList[str]],
         max_order (int): Maximum n-gram order to use when computing
             BLEU score.
         smooth (bool): Whether or not to apply `(Lin et al. 2004)` smoothing.
+        use_bp (bool): Whether to apply brevity penalty.
         return_all (bool): If `True`, returns BLEU and all
             n-gram precisions.
 
@@ -109,6 +111,7 @@ def sentence_bleu(references: List[MaybeList[str]],
                        max_order=max_order,
                        lowercase=lowercase,
                        smooth=smooth,
+                       use_bp=use_bp,
                        return_all=return_all)
 
 
@@ -117,7 +120,8 @@ def corpus_bleu(list_of_references: List[List[MaybeList[str]]],
                 max_order: int = 4,
                 lowercase: bool = False,
                 smooth: bool = False,
-                return_all: bool = True) -> MaybeList[float]:
+                use_bp: bool = True,
+                return_all: bool = False) -> MaybeList[float]:
     r"""Computes corpus-level BLEU score.
 
     Args:
@@ -134,6 +138,7 @@ def corpus_bleu(list_of_references: List[List[MaybeList[str]]],
         max_order (int): Maximum n-gram order to use when computing
             BLEU score.
         smooth (bool): Whether or not to apply `(Lin et al. 2004)` smoothing.
+        use_bp (bool): Whether to apply brevity penalty.
         return_all (bool): If `True`, returns BLEU and all
             n-gram precisions.
 
@@ -196,15 +201,17 @@ def corpus_bleu(list_of_references: List[List[MaybeList[str]]],
     else:
         geo_mean = 0
 
-    ratio = float(hypothesis_length) / reference_length
-
-    if ratio > 1.0:
-        bp = 1.
+    if use_bp:
+        ratio = float(hypothesis_length) / reference_length
+        if ratio > 1.0:
+            bp = 1.
+        else:
+            try:
+                bp = math.exp(1 - 1. / ratio)
+            except ZeroDivisionError:
+                bp = math.exp(1 - 1. / (ratio + 1e-8))
     else:
-        try:
-            bp = math.exp(1 - 1. / ratio)
-        except ZeroDivisionError:
-            bp = math.exp(1 - 1. / (ratio + 1e-8))
+        bp = 1.
 
     bleu = geo_mean * bp
 
