@@ -157,7 +157,6 @@ def main():
                 src_fname_suffix="hyp", tgt_fname_suffix="ref",
             )
             eval_bleu = bleu_wrapper(ref_fn, hyp_fn, case_sensitive=True)
-            eval_bleu = 100.0 * eval_bleu
             logger.info("epoch: %d, eval_bleu %.4f", epoch, eval_bleu)
             print_fn(f"epoch: {epoch:d}, eval_bleu {eval_bleu:.4f}")
 
