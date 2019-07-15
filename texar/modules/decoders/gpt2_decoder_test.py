@@ -219,3 +219,7 @@ class GPT2DecoderTest(unittest.TestCase):
             helper=helper)
 
         self.assertIsInstance(outputs, TransformerDecoderOutput)
+
+
+if __name__ == "__main__":
+    unittest.main()

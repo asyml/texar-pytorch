@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of texar evals.
+Modules of Texar library regressors.
 """
 
-from texar.evals.bleu import *
-from texar.evals.bleu_moses import *
-from texar.evals.bleu_tool import *
-from texar.evals.metrics import *
+from texar.modules.regressors.regressor_base import *
+from texar.modules.regressors.xlnet_regressor import *

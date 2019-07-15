@@ -39,7 +39,7 @@ __all__ = [
 ]
 
 
-def _get_ngrams(segment: str,
+def _get_ngrams(segment: MaybeList[str],
                 max_order: int) -> Counter[Tuple[str, ...]]:
     r"""Extracts all n-grams up to a given maximum order from an
     input segment.

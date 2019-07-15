@@ -12,10 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of texar evals.
+Base class for regressors.
 """
+from abc import ABC
+from typing import Any, Dict
 
-from texar.evals.bleu import *
-from texar.evals.bleu_moses import *
-from texar.evals.bleu_tool import *
-from texar.evals.metrics import *
+from texar.module_base import ModuleBase
+
+__all__ = [
+    "RegressorBase",
+]
+
+
+class RegressorBase(ModuleBase, ABC):
+    r"""Base class inherited by all regressor classes.
+    """
+
+    @staticmethod
+    def default_hparams() -> Dict[str, Any]:
+        r"""Returns a dictionary of hyperparameters with default values.
+        """
+        return {
+            "name": "regressor"
+        }
