@@ -267,20 +267,6 @@ Connectors
 .. autoclass:: texar.modules.ConstantConnector
     :members:
 
-<<<<<<< HEAD
-.. spelling::
-    pooler
-
-:hidden:`BertBase`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.BertBase
-    :members:
-
-:hidden:`GPT2Base`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.GPT2Base
-    :members:
-=======
 :hidden:`ForwardConnector`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.ForwardConnector
@@ -290,4 +276,3 @@ Connectors
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.MLPTransformConnector
     :members:
->>>>>>> Fix spell checking
