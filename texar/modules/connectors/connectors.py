@@ -773,15 +773,7 @@ class StochasticConnector(ConnectorBase):
                 sample,
                 self._output_size,
                 self._linear_layer,
-<<<<<<< HEAD
-<<<<<<< HEAD
                 self._activation_fn)
-=======
-                activation_fn)
->>>>>>> Update on Connector
-=======
-                self._activation_fn)
->>>>>>> Update activation getting function in Connector;
             _assert_same_size(output, self._output_size)
 
         else:
