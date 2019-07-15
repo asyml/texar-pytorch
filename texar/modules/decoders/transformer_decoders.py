@@ -70,7 +70,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
               output layer with the input embedding matrix, as proposed in
               https://arxiv.org/pdf/1608.05859.pdf.
             - `None`. A :torch_nn:`Linear` layer will be created based on
-              attr:`vocab_size` and ``hparams.output_layer_bias``.
+              :attr:`vocab_size` and ``hparams.output_layer_bias``.
             - If no output layer is needed at the end, set
               :attr:`vocab_size` to `None` and ``output_layer`` to
               :func:`~texar.core.identity`.

@@ -386,7 +386,8 @@ def get_activation_fn(fn_name: Optional[Union[str,
     if fn_name is None:
         return None
 
-    fn_modules = ['torch.nn.functional', 'texar.custom', 'texar.core.layers']
+    fn_modules = ['torch', 'torch.nn.functional',
+                  'texar.custom', 'texar.core.layers']
     activation_fn_ = utils.get_function(fn_name, fn_modules)
     activation_fn = activation_fn_
 
