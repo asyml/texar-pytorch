@@ -608,13 +608,14 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             "parallelize_processing": True,
         }
 
-    def to(self, device: torch.device):
+    def to(self, device: Optional[torch.device]):
         r"""Move the dataset to the specific device. Note that we don't actually
         move data or do anything here --- we rely on correct implementations of
         :meth:`_process` and :meth:`_collate` to move data to appropriate
         devices.
         """
-        self.device = device
+        if device is not None:
+            self.device = device
         return self
 
     def _prefetch_processed(self, index: int):

@@ -20,6 +20,7 @@ script:
   - flake8 texar/ examples/
   # type-checking
   - mypy .
+  - for dir in `echo examples/**/`; do mypy $dir; done
   # unit tests
   - pytest
 

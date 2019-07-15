@@ -15,10 +15,10 @@
 Modules of Texar library module.
 """
 
-from texar.modules.pretrained import *
 from texar.modules.classifiers import *
+from texar.modules.connectors import *
 from texar.modules.decoders import *
 from texar.modules.embedders import *
 from texar.modules.encoders import *
 from texar.modules.networks import *
-from texar.modules.connectors import *
+from texar.modules.pretrained import *
