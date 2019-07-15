@@ -1,6 +1,6 @@
 import builtins
 import pickle
-from typing import Any, Callable, Dict, IO, Iterator, Optional, Sequence, Tuple, Type, TypeVar, Union, overload
+from typing import Any, Callable, Dict, IO, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Union, overload
 
 import numpy as np
 import torch.autograd
