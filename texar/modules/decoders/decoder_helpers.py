@@ -32,6 +32,7 @@ __all__ = [
     'GreedyEmbeddingHelper',
     'SampleEmbeddingHelper',
     'TopKSampleEmbeddingHelper',
+    'TopPSampleEmbeddingHelper',
     'SoftmaxEmbeddingHelper',
     'GumbelSoftmaxEmbeddingHelper',
     'default_helper_train_hparams',
@@ -281,7 +282,7 @@ class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
             ids), or take two arguments (``ids``, ``times``), where ``ids``
             is a vector of argmax ids, and ``times`` is a vector of current
             time steps (i.e., position ids). The latter case can be used
-            when attr:`embedding` is a combination of word embedding and
+            when :attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
         start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
@@ -357,7 +358,7 @@ class GreedyEmbeddingHelper(SingleEmbeddingHelper):
             ids), or take two arguments (``ids``, ``times``), where ``ids``
             is a vector of argmax ids, and ``times`` is a vector of current
             time steps (i.e., position ids). The latter case can be used
-            when attr:`embedding` is a combination of word embedding and
+            when :attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
         start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
@@ -398,7 +399,7 @@ class SampleEmbeddingHelper(SingleEmbeddingHelper):
             ids), or take two arguments (``ids``, ``times``), where ``ids``
             is a vector of argmax ids, and ``times`` is a vector of current
             time steps (i.e., position ids). The latter case can be used
-            when attr:`embedding` is a combination of word embedding and
+            when :attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
         start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
@@ -455,6 +456,25 @@ def _top_k_logits(logits: torch.Tensor, k: int) -> torch.Tensor:
         torch.full_like(logits, float('-inf')), logits)
 
 
+def _top_p_logits(logits: torch.Tensor, p: float) -> torch.Tensor:
+    r"""Adapted from
+    https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317#file-top-k-top-p-py-L16-L27"""
+    sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+    cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+
+    # Remove tokens with cumulative probability above the threshold
+    sorted_indices_to_remove = cumulative_probs > p
+    # Shift the indices to the right to keep also the first token above the
+    # threshold
+    sorted_indices_to_remove[:, 1:] = sorted_indices_to_remove[:, :-1].clone()
+    sorted_indices_to_remove[:, 0] = 0
+
+    for idx in range(logits.size(0)):
+        batch_indices = sorted_indices[idx, sorted_indices_to_remove[idx]]
+        logits[idx, batch_indices] = float("-inf")
+    return logits
+
+
 class TopKSampleEmbeddingHelper(SingleEmbeddingHelper):
     r"""A helper for use during inference.
 
@@ -468,7 +488,7 @@ class TopKSampleEmbeddingHelper(SingleEmbeddingHelper):
             ids), or take two arguments (``ids``, ``times``), where ``ids``
             is a vector of argmax ids, and ``times`` is a vector of current
             time steps (i.e., position ids). The latter case can be used
-            when attr:`embedding` is a combination of word embedding and
+            when :attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
         start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
@@ -518,6 +538,72 @@ class TopKSampleEmbeddingHelper(SingleEmbeddingHelper):
         return sample_ids
 
 
+class TopPSampleEmbeddingHelper(SingleEmbeddingHelper):
+    r"""A helper for use during inference.
+
+    Samples from candidates that have a cumulative probability of at most `p`
+    when arranged in decreasing order, and passes the result through an
+    embedding layer to get the next input. This is also named as
+    "*Nucleus Sampling*" as proposed in the paper
+    "*The Curious Case of Neural Text Degeneration(Holtzman et al.)*".
+
+    Args:
+        embedding: A callable or the ``params`` argument for
+            :torch_nn:`functional.embedding`.
+            If a callable, it can take a vector tensor of ``ids`` (argmax
+            ids), or take two arguments (``ids``, ``times``), where ``ids``
+            is a vector of argmax ids, and ``times`` is a vector of current
+            time steps (i.e., position ids). The latter case can be used
+            when attr:`embedding` is a combination of word embedding and
+            position embedding.
+            The returned tensor will be passed to the decoder input.
+        start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
+            representing the start tokens for each sequence in batch.
+        end_token: Python int or scalar :tensor:`LongTensor`, denoting the
+            token that marks end of decoding.
+        p (float, optional): A value used to filter out tokens whose cumulative
+            probability is greater than `p` when arranged in decreasing order of
+            probabilities. Must be between [0, 1.0]. If set to 1, samples from
+            all candidates (i.e., regular random sample decoding). Defaults to
+            0.5.
+        softmax_temperature (float, optional): Value to divide the logits by
+            before computing the softmax. Larger values (above 1.0) result
+            in more random samples, while smaller values push the sampling
+            distribution towards the argmax. Must be strictly greater than
+            0. Defaults to 1.0.
+
+    Raises:
+        ValueError: if :attr:`start_tokens` is not a 1D tensor or
+            :attr:`end_token` is not a scalar.
+    """
+
+    def __init__(self, embedding: Embedding, start_tokens: torch.LongTensor,
+                 end_token: Union[int, torch.LongTensor], p: float = 0.9,
+                 softmax_temperature: Optional[float] = None):
+        super().__init__(embedding, start_tokens, end_token)
+        self._p = p
+        self._softmax_temperature = softmax_temperature
+
+    def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
+        del time  # unused by sample_fn
+        # Outputs are logits, we sample from tokens with cumulative
+        # probability at most p when arranged in decreasing order
+        if not torch.is_tensor(outputs):
+            raise TypeError(
+                f"Expected outputs to be a single Tensor, got: {type(outputs)}")
+        if self._softmax_temperature is None:
+            logits = outputs
+        else:
+            logits = outputs / self._softmax_temperature
+
+        logits = _top_p_logits(logits, p=self._p)
+
+        sample_id_sampler = Categorical(logits=logits)
+        sample_ids = sample_id_sampler.sample()
+
+        return sample_ids
+
+
 class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
     r"""A helper that feeds softmax probabilities over vocabulary
     to the next step.
@@ -535,7 +621,7 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
             ids), or take two arguments (``ids``, ``times``), where ``ids``
             is a vector of argmax ids, and ``times`` is a vector of current
             time steps (i.e., position ids). The latter case can be used
-            when attr:`embedding` is a combination of word embedding and
+            when :attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
         start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
@@ -614,7 +700,7 @@ class GumbelSoftmaxEmbeddingHelper(SoftmaxEmbeddingHelper):
             ids), or take two arguments (``ids``, ``times``), where ``ids``
             is a vector of argmax ids, and ``times`` is a vector of current
             time steps (i.e., position ids). The latter case can be used
-            when attr:`embedding` is a combination of word embedding and
+            when :attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
         start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,
@@ -744,7 +830,7 @@ def get_helper(helper_type: Union[Type[T], T, str],
             ids), or take two arguments (``ids``, ``times``), where ``ids``
             is a vector of argmax ids, and ``times`` is a vector of current
             time steps (i.e., position ids). The latter case can be used
-            when attr:`embedding` is a combination of word embedding and
+            when :attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
         start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,

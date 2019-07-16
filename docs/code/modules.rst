@@ -59,6 +59,16 @@ Encoders
 .. autoclass:: texar.modules.TransformerEncoder
     :members:
 
+:hidden:`BertEncoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.BertEncoder
+    :members:
+
+:hidden:`GPT2Encoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.GPT2Encoder
+    :members:
+
 :hidden:`Conv1DEncoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.Conv1DEncoder
@@ -114,6 +124,11 @@ Decoders
 .. autoclass:: texar.modules.AttentionRNNDecoderOutput
     :members:
 
+:hidden:`GPT2Decoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.GPT2Decoder
+    :members:
+
 :hidden:`TransformerDecoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.TransformerDecoder
@@ -158,6 +173,11 @@ Decoders
 .. autoclass:: texar.modules.TopKSampleEmbeddingHelper
     :members:
 
+:hidden:`TopPSampleEmbeddingHelper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.TopPSampleEmbeddingHelper
+    :members:
+
 :hidden:`SoftmaxEmbeddingHelper`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.SoftmaxEmbeddingHelper
@@ -178,8 +198,13 @@ Classifiers
 ============
 
 :hidden:`BertClassifier`
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.BertClassifier
+    :members:
+
+:hidden:`GPT2Classifier`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.GPT2Classifier
     :members:
 
 :hidden:`Conv1DClassifier`
@@ -204,3 +229,50 @@ Networks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.Conv1DNetwork
     :members: default_hparams,forward,append_layer,has_layer,layer_by_name,layers_by_name,layers,layer_names
+
+Pre-trained
+===========
+
+.. spelling::
+    pooler
+
+:hidden:`BertBase`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.BertBase
+    :members:
+
+:hidden:`GPT2Base`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.GPT2Base
+    :members:
+
+Connectors
+==========
+
+.. spelling::
+    reparameterized
+    reparameterization
+    reparameterizable
+    Reparameterization
+    Autoencoders
+    mlp
+
+:hidden:`ConnectorBase`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.ConnectorBase
+    :members:
+
+:hidden:`ConstantConnector`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.ConstantConnector
+    :members:
+
+:hidden:`ForwardConnector`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.ForwardConnector
+    :members:
+
+:hidden:`MLPTransformConnector`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.MLPTransformConnector
+    :members:

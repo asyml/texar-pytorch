@@ -15,11 +15,12 @@
 Various RNN decoders.
 """
 
-from typing import Callable, NamedTuple, Optional, Tuple, Union
+from typing import Callable, Dict, NamedTuple, Optional, Tuple, Union
 
 import torch
 from torch import nn
 
+from texar.core import layers
 from texar.core.attention_mechanism import (
     AttentionMechanism, AttentionWrapperState)
 from texar.core.cell_wrappers import AttentionWrapper, HiddenState, RNNCellBase
@@ -27,6 +28,7 @@ from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.modules.decoders.rnn_decoder_base import RNNDecoderBase
 from texar.utils import utils
+from texar.utils.beam_search import beam_search
 from texar.utils.types import MaybeList, MaybeTuple
 from texar.utils.utils import check_or_get_instance, get_function
 
@@ -241,7 +243,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
     r"""RNN decoder with attention mechanism.
 
     Args:
-        input_size (int): Input size of the decoder cell.
+        input_size (int): Dimension of input embeddings.
         encoder_output_size (int): The output size of the encoder cell.
         cell (RNNCellBase, optional): An instance of
             :class:`~texar.core.RNNCellBase`. If `None`, a cell
@@ -257,7 +259,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
               by `hparams.output_layer_bias`. This can be used to tie the
               output layer with the input embedding matrix, as proposed in
               https://arxiv.org/pdf/1608.05859.pdf
-            - `None`. A dense layer will be created based on attr:`vocab_size`
+            - `None`. A dense layer will be created based on :attr:`vocab_size`
               and `hparams.output_layer_bias`.
             - If no output layer after the cell output is needed, set
               `(vocab_size=None, output_layer=texar.core.identity)`.
@@ -288,11 +290,14 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             # Decodes while attending to the source
             dec_embedder = WordEmbedder(vocab_size=data.target_vocab.size, ...)
             decoder = AttentionRNNDecoder(
-                memory=enc_outputs,
-                memory_sequence_length=data_batch['source_length'],
+                encoder_output_size=(self.encoder.cell_fw.hidden_size +
+                                     self.encoder.cell_bw.hidden_size),
+                input_size=dec_embedder.dim,
                 vocab_size=data.target_vocab.size)
             outputs, _, _ = decoder(
                 decoding_strategy='train_greedy',
+                memory=enc_outputs,
+                memory_sequence_length=data_batch['source_length'],
                 inputs=dec_embedder(data_batch['target_text_ids']),
                 sequence_length=data_batch['target_length']-1)
     """
@@ -316,6 +321,25 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         attn_hparams = self._hparams['attention']
         attn_kwargs = attn_hparams['kwargs'].todict()
 
+        # Compute the correct input_size internally.
+        if cell is None:
+            if cell_input_fn is None:
+                if attn_hparams["attention_layer_size"] is None:
+                    input_size += encoder_output_size
+                else:
+                    input_size += attn_hparams["attention_layer_size"]
+            else:
+                if attn_hparams["attention_layer_size"] is None:
+                    input_size = cell_input_fn(
+                        torch.empty(input_size),
+                        torch.empty(encoder_output_size)).shape[-1]
+                else:
+                    input_size = cell_input_fn(
+                        torch.empty(input_size),
+                        torch.empty(
+                            attn_hparams["attention_layer_size"])).shape[-1]
+            self._cell = layers.get_rnn_cell(input_size, self._hparams.rnn_cell)
+
         # Parse the `probability_fn` argument
         if 'probability_fn' in attn_kwargs:
             prob_fn = attn_kwargs['probability_fn']
@@ -331,6 +355,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         attn_kwargs.update({"encoder_output_size": encoder_output_size})
 
         attn_modules = ['texar.core']
+        # TODO: Support multiple attention mechanisms.
         self.attention_mechanism: AttentionMechanism
         self.attention_mechanism = check_or_get_instance(
             attn_hparams["type"], attn_kwargs, attn_modules,
@@ -546,9 +571,12 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             helper: Optional[Helper] = None,
             max_decoding_length: Optional[int] = None,
             impute_finished: bool = False,
-            infer_mode: Optional[bool] = None, **kwargs) \
-            -> Tuple[AttentionRNNDecoderOutput,
-                     Optional[AttentionWrapperState], torch.LongTensor]:
+            infer_mode: Optional[bool] = None,
+            beam_width: Optional[int] = None,
+            length_penalty: float = 0., **kwargs) \
+            -> Union[Tuple[AttentionRNNDecoderOutput,
+                     Optional[AttentionWrapperState], torch.LongTensor],
+                     Dict[str, torch.Tensor]]:
         r"""Performs decoding.
 
         Implementation calls initialize() once and step() repeatedly on the
@@ -587,6 +615,11 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                 `hparams`-configured helper is used.
             initial_state (optional): Initial state of decoding.
                 If `None` (default), zero state is used.
+            helper (optional): An instance of
+                :class:`texar.modules.decoders.Helper`
+                that defines the decoding strategy. If given,
+                ``decoding_strategy`` and helper configurations in
+                :attr:`hparams` are ignored.
             max_decoding_length: A int scalar Tensor indicating the maximum
                 allowed number of decoding steps. If `None` (default), either
                 `hparams["max_decoding_length_train"]` or
@@ -598,31 +631,91 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                 slowdown at each time step, but ensures that the final state
                 and outputs have the correct values and that backprop ignores
                 time steps that were marked as finished.
-            helper (optional): An instance of
-                :class:`texar.modules.decoders.Helper`
-                that defines the decoding strategy. If given,
-                ``decoding_strategy`` and helper configurations in
-                :attr:`hparams` are ignored.
             infer_mode (optional): If not `None`, overrides mode given by
                 `self.training`.
+            beam_width (int): Set to use beam search. If given,
+                :attr:`decoding_strategy` is ignored.
+            length_penalty (float): Length penalty coefficient used in beam
+                search decoding. Refer to https://arxiv.org/abs/1609.08144
+                for more details.
+                It should be larger if longer sentences are desired.
             **kwargs: Other keyword arguments for constructing helpers
                 defined by ``hparams["helper_train"]`` or
                 ``hparams["helper_infer"]``.
 
         Returns:
-            `(outputs, final_state, sequence_lengths)`, where
 
-            - **outputs**: an object containing the decoder output on all
-              time steps.
-            - **final_state**: is the cell state of the final time step.
-            - **sequence_lengths**: is an int Tensor of shape `[batch_size]`
-              containing the length of each sample.
+            - For **beam search** decoding, returns a ``dict`` containing keys
+              ``"sample_id"`` and ``"log_prob"``.
+
+                - ``"sample_id"`` is a :tensor:`LongTensor` of shape
+                  ``[batch_size, max_time, beam_width]`` containing generated
+                  token indexes. ``sample_id[:,:,0]`` is the highest-probable
+                  sample.
+                - ``"log_prob"`` is a :tensor:`Tensor` of shape
+                  ``[batch_size, beam_width]`` containing the log probability
+                  of each sequence sample.
+
+            - For **"infer_greedy"** and **"infer_sample"** decoding or
+              decoding with :attr:`helper`, returns
+              a tuple `(outputs, final_state, sequence_lengths)`, where
+
+                - **outputs**: an object containing the decoder output on all
+                  time steps.
+                - **final_state**: is the cell state of the final time step.
+                - **sequence_lengths**: is an int Tensor of shape `[batch_size]`
+                  containing the length of each sample.
         """
         # TODO: Add faster code path for teacher-forcing training.
 
         # Save memory and memory_sequence_length
         self.memory = memory
         self.memory_sequence_length = memory_sequence_length
+
+        # Maximum decoding length
+        if max_decoding_length is None:
+            if self.training:
+                max_decoding_length = self._hparams.max_decoding_length_train
+            else:
+                max_decoding_length = self._hparams.max_decoding_length_infer
+            if max_decoding_length is None:
+                max_decoding_length = utils.MAX_SEQ_LENGTH
+
+        # Beam search decode
+        if beam_width is not None and beam_width > 1:
+            if helper is not None:
+                raise ValueError("Must not set 'beam_width' and 'helper' "
+                                 "simultaneously.")
+
+            start_tokens = kwargs.get('start_tokens')
+            if start_tokens is None:
+                raise ValueError("'start_tokens' must be specified when using"
+                                 "beam search decoding.")
+
+            batch_size = start_tokens.shape[0]
+            state = self._cell.zero_state(batch_size)
+            if initial_state is not None:
+                state = state._replace(cell_state=initial_state)
+
+            sample_id, log_prob = self.beam_decode(  # type: ignore
+                start_tokens=start_tokens,
+                end_token=kwargs.get('end_token'),
+                embedding_fn=kwargs.get('embedding'),
+                initial_state=state,
+                beam_width=beam_width,
+                length_penalty=length_penalty,
+                decode_length=max_decoding_length)
+
+            # Release memory and memory_sequence_length in AttentionRNNDecoder
+            self.memory = None
+            self.memory_sequence_length = None
+
+            # Release the cached memory in AttentionMechanism
+            for attention_mechanism in self._cell._attention_mechanisms:  # pylint: disable=protected-access
+                attention_mechanism.clear_cache()
+
+            return {"sample_id": sample_id,
+                    "log_prob": log_prob}
 
         # Helper
         if helper is None:
@@ -635,15 +728,6 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
 
         # Initial state
         self._cell.init_batch()
-
-        # Maximum decoding length
-        if max_decoding_length is None:
-            if self.training:
-                max_decoding_length = self._hparams.max_decoding_length_train
-            else:
-                max_decoding_length = self._hparams.max_decoding_length_infer
-            if max_decoding_length is None:
-                max_decoding_length = utils.MAX_SEQ_LENGTH
 
         (outputs, final_state,
          sequence_lengths) = self.dynamic_decode(  # type: ignore
@@ -659,6 +743,50 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             attention_mechanism.clear_cache()
 
         return outputs, final_state, sequence_lengths
+
+    def beam_decode(self,
+                    start_tokens: torch.LongTensor,
+                    end_token: int,
+                    embedding_fn: Callable[[torch.LongTensor], torch.Tensor],
+                    initial_state: AttentionWrapperState,
+                    decode_length: int = 256,
+                    beam_width: int = 5,
+                    length_penalty: float = 0.6):
+
+        def _prepare_beam_search(x):
+            x = x.unsqueeze(1).repeat(1, beam_width, *([1] * (x.dim() - 1)))
+            x = x.view(-1, *x.size()[2:])
+            return x
+
+        memory_beam_search = _prepare_beam_search(self.memory)
+        memory_sequence_length_beam_search = _prepare_beam_search(
+            self.memory_sequence_length)
+
+        def _symbols_to_logits_fn(ids, state):
+            ids = ids[:, -1]
+            inputs = embedding_fn(ids)
+            wrapper_outputs, wrapper_state = self._cell(
+                inputs, state, memory_beam_search,
+                memory_sequence_length_beam_search)
+            logits = self._output_layer(wrapper_outputs)
+            return logits, wrapper_state
+
+        assert self._vocab_size is not None
+        outputs, log_prob = beam_search(
+            symbols_to_logits_fn=_symbols_to_logits_fn,
+            initial_ids=start_tokens,
+            beam_size=beam_width,
+            decode_length=decode_length,
+            vocab_size=self._vocab_size,
+            alpha=length_penalty,
+            states=initial_state,
+            eos_id=end_token)
+
+        # Ignores <BOS>
+        outputs = outputs[:, :, 1:]
+        # shape = [batch_size, seq_length, beam_width]
+        outputs = outputs.permute((0, 2, 1))
+        return outputs, log_prob
 
     @property
     def output_size(self):

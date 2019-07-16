@@ -24,22 +24,11 @@ feature_original_types = {
     "label_ids": ["tf.int64", "FixedLenFeature"]
 }
 
-feature_convert_types = {
-    # Converting feature dtype after reading. E.g.,
-    # Converting the dtype of feature "input_ids" from `tf.int64` (as above)
-    # to `tf.int32`
-    "input_ids": "tf.int32",
-    "input_mask": "tf.int32",
-    "label_ids": "tf.int64",
-    "segment_ids": "tf.int32"
-}
-
 train_hparam = {
     "allow_smaller_final_batch": False,
     "batch_size": train_batch_size,
     "dataset": {
         "data_name": "data",
-        "feature_convert_types": feature_convert_types,
         "feature_original_types": feature_original_types,
         "files": "{}/train.tf_record".format(tfrecord_data_dir)
     },
@@ -52,7 +41,6 @@ eval_hparam = {
     "batch_size": eval_batch_size,
     "dataset": {
         "data_name": "data",
-        "feature_convert_types": feature_convert_types,
         "feature_original_types": feature_original_types,
         "files": "{}/eval.tf_record".format(tfrecord_data_dir)
     },
@@ -64,7 +52,6 @@ test_hparam = {
     "batch_size": test_batch_size,
     "dataset": {
         "data_name": "data",
-        "feature_convert_types": feature_convert_types,
         "feature_original_types": feature_original_types,
         "files": "{}/predict.tf_record".format(tfrecord_data_dir)
     },

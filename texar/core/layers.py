@@ -17,7 +17,7 @@ Various neural network layers
 
 import copy
 import functools
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import torch
 from torch import nn
@@ -386,7 +386,8 @@ def get_activation_fn(fn_name: Optional[Union[str,
     if fn_name is None:
         return None
 
-    fn_modules = ['torch.nn.functional', 'texar.custom', 'texar.core.layers']
+    fn_modules = ['torch', 'torch.nn.functional',
+                  'texar.custom', 'texar.core.layers']
     activation_fn_ = utils.get_function(fn_name, fn_modules)
     activation_fn = activation_fn_
 
@@ -473,7 +474,8 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
         layer = layer_type
     else:
         layer_modules = ["torch.nn", "texar.core", "texar.custom"]
-        layer_class = utils.check_or_get_class(layer_type, layer_modules)
+        layer_class: Type[nn.Module] = utils.check_or_get_class(
+            layer_type, layer_modules)
         if isinstance(hparams, dict):
             if (layer_class.__name__ == "Linear" and
                     "in_features" not in hparams["kwargs"]):

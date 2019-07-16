@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """Transformer model.
 """
+
 import argparse
 import functools
 import importlib
 import os
+from typing import Any
 
 import torch
 import tqdm
@@ -49,8 +52,8 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-config_model = importlib.import_module(args.config_model)
-config_data = importlib.import_module(args.config_data)
+config_model: Any = importlib.import_module(args.config_model)
+config_data: Any = importlib.import_module(args.config_data)
 
 utils.set_random_seed(config_model.random_seed)
 
@@ -154,7 +157,6 @@ def main():
                 src_fname_suffix="hyp", tgt_fname_suffix="ref",
             )
             eval_bleu = bleu_wrapper(ref_fn, hyp_fn, case_sensitive=True)
-            eval_bleu = 100.0 * eval_bleu
             logger.info("epoch: %d, eval_bleu %.4f", epoch, eval_bleu)
             print_fn(f"epoch: {epoch:d}, eval_bleu {eval_bleu:.4f}")
 

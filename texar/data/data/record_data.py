@@ -116,9 +116,12 @@ class PickleDataSource(DataSource[RawExample]):
                             break
 
 
+TransformFn = Callable[[bytes], torch.ByteTensor]
+
+
 def _create_image_transform(height: Optional[int], width: Optional[int],
                             resize_method: Union[str, int] = 'bilinear') \
-        -> Callable[[bytes], torch.ByteTensor]:
+        -> TransformFn:
     r"""Create a function based on `Pillow image transforms
     <https://pillow.readthedocs.io/en/3.1.x/reference/Image.html#PIL.Image.Image.resize>`
     that performs resizing with desired resize method (interpolation).
@@ -236,6 +239,8 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
     Args:
         hparams (dict): Hyperparameters. See :meth:`default_hparams`
             for the defaults.
+        device: The device of the produced batches. For GPU training, set to
+            current CUDA device.
 
     The module reads and restores data from TFRecord files and
     results in a TF Dataset whose element is a Python `dict` that maps feature
@@ -317,7 +322,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
     """
 
-    def __init__(self, hparams):
+    def __init__(self, hparams=None, device: Optional[torch.device] = None):
         self._hparams = HParams(hparams, self.default_hparams())
 
         feature_types = self._hparams.dataset.feature_original_types
@@ -332,7 +337,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
         image_options = self._hparams.dataset.image_options
         if isinstance(image_options, HParams):
             image_options = [image_options]
-        self._image_transforms = {}
+        self._image_transforms: Dict[str, TransformFn] = {}
         for options in image_options:
             key = options.get('image_feature_name')
             if key is None or key not in self._features:
@@ -343,9 +348,10 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
         self._other_transforms = self._hparams.dataset.other_transformations
 
-        data_source = PickleDataSource(self._hparams.dataset.files)
+        data_source = PickleDataSource[Dict[str, Any]](
+            self._hparams.dataset.files)
 
-        super().__init__(data_source, hparams)
+        super().__init__(data_source, hparams, device)
 
     @classmethod
     def _construct(cls, hparams):
@@ -357,9 +363,9 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
         convert_types = record_data._hparams.dataset.feature_convert_types
         record_data._convert_types = {key: get_numpy_dtype(value)
-                               for key, value in convert_types.items()}
+                                      for key, value in convert_types.items()}
         for key, dtype in record_data._convert_types.items():
-            record_data._features[key] = record_data._features[key].\
+            record_data._features[key] = record_data._features[key]. \
                 _replace(dtype=dtype)
 
         image_options = record_data._hparams.dataset.image_options
@@ -625,9 +631,11 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
                     values, _ = padded_batch(values)
                 else:
                     values = np.stack(values, axis=0)
-                if (not torch.is_tensor(values) and
+                if (not isinstance(values, torch.Tensor) and
                         descriptor.dtype not in [np.str_, np.bytes_]):
-                    values = torch.from_numpy(values)
+                    values = torch.from_numpy(values).to(device=self.device)
+                elif isinstance(values, torch.Tensor):
+                    values = values.to(device=self.device)
             else:
                 # VarLenFeature, just put everything in a Python list.
                 pass

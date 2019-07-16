@@ -67,6 +67,8 @@ class PairedTextData(TextDataBase[Tuple[str, str],
     Args:
         hparams (dict): Hyperparameters. See :meth:`default_hparams` for the
             defaults.
+        device: The device of the produced batches. For GPU training, set to
+            current CUDA device.
 
     By default, the processor reads raw data files, performs tokenization,
     batching and other pre-processing steps, and results in a Dataset
