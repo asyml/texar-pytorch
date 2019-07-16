@@ -16,6 +16,7 @@ Various neural networks and related utilities.
 """
 
 from texar.modules.networks.network_base import FeedForwardNetworkBase
+from texar.utils.utils import get_output_size
 
 __all__ = [
     "FeedForwardNetwork",
@@ -82,3 +83,17 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
             "layers": [],
             "name": "NN"
         }
+
+    @property
+    def output_size(self) -> int:
+        r"""The final dimension(s) of :meth:`forward` output tensor(s).
+
+        Here final dimension equals to ``1`` if unable to get output size
+        from network layers.
+        """
+
+        for layer in reversed(self._layers):
+            size = get_output_size(layer)
+            if size is not None:
+                return size
+        return 1

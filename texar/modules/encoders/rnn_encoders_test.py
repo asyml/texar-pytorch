@@ -13,7 +13,7 @@ from texar.modules.encoders.rnn_encoders import (
 
 
 class UnidirectionalRNNEncoderTest(unittest.TestCase):
-    """Tests unidirectional rnn encoder.
+    r"""Tests unidirectional rnn encoder.
     """
 
     def setUp(self):
@@ -22,15 +22,16 @@ class UnidirectionalRNNEncoderTest(unittest.TestCase):
         self._input_size = 10
 
     def test_trainable_variables(self):
-        """Tests the functionality of automatically collecting trainable
+        r"""Tests the functionality of automatically collecting trainable
         variables.
         """
         inputs = torch.rand(self._batch_size, self._max_time, self._input_size)
 
         # case 1
         encoder = UnidirectionalRNNEncoder(input_size=self._input_size)
-        _, _ = encoder(inputs)
+        output, _ = encoder(inputs)
         self.assertEqual(len(encoder.trainable_variables), 4)
+        self.assertEqual(output.size()[-1], encoder.output_size)
 
         # case 2
         hparams = {
@@ -42,8 +43,9 @@ class UnidirectionalRNNEncoderTest(unittest.TestCase):
         }
         encoder = UnidirectionalRNNEncoder(input_size=self._input_size,
                                            hparams=hparams)
-        _, _ = encoder(inputs)
+        output, _ = encoder(inputs)
         self.assertEqual(len(encoder.trainable_variables), 4)
+        self.assertEqual(output.size()[-1], encoder.output_size)
 
         # case 3
         hparams = {"output_layer": {
@@ -57,11 +59,12 @@ class UnidirectionalRNNEncoderTest(unittest.TestCase):
         encoder = UnidirectionalRNNEncoder(input_size=self._input_size,
                                            hparams=hparams)
 
-        _, _ = encoder(inputs)
+        output, _ = encoder(inputs)
         self.assertEqual(len(encoder.trainable_variables), 8)
+        self.assertEqual(output.size()[-1], encoder.output_size)
 
     def test_encode(self):
-        """Tests encoding.
+        r"""Tests encoding.
         """
         inputs = torch.rand(self._batch_size, self._max_time, self._input_size)
 
@@ -104,7 +107,7 @@ class UnidirectionalRNNEncoderTest(unittest.TestCase):
 
 
 class BidirectionalRNNEncoderTest(unittest.TestCase):
-    """Tests bidirectional rnn encoder.
+    r"""Tests bidirectional rnn encoder.
     """
 
     def setUp(self):
@@ -113,15 +116,17 @@ class BidirectionalRNNEncoderTest(unittest.TestCase):
         self._input_size = 10
 
     def test_trainable_variables(self):
-        """Tests the functionality of automatically collecting trainable
+        r"""Tests the functionality of automatically collecting trainable
         variables.
         """
         inputs = torch.rand(self._batch_size, self._max_time, self._input_size)
 
         # case 1
         encoder = BidirectionalRNNEncoder(input_size=self._input_size)
-        _, _ = encoder(inputs)
+        outputs, _ = encoder(inputs)
         self.assertEqual(len(encoder.trainable_variables), 8)
+        self.assertEqual(
+            (outputs[0].size(-1), outputs[1].size(-1)), (encoder.output_size))
 
         # case 2
         hparams = {
@@ -133,8 +138,10 @@ class BidirectionalRNNEncoderTest(unittest.TestCase):
         }
         encoder = BidirectionalRNNEncoder(input_size=self._input_size,
                                           hparams=hparams)
-        _, _ = encoder(inputs)
+        outputs, _ = encoder(inputs)
         self.assertEqual(len(encoder.trainable_variables), 8)
+        self.assertEqual(
+            (outputs[0].size(-1), outputs[1].size(-1)), (encoder.output_size))
 
         # case 3
         hparams = {
@@ -154,11 +161,13 @@ class BidirectionalRNNEncoderTest(unittest.TestCase):
         }
         encoder = BidirectionalRNNEncoder(input_size=self._input_size,
                                           hparams=hparams)
-        _, _ = encoder(inputs)
+        outputs, _ = encoder(inputs)
         self.assertEqual(len(encoder.trainable_variables), 8 + 3 + 4)
+        self.assertEqual(
+            (outputs[0].size(-1), outputs[1].size(-1)), (encoder.output_size))
 
     def test_encode(self):
-        """Tests encoding.
+        r"""Tests encoding.
         """
         inputs = torch.rand(self._batch_size, self._max_time, self._input_size)
 

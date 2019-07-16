@@ -260,3 +260,28 @@ class BertClassifier(ClassifierBase):
             preds = torch.flatten(preds)
 
         return logits, preds
+
+    @property
+    def output_size(self) -> int:
+        r"""The final dimension(s) of :meth:`forward` output tensor(s).
+
+        Here output is :attr:`logits`. The final dimension equals to ``1``
+        when output final dimension is only determined by input.
+        """
+        clas_strategy = self._hparams.clas_strategy
+
+        if self._hparams.num_classes < 1:
+            raise NameError("logit_dim cannot be defined "
+                            "if self._hparams.num_classes < 1")
+
+        if clas_strategy in ("cls_time", "all_time"):
+            if self._hparams.num_classes > 1:
+                logit_dim = self._hparams.num_classes
+            elif self._hparams.num_classes == 1:
+                logit_dim = 1
+        elif clas_strategy == "time_wise":
+            if self._hparams.num_classes > 1:
+                logit_dim = self._hparams.num_classes
+            elif self._hparams.num_classes == 1:
+                logit_dim = 1
+        return logit_dim

@@ -460,6 +460,18 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
         """
         return self._output_layer
 
+    @property
+    def output_size(self) -> int:
+        # TODO: We will change the implementation to
+        # something that does not require a forward pass.
+
+        dim = self._cell.hidden_size
+        dummy_tensor = torch.Tensor(dim)
+        if self._output_layer is not None:
+            return self._output_layer(dummy_tensor).size(-1)
+        else:
+            return dim
+
 
 class BidirectionalRNNEncoder(RNNEncoderBase):
     r"""Bidirectional forward-backward RNN encoder.
@@ -788,3 +800,26 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
         r"""The output layer of the backward RNN.
         """
         return self._output_layer_bw
+
+    @property
+    def output_size(self) -> Tuple[int, int]:
+        r"""The final dimension(s) of :meth:`forward` output tensor(s).
+
+        Here final dimension is a tuple consisting of forward
+        RNN final dimension and backward RNN final dimension.
+        """
+        # TODO: We will change the implementation to
+        # something that does not require a forward pass.
+        dim_bw = self._cell_bw.hidden_size
+        dummy_tensor_bw = torch.Tensor(dim_bw)
+        dim_fw = self._cell_fw.hidden_size
+        dummy_tensor_fw = torch.Tensor(dim_fw)
+        if self._output_layer_bw is not None:
+            output_bw = self._output_layer_bw(dummy_tensor_bw).size()[-1]
+        else:
+            output_bw = dim_bw
+        if self._output_layer_fw is not None:
+            output_fw = self._output_layer_fw(dummy_tensor_fw).size()[-1]
+        else:
+            output_fw = dim_fw
+        return (output_fw, output_bw)

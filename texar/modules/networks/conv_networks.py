@@ -531,3 +531,14 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         with torch.no_grad():
             output = super().forward(input)
         return output.view(output.size()[0], -1).size()
+
+    @property
+    def output_size(self) -> int:
+        if self.hparams.num_dense_layers <= 0:
+            return self._hparams.out_channels * len(self._hparams.kernel_size)
+        else:
+            out_features = self._hparams.out_features
+            if isinstance(out_features, (list, tuple)):
+                return out_features[-1]
+            else:
+                return out_features

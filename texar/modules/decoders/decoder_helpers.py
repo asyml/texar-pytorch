@@ -554,7 +554,7 @@ class TopPSampleEmbeddingHelper(SingleEmbeddingHelper):
             ids), or take two arguments (``ids``, ``times``), where ``ids``
             is a vector of argmax ids, and ``times`` is a vector of current
             time steps (i.e., position ids). The latter case can be used
-            when attr:`embedding` is a combination of word embedding and
+            when :attr:`embedding` is a combination of word embedding and
             position embedding.
             The returned tensor will be passed to the decoder input.
         start_tokens: 1D :tensor:`LongTensor` shaped ``[batch_size]``,

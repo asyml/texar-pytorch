@@ -381,3 +381,7 @@ class TransformerEncoder(EncoderBase):
         if not self._hparams.use_bert_config:
             x = self.final_layer_normalizer(x)
         return x
+
+    @property
+    def output_size(self) -> int:
+        return self._hparams.dim

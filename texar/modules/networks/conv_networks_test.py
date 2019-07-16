@@ -30,6 +30,7 @@ class Conv1DNetworkTest(unittest.TestCase):
 
         outputs_1 = network_1(inputs_1)
         self.assertEqual(outputs_1.shape, torch.Size([128, 256]))
+        self.assertEqual(outputs_1.size(-1), network_1.output_size)
 
         inputs_2 = torch.ones([128, 64, 300])
         hparams = {
@@ -66,7 +67,7 @@ class Conv1DNetworkTest(unittest.TestCase):
 
         outputs_2 = network_2(inputs_2)
         self.assertEqual(outputs_2.shape, torch.Size([128, 10]))
-
+        self.assertEqual(outputs_2.size(-1), network_2.output_size)
         # test whether concatenation happens along channel dim when feature dim
         # has been reduced
         hparams = {
@@ -98,6 +99,7 @@ class Conv1DNetworkTest(unittest.TestCase):
         out_channels = hparams["out_channels"]
         self.assertEqual(outputs_3.shape,
                          torch.Size([128, num_of_kernels * out_channels]))
+        self.assertEqual(outputs_3.size(-1), network_3.output_size)
 
 
 if __name__ == "__main__":

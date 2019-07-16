@@ -28,13 +28,14 @@ class TransformerEncoderTest(unittest.TestCase):
 
         encoder = TransformerEncoder()
 
-        _ = encoder(inputs=inputs, sequence_length=sequence_length)
+        outputs = encoder(inputs=inputs, sequence_length=sequence_length)
 
         # 6 blocks
         # -self multihead_attention: 4 dense without bias + 2 layer norm vars
         # -poswise_network: Dense with bias, Dense with bias + 2 layer norm vars
         # 2 output layer norm vars
         self.assertEqual(len(encoder.trainable_variables), 74)
+        self.assertEqual(outputs.size(-1), encoder.output_size)
 
         hparams = {"use_bert_config": True}
         encoder = TransformerEncoder(hparams=hparams)
@@ -44,8 +45,9 @@ class TransformerEncoderTest(unittest.TestCase):
         # -poswise_network: Dense with bias, Dense with bias + 2 layer norm vars
         # -output: 2 layer norm vars
         # 2 input layer norm vars
-        _ = encoder(inputs=inputs, sequence_length=sequence_length)
+        outputs = encoder(inputs=inputs, sequence_length=sequence_length)
         self.assertEqual(len(encoder.trainable_variables), 74)
+        self.assertEqual(outputs.size(-1), encoder.output_size)
 
     def test_encode(self):
         r"""Tests encoding.

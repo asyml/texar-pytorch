@@ -83,3 +83,9 @@ class ModuleBase(nn.Module, ABC):
         of the module.
         """
         return self._hparams
+
+    @property
+    def output_size(self):
+        r"""The final dimension(s) of :meth:`forward` output tensor(s).
+        """
+        raise NotImplementedError
