@@ -4,9 +4,13 @@
 Evaluations
 ***********
 
-
 BLEU
 ==========
+
+.. spelling::
+    Vaswani
+    al
+    de
 
 :hidden:`sentence_bleu`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -23,6 +27,18 @@ BLEU
 :hidden:`corpus_bleu_moses`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.evals.corpus_bleu_moses
+
+:hidden:`compute_bleu`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.evals.compute_bleu
+
+:hidden:`bleu_tokenize`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.evals.bleu_tokenize
+
+:hidden:`bleu_wrapper`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.evals.bleu_wrapper
 
 
 Accuracy

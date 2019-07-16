@@ -2,15 +2,16 @@
 
 This is an implementation of the Transformer model described in [Vaswani, Ashish, et al. "Attention is all you need."](http://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf).
 
-[Quick Start](https://github.com/asyml/texar/tree/master/examples/transformer#quick-start): Prerequisites & use on machine translation datasets
+[Quick Start](https://github.com/asyml/texar/tree/master/examples/transformer#quick-start): Prerequisites & use on machine translation datasets.
 
-[Run Your Customized Experiments](https://github.com/asyml/texar/tree/master/examples/transformer#run-your-customized-experiments): Hands-on tutorial of data preparation, configuration, and model training/test
+[Run Your Customized Experiments](https://github.com/asyml/texar/tree/master/examples/transformer#run-your-customized-experiments): Hands-on tutorial of data preparation, configuration, and model training/test.
 
 ## Quick Start ##
 
 ### Prerequisites ###
 
 Run the following cmd to install necessary packages for the example: 
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -18,10 +19,12 @@ pip install -r requirements.txt
 ### Datasets ###
 
 Two example datasets are provided:
-- IWSLT'15 **EN-VI** for English-Vietnamese translation
-- WMT'14 **EN-DE** for English-German translation
+
+- **IWSLT'15 EN-VI** for English-Vietnamese translation
+- **WMT'14 EN-DE** for English-German translation
 
 Download and pre-process the **IWSLT'15 EN-VI** data with the following cmds: 
+
 ```bash
 sh scripts/iwslt15_en_vi.sh 
 sh preprocess_data.sh spm en vi
@@ -30,6 +33,7 @@ By default, the downloaded dataset is in `./data/en_vi`.
 As with the [official implementation](https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/models/transformer.py), `spm` (`sentencepiece`) encoding is used to encode the raw text as data pre-processing. The encoded data is by default in `./temp/run_en_vi_spm`. 
 
 For the **WMT'14 EN-DE** data, download and pre-process with:
+
 ```bash
 sh scripts/wmt14_en_de.sh
 sh preprocess_data.sh bpe en de
@@ -41,6 +45,7 @@ Note that for this dataset, `bpe` encoding (Byte pair encoding) is used instead.
 ### Train and evaluate the model ###
 
 Train the model with the cmd:
+
 ```bash
 python transformer_main.py --run_mode=train_and_evaluate --config_model=config_model --config_data=config_iwslt15
 ```
@@ -51,19 +56,22 @@ python transformer_main.py --run_mode=train_and_evaluate --config_model=config_m
 ### Test a trained model ###
 
 To only evaluate a model checkpoint without training, first load the checkpoint and generate samples: 
+
 ```bash
 python transformer_main.py --run_mode=test --config_data=config_iwslt15 --model_dir=./outputs
 ```
 The latest checkpoint in `./outputs` is used. Generated samples are in the file `./outputs/test.output.hyp`, and reference sentences are in the file `./outputs/test.output.ref` 
 
-Next, decode the samples with respective decoder, and evaluate with `bleu_tool`:
+Next, decode the samples with respective decoder, and evaluate with `bleu_main`:
+
 ```bash
 ../../bin/utils/spm_decode --infile ./outputs/test.output.hyp --outfile temp/test.output.spm --model temp/run_en_vi_spm/data/spm-codes.32000.model --input_format=piece 
 
-python bleu_tool.py --reference=data/en_vi/test.vi --translation=temp/test.output.spm
+python bleu_main.py --reference=data/en_vi/test.vi --translation=temp/test.output.spm
 ```
 
-For WMT'14, the corresponding cmds are:
+For **WMT'14**, the corresponding cmds are:
+
 ```bash
 # Loads model and generates samples
 python transformer_main.py --run_mode=test --config_data=config_wmt14 --model_dir=./outputs
@@ -72,23 +80,18 @@ python transformer_main.py --run_mode=test --config_data=config_wmt14 --model_di
 cat outputs/test.output.hyp | sed -E 's/(@@ )|(@@ ?$)//g' > temp/test.output.bpe
 
 # Evaluates BLEU
-python bleu_tool.py --reference=data/en_de/test.de --translation=temp/test.output.bpe
+python bleu_main.py --reference=data/en_de/test.de --translation=temp/test.output.bpe
 ```
 
 ### Results
 
-* On IWSLT'15, the implementation achieves around `BLEU_cased=28.44` and 
-`BLEU_uncased=29.21` (by [bleu_tool.py](./bleu_tool.py)), which are 
+* On **IWSLT'15**, the implementation achieves around `BLEU_cased=28.44` and 
+`BLEU_uncased=29.21` (by [bleu_main.py](./bleu_main.py)), which are 
 comparable to the base_single_gpu results by the [official implementation]
 (https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/models/transformer.py) (`28.12` and `28.97`, respectively, as reported [here](https://github.com/tensorflow/tensor2tensor/pull/611)).
 
-* On WMT'14, the implementation achieves around `BLEU_cased=25.02` following 
-the setting in `config_wmt14.py`
-.(setting:
- base_single_gpu, batch_size=3072). It takes more than 18 hours to finish 
- training 250k steps. 
- You can modify `max_train_epoch` in `config_wmt14.py` 
- to adjust the training time.
+* On **WMT'14**, the implementation achieves around `BLEU_cased=25.02` following 
+the setting in `config_wmt14.py`. (setting: base_single_gpu, batch_size=3072). It takes more than 18 hours to finish training 250k steps. You can modify `max_train_epoch` in `config_wmt14.py` to adjust the training time.
 
 
 ### Example training log
@@ -98,13 +101,13 @@ the setting in `config_wmt14.py`
 12:58:24,629:INFO:step: 1000, loss: 6.8003
 12:59:42,661:INFO:step: 1500, loss: 6.3096
 ```
-Using an Nvidia GTX 1080Ti, the model usually converges within 5 hours (~15 epochs) on IWSLT'15.
+Using an Nvidia GTX 1080Ti, the model usually converges within 5 hours (~15 epochs) on **IWSLT'15**.
 
 ---
 
 ## Run Your Customized Experiments
 
-Here is an hands-on tutorial on running Transformer with your own customized dataset.
+Here is a hands-on tutorial on running Transformer with your own customized dataset.
 
 ### 1. Prepare raw data
 
@@ -116,6 +119,7 @@ Create a data directory and put the raw data in the directory. To be compatible 
 ### 2. Preprocess the data
 
 To obtain the processed dataset, run
+
 ```bash
 preprocess_data.sh ${encoder} ${src} ${tgt} ${vocab_size} ${max_seq_length}
 ```
@@ -146,6 +150,7 @@ Please refer to the example configuration files `config_model.py` for model conf
 ### 4. Train the model
 
 Train the model with the following cmd:
+
 ```bash
 python transformer_main.py --run_mode=train_and_evaluate --config_model=custom_config_model --config_data=custom_config_data
 ```
@@ -156,11 +161,13 @@ Outputs such as model checkpoints are by default under `outputs/`.
 ### 5. Test the model
 
 Test with the following cmd:
+
 ```bash
 python transformer_main.py --run_mode=test --config_data=custom_config_data --model_dir=./outputs
 ```
 
 Generated samples on the test set are in `outputs/test.output.hyp`, and reference sentences are in `outputs/test.output.ref`. If you've used `bpe` or `spm` encoding in the data preprocessing step, the text in these files are in the respective encoding too. To decode, use the respective cmd:
+
 ```bash
 # BPE decoding
 cat outputs/test.output.hyp | sed -E 's/(@@ )|(@@ ?$)//g' > temp/test.output.hyp.final
@@ -170,7 +177,8 @@ cat outputs/test.output.hyp | sed -E 's/(@@ )|(@@ ?$)//g' > temp/test.output.hyp
 ```
 
 Finally, to evaluate the BLEU score against the ground truth on the test set:
+
 ```bash
-python bleu_tool.py --reference=you_reference_file --translation=temp/test.output.hyp.final
+python bleu_main.py --reference=you_reference_file --translation=temp/test.output.hyp.final
 ```
-E.g., in the `iwslt15_en_vi` example, with `--reference=data/en_vi/test.vi`
+E.g., in the `iwslt15_en_vi` example, with `--reference=data/en_vi/test.vi`.

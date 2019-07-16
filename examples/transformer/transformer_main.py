@@ -27,7 +27,6 @@ import tqdm
 import texar as tx
 from texar.data import Vocab
 
-from bleu_tool import bleu_wrapper
 from model import Transformer
 import utils.data_utils as data_utils
 import utils.utils as utils
@@ -144,7 +143,6 @@ def main():
             # For 'eval' mode, the BLEU is based on token ids (rather than
             # text tokens) and serves only as a surrogate metric to monitor
             # the training process
-            # TODO: Use texar.evals.bleu
             fname = os.path.join(args.model_dir, "tmp.eval")
             hwords, rwords = [], []
             for hyp, ref in zip(hypotheses, references):
@@ -156,7 +154,8 @@ def main():
                 hwords, rwords, fname, mode="s",
                 src_fname_suffix="hyp", tgt_fname_suffix="ref",
             )
-            eval_bleu = bleu_wrapper(ref_fn, hyp_fn, case_sensitive=True)
+            eval_bleu = tx.evals.bleu_wrapper(ref_fn, hyp_fn,
+                                              case_sensitive=True)
             logger.info("epoch: %d, eval_bleu %.4f", epoch, eval_bleu)
             print_fn(f"epoch: {epoch:d}, eval_bleu {eval_bleu:.4f}")
 
