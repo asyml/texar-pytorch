@@ -11,7 +11,6 @@ BLEU
     Vaswani
     al
     de
-    Tokenize
 
 :hidden:`sentence_bleu`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
