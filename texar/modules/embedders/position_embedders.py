@@ -193,6 +193,13 @@ class PositionEmbedder(EmbedderBase):
         """
         return self._position_size
 
+    @property
+    def output_size(self) -> int:
+        if isinstance(self._dim, (list, tuple)):
+            return self._dim[-1]
+        else:
+            return self._dim
+
 
 class SinusoidsPositionEmbedder(EmbedderBase):
     r"""Sinusoid position embedder that maps position indexes into embeddings
@@ -342,3 +349,11 @@ class SinusoidsPositionEmbedder(EmbedderBase):
             outputs = mask_sequences(outputs, sequence_length)
 
         return outputs
+
+    @property
+    def output_size(self) -> int:
+        if isinstance(self._dim, (list, tuple)):
+            dim = self._dim[-1]
+        else:
+            dim = self._dim
+        return dim

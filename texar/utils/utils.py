@@ -27,6 +27,8 @@ from typing import (
 import funcsigs
 import numpy as np
 import torch
+import torch.nn as nn
+from torch.nn.modules.conv import _ConvNd
 
 from texar.hyperparams import HParams
 from texar.utils.dtypes import _maybe_list_to_array
@@ -73,6 +75,14 @@ Kwargs = Dict[str, Any]
 AnyDict = MutableMapping[str, Any]
 ParamDict = Union[HParams, AnyDict]
 
+Type_lambda_map = {
+    nn.Linear: lambda x: x.out_features,
+    nn.Bilinear: lambda x: x.out_features,
+    _ConvNd: lambda x: x.out_channels * len(x.kernel_size),
+    nn.Embedding: lambda x: x.embedding_dim,
+    nn.EmbeddingBag: lambda x: x.embedding_dim,
+    nn.RNNCellBase: lambda x: x.hidden_size,
+}
 
 # NestedCollection = Union[T, Collection['NestedCollection']]
 
@@ -609,6 +619,26 @@ def get_instance_kwargs(kwargs: Kwargs, hparams: ParamDict) -> Kwargs:
     return kwargs_
 
 
+def get_output_size(instance_: nn.Module) -> Optional[int]:
+    r"""Return the final dimension of output size from :attr:`instance_`.
+
+    If type of :attr:`instance_` is among the common types, the final
+    dimension of output size will be computed.
+
+    Args:
+        instance_: A :class:`~torch.nn.Module` instance from
+            which to compute output size.
+
+    Returns:
+        int (optional): The final dimension of the output size.
+    """
+
+    for t, l in Type_lambda_map.items():
+        if isinstance(instance_, t):
+            return l(instance_)
+    return None
+
+
 def dict_patch(tgt_dict: AnyDict, src_dict: AnyDict) -> AnyDict:
     r"""Recursively patch :attr:`tgt_dict` by adding items from :attr:`src_dict`
     that do not exist in :attr:`tgt_dict`.
@@ -620,7 +650,7 @@ def dict_patch(tgt_dict: AnyDict, src_dict: AnyDict) -> AnyDict:
         tgt_dict (dict): Target dictionary to patch.
         src_dict (dict): Source dictionary.
 
-    Return:
+    Returns:
         dict: The new :attr:`tgt_dict` that is patched.
     """
     if src_dict is None:

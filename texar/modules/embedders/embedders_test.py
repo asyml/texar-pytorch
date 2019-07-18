@@ -41,7 +41,9 @@ class EmbedderTest(unittest.TestCase):
             hparams_dim = (hparams["dim"],)
 
         self.assertEqual(outputs.size(), (64, 16) + emb_dim)
+        self.assertEqual(outputs.size(-1), embedder.output_size)
         self.assertEqual(outputs_soft.size(), (64, 16) + emb_dim)
+        self.assertEqual(outputs_soft.size(-1), embedder.output_size)
         self.assertEqual(emb_dim, hparams_dim)
         self.assertEqual(embedder.vocab_size, 100)
         self.assertEqual(outputs.size(), (64, 16) + emb_dim)
@@ -67,6 +69,7 @@ class EmbedderTest(unittest.TestCase):
             hparams_dim = (hparams["dim"],)
 
         self.assertEqual(outputs.size(), (64, 16) + emb_dim)
+        self.assertEqual(outputs.size(-1), embedder.output_size)
         self.assertEqual(emb_dim, hparams_dim)
         self.assertEqual(embedder.position_size, 100)
         seq_length = torch.empty(64).uniform_(pos_size).long()
@@ -82,6 +85,7 @@ class EmbedderTest(unittest.TestCase):
         inputs = torch.randint(position_size - 1, input_size)
         outputs = embedder(inputs)
         self.assertEqual(outputs.size(), input_size + (hparams['dim'],))
+        self.assertEqual(outputs.size(-1), embedder.output_size)
 
         embedder_no_cache = SinusoidsPositionEmbedder(
             None, hparams={**hparams, 'cache_embeddings': False})

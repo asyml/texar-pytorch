@@ -11,15 +11,15 @@ from texar.modules.encoders.conv_encoders import Conv1DEncoder
 
 
 class Conv1DEncoderTest(unittest.TestCase):
-    """Tests :class:`~texar.modules.Conv1DEncoder` class.
+    r"""Tests :class:`~texar.modules.Conv1DEncoder` class.
     """
 
     def test_encode(self):
-        """Tests encode.
+        r"""Tests encode.
         """
         inputs_1 = torch.ones([128, 32, 300])
-        encoder_1 = Conv1DEncoder(in_channels=inputs_1.shape[1],
-                                  in_features=inputs_1.shape[2])
+        encoder_1 = Conv1DEncoder(in_channels=inputs_1.size(1),
+                                  in_features=inputs_1.size(2))
         self.assertEqual(len(encoder_1.layers), 4)
         self.assertTrue(isinstance(encoder_1.layer_by_name("MergeLayer"),
                                    tx.core.MergeLayer))
@@ -27,7 +27,8 @@ class Conv1DEncoderTest(unittest.TestCase):
             self.assertTrue(isinstance(layer, nn.Sequential))
 
         outputs_1 = encoder_1(inputs_1)
-        self.assertEqual(outputs_1.shape, torch.Size([128, 256]))
+        self.assertEqual(outputs_1.size(), torch.Size([128, 256]))
+        self.assertEqual(outputs_1.size(-1), encoder_1.output_size)
 
         inputs_2 = torch.ones([128, 64, 300])
         hparams = {
@@ -49,8 +50,8 @@ class Conv1DEncoderTest(unittest.TestCase):
             "dropout_conv": [0, 1, 2],
             "dropout_dense": 2
         }
-        network_2 = Conv1DEncoder(in_channels=inputs_2.shape[1],
-                                  in_features=inputs_2.shape[2],
+        network_2 = Conv1DEncoder(in_channels=inputs_2.size(1),
+                                  in_features=inputs_2.size(2),
                                   hparams=hparams)
         # dropout-merge-dropout-conv-avgpool-dropout-flatten-
         # (Sequential(Linear,ReLU))-(Sequential(Linear,ReLU))-dropout-linear
@@ -61,7 +62,8 @@ class Conv1DEncoderTest(unittest.TestCase):
             self.assertTrue(isinstance(layer, nn.Sequential))
 
         outputs_2 = network_2(inputs_2)
-        self.assertEqual(outputs_2.shape, torch.Size([128, 10]))
+        self.assertEqual(outputs_2.size(), torch.Size([128, 10]))
+        self.assertEqual(outputs_2.size(-1), network_2.output_size)
 
 
 if __name__ == "__main__":
