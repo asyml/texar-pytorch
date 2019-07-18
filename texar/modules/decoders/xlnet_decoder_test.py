@@ -15,21 +15,18 @@ class XLNetDecoderTest(unittest.TestCase):
     def test_hparams(self):
         r"""Tests the priority of the decoer arch parameter.
         """
-        inputs = torch.zeros(32, 16, dtype=torch.int64)
+        inputs = torch.zeros(1, 1, dtype=torch.int64)
 
         # case 1: set "pretrained_mode_name" by constructor argument
         hparams = {
-            "pretrained_model_name": None,
+            "pretrained_model_name": "xlnet-large-cased",
         }
-        decoder = XLNetDecoder(pretrained_model_name="xlnet-large-cased",
+        decoder = XLNetDecoder(pretrained_model_name="xlnet-base-cased",
                                hparams=hparams)
 
-        import pdb
-        pdb.set_trace()
-
         _, _ = decoder(start_tokens=inputs,
-                       end_token=10)
-        self.assertEqual(decoder.hparams.num_layers, 24)
+                       end_token=1)
+        self.assertEqual(decoder.hparams.num_layers, 12)
 
 
 if __name__ == "__main__":

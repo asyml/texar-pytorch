@@ -15,7 +15,7 @@
 XLNet Classifiers.
 """
 
-from typing import Optional, Dict, Any, List, Iterable, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import itertools
 
@@ -41,7 +41,7 @@ class XLNetClassifier(ClassifierBase):
     Args:
         pretrained_model_name (optional): a str with the name
             of a pre-trained model to load selected in the list of:
-            `xlnet-large-cased`.
+            `xlnet-base-based`, `xlnet-large-cased`.
             If `None`, will use the model name in :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
@@ -152,20 +152,20 @@ class XLNetClassifier(ClassifierBase):
                 Name of the classifier.
         """
         return {
-            'pretrained_model_name': 'xlnet-large-cased',
+            'pretrained_model_name': 'xlnet-base-cased',
             'untie_r': True,
-            'num_layers': 24,
+            'num_layers': 12,
             'mem_len': 0,
             'reuse_len': 0,
             # layer
-            'num_heads': 16,
-            'hidden_dim': 1024,
+            'num_heads': 12,
+            'hidden_dim': 768,
             'head_dim': 64,
             'dropout': 0.1,
             'attention_dropout': 0.1,
             'use_segments': True,
             # ffn
-            'ffn_inner_dim': 4096,
+            'ffn_inner_dim': 3072,
             'activation': 'gelu',
             # embedding
             'vocab_size': 32000,

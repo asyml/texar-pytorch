@@ -71,7 +71,7 @@ class XLNetModelUtilsTest(unittest.TestCase):
                           seq_len=seq_len,
                           total_len=total_len)
         self.assertEqual(pos_embed.shape,
-                         torch.Size([40, 16, model._hparams.hidden_dim]))
+                         torch.Size([40, 16, model._hparams.dim]))
 
         # Case 2
         model = RelativePositionalEncoding()
@@ -82,7 +82,7 @@ class XLNetModelUtilsTest(unittest.TestCase):
         # TODO: Please make sure the implementation is correct. The shape here
         #  is [33, 16, 768] instead of [32, 16, 768].
         self.assertEqual(pos_embed.shape,
-                         torch.Size([33, 16, model._hparams.hidden_dim]))
+                         torch.Size([33, 16, model._hparams.dim]))
 
 
 if __name__ == "__main__":

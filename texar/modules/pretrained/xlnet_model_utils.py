@@ -96,12 +96,12 @@ class RelativePositionalEncoding(ModuleBase):
 
     def __init__(self, hparams=None):
         super().__init__(hparams)
-        self.sinusoid_embed = PositionalEmbedding(self._hparams.hidden_dim)
+        self.sinusoid_embed = PositionalEmbedding(self._hparams.dim)
 
     @staticmethod
     def default_hparams():
         return {
-            "hidden_dim": 768,
+            "dim": 768,
             "max_seq_len": 512,
         }
 

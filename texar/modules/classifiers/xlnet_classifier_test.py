@@ -23,7 +23,7 @@ class XLNetClassifierTest(unittest.TestCase):
         # case 1
         classifier = XLNetClassifier()
         _, _ = classifier(inputs)
-        self.assertEqual(len(classifier.trainable_variables), 362 + 4)
+        self.assertEqual(len(classifier.trainable_variables), 182 + 4)
 
         # case 2
         hparams = {
@@ -31,7 +31,7 @@ class XLNetClassifierTest(unittest.TestCase):
         }
         classifier = XLNetClassifier(hparams=hparams)
         _, _ = classifier(inputs)
-        self.assertEqual(len(classifier.trainable_variables), 362 + 2)
+        self.assertEqual(len(classifier.trainable_variables), 182 + 2)
 
         # case 3
         hparams = {
@@ -39,7 +39,7 @@ class XLNetClassifierTest(unittest.TestCase):
         }
         classifier = XLNetClassifier(hparams=hparams)
         _, _ = classifier(inputs)
-        self.assertEqual(len(classifier.trainable_variables), 362 + 4)
+        self.assertEqual(len(classifier.trainable_variables), 182 + 4)
 
         # case 4
         hparams = {
@@ -47,14 +47,14 @@ class XLNetClassifierTest(unittest.TestCase):
         }
         classifier = XLNetClassifier(hparams=hparams)
         _, _ = classifier(inputs)
-        self.assertEqual(len(classifier.trainable_variables), 362 + 4)
+        self.assertEqual(len(classifier.trainable_variables), 182 + 4)
 
     def test_classification(self):
         r"""Tests classification.
         """
         max_time = 8
         batch_size = 16
-        inputs = torch.randint(30521, (max_time, batch_size), dtype=torch.int64)
+        inputs = torch.randint(32000, (max_time, batch_size), dtype=torch.int64)
 
         # case 1
         classifier = XLNetClassifier()
@@ -91,7 +91,7 @@ class XLNetClassifierTest(unittest.TestCase):
         """
         max_time = 8
         batch_size = 16
-        inputs = torch.randint(30521, (max_time, batch_size), dtype=torch.int64)
+        inputs = torch.randint(32000, (max_time, batch_size), dtype=torch.int64)
 
         # case 1
         hparams = {

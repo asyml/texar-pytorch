@@ -21,12 +21,12 @@ class XLNetEncoderTest(unittest.TestCase):
 
         # case 1: set "pretrained_mode_name" by constructor argument
         hparams = {
-            "pretrained_model_name": None,
+            "pretrained_model_name": "xlnet-large-cased",
         }
-        encoder = XLNetEncoder(pretrained_model_name="xlnet-large-cased",
+        encoder = XLNetEncoder(pretrained_model_name="xlnet-base-cased",
                                hparams=hparams)
         _, _ = encoder(inputs)
-        self.assertEqual(encoder.hparams.num_layers, 24)
+        self.assertEqual(encoder.hparams.num_layers, 12)
 
         # case 2: set "pretrained_mode_name" by hparams
         hparams = {
@@ -49,7 +49,7 @@ class XLNetEncoderTest(unittest.TestCase):
         # case 4: using default hparams
         encoder = XLNetEncoder()
         _, _ = encoder(inputs)
-        self.assertEqual(encoder.hparams.num_layers, 24)
+        self.assertEqual(encoder.hparams.num_layers, 12)
 
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
@@ -57,7 +57,12 @@ class XLNetEncoderTest(unittest.TestCase):
         """
         inputs = torch.zeros(32, 16, dtype=torch.int64)
 
-        # Case 1: xlnet large
+        # case 1: xlnet base
+        encoder = XLNetEncoder()
+        _, _ = encoder(inputs)
+        self.assertEqual(len(encoder.trainable_variables), 182)
+
+        # Case 2: xlnet large
         hparams = {
             "pretrained_model_name": "xlnet-large-cased"
         }
@@ -65,7 +70,7 @@ class XLNetEncoderTest(unittest.TestCase):
         _, _ = encoder(inputs)
         self.assertEqual(len(encoder.trainable_variables), 362)
 
-        # case 2: self-designed bert
+        # case 3: self-designed bert
         hparams = {
             "num_layers": 6,
             "pretrained_model_name": None
@@ -77,12 +82,12 @@ class XLNetEncoderTest(unittest.TestCase):
     def test_encode(self):
         r"""Tests encoding.
         """
-        # case 1: xlnet large
+        # case 1: xlnet base
         encoder = XLNetEncoder()
 
         max_time = 8
         batch_size = 16
-        inputs = torch.randint(30521, (max_time, batch_size), dtype=torch.int64)
+        inputs = torch.randint(32000, (max_time, batch_size), dtype=torch.int64)
         outputs, new_memory = encoder(inputs)
 
         self.assertEqual(outputs.shape, torch.Size([max_time,
@@ -92,7 +97,7 @@ class XLNetEncoderTest(unittest.TestCase):
 
         # case 2: self-designed xlnet
         hparams = {
-            'pretrained_model_name': 'xlnet-large-cased',
+            'pretrained_model_name': None,
             'untie_r': True,
             'num_layers': 6,
             'mem_len': 0,
@@ -114,7 +119,7 @@ class XLNetEncoderTest(unittest.TestCase):
 
         max_time = 8
         batch_size = 16
-        inputs = torch.randint(30521, (max_time, batch_size), dtype=torch.int64)
+        inputs = torch.randint(32000, (max_time, batch_size), dtype=torch.int64)
         outputs, new_memory = encoder(inputs)
 
         self.assertEqual(outputs.shape, torch.Size([max_time,

@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import NamedTuple, List, Optional, Dict, Tuple, Union, Type, Any
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from texar.core import layers
-from texar.hyperparams import HParams
 from texar.modules.decoders import DecoderBase, Helper, SampleEmbeddingHelper
-from texar.modules.pretrained import (xlnet_utils, XLNetBase, PositionWiseFF,
-                                      RelativePositionalEncoding,
-                                      RelativeMultiheadAttention)
-from texar.utils import dict_fetch, get_instance
+from texar.modules.encoders import XLNetEncoder
+from texar.modules.pretrained import xlnet_utils
+from texar.utils import get_instance
 
 __all__ = [
     'XLNetDecoderOutput',
@@ -47,7 +45,7 @@ Output = XLNetDecoderOutput
 State = List[torch.Tensor]
 
 
-class XLNetDecoder(XLNetBase, DecoderBase[Optional[State], Output]):
+class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
     r"""Raw XLNet module for decoding sequences.
 
     This module supports the architecture first proposed
@@ -74,60 +72,21 @@ class XLNetDecoder(XLNetBase, DecoderBase[Optional[State], Output]):
 
         super().__init__(pretrained_model_name=pretrained_model_name,
                          cache_dir=cache_dir,
-                         hparams=hparams)
-
-        if self.pretrained_model_dir:
-            self._hparams = HParams(self.pretrained_model_hparams,
-                                    self._hparams.todict())
-
-        num_layers = self._hparams.num_layers
-        num_heads = self._hparams.num_heads
-        head_dim = self._hparams.head_dim
-
-        self.word_embed = nn.Embedding(
-            self._hparams.vocab_size, self._hparams.hidden_dim)
-        self.pos_embed = RelativePositionalEncoding(
-            hparams={
-                "dim": self._hparams.hidden_dim,
-                "max_seq_len": self._hparams.max_seq_len,
-            })
-        self.dropout = nn.Dropout(self._hparams.dropout)
-
-        if not self._hparams.untie_r:
-            self.r_r_bias = nn.Parameter(torch.Tensor(num_heads, head_dim))
-            self.r_w_bias = nn.Parameter(torch.Tensor(num_heads, head_dim))
-            self.r_s_bias = (nn.Parameter(torch.Tensor(num_heads, head_dim))
-                             if self._hparams.use_segments else None)
-        else:
-            self.r_r_bias = None
-            self.r_w_bias = None
-            self.r_s_bias = None
-
-        self.attn_layers = nn.ModuleList()
-        self.ff_layers = nn.ModuleList()
-        rel_attn_hparams = dict_fetch(
-            self._hparams, RelativeMultiheadAttention.default_hparams())
-        ff_hparams = dict_fetch(
-            self._hparams, PositionWiseFF.default_hparams())
-        for _ in range(num_layers):
-            self.attn_layers.append(RelativeMultiheadAttention(
-                self.r_r_bias, self.r_w_bias, self.r_s_bias,
-                hparams=rel_attn_hparams))
-            self.ff_layers.append(PositionWiseFF(hparams=ff_hparams))
-
-        self.mask_emb = nn.Parameter(
-            torch.Tensor(1, 1, self._hparams.hidden_dim))
+                         hparams=hparams,
+                         init=False)
 
         self.lm_bias = nn.Parameter(torch.zeros(self._hparams.vocab_size))
 
         if self.pretrained_model_dir:
-            xlnet_utils.init_xlnet_checkpoint(self, self.pretrained_model_dir)
+            xlnet_utils.init_xlnet_checkpoint(self,
+                                              self.pretrained_model_dir)
         elif self._hparams.initializer:
             initialize = layers.get_initializer(self._hparams.initializer)
             assert initialize is not None
             # Do not re-initialize LayerNorm modules.
             for name, param in self.named_parameters():
-                if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:
+                if name.split('.')[-1] == 'weight' \
+                        and 'layer_norm' not in name:
                     initialize(param)
         else:
             self.reset_parameters()
@@ -161,18 +120,18 @@ class XLNetDecoder(XLNetBase, DecoderBase[Optional[State], Output]):
         .. code-block:: python
 
             {
-                "pretrained_model_name": "xlnet-large-cased",
+                "pretrained_model_name": "xlnet-base-cased",
                 "untie_r": True,
-                "num_layers": 24,
+                "num_layers": 12,
                 "mem_len": 0,
                 "reuse_len": 0,
-                "num_heads": 16,
-                "hidden_dim": 1024,
+                "num_heads": 12,
+                "hidden_dim": 768,
                 "head_dim": 64,
                 "dropout": 0.1,
                 "attention_dropout": 0.1,
                 "use_segments": True,
-                "ffn_inner_dim": 4096,
+                "ffn_inner_dim": 3072,
                 "activation": 'gelu',
                 "vocab_size": 32000,
                 "max_seq_len": 512,
@@ -182,7 +141,7 @@ class XLNetDecoder(XLNetBase, DecoderBase[Optional[State], Output]):
 
         Here:
 
-        The default parameters are values for cased XLNet-Large model.
+        The default parameters are values for cased XLNet-Base model.
 
         `pretrained_model_name`: str or None
                     The name of the pre-trained XLNet model. If None, the model
@@ -240,20 +199,20 @@ class XLNetDecoder(XLNetBase, DecoderBase[Optional[State], Output]):
             Name of the module.
         """
         return {
-            'pretrained_model_name': 'xlnet-large-cased',
+            'pretrained_model_name': 'xlnet-base-cased',
             'untie_r': True,
-            'num_layers': 24,
+            'num_layers': 12,
             'mem_len': 0,
             'reuse_len': 0,
             # layer
-            'num_heads': 16,
-            'hidden_dim': 1024,
+            'num_heads': 12,
+            'hidden_dim': 768,
             'head_dim': 64,
             'dropout': 0.1,
             'attention_dropout': 0.1,
             'use_segments': True,
             # ffn
-            'ffn_inner_dim': 4096,
+            'ffn_inner_dim': 3072,
             'activation': 'gelu',
             # embedding
             'vocab_size': 32000,

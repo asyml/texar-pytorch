@@ -42,8 +42,8 @@ class BertClassifierTest(unittest.TestCase):
         _, _ = classifier(inputs)
         self.assertEqual(len(classifier.trainable_variables), 199 + 2)
 
-    def test_encode(self):
-        r"""Tests encoding.
+    def test_classification(self):
+        r"""Tests classification.
         """
         max_time = 8
         batch_size = 16

@@ -15,7 +15,7 @@
 XLNet encoders.
 """
 
-from typing import Optional, Dict, Any, NamedTuple, List, Tuple
+from typing import Any, Dict, NamedTuple, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -43,7 +43,7 @@ class XLNetEncoder(XLNetBase):
     Args:
         pretrained_model_name (optional): a str with the name
             of a pre-trained model to load selected in the list of:
-            `xlnet-large-cased`.
+            `xlnet-base-cased`, `xlnet-large-cased`.
             If `None`, will use the model name in :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
@@ -52,12 +52,14 @@ class XLNetEncoder(XLNetBase):
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
+        init (optional): whether to initialize `XLNetEncoder`.
     """
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
-                 hparams=None):
+                 hparams=None,
+                 init=True):
 
         super().__init__(pretrained_model_name=pretrained_model_name,
                          cache_dir=cache_dir,
@@ -71,8 +73,8 @@ class XLNetEncoder(XLNetBase):
         num_heads = self._hparams.num_heads
         head_dim = self._hparams.head_dim
 
-        self.word_embed = nn.Embedding(
-            self._hparams.vocab_size, self._hparams.hidden_dim)
+        self.word_embed = nn.Embedding(self._hparams.vocab_size,
+                                       self._hparams.hidden_dim)
         self.pos_embed = RelativePositionalEncoding(
             hparams={
                 "dim": self._hparams.hidden_dim,
@@ -105,17 +107,20 @@ class XLNetEncoder(XLNetBase):
         self.mask_emb = nn.Parameter(
             torch.Tensor(1, 1, self._hparams.hidden_dim))
 
-        if self.pretrained_model_dir:
-            xlnet_utils.init_xlnet_checkpoint(self, self.pretrained_model_dir)
-        elif self._hparams.initializer:
-            initialize = layers.get_initializer(self._hparams.initializer)
-            assert initialize is not None
-            # Do not re-initialize LayerNorm modules.
-            for name, param in self.named_parameters():
-                if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:
-                    initialize(param)
-        else:
-            self.reset_parameters()
+        if init:
+            if self.pretrained_model_dir:
+                xlnet_utils.init_xlnet_checkpoint(self,
+                                                  self.pretrained_model_dir)
+            elif self._hparams.initializer:
+                initialize = layers.get_initializer(self._hparams.initializer)
+                assert initialize is not None
+                # Do not re-initialize LayerNorm modules.
+                for name, param in self.named_parameters():
+                    if name.split('.')[-1] == 'weight' \
+                            and 'layer_norm' not in name:
+                        initialize(param)
+            else:
+                self.reset_parameters()
 
     def reset_parameters(self):
         if not self._hparams.untie_r:
@@ -140,18 +145,18 @@ class XLNetEncoder(XLNetBase):
         .. code-block:: python
 
             {
-                "pretrained_model_name": "xlnet-large-cased",
+                "pretrained_model_name": "xlnet-base-cased",
                 "untie_r": True,
-                "num_layers": 24,
+                "num_layers": 12,
                 "mem_len": 0,
                 "reuse_len": 0,
-                "num_heads": 16,
-                "hidden_dim": 1024,
+                "num_heads": 12,
+                "hidden_dim": 768,
                 "head_dim": 64,
                 "dropout": 0.1,
                 "attention_dropout": 0.1,
                 "use_segments": True,
-                "ffn_inner_dim": 4096,
+                "ffn_inner_dim": 3072,
                 "activation": 'gelu',
                 "vocab_size": 32000,
                 "max_seq_len": 512,
@@ -161,7 +166,7 @@ class XLNetEncoder(XLNetBase):
 
         Here:
 
-        The default parameters are values for cased XLNet-Large model.
+        The default parameters are values for cased XLNet-Base model.
 
         `pretrained_model_name`: str or None
                     The name of the pre-trained XLNet model. If None, the model
@@ -220,20 +225,20 @@ class XLNetEncoder(XLNetBase):
         """
 
         return {
-            'pretrained_model_name': 'xlnet-large-cased',
+            'pretrained_model_name': 'xlnet-base-cased',
             'untie_r': True,
-            'num_layers': 24,
+            'num_layers': 12,
             'mem_len': 0,
             'reuse_len': 0,
             # layer
-            'num_heads': 16,
-            'hidden_dim': 1024,
+            'num_heads': 12,
+            'hidden_dim': 768,
             'head_dim': 64,
             'dropout': 0.1,
             'attention_dropout': 0.1,
             'use_segments': True,
             # ffn
-            'ffn_inner_dim': 4096,
+            'ffn_inner_dim': 3072,
             'activation': 'gelu',
             # embedding
             'vocab_size': 32000,
