@@ -254,3 +254,10 @@ class WordEmbedder(EmbedderBase):
         :class:`~torch.nn.Embedding`.
         """
         return self._vocab_size
+
+    @property
+    def output_size(self) -> int:
+        if isinstance(self._dim, (list, tuple)):
+            return self._dim[-1]
+        else:
+            return self._dim

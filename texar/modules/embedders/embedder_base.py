@@ -142,3 +142,12 @@ class EmbeddingDropout(ModuleBase):
         mask += input_tensor.new_empty(noise_shape).uniform_(0, 1)
         mask = torch.floor(mask).div_(keep_rate)
         return input_tensor * mask
+
+    @property
+    def output_size(self) -> int:
+        r"""The final dimension(s) of :meth:`forward` output tensor(s).
+
+        Here final dimension is ``1``, because here output tensor size equals
+        to the input tensor size.
+        """
+        return 1

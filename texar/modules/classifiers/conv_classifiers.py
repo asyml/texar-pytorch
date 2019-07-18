@@ -241,3 +241,20 @@ class Conv1DClassifier(ClassifierBase):
         r"""A list of uniquified layer names.
         """
         return self._encoder.layer_names
+
+    @property
+    def output_size(self) -> int:
+        r"""The final dimension(s) of :meth:`forward` output tensor(s).
+
+        Here output is :attr:`logits`. The final dimension equals to ``1``
+        when output final dimension is only determined by input.
+        """
+        if self._hparams.num_classes > 1:
+            logit_dim = self._hparams.num_classes
+        elif self._hparams.num_classes == 1:
+            logit_dim = 1
+        else:
+            raise AttributeError("'Conv1DClassifier' object has"
+                                 "no attribute 'output_size'"
+                                 "if 'self._hparams.num_classes' < 1.")
+        return logit_dim

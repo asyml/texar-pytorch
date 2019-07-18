@@ -39,9 +39,10 @@ class FeedForwardNetworkTest(unittest.TestCase):
         nn = FeedForwardNetwork(hparams=hparams)
 
         self.assertEqual(len(nn.layers), len(hparams["layers"]))
-        _ = nn(torch.ones(64, 16, 32))
+        outputs = nn(torch.ones(64, 16, 32))
         self.assertEqual(len(nn.trainable_variables),
                          len(hparams["layers"]) * 2)
+        self.assertEqual(outputs.size(-1), nn.output_size)
 
 
 if __name__ == "__main__":
