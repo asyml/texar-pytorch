@@ -83,7 +83,7 @@ class Vae(nn.Module):
             vocab_size=train_data.vocab.size, hparams=config.enc_emb_hparams)
 
         self.encoder = tx.modules.UnidirectionalRNNEncoder(
-            input_size = self.encoder_w_embedder.dim
+            input_size = self.encoder_w_embedder.dim,
             hparams={
                 "rnn_cell": config.enc_cell_hparams,
             })
