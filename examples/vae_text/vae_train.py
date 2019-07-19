@@ -106,7 +106,7 @@ class Vae(nn.Module):
             # decoder
             self.decoder = tx.modules.TransformerDecoder(
                 # tie word embedding with output layer
-                output_layer=torch.transpose(decoder_w_embedder.embedding, (1, 0)),
+                output_layer=torch.transpose(self.decoder_w_embedder.embedding, (1, 0)),
                 hparams=config.trans_hparams)
         else:
             raise NotImplementedError
