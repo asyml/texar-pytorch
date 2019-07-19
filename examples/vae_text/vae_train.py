@@ -217,7 +217,7 @@ def _main(_):
     iterator = tx.data.TrainTestDataIterator(train=train_data,
                                              val=val_data,
                                              test=test_data)
-    data_batch = iterator.get_next()
+    #data_batch = iterator.get_next()
 
     opt_vars = {
         'learning_rate': config.lr_decay_hparams["init_lr"],
@@ -344,11 +344,11 @@ def _main(_):
     train_op = tx.core.get_train_op(nll, learning_rate=learning_rate,
                                     hparams=config.opt_hparams)'''
     if mode_string == 'train':
-            iterator.switch_to_train_data(sess)
-        elif mode_string == 'valid':
-            iterator.switch_to_val_data(sess)
-        elif mode_string == 'test':
-            iterator.switch_to_test_data(sess)
+        iterator.switch_to_train_data()
+    elif mode_string == 'valid':
+        iterator.switch_to_val_data()
+    elif mode_string == 'test':
+        iterator.switch_to_test_data()
     model = Vae(train_data)
     model.to(device)
     train_op = tx.core.get_train_op(params=model.parameters(),
@@ -363,13 +363,15 @@ def _main(_):
         elif mode_string == 'test':
             iterator.switch_to_test_data(sess)'''
 
+        model.train()
         step = 0
         start_time = time.time()
         num_words = num_sents = 0
         nll_ = 0.
         kl_loss_ = rc_loss_ = 0.
 
-        while True:
+        #while True:
+        for batch in iterator:
             try:
                 '''fetches = {"nll": nll,
                            "kl_loss": kl_loss,
@@ -394,7 +396,7 @@ def _main(_):
                         learning_rate: opt_vars["learning_rate"]}'''
 
                 '''fetches_ = sess.run(fetches, feed_dict=feed)'''
-                fetches_ = model(kl_weight_, opt_vars["learning_rate"], mode)
+                fetches_ = model(batch, kl_weight_, opt_vars["learning_rate"], mode)
                 fetches_["nll"].backward()
                 train_op()
 
@@ -418,7 +420,7 @@ def _main(_):
 
                 step += 1
 
-            except StopIteration::
+            except StopIteration:
                 print('\n%s: epoch %d, nll %.4f, KL %.4f, rc %.4f, ' \
                       'log_ppl %.4f, ppl %.4f\n' %
                       (mode_string, epoch, nll_ / num_sents,
