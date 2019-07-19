@@ -243,7 +243,8 @@ def _main(_):
 
     # KL term annealing rate
     anneal_r = 1.0 / (config.kl_anneal_hparams["warm_up"] * \
-        (train_data.dataset_size() / config.batch_size))
+        (train_data._dataset_size / config.batch_size))
+        #(train_data.dataset_size() / config.batch_size))
 
     '''# Model architecture
     encoder_w_embedder = tx.modules.WordEmbedder(
