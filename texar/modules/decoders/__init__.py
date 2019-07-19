@@ -21,3 +21,4 @@ from texar.modules.decoders.rnn_decoder_base import *
 from texar.modules.decoders.gpt2_decoder import *
 from texar.modules.decoders.rnn_decoders import *
 from texar.modules.decoders.transformer_decoders import *
+from texar.modules.decoders.xlnet_decoder import *

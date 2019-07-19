@@ -17,6 +17,7 @@ Base class for XLNet Modules.
 
 from typing import Optional
 
+from texar.hyperparams import HParams
 from texar.module_base import ModuleBase
 from texar.modules.pretrained import xlnet_utils
 
@@ -48,6 +49,9 @@ class XLNetBase(ModuleBase):
                  cache_dir: Optional[str] = None,
                  hparams=None):
         super().__init__(hparams)
+
+        # TODO: Fix multiple inheritance issue in XLNetDecoder
+        self._hparams = HParams(hparams, self.default_hparams())
 
         self.pretrained_model_dir: Optional[str] = None
 

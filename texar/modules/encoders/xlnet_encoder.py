@@ -15,7 +15,7 @@
 XLNet encoders.
 """
 
-from typing import Any, Dict, NamedTuple, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -81,6 +81,10 @@ class XLNetEncoder(XLNetBase):
                 "max_seq_len": self._hparams.max_seq_len,
             })
         self.dropout = nn.Dropout(self._hparams.dropout)
+
+        self.r_r_bias: Optional[nn.Parameter]
+        self.r_w_bias: Optional[nn.Parameter]
+        self.r_s_bias: Optional[nn.Parameter]
 
         if not self._hparams.untie_r:
             self.r_r_bias = nn.Parameter(torch.Tensor(num_heads, head_dim))
@@ -169,8 +173,8 @@ class XLNetEncoder(XLNetBase):
         The default parameters are values for cased XLNet-Base model.
 
         `pretrained_model_name`: str or None
-                    The name of the pre-trained XLNet model. If None, the model
-                    will be randomly initialized.
+            The name of the pre-trained XLNet model. If None, the model
+            will be randomly initialized.
 
         `untie_r`: bool
             Whether to untie the biases in attention.
@@ -275,6 +279,7 @@ class XLNetEncoder(XLNetBase):
         r"""Create causal attention mask of shape
         `(seq_len, mem_len + seq_len)`.
         """
+        assert self.r_w_bias is not None
         device = self.r_w_bias.device
         attn_mask = torch.ones(seq_len, seq_len, device=device)
         mask_u = torch.triu(attn_mask, diagonal=1)
@@ -284,70 +289,6 @@ class XLNetEncoder(XLNetBase):
             mask_l = torch.tril(attn_mask, diagonal=-1)
             ret = torch.cat([ret[:, :seq_len] + mask_l, ret[:, seq_len:]], 1)
         return ret
-
-    def __repr__(self):
-        r"""Create a compressed representation by combining identical modules in
-        `nn.ModuleList`s and `nn.ParameterList`s.
-        """
-
-        def _get_indent(s: str) -> int:
-            return len(s) - len(s.lstrip(' '))
-
-        class ModuleRepr(NamedTuple):
-            indent: int
-            repr_str: str
-            names: List[str]
-
-        def _convert_repr(module: ModuleRepr) -> List[str]:
-            prefix = (f"{' ' * module.indent}(id" +
-                      (f"s {module.names[0]}-{module.names[-1]}"
-                       if len(module.names) > 1 else f" {module.names[0]}") +
-                      "): ")
-            lines = module.repr_str.split('\n')
-            lines[0] = prefix + lines[0]
-            return lines
-
-        repr_str = super().__repr__().split('\n')
-        # module description indexed by indent
-        nested = True
-        while nested:
-            nested = False
-            output_str = []
-            prev_module: Optional[ModuleRepr] = None
-            for idx, line in enumerate(repr_str):
-                line = repr_str[idx]
-                indent = _get_indent(line)
-                if prev_module is not None and prev_module.indent > indent:
-                    output_str.extend(_convert_repr(prev_module))
-                    prev_module = None
-                name = line[(indent + 1):line.find(')')]
-                if line[indent] != '(' or not name.isnumeric():
-                    if prev_module is None:
-                        output_str.append(line)
-                    continue
-
-                end_idx = next(
-                    end_idx for end_idx in range(idx + 1, len(repr_str))
-                    if _get_indent(repr_str[end_idx]) <= indent)
-                end_indent = _get_indent(repr_str[end_idx])
-                if end_indent < indent or repr_str[end_idx][end_indent] != ')':
-                    # not a module; a parameter in ParameterList
-                    end_idx -= 1
-                    indent -= 2  # parameters are somehow indented further
-                module_repr = '\n'.join(
-                    [line[(indent + len(name) + 4):]] +  # "(): "
-                    repr_str[(idx + 1):(end_idx + 1)])
-                if prev_module is None:
-                    prev_module = ModuleRepr(indent, module_repr, [name])
-                elif prev_module.indent < indent:
-                    nested = True
-                elif prev_module.repr_str == module_repr:
-                    prev_module.names.append(name)
-                else:
-                    output_str.extend(_convert_repr(prev_module))
-                    prev_module = ModuleRepr(indent, module_repr, [name])
-            repr_str = output_str
-        return '\n'.join(repr_str)
 
     def forward(self,  # type: ignore
                 token_ids: torch.LongTensor,
@@ -359,7 +300,7 @@ class XLNetEncoder(XLNetBase):
         Please refer to :meth:`_forward` for the full list of arguments.
 
         Args:
-            token_ids: Shape `(seq_len, batch_size)`.
+            token_ids: Shape `[batch_size, seq_len]`.
             **kwargs: Remaining arguments to pass to :meth:`_forward`.
         """
         return self._forward(self.word_embed(token_ids), *args, **kwargs)
@@ -381,18 +322,18 @@ class XLNetEncoder(XLNetBase):
         r"""Compute XLNet representations for the input.
 
         Args:
-            word_embed: Shape `(seq_len, batch_size, word_embed_dim)`.
-            segment_ids: Shape `(seq_len, batch_size)`.
-            input_mask: Float tensor of shape `(seq_len, batch_size)`. Note that
+            word_embed: Shape `[batch_size, seq_len, word_embed_dim]`.
+            segment_ids: Shape `[batch_size, seq_len]`.
+            input_mask: Float tensor of shape `[batch_size, seq_len]`. Note that
                 positions with value 1 are masked out.
             memory: Memory from previous batches. A list of length `num_layers`,
-                each a tensor of shape `(mem_len, batch_size, hidden_dim)`.
+                each tensor of shape `[batch_size, mem_len, hidden_dim]`.
             permute_mask: The permutation mask. Float tensor of shape
-                `(seq_len, seq_len, batch_size)`.
+                `[batch_size, seq_len, seq_len]`.
                 A value of 0 for ``permute_mask[i, j, k]`` indicates that
                 position `i` attends to position `j` in batch `k`.
             target_mapping: The target token mapping. Float tensor of shape
-                `(num_targets, seq_len, batch_size)`.
+                `[batch_size, num_targets, seq_len]`.
                 A value of 1 for ``target_mapping[i, j, k]`` indicates that
                 the `i`-th target token (in order of permutation) in batch `k`
                 is the token at position `j`.
@@ -413,13 +354,32 @@ class XLNetEncoder(XLNetBase):
         :returns: A tuple of `(output, new_memory)`:
 
             - **`output`**: The final layer output representations. Shape
-              `(seq_len, batch_size, hidden_dim)`.
+              `[batch_size, seq_len, hidden_dim]`.
             - **`new_memory`**: The memory of the current batch.
               If `cache_len` is 0, then `new_memory` is `None`. Otherwise, it is
-              a list of length `num_layers`, each a tensor of shape
-              `(cache_len, batch_size, hidden_dim)`.
+              a list of length `num_layers`, each tensor of shape
+              `[batch_size, cache_len, hidden_dim]`.
               This can be used as the :attr:`memory` argument in the next batch.
         """
+        # word_embed: [seq_len, batch_size, word_embed_dim]
+        word_embed = word_embed.permute(1, 0, 2)
+        # segment_ids: [seq_len, batch_size]
+        if segment_ids is not None:
+            segment_ids = segment_ids.permute(1, 0)
+        # input_mask: [seq_len, batch_size]
+        if input_mask is not None:
+            input_mask = input_mask.permute(1, 0)
+        # memory: A list of length num_layers
+        # each tensor of shape [mem_len, batch_size, hidden_dim]
+        if memory is not None:
+            memory = [m.permute(1, 0, 2) for m in memory]
+        # permute_mask: [seq_len, seq_len, batch_size]
+        if permute_mask is not None:
+            permute_mask = permute_mask.permute(1, 2, 0)
+        # target_mapping: [num_targets, seq_len, batch_size]
+        if target_mapping is not None:
+            target_mapping = target_mapping.permute(1, 2, 0)
+
         seq_len, batch_size = word_embed.size()[:2]
         mem_len = memory[0].size(0) if memory is not None else 0
         tot_len = seq_len + mem_len
@@ -506,6 +466,15 @@ class XLNetEncoder(XLNetBase):
                 states_g = self.ff_layers[idx](states_g)
 
         output = self.dropout(states_h if states_g is None else states_g)
+
+        # Now output: [seq_len, batch_size, hidden_dim]
+        # new_memory: None or A list of length num_layers,
+        # each tensor of shape [cache_len, batch_size, hidden_dim]
+        output = output.permute(1, 0, 2)
+        if new_memory is not None:
+            new_memory = [m.permute(1, 0, 2) for m in new_memory]
+
         if cache_len == 0:
             return output, None
+
         return output, new_memory

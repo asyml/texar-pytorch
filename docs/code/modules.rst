@@ -69,6 +69,11 @@ Encoders
 .. autoclass:: texar.modules.GPT2Encoder
     :members:
 
+:hidden:`XLNetEncoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.XLNetEncoder
+    :members:
+
 :hidden:`Conv1DEncoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.Conv1DEncoder
@@ -127,6 +132,16 @@ Decoders
 :hidden:`GPT2Decoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.GPT2Decoder
+    :members:
+
+:hidden:`XLNetDecoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.XLNetDecoder
+    :members:
+
+:hidden:`XLNetDecoderOutput`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.XLNetDecoderOutput
     :members:
 
 :hidden:`TransformerDecoder`
@@ -212,6 +227,11 @@ Classifiers
 .. autoclass:: texar.modules.Conv1DClassifier
     :members:
 
+:hidden:`XLNetClassifier`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.XLNetClassifier
+    :members:
+
 Networks
 ========
 
@@ -244,6 +264,24 @@ Pre-trained
 :hidden:`GPT2Base`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.GPT2Base
+    :members:
+
+:hidden:`XLNetBase`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.XLNetBase
+    :members:
+
+Regressor
+==========
+
+:hidden:`RegressorBase`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.RegressorBase
+    :members:
+
+:hidden:`XLNetRegressor`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.XLNetRegressor
     :members:
 
 Connectors

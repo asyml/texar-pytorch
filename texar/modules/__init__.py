@@ -22,3 +22,4 @@ from texar.modules.embedders import *
 from texar.modules.encoders import *
 from texar.modules.networks import *
 from texar.modules.pretrained import *
+from texar.modules.regressors import *

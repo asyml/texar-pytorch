@@ -19,8 +19,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from texar.core import layers
-from texar.modules.decoders import DecoderBase, Helper, SampleEmbeddingHelper
-from texar.modules.encoders import XLNetEncoder
+from texar.modules.decoders.decoder_base import DecoderBase
+from texar.modules.decoders.decoder_helpers import Helper, SampleEmbeddingHelper
+from texar.modules.encoders.xlnet_encoder import XLNetEncoder
 from texar.modules.pretrained import xlnet_utils
 from texar.utils import get_instance
 
@@ -54,7 +55,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
     Args:
         pretrained_model_name (optional): a str with the name
             of a pre-trained model to load selected in the list of:
-            `xlnet-large-cased`.
+            `xlnet-base-cased`, `xlnet-large-cased`.
             If `None`, will use the model name in :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
@@ -144,8 +145,8 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
         The default parameters are values for cased XLNet-Base model.
 
         `pretrained_model_name`: str or None
-                    The name of the pre-trained XLNet model. If None, the model
-                    will be randomly initialized.
+            The name of the pre-trained XLNet model. If None, the model
+            will be randomly initialized.
 
         `untie_r`: bool
             Whether to untie the biases in attention.
@@ -241,8 +242,8 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
         segment_ids = word_embed.new_zeros(
             seq_len, batch_size, dtype=torch.long)
         return_dict = {
-            "word_embed": word_embed,
-            "segment_ids": segment_ids,
+            "word_embed": word_embed.permute(1, 0, 2),
+            "segment_ids": segment_ids.permute(1, 0),
         }
 
         if not initial:
@@ -257,8 +258,8 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
                 torch.ones(seq_len, 1, batch_size),
             ], dim=1).to(device=word_embed.device)
             return_dict.update({
-                "target_mapping": target_mapping,
-                "permute_mask": permute_mask,
+                "target_mapping": target_mapping.permute(2, 0, 1),
+                "permute_mask": permute_mask.permute(2, 0, 1),
             })
 
         return return_dict
@@ -292,9 +293,10 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
                 **self._create_input(self._state_previous_inputs[-1:]))
             assert memory is not None
             # Omit memory for the dummy token.
-            memory = [mem[:-1] for mem in memory]
+            memory = [mem[:, :-1] for mem in memory]
+
         logits = F.linear(net_output, self.word_embed.weight, self.lm_bias)
-        logits = logits[-1]
+        logits = logits[:, -1]
         sample_ids = helper.sample(time=time, outputs=logits)
         (finished, next_inputs) = helper.next_inputs(
             time=time,
@@ -323,7 +325,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
         largely inspired by: https://github.com/rusiaaman/XLNet-gen.
 
         Args:
-            start_tokens: A LongTensor of shape `(batch_size, prompt_len)`,
+            start_tokens: A LongTensor of shape `[batch_size, prompt_len]`,
                 representing the tokenized initial prompt.
             memory (optional): The initial memory.
             cache_len: Length of memory (number of tokens) to cache.
@@ -341,8 +343,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
                 the specific helper type.
 
         :returns: A tuple of `(output, new_memory)`:
-
-            - **`output`**: The sampled tokens as a list of `int`s.
+            - **`output`**: The sampled tokens as a list of integers.
             - **`new_memory`**: The memory of the sampled tokens.
         """
 
@@ -358,7 +359,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
         if not recompute_memory and start_tokens.size(0) > 1:
             _, memory = self._forward(
                 memory=memory, cache_len=cache_len,
-                **self.create_input(
+                **self._create_input(
                     self._state_previous_inputs, initial=True))
         start_tokens = start_tokens[-1]
 

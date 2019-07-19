@@ -139,17 +139,11 @@ def init_xlnet_checkpoint(model: nn.Module, cache_dir: str):
         for idx in range(n_layers):
             assign(xlnet.attn_layers[idx].segment_embed, seg_embeds[idx])
 
-        if isinstance(xlnet, XLNetDecoder):
+        if hasattr(xlnet, 'mask_emb') and hasattr(xlnet, 'lm_bias'):
             assign(xlnet.mask_emb, "transformer/mask_emb/mask_emb")
             assign(xlnet.lm_bias, "lm_loss/bias")
 
-    from texar.modules.encoders.xlnet_encoder import XLNetEncoder
-    from texar.modules.decoders.xlnet_decoder import XLNetDecoder
-
-    if isinstance(model, XLNetEncoder) or isinstance(model, XLNetDecoder):
-        load_xlnet_model(model)
-    else:
-        raise ValueError("The specified model must be an XLNet model.")
+    load_xlnet_model(model)
 
     if len(from_params) > 0:
         print(f"WARNING: Certain weights from checkpoint are not loaded: "

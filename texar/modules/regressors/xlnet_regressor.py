@@ -76,11 +76,11 @@ class XLNetRegressor(RegressorBase):
         self.dropout = nn.Dropout(self._hparams.dropout)
 
         if self._hparams.summary_type == 'last':
-            self.summary_op = lambda output: output[-1]
+            self.summary_op = lambda output: output[:, -1]
         elif self._hparams.summary_type == 'first':
-            self.summary_op = lambda output: output[0]
+            self.summary_op = lambda output: output[:, 0]
         elif self._hparams.summary_type == 'mean':
-            self.summary_op = lambda output: torch.mean(output, dim=0)
+            self.summary_op = lambda output: torch.mean(output, dim=1)
         elif self._hparams.summary_type == 'attn':
             raise NotImplementedError
         else:
@@ -221,24 +221,24 @@ class XLNetRegressor(RegressorBase):
         r"""Feeds the inputs through the network and makes regression.
 
         Args:
-            token_ids: Shape `(seq_len, batch_size)`.
-            segment_ids: Shape `(seq_len, batch_size)`.
-            input_mask: Float tensor of shape `(seq_len, batch_size)`. Note that
+            token_ids: Shape `[batch_size, seq_len]`.
+            segment_ids: Shape `[batch_size, seq_len]`.
+            input_mask: Float tensor of shape `[batch_size, seq_len]`. Note that
                 positions with value 1 are masked out.
 
         Returns:
-            preds: The predictions. Shape `(batch_size)`.
+            predictions: Shape `[batch_size]`.
         """
-        # output: (seq_len, batch_size, hidden_dim)
+        # output: [batch_size, seq_len, hidden_dim]
         output, _ = self._encoder(token_ids=token_ids,
                                   segment_ids=segment_ids,
                                   input_mask=input_mask)
         summary = self.summary_op(output)
         if self._hparams.use_projection:
             summary = torch.tanh(self.projection(summary))
-        # summary: (batch_size, hidden_dim)
+        # summary: [batch_size, hidden_dim]
         summary = self.dropout(summary)
-        # preds: (batch_size)
+        # preds: [batch_size]
         preds = self.hidden_to_logits(summary).squeeze(-1)
 
         return preds

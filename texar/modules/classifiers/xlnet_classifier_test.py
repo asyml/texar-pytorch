@@ -54,7 +54,7 @@ class XLNetClassifierTest(unittest.TestCase):
         """
         max_time = 8
         batch_size = 16
-        inputs = torch.randint(32000, (max_time, batch_size), dtype=torch.int64)
+        inputs = torch.randint(32000, (batch_size, max_time), dtype=torch.int64)
 
         # case 1
         classifier = XLNetClassifier()
@@ -91,7 +91,7 @@ class XLNetClassifierTest(unittest.TestCase):
         """
         max_time = 8
         batch_size = 16
-        inputs = torch.randint(32000, (max_time, batch_size), dtype=torch.int64)
+        inputs = torch.randint(32000, (batch_size, max_time), dtype=torch.int64)
 
         # case 1
         hparams = {
