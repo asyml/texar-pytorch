@@ -344,12 +344,7 @@ def _main(_):
                                    name='learning_rate')
     train_op = tx.core.get_train_op(nll, learning_rate=learning_rate,
                                     hparams=config.opt_hparams)'''
-    if mode_string == 'train':
-        iterator.switch_to_train_data()
-    elif mode_string == 'valid':
-        iterator.switch_to_val_data()
-    elif mode_string == 'test':
-        iterator.switch_to_test_data()
+    
     model = Vae(train_data)
     model.to(device)
     train_op = tx.core.get_train_op(params=model.parameters(),
@@ -357,12 +352,12 @@ def _main(_):
 
     '''def _run_epoch(sess, epoch, mode_string, display=10):'''
     def _run_epoch(epoch, mode_string, display=10):
-        '''if mode_string == 'train':
+        if mode_string == 'train':
             iterator.switch_to_train_data(sess)
         elif mode_string == 'valid':
             iterator.switch_to_val_data(sess)
         elif mode_string == 'test':
-            iterator.switch_to_test_data(sess)'''
+            iterator.switch_to_test_data(sess)
 
         model.train()
         step = 0
