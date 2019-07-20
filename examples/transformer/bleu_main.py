@@ -29,7 +29,7 @@ Usage: python bleu_main.py --translation=my-wmt13.de --reference=wmt13_deen.de
 
 from argparse import ArgumentParser
 
-from texar.evals.bleu_tool import bleu_wrapper
+from texar.evals.bleu_transformer import bleu_wrapper
 
 
 def main():
