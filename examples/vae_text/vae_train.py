@@ -106,7 +106,7 @@ class Vae(nn.Module):
             # decoder
             self.decoder = tx.modules.TransformerDecoder(
                 # tie word embedding with output layer
-                output_layer=torch.transpose(self.decoder_w_embedder.embedding, (1, 0)),
+                output_layer=self.decoder_w_embedder.embedding,
                 hparams=config.trans_hparams)
         else:
             raise NotImplementedError
@@ -114,20 +114,20 @@ class Vae(nn.Module):
         self.decoder_initial_state_size = decoder_initial_state_size
 
         self.connector_mlp = tx.modules.MLPTransformConnector(
-            config.latent_dims * 2)
-
+            config.latent_dims * 2,
+            linear_layer_dim=self.encoder.cell.hidden_size * 2)
         '''self.connector_stoch = tx.modules.ReparameterizedStochasticConnector(
             decoder_initial_state_size)'''
         self.mlp_linear_layer = nn.Linear(
-            self.encoder.cell.state_size, _sum_output_size(decoder_initial_state_size))
+            32, tx.modules.connectors._sum_output_size(decoder_initial_state_size))
 
     def forward(self, data_batch, kl_weight, learning_rate, mode):
         ## encoder -> connector -> decoder
-        input_embed = self.encoder_w_embedder(data_batch["text_ids"])
-        output_w_embed = self.decoder_w_embedder(data_batch["text_ids"][:, :-1])
+        input_embed = self.encoder_w_embedder(data_batch["text_ids"].cuda())
+        output_w_embed = self.decoder_w_embedder(data_batch["text_ids"][:, :-1].cuda())
         _, ecdr_states = self.encoder(
             input_embed,
-            sequence_length=data_batch["length"])
+            sequence_length=data_batch["length"].cuda())
 
         if config.decoder_type == "lstm":
             output_embed = output_w_embed
@@ -137,30 +137,35 @@ class Vae(nn.Module):
             batch_size = data_batch["text_ids"].size(0)
             max_seq_len = data_batch["text_ids"].size(1) - 1
             batch_max_seq_len = torch.ones([batch_size]).type(torch.long) * max_seq_len
-            output_p_embed = self.decoder_p_embedder(sequence_length=batch_max_seq_len)
+            output_p_embed = self.decoder_p_embedder(sequence_length=batch_max_seq_len.cuda())
 
             output_w_embed = output_w_embed * config.hidden_size ** 0.5
             output_embed = output_w_embed + output_p_embed
 
         else:
             raise NotImplementedError
-
         mean_logvar = self.connector_mlp(ecdr_states)
-        mean, logvar = torch.split(mean_logvar, 2, 1)
+        mean, logvar = torch.chunk(mean_logvar, 2, 1)
         kl_loss = kl_dvg(mean, logvar)
 
         '''dst = tfd.MultivariateNormalDiag(
             loc=mean,
             scale_diag=torch.exp(0.5 * logvar))'''
-        dst = torch.distributions.MultivariateNormal(
+        #try:
+        #dst = torch.distributions.MultivariateNormal(
+        #        loc=mean,
+        #        scale_tril=torch.exp(0.5 * logvar)
+        #    )
+        dst = tx.custom.MultivariateNormalDiag(
             loc=mean,
-            scale_diag=torch.diag(torch.exp(0.5 * logvar))
-        )
+            scale_diag=torch.exp(0.5 * logvar))
+        #except:
+        #    print("mean, logvar", mean.size(), logvar.size())
 
         '''dcdr_states, latent_z = self.connector_stoch(dst)'''
-        latent_z = dstr.rsample()
-        dcdr_states = _mlp_transform(
-                sample,
+        latent_z = dst.rsample()
+        dcdr_states = tx.modules.connectors._mlp_transform(
+                latent_z,
                 self.decoder_initial_state_size,
                 self.mlp_linear_layer)
 
@@ -182,16 +187,16 @@ class Vae(nn.Module):
             outputs = self.decoder(
                 inputs=output_embed,
                 memory=dcdr_states,
-                memory_sequence_length=tf.ones(tf.shape(dcdr_states)[0]))
+                memory_sequence_length=torch.ones(dcdr_states.size(0)))
 
         logits = outputs.logits
 
         seq_lengths = data_batch["length"] - 1
         # Losses & train ops
         rc_loss = tx.losses.sequence_sparse_softmax_cross_entropy(
-            labels=data_batch["text_ids"][:, 1:],
+            labels=data_batch["text_ids"][:, 1:].cuda(),
             logits=logits,
-            sequence_length=data_batch["length"]-1)
+            sequence_length=(data_batch["length"]-1).cuda())
 
         '''# KL annealing
         kl_weight = tf.placeholder(tf.float32, shape=())'''
@@ -356,11 +361,11 @@ def _main(_):
     '''def _run_epoch(sess, epoch, mode_string, display=10):'''
     def _run_epoch(epoch, mode_string, display=10):
         if mode_string == 'train':
-            iterator.switch_to_train_data(sess)
+            iterator.switch_to_train_data()
         elif mode_string == 'valid':
-            iterator.switch_to_val_data(sess)
+            iterator.switch_to_val_data()
         elif mode_string == 'test':
-            iterator.switch_to_test_data(sess)
+            iterator.switch_to_test_data()
 
         model.train()
         step = 0
@@ -368,10 +373,10 @@ def _main(_):
         num_words = num_sents = 0
         nll_ = 0.
         kl_loss_ = rc_loss_ = 0.
-
+        print("mode_string", mode_string)
         #while True:
         for batch in iterator:
-            try:
+                #try:
                 '''fetches = {"nll": nll,
                            "kl_loss": kl_loss,
                            "rc_loss": rc_loss,
@@ -413,21 +418,16 @@ def _main(_):
                           (mode_string, epoch, step, nll_ / num_sents,
                            opt_vars["kl_weight"], kl_loss_ / num_sents,
                            rc_loss_ / num_sents, nll_ / num_words,
-                           np.exp(nll_ / num_words), time.time() - start_time))
+                           np.exp(nll_.detach().cpu() / num_words), time.time() - start_time))
 
                     sys.stdout.flush()
 
                 step += 1
 
-            except StopIteration:
-                print('\n%s: epoch %d, nll %.4f, KL %.4f, rc %.4f, ' \
-                      'log_ppl %.4f, ppl %.4f\n' %
-                      (mode_string, epoch, nll_ / num_sents,
-                       kl_loss_ / num_sents, rc_loss_ / num_sents,
-                       nll_ / num_words, np.exp(nll_ / num_words)))
-                break
+                #except StopIteration:
+        print('\n%s: epoch %d, nll %.4f, KL %.4f, rc %.4f, log_ppl %.4f, ppl %.4f\n' % (mode_string, epoch, nll_ / num_sents, kl_loss_ / num_sents, rc_loss_ / num_sents, nll_.detach().cpu() / num_words, np.exp(nll_.detach().cpu() / num_words)))
 
-        return nll_ / num_sents, np.exp(nll_ / num_words)
+        return nll_.detach().cpu() / num_sents, np.exp(nll_.detach().cpu() / num_words)
 
     @torch.no_grad()
     def _generate(sess, saver, fname=None):
@@ -562,7 +562,8 @@ def _main(_):
         val_nll, _ = _run_epoch(epoch, 'valid')
         test_nll, test_ppl = _run_epoch(epoch, 'test')
 
-        if val_nll < opt_vars['best_valid_nll']:
+        #print("val_nll", val_nll, opt_vars['best_valid_nll'])
+        if int(val_nll.item()) < opt_vars['best_valid_nll']:
             opt_vars['best_valid_nll'] = val_nll
             opt_vars['steps_not_improved'] = 0
             best_nll = test_nll

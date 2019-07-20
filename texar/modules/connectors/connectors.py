@@ -37,6 +37,8 @@ __all__ = [
     "MLPTransformConnector",
     "ReparameterizedStochasticConnector",
     "StochasticConnector",
+    "_sum_output_size",
+    "_mlp_transform"
     # "ConcatConnector"
 ]
 
@@ -133,8 +135,9 @@ def _mlp_transform(inputs: TensorStruct,
         batch_size = 1
     else:
         batch_size = flat_input[0].size(0)
-    flat_input = [x.view(-1, x.size(-1)) for x in flat_input]
-    concat_input = torch.cat(flat_input, 0)
+    #flat_input = [x.view(-1, x.size(-1)) for x in flat_input]
+    flat_input = [x.view(-1, np.prod(list(x.size())[1:])) for x in flat_input]
+    concat_input = torch.cat(flat_input, 1)
     # Get output dimension
     flat_output_size = nest.flatten(output_size)
 
@@ -151,14 +154,14 @@ def _mlp_transform(inputs: TensorStruct,
         fc_output = activation_fn(fc_output)
     elif linear_layer is None and activation_fn is None:
         fc_output = concat_input
-
     flat_output = split(fc_output, size_list, dim=1)    # type: ignore
-    flat_output = list(flat_output)
+
+    '''flat_output = list(flat_output)
     for i, _ in enumerate(flat_output):
         final_state = flat_output[i].size(-1)
         flat_output[i] = flat_output[i].view(batch_size, -1, final_state)
-        flat_output[i] = torch.squeeze(flat_output[i], 1)
-
+        flat_output[i] = torch.squeeze(flat_output[i], 1)'''
+    flat_output = list(flat_output)
     if isinstance(flat_output_size[0], torch.Size):
         for (i, shape) in enumerate(flat_output_size):
             flat_output[i] = torch.reshape(
