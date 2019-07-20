@@ -62,14 +62,11 @@ config = importlib.import_module(FLAGS.config)
 def kl_dvg(means, logvars):
     """compute the KL divergence between Gaussian distribution
     """
-    '''kl_cost = -0.5 * (logvars - tf.square(means) -
-                      tf.exp(logvars) + 1.0)'''
+
     kl_cost = -0.5 * (logvars - means**2 -
                       torch.exp(logvars) + 1.0)
-    '''kl_cost = tf.reduce_mean(kl_cost, 0)'''
     kl_cost = torch.mean(kl_cost, 0)
 
-    '''return tf.reduce_sum(kl_cost)'''
     return torch.sum(kl_cost)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -116,8 +113,8 @@ class Vae(nn.Module):
         self.connector_mlp = tx.modules.MLPTransformConnector(
             config.latent_dims * 2,
             linear_layer_dim=self.encoder.cell.hidden_size * 2)
-        '''self.connector_stoch = tx.modules.ReparameterizedStochasticConnector(
-            decoder_initial_state_size)'''
+
+
         self.mlp_linear_layer = nn.Linear(
             32, tx.modules.connectors._sum_output_size(decoder_initial_state_size))
 
@@ -148,21 +145,10 @@ class Vae(nn.Module):
         mean, logvar = torch.chunk(mean_logvar, 2, 1)
         kl_loss = kl_dvg(mean, logvar)
 
-        '''dst = tfd.MultivariateNormalDiag(
-            loc=mean,
-            scale_diag=torch.exp(0.5 * logvar))'''
-        #try:
-        #dst = torch.distributions.MultivariateNormal(
-        #        loc=mean,
-        #        scale_tril=torch.exp(0.5 * logvar)
-        #    )
         dst = tx.custom.MultivariateNormalDiag(
             loc=mean,
             scale_diag=torch.exp(0.5 * logvar))
-        #except:
-        #    print("mean, logvar", mean.size(), logvar.size())
 
-        '''dcdr_states, latent_z = self.connector_stoch(dst)'''
         latent_z = dst.rsample()
         dcdr_states = tx.modules.connectors._mlp_transform(
                 latent_z,
@@ -173,13 +159,12 @@ class Vae(nn.Module):
         if config.decoder_type == "lstm":
             # concat latent variable to input at every time step
             latent_z = torch.unsqueeze(latent_z, 1)
-            '''latent_z = tf.tile(latent_z, [1, tf.shape(output_embed)[1], 1])'''
+
             latent_z = latent_z.repeat([1, output_embed.size(1), 1])
             output_embed = torch.concat([output_embed, latent_z], 2)
             train_helper = self.decoder.create_helper(decoding_strategy='train_greedy')
             outputs, _, _ = self.decoder(
                 initial_state=dcdr_states,
-                #decoding_strategy="train_greedy",
                 helper=train_helper,
                 inputs=output_embed,
                 sequence_length=data_batch["length"]-1)
@@ -198,15 +183,8 @@ class Vae(nn.Module):
             logits=logits,
             sequence_length=(data_batch["length"]-1).cuda())
 
-        '''# KL annealing
-        kl_weight = tf.placeholder(tf.float32, shape=())'''
-
         nll = rc_loss + kl_weight * kl_loss
 
-        '''learning_rate = tf.placeholder(dtype=tf.float32, shape=(),
-                                    name='learning_rate')'''
-        '''train_op = tx.core.get_train_op(nll, learning_rate=learning_rate,
-                                        hparams=config.opt_hparams)'''
         fetches = {
             "nll": nll,
             "kl_loss": kl_loss,
@@ -225,7 +203,6 @@ def _main(_):
     iterator = tx.data.TrainTestDataIterator(train=train_data,
                                              val=val_data,
                                              test=test_data)
-    #data_batch = iterator.get_next()
 
     opt_vars = {
         'learning_rate': config.lr_decay_hparams["init_lr"],
@@ -253,112 +230,12 @@ def _main(_):
     anneal_r = 1.0 / (config.kl_anneal_hparams["warm_up"] * \
         (train_data._dataset_size / config.batch_size))
         #(train_data.dataset_size() / config.batch_size))
-
-    '''# Model architecture
-    encoder_w_embedder = tx.modules.WordEmbedder(
-        vocab_size=train_data.vocab.size, hparams=config.enc_emb_hparams)
-    input_embed = encoder_w_embedder(data_batch["text_ids"])
-    encoder = tx.modules.UnidirectionalRNNEncoder(
-        hparams={"rnn_cell": config.enc_cell_hparams})
-
-    decoder_w_embedder = tx.modules.WordEmbedder(
-        vocab_size=train_data.vocab.size, hparams=config.dec_emb_hparams)
-    output_w_embed = decoder_w_embedder(data_batch["text_ids"][:, :-1])
-
-    if config.decoder_type == "lstm":
-        output_embed = output_w_embed
-
-        decoder = tx.modules.BasicRNNDecoder(
-            vocab_size=train_data.vocab.size,
-            hparams={"rnn_cell": config.dec_cell_hparams})
-        decoder_initial_state_size = decoder.cell.state_size
-    elif config.decoder_type == 'transformer':
-        # position embedding
-        decoder_p_embedder = tx.modules.SinusoidsPositionEmbedder(
-            position_size=config.max_pos, hparams=config.dec_pos_emb_hparams)
-        batch_size = tf.shape(data_batch["text_ids"])[0]
-        max_seq_len = tf.shape(data_batch["text_ids"])[1] - 1
-        batch_max_seq_len = tf.ones([batch_size], tf.int32) * max_seq_len
-        output_p_embed = decoder_p_embedder(sequence_length=batch_max_seq_len)
-
-        output_w_embed = output_w_embed * config.hidden_size ** 0.5
-        output_embed = output_w_embed + output_p_embed
-
-        # decoder
-        decoder = tx.modules.TransformerDecoder(
-            # tie word embedding with output layer
-            output_layer=tf.transpose(decoder_w_embedder.embedding, (1, 0)),
-            hparams=config.trans_hparams)
-        decoder_initial_state_size = tf.TensorShape(
-            [1, config.dec_emb_hparams["dim"]])
-    else:
-        raise NotImplementedError
-
-    connector_mlp = tx.modules.MLPTransformConnector(
-        config.latent_dims * 2)
-
-    connector_stoch = tx.modules.ReparameterizedStochasticConnector(
-        decoder_initial_state_size)'''
-
-    '''## encoder -> connector -> decoder
-
-    _, ecdr_states = encoder(
-        input_embed,
-        sequence_length=data_batch["length"])
-
-    mean_logvar = connector_mlp(ecdr_states)
-    mean, logvar = tf.split(mean_logvar, 2, 1)
-    kl_loss = kl_dvg(mean, logvar)
-
-    dst = tfd.MultivariateNormalDiag(
-        loc=mean,
-        scale_diag=tf.exp(0.5 * logvar))
-
-    dcdr_states, latent_z = connector_stoch(dst)
-
-    # decoder
-    if config.decoder_type == "lstm":
-        # concat latent variable to input at every time step
-        latent_z = tf.expand_dims(latent_z, axis=1)
-        latent_z = tf.tile(latent_z, [1, tf.shape(output_embed)[1], 1])
-        output_embed = tf.concat([output_embed, latent_z], axis=2)
-
-        outputs, _, _ = decoder(
-            initial_state=dcdr_states,
-            decoding_strategy="train_greedy",
-            inputs=output_embed,
-            sequence_length=data_batch["length"]-1)
-    else:
-        outputs = decoder(
-            inputs=output_embed,
-            memory=dcdr_states,
-            memory_sequence_length=tf.ones(tf.shape(dcdr_states)[0]))
-
-    logits = outputs.logits
-
-    seq_lengths = data_batch["length"] - 1
-    # Losses & train ops
-    rc_loss = tx.losses.sequence_sparse_softmax_cross_entropy(
-        labels=data_batch["text_ids"][:, 1:],
-        logits=logits,
-        sequence_length=data_batch["length"]-1)
-
-    # KL annealing
-    kl_weight = tf.placeholder(tf.float32, shape=())
-
-    nll = rc_loss + kl_weight * kl_loss
-
-    learning_rate = tf.placeholder(dtype=tf.float32, shape=(),
-                                   name='learning_rate')
-    train_op = tx.core.get_train_op(nll, learning_rate=learning_rate,
-                                    hparams=config.opt_hparams)'''
     
     model = Vae(train_data)
     model.to(device)
     train_op = tx.core.get_train_op(params=model.parameters(),
                                     hparams=config.opt_hparams)
 
-    '''def _run_epoch(sess, epoch, mode_string, display=10):'''
     def _run_epoch(epoch, mode_string, display=10):
         if mode_string == 'train':
             iterator.switch_to_train_data()
@@ -373,17 +250,10 @@ def _main(_):
         num_words = num_sents = 0
         nll_ = 0.
         kl_loss_ = rc_loss_ = 0.
-        print("mode_string", mode_string)
-        #while True:
+
         for batch in iterator:
-                #try:
-                '''fetches = {"nll": nll,
-                           "kl_loss": kl_loss,
-                           "rc_loss": rc_loss,
-                           "lengths": seq_lengths}'''
 
                 if mode_string == 'train':
-                    '''fetches["train_op"] = train_op'''
                     opt_vars["kl_weight"] = min(
                         1.0, opt_vars["kl_weight"] + anneal_r)
 
@@ -391,15 +261,8 @@ def _main(_):
                 else:
                     kl_weight_ = 1.0
 
-                '''mode = (tf.estimator.ModeKeys.TRAIN if mode_string == 'train'
-                        else tf.estimator.ModeKeys.EVAL)'''
                 mode = mode_string
 
-                '''feed = {tx.global_mode(): mode,
-                        kl_weight: kl_weight_,
-                        learning_rate: opt_vars["learning_rate"]}'''
-
-                '''fetches_ = sess.run(fetches, feed_dict=feed)'''
                 fetches_ = model(batch, kl_weight_, opt_vars["learning_rate"], mode)
                 fetches_["nll"].backward()
                 train_op()
@@ -502,59 +365,18 @@ def _main(_):
         print('Output done')
         fh.close()
 
-    '''saver = tf.train.Saver()
-    with tf.Session() as sess:
-        # generate samples from prior
-        if FLAGS.mode == "predict":
-            _generate(sess, saver, FLAGS.out)
-            return
-
-        sess.run(tf.global_variables_initializer())
-        sess.run(tf.local_variables_initializer())
-        sess.run(tf.tables_initializer())
-
-        # Counts trainable parameters
-        total_parameters = 0
-        for variable in tf.trainable_variables():
-            shape = variable.get_shape() # shape is an array of tf.Dimension
-            variable_parameters = 1
-            for dim in shape:
-                variable_parameters *= dim.value
-            total_parameters += variable_parameters
-        print("%d total parameters" % total_parameters)
-
-        best_nll = best_ppl = 0.
-
-        for epoch in range(config.num_epochs):
-            _, _ = _run_epoch(sess, epoch, 'train', display=200)
-            val_nll, _ = _run_epoch(sess, epoch, 'valid')
-            test_nll, test_ppl = _run_epoch(sess, epoch, 'test')
-
-            if val_nll < opt_vars['best_valid_nll']:
-                opt_vars['best_valid_nll'] = val_nll
-                opt_vars['steps_not_improved'] = 0
-                best_nll = test_nll
-                best_ppl = test_ppl
-                saver.save(sess, save_path)
-            else:
-                opt_vars['steps_not_improved'] += 1
-                if opt_vars['steps_not_improved'] == decay_ts:
-                    old_lr = opt_vars['learning_rate']
-                    opt_vars['learning_rate'] *= decay_factor
-                    opt_vars['steps_not_improved'] = 0
-                    new_lr = opt_vars['learning_rate']
-
-                    print('-----\nchange lr, old lr: %f, new lr: %f\n-----' %
-                          (old_lr, new_lr))
-
-                    saver.restore(sess, save_path)
-
-                    decay_cnt += 1
-                    if decay_cnt == max_decay:
-                        break
-
-        print('\nbest testing nll: %.4f, best testing ppl %.4f\n' %
-              (best_nll, best_ppl))'''
+    # Counts trainable parameters
+    total_parameters = 0
+    '''for variable in tf.trainable_variables():'''
+    print("parameters", model.parameters())
+    raise Exception
+    for variable in model.parameters()
+        shape = variable.get_shape() # shape is an array of tf.Dimension
+        variable_parameters = 1
+        for dim in shape:
+            variable_parameters *= dim.value
+        total_parameters += variable_parameters
+    print("%d total parameters" % total_parameters)
     best_nll = best_ppl = 0.
 
     for epoch in range(config.num_epochs):
@@ -562,7 +384,6 @@ def _main(_):
         val_nll, _ = _run_epoch(epoch, 'valid')
         test_nll, test_ppl = _run_epoch(epoch, 'test')
 
-        #print("val_nll", val_nll, opt_vars['best_valid_nll'])
         if int(val_nll.item()) < opt_vars['best_valid_nll']:
             opt_vars['best_valid_nll'] = val_nll
             opt_vars['steps_not_improved'] = 0
