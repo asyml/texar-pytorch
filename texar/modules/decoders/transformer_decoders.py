@@ -48,6 +48,9 @@ class TransformerDecoderOutput(NamedTuple):
     sample_id: torch.LongTensor
     r"""A :tensor:`LongTensor` of shape ``[batch_size, max_time]`` containing
     the sampled token indices."""
+    raw_output: torch.Tensor
+    r"""A :tensor:`Tensor` of shape ``[batch_size, max_time, dim]`` containing
+    the results prior to the output layer."""
 
 
 class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
@@ -280,9 +283,10 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         """
         outputs = self._self_attention_stack(
             inputs.unsqueeze(1), memory=cache['memory'], cache=cache)
+        raw_output = outputs.squeeze(1)
         outputs = self._output_layer(outputs)
         outputs = outputs.squeeze(1)
-        return outputs, cache
+        return raw_output, outputs, cache
 
     def forward(self,  # type: ignore
                 inputs: Optional[torch.Tensor] = None,
@@ -421,7 +425,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
             - For **"train_greedy"** decoding, returns an instance of
               :class:`~texar.modules.TransformerDecoderOutput` which contains
-              `sample_id` and `logits`.
+              `sample_id`, `logits` and `raw_output`.
 
             - For **"infer_greedy"** and **"infer_sample"** decoding or
               decoding with :attr:`helper`, returns
@@ -486,7 +490,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             logits = self._output_layer(decoder_output)
             sample_id = torch.argmax(logits, dim=-1)
 
-            return TransformerDecoderOutput(logits, sample_id)
+            return TransformerDecoderOutput(logits, sample_id, decoder_output)
 
         # Inference code path.
         if max_decoding_length is None:
@@ -534,7 +538,8 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                     sample_id=torch.cat([
                         start_tokens.unsqueeze(1),
                         outputs.sample_id
-                    ], dim=1))
+                    ], dim=1),
+                    raw_output=outputs.raw_output)
                 sequence_lengths = sequence_lengths + 1
 
             return outputs, sequence_lengths
@@ -663,7 +668,8 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             step = ids.size(-1) - 1
             times = ids.new_full((batch_size,), step)
             inputs = embedding_fn(ids[:, -1], times)
-            return self._inputs_to_outputs(inputs, cache)
+            _, outputs, cache = self._inputs_to_outputs(inputs, cache)
+            return outputs, cache
 
         assert self._vocab_size is not None
 
@@ -703,7 +709,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             -> Tuple[TransformerDecoderOutput, Cache,
                      torch.Tensor, torch.ByteTensor]:
         assert state is not None
-        outputs, state = self._inputs_to_outputs(inputs, state)
+        raw_output, outputs, state = self._inputs_to_outputs(inputs, state)
         sample_ids = helper.sample(time=time, outputs=outputs)
         if self._state_context is not None:
             assert self._state_context_sequence_length is not None
@@ -725,7 +731,8 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         next_state = state
         outputs = TransformerDecoderOutput(
             logits=outputs,
-            sample_id=sample_ids)
+            sample_id=sample_ids,
+            raw_output=raw_output)
         return outputs, next_state, next_inputs, finished
 
     def finalize(self,  # type: ignore
