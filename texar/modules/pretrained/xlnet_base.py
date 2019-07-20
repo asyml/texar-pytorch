@@ -56,10 +56,10 @@ class XLNetBase(ModuleBase):
         self.pretrained_model_dir: Optional[str] = None
 
         if pretrained_model_name:
-            self.pretrained_model_dir = xlnet_utils.load_pretrained_model(
+            self.pretrained_model_dir = xlnet_utils.load_pretrained_xlnet(
                 pretrained_model_name, cache_dir)
         elif self._hparams.pretrained_model_name is not None:
-            self.pretrained_model_dir = xlnet_utils.load_pretrained_model(
+            self.pretrained_model_dir = xlnet_utils.load_pretrained_xlnet(
                 self._hparams.pretrained_model_name, cache_dir)
 
         if self.pretrained_model_dir:

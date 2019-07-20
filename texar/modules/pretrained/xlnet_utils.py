@@ -32,7 +32,7 @@ from texar.modules.pretrained.xlnet_model_utils import \
 
 __all__ = [
     "init_xlnet_checkpoint",
-    "load_pretrained_model",
+    "load_pretrained_xlnet",
     "transform_xlnet_to_texar_config",
     "sum_tensors",
 ]
@@ -181,9 +181,9 @@ def _default_download_dir() -> str:
     return os.path.join(texar_download_dir, 'xlnet')
 
 
-def load_pretrained_model(pretrained_model_name: str,
+def load_pretrained_xlnet(pretrained_model_name: str,
                           cache_dir: Optional[str] = None) -> str:
-    r"""Return the directory in which the pretrained model is cached.
+    r"""Return the directory in which the pretrained `XLNet` is cached.
     """
     if pretrained_model_name in _MODEL2URL:
         download_path = _MODEL2URL[pretrained_model_name]

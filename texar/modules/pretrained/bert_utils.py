@@ -29,7 +29,7 @@ from texar.data.data_utils import maybe_download
 
 __all__ = [
     "init_bert_checkpoint",
-    "load_pretrained_model",
+    "load_pretrained_bert",
     "transform_bert_to_texar_config",
 ]
 
@@ -195,9 +195,9 @@ def _default_download_dir() -> str:
     return os.path.join(texar_download_dir, 'bert')
 
 
-def load_pretrained_model(pretrained_model_name: str,
-                          cache_dir: Optional[str] = None) -> str:
-    r"""Return the directory in which the pretrained model is cached.
+def load_pretrained_bert(pretrained_model_name: str,
+                         cache_dir: Optional[str] = None) -> str:
+    r"""Return the directory in which the pretrained `BERT` is cached.
     """
     if pretrained_model_name in _MODEL2URL:
         download_path = _MODEL2URL[pretrained_model_name]

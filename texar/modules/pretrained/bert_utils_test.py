@@ -14,7 +14,7 @@ class BertUtilsTest(unittest.TestCase):
 
     def test_load_pretrained_model_AND_transform_bert_to_texar_config(self):
 
-        pretrained_model_dir = load_pretrained_model(
+        pretrained_model_dir = load_pretrained_bert(
             pretrained_model_name="bert-base-uncased")
 
         info = list(os.walk(pretrained_model_dir))

@@ -16,7 +16,7 @@ class XLNetUtilsTest(unittest.TestCase):
 
     def test_load_pretrained_model_AND_transform_xlnet_to_texar_config(self):
 
-        pretrained_model_dir = load_pretrained_model(
+        pretrained_model_dir = load_pretrained_xlnet(
             pretrained_model_name="xlnet-base-cased")
 
         info = list(os.walk(pretrained_model_dir))

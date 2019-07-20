@@ -53,10 +53,10 @@ class BertBase(ModuleBase):
         self.pretrained_model_dir: Optional[str] = None
 
         if pretrained_model_name:
-            self.pretrained_model_dir = bert_utils.load_pretrained_model(
+            self.pretrained_model_dir = bert_utils.load_pretrained_bert(
                 pretrained_model_name, cache_dir)
         elif self._hparams.pretrained_model_name is not None:
-            self.pretrained_model_dir = bert_utils.load_pretrained_model(
+            self.pretrained_model_dir = bert_utils.load_pretrained_bert(
                 self._hparams.pretrained_model_name, cache_dir)
 
         if self.pretrained_model_dir:
