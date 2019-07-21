@@ -430,7 +430,7 @@ def _main(_):
                 print(param_group['lr'])
             states = {
                 "model": model.state_dict(),
-                "optimizer": optim.state_dict(),
+                "optimizer": optimizer.state_dict(),
                 #"scheduler": scheduler.state_dict(),
             }
             torch.save(states, save_path)
