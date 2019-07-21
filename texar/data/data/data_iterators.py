@@ -198,7 +198,8 @@ class BufferShuffleSampler(SamplerBase[Example]):
 
     def _iterator_given_size(self, size) -> Iterator[int]:
         if self.buffer_size >= size:
-            return iter(torch.randperm(size).tolist())
+            yield from iter(torch.randperm(size).tolist())
+            return
 
         buffer = list(range(self.buffer_size))
         for x in range(self.buffer_size, size):
