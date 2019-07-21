@@ -271,7 +271,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         }
 
     def _inputs_to_outputs(self, inputs: torch.Tensor,
-                           cache: Cache)
+                           cache: Cache) \
             -> Tuple[torch.Tensor, torch.Tensor, Cache]:
         r"""Returns the outputs of one decoding step (for example,
         the predicted logits of the next token).
