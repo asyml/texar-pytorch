@@ -313,10 +313,9 @@ def _main(_):
 
                 step += 1
 
-                #except StopIteration:
         print('\n%s: epoch %d, nll %.4f, KL %.4f, rc %.4f, log_ppl %.4f, ppl %.4f\n' % (mode_string, epoch, nll_ / float(num_sents), kl_loss_ / float(num_sents), rc_loss_ / float(num_sents), nll_ / float(num_words), np.exp(nll_ / float(num_words))))
 
-        return nll_ / num_sents, np.exp(nll_ / num_words)
+        return nll_ / num_sents, np.exp(nll_ / float(num_words))
 
     @torch.no_grad()
     def _generate(sess, saver, fname=None):
@@ -393,18 +392,12 @@ def _main(_):
 
     # Counts trainable parameters
     total_parameters = 0
-    '''for variable in tf.trainable_variables():'''
+
     for name, variable in model.named_parameters():
         size = variable.size()
         total_parameters += np.prod(size)
     print("%d total parameters" % total_parameters)
-    '''for variable in model.parameters()
-        shape = variable.get_shape() # shape is an array of tf.Dimension
-        variable_parameters = 1
-        for dim in shape:
-            variable_parameters *= dim.value
-        total_parameters += variable_parameters
-    print("%d total parameters" % total_parameters)'''
+
     best_nll = best_ppl = 0.
 
     for epoch in range(config.num_epochs):
@@ -412,11 +405,14 @@ def _main(_):
         val_nll, _ = _run_epoch(epoch, 'valid')
         test_nll, test_ppl = _run_epoch(epoch, 'test')
 
-        if int(val_nll) < opt_vars['best_valid_nll']:
+        if val_nll < opt_vars['best_valid_nll']:
             opt_vars['best_valid_nll'] = val_nll
             opt_vars['steps_not_improved'] = 0
             best_nll = test_nll
             best_ppl = test_ppl
+            print(f"best tmp nll: {best_nll}, best tmp ppl: {best_ppl}")
+            for param_group in optimizer.param_groups:
+                print(param_group[‘lr’])
             #saver.save(sess, save_path)
         else:
             opt_vars['steps_not_improved'] += 1
@@ -436,7 +432,7 @@ def _main(_):
                     break
 
     print('\nbest testing nll: %.4f, best testing ppl %.4f\n' %
-            (best_nll, best_ppl))
+        (best_nll, best_ppl))
 
 
 if __name__ == '__main__':
