@@ -75,7 +75,7 @@ def adjust_learning_rate(optimizer, lr):
         param_group['lr'] = lr
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#device = 'cpu'
+
 class Vae(nn.Module):
     def __init__(self, train_data):
 

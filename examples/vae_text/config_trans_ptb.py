@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -44,7 +44,6 @@ num_blocks = 3
 decoder_type = 'transformer'
 
 enc_cell_hparams = {
-    #'type': 'LSTMBlockCell',
     'type': 'LSTMCell',
     'kwargs': {
         'num_units': hidden_size,
@@ -59,7 +58,6 @@ enc_emb_hparams = {
     'dim': embed_dim,
     'dropout_rate': enc_dropout_in,
     'initializer' : {
-        #'type': 'random_normal_initializer',
         'type': 'normal_',
         'kwargs': {
             'mean': 0.0,
@@ -73,7 +71,6 @@ dec_emb_hparams = {
     'dim': embed_dim,
     'dropout_rate': dec_dropout_in,
     'initializer' : {
-        #'type': 'random_normal_initializer',
         'type': 'normal_',
         'kwargs': {
             'mean': 0.0,
@@ -158,7 +155,6 @@ kl_anneal_hparams = {
 train_data_hparams = {
     'num_epochs': 1,
     'batch_size': batch_size,
-    #"shuffle": False,
     'seed': 123,
     'dataset': {
         'files': './simple-examples/data/ptb.train.txt',
@@ -193,8 +189,6 @@ opt_hparams = {
         }
     },
     'gradient_clip': {
-        #'type': 'clip_by_global_norm',
-        #'kwargs': {'clip_norm': 5.}
         "type": "clip_grad_norm_",
         "kwargs": {
             "max_norm": 5,
