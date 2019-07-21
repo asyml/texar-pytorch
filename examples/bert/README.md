@@ -10,6 +10,16 @@ In sum, this example showcases:
 * Building and fine-tuning on downstream tasks
 * Use of Texar `TFRecordData` module for data loading and processing
 
+## Prerequisite
+
+#### Install dependencies
+
+Apart from requiring Texar-PyTorch, you should also satisfy dependencies in `requirements.txt` by running:
+
+```bash
+pip install -r requirements.txt
+```
+
 ## Quick Start
 
 ### Download Dataset

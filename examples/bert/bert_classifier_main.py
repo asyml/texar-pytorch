@@ -226,7 +226,7 @@ def main():
             'optimizer': optim.state_dict(),
             'scheduler': scheduler.state_dict(),
         }
-        torch.save(states, os.path.join(args.output_dir + '/model.ckpt'))
+        torch.save(states, os.path.join(args.output_dir, 'model.ckpt'))
 
     if args.do_eval:
         _eval_epoch()
