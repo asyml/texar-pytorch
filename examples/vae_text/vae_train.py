@@ -69,6 +69,11 @@ def kl_dvg(means, logvars):
 
     return torch.sum(kl_cost)
 
+def adjust_learning_rate(optimizer, lr):
+    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #device = 'cpu'
 class Vae(nn.Module):
@@ -118,7 +123,7 @@ class Vae(nn.Module):
         self.mlp_linear_layer = nn.Linear(
             32, tx.modules.connectors._sum_output_size(decoder_initial_state_size))
 
-    def forward(self, data_batch, kl_weight, learning_rate, mode):
+    def forward(self, data_batch, kl_weight, mode):
         ## encoder -> connector -> decoder
         tmp_batch = []
         for i, data in enumerate(data_batch["text_ids"]):
@@ -243,8 +248,11 @@ def _main(_):
     
     model = Vae(train_data)
     model.to(device)
-    train_op = tx.core.get_train_op(params=model.parameters(),
+
+    optimizer = tx.core.get_optimizer(params=model.parameters(),
                                     hparams=config.opt_hparams)
+    '''train_op = tx.core.get_train_op(params=model.parameters(),
+                                    hparams=config.opt_hparams)'''
 
     def _run_epoch(epoch, mode_string, display=10):
         if mode_string == 'train':
@@ -275,10 +283,15 @@ def _main(_):
 
                 mode = mode_string
 
-                fetches_ = model(batch, kl_weight_, opt_vars["learning_rate"], mode)
+                if mode == "train":
+                    adjust_learning_rate(optimizer, opt_vars["learning_rate"])
+
+                fetches_ = model(batch, kl_weight_, mode)
                 if mode == "train":
                     fetches_["nll"].backward()
-                    train_op()
+                    #train_op()
+                    optimizer.step()
+                    optimizer.zero_grad()
 
                 batch_size_ = len(fetches_["lengths"])
                 num_sents += batch_size_
