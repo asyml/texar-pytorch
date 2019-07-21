@@ -324,7 +324,8 @@ def _main(_):
             raise ValueError("cannot find checkpoint model")'''
         ckpt = torch.load(save_path)
         model.load_state_dict(ckpt['model'])
-        optimizer.load_state_dict(ckpt['optimizer'])
+        #optimizer.load_state_dict(ckpt['optimizer'])
+        model.eval()
 
         batch_size = train_data.batch_size
 
@@ -338,13 +339,13 @@ def _main(_):
         '''dcdr_states, latent_z = connector_stoch(dst)'''
         latent_z = dst.rsample()
         dcdr_states = tx.modules.connectors._mlp_transform(
-            latent_z,
+            latent_z.to(device),
             model.decoder_initial_state_size,
             model.mlp_linear_layer)
 
         vocab = train_data.vocab
-        start_tokens = torch.ones(batch_size, tf.int32) * vocab.bos_token_id
-        end_token = vocab.eos_token_id
+        start_tokens = torch.ones(batch_size).type(torch.long) * vocab.bos_token_id
+        end_token = vocab.eos_token_id.item()
 
         if config.decoder_type == "lstm":
             def _cat_embedder(ids):
@@ -364,23 +365,21 @@ def _main(_):
                 max_decoding_length=100)
         else:
             def _embedding_fn(ids, times):
-                w_embed = mode.decoder_w_embedder(ids)
-                p_embed = mode.decoder_p_embedder(times)
+                w_embed = model.decoder_w_embedder(ids)
+                p_embed = model.decoder_p_embedder(times)
                 return w_embed * config.hidden_size ** 0.5 + p_embed
 
-            infer_helper = model.decoder.create_helper(
-                embedding=_embedding_fn,
-                decoding_strategy='infer_sample',
-                start_tokens=start_tokens,
-                end_token=end_token)
-            outputs, _ = decoder(
+            outputs, _ = model.decoder(
                 memory=dcdr_states,
                 memory_sequence_length=torch.ones(dcdr_states.size(0)),
                 max_decoding_length=100,
-                start_tokens=start_tokens,
+                decoding_strategy='infer_sample',
+                embedding=_embedding_fn,
+                start_tokens=start_tokens.to(device),
                 end_token=end_token)
 
-        sample_tokens = vocab.map_ids_to_tokens(outputs.sample_id)
+        #sample_tokens = vocab.map_ids_to_tokens(outputs.sample_id)
+        sample_tokens = vocab.map_ids_to_tokens_py(outputs.sample_id.cpu())
         #sess.run(tf.tables_initializer())
 
         '''feed = {tx.global_mode(): tf.estimator.ModeKeys.PREDICT}
@@ -404,7 +403,7 @@ def _main(_):
 
 
     if FLAGS.mode == "predict":
-        _generate(saver, FLAGS.out)
+        _generate(FLAGS.out)
         return
     # Counts trainable parameters
     total_parameters = 0
