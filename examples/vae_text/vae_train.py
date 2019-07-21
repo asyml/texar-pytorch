@@ -412,7 +412,7 @@ def _main(_):
             best_ppl = test_ppl
             print(f"best tmp nll: {best_nll}, best tmp ppl: {best_ppl}")
             for param_group in optimizer.param_groups:
-                print(param_group[‘lr’])
+                print(param_group['lr'])
             #saver.save(sess, save_path)
         else:
             opt_vars['steps_not_improved'] += 1
