@@ -48,7 +48,7 @@ enc_cell_hparams = {
     'type': 'LSTMCell',
     'kwargs': {
         'num_units': hidden_size,
-        #'forget_bias': 0.
+        'forget_bias': 0.
     },
     'dropout': {'output_keep_prob': 1. - enc_dropout_out},
     'num_layers': 1
@@ -158,6 +158,7 @@ kl_anneal_hparams = {
 train_data_hparams = {
     'num_epochs': 1,
     'batch_size': batch_size,
+    #"shuffle": False,
     'seed': 123,
     'dataset': {
         'files': './simple-examples/data/ptb.train.txt',

@@ -70,7 +70,7 @@ def kl_dvg(means, logvars):
     return torch.sum(kl_cost)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+#device = 'cpu'
 class Vae(nn.Module):
     def __init__(self, train_data):
 
@@ -120,23 +120,33 @@ class Vae(nn.Module):
 
     def forward(self, data_batch, kl_weight, learning_rate, mode):
         ## encoder -> connector -> decoder
-        input_embed = self.encoder_w_embedder(data_batch["text_ids"].cuda())
-        output_w_embed = self.decoder_w_embedder(data_batch["text_ids"][:, :-1].cuda())
+        tmp_batch = []
+        for i, data in enumerate(data_batch["text_ids"]):
+            #data_batch["text_ids"][i] = data[data!=3]
+            tmp_batch.append(data[data!=3])
+            data_batch["length"][i] -= 2
+        text_ids = torch.stack(tmp_batch)
+        #print(tmp_batch[0].size(), len(tmp_batch))
+        #print("text_ids", text_ids.size())
+        input_embed = self.encoder_w_embedder(text_ids.to(device))
+        output_w_embed = self.decoder_w_embedder(text_ids[:, :-1].to(device))
         _, ecdr_states = self.encoder(
             input_embed,
-            sequence_length=data_batch["length"].cuda())
+            sequence_length=data_batch["length"].to(device))
 
         if config.decoder_type == "lstm":
             output_embed = output_w_embed
 
         elif config.decoder_type == 'transformer':
 
-            batch_size = data_batch["text_ids"].size(0)
-            max_seq_len = data_batch["text_ids"].size(1) - 1
+            batch_size = text_ids.size(0)
+            max_seq_len = text_ids.size(1) - 1
             batch_max_seq_len = torch.ones([batch_size]).type(torch.long) * max_seq_len
-            output_p_embed = self.decoder_p_embedder(sequence_length=batch_max_seq_len.cuda())
+            output_p_embed = self.decoder_p_embedder(sequence_length=batch_max_seq_len.to(device))
 
             output_w_embed = output_w_embed * config.hidden_size ** 0.5
+            #print("output_w_embed", output_w_embed.size())
+            #print("output_p_embed", output_p_embed.size())
             output_embed = output_w_embed + output_p_embed
 
         else:
@@ -179,17 +189,17 @@ class Vae(nn.Module):
         seq_lengths = data_batch["length"] - 1
         # Losses & train ops
         rc_loss = tx.losses.sequence_sparse_softmax_cross_entropy(
-            labels=data_batch["text_ids"][:, 1:].cuda(),
+            labels=text_ids[:, 1:].to(device),
             logits=logits,
-            sequence_length=(data_batch["length"]-1).cuda())
+            sequence_length=(data_batch["length"]-1).to(device))
 
         nll = rc_loss + kl_weight * kl_loss
 
         fetches = {
             "nll": nll,
-            "kl_loss": kl_loss,
-            "rc_loss": rc_loss,
-            "lengths": seq_lengths
+            "kl_loss": kl_loss.detach(),
+            "rc_loss": rc_loss.detach(),
+            "lengths": seq_lengths.detach()
         }
 
         return fetches
@@ -243,8 +253,10 @@ def _main(_):
             iterator.switch_to_val_data()
         elif mode_string == 'test':
             iterator.switch_to_test_data()
-
-        model.train()
+        if mode_string == 'train':
+            model.train()
+        else:
+            model.eval()
         step = 0
         start_time = time.time()
         num_words = num_sents = 0
@@ -264,13 +276,14 @@ def _main(_):
                 mode = mode_string
 
                 fetches_ = model(batch, kl_weight_, opt_vars["learning_rate"], mode)
-                fetches_["nll"].backward()
-                train_op()
+                if mode == "train":
+                    fetches_["nll"].backward()
+                    train_op()
 
                 batch_size_ = len(fetches_["lengths"])
                 num_sents += batch_size_
                 num_words += sum(fetches_["lengths"])
-                nll_ += fetches_["nll"] * batch_size_
+                nll_ += fetches_["nll"].item() * batch_size_
                 kl_loss_ += fetches_["kl_loss"] * batch_size_
                 rc_loss_ += fetches_["rc_loss"] * batch_size_
 
@@ -280,17 +293,17 @@ def _main(_):
                            'time elapsed: %.1fs' % \
                           (mode_string, epoch, step, nll_ / num_sents,
                            opt_vars["kl_weight"], kl_loss_ / num_sents,
-                           rc_loss_ / num_sents, nll_ / num_words,
-                           np.exp(nll_.detach().cpu() / num_words), time.time() - start_time))
-
+                           rc_loss_ / num_sents, nll_ / float(num_words),
+                           np.exp(nll_ / float(num_words)), time.time() - start_time))
+                    print("nll: {}, num_sents: {}, rc_loss_: {}, num_words: {}".format(nll_, num_sents, rc_loss_, num_words), )
                     sys.stdout.flush()
 
                 step += 1
 
                 #except StopIteration:
-        print('\n%s: epoch %d, nll %.4f, KL %.4f, rc %.4f, log_ppl %.4f, ppl %.4f\n' % (mode_string, epoch, nll_ / num_sents, kl_loss_ / num_sents, rc_loss_ / num_sents, nll_.detach().cpu() / num_words, np.exp(nll_.detach().cpu() / num_words)))
+        print('\n%s: epoch %d, nll %.4f, KL %.4f, rc %.4f, log_ppl %.4f, ppl %.4f\n' % (mode_string, epoch, nll_ / float(num_sents), kl_loss_ / float(num_sents), rc_loss_ / float(num_sents), nll_ / float(num_words), np.exp(nll_ / float(num_words))))
 
-        return nll_.detach().cpu() / num_sents, np.exp(nll_.detach().cpu() / num_words)
+        return nll_ / num_sents, np.exp(nll_ / num_words)
 
     @torch.no_grad()
     def _generate(sess, saver, fname=None):
@@ -368,15 +381,17 @@ def _main(_):
     # Counts trainable parameters
     total_parameters = 0
     '''for variable in tf.trainable_variables():'''
-    print("parameters", model.parameters())
-    raise Exception
-    for variable in model.parameters()
+    for name, variable in model.named_parameters():
+        size = variable.size()
+        total_parameters += np.prod(size)
+    print("%d total parameters" % total_parameters)
+    '''for variable in model.parameters()
         shape = variable.get_shape() # shape is an array of tf.Dimension
         variable_parameters = 1
         for dim in shape:
             variable_parameters *= dim.value
         total_parameters += variable_parameters
-    print("%d total parameters" % total_parameters)
+    print("%d total parameters" % total_parameters)'''
     best_nll = best_ppl = 0.
 
     for epoch in range(config.num_epochs):
@@ -384,7 +399,7 @@ def _main(_):
         val_nll, _ = _run_epoch(epoch, 'valid')
         test_nll, test_ppl = _run_epoch(epoch, 'test')
 
-        if int(val_nll.item()) < opt_vars['best_valid_nll']:
+        if int(val_nll) < opt_vars['best_valid_nll']:
             opt_vars['best_valid_nll'] = val_nll
             opt_vars['steps_not_improved'] = 0
             best_nll = test_nll
