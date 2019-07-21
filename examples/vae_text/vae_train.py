@@ -131,8 +131,7 @@ class Vae(nn.Module):
             tmp_batch.append(data[data!=3])
             data_batch["length"][i] -= 2
         text_ids = torch.stack(tmp_batch)
-        #print(tmp_batch[0].size(), len(tmp_batch))
-        #print("text_ids", text_ids.size())
+
         input_embed = self.encoder_w_embedder(text_ids.to(device))
         output_w_embed = self.decoder_w_embedder(text_ids[:, :-1].to(device))
         _, ecdr_states = self.encoder(
@@ -308,7 +307,7 @@ def _main(_):
                            opt_vars["kl_weight"], kl_loss_ / num_sents,
                            rc_loss_ / num_sents, nll_ / float(num_words),
                            np.exp(nll_ / float(num_words)), time.time() - start_time))
-                    print("nll: {}, num_sents: {}, rc_loss_: {}, num_words: {}".format(nll_, num_sents, rc_loss_, num_words), )
+
                     sys.stdout.flush()
 
                 step += 1
@@ -412,8 +411,13 @@ def _main(_):
             best_ppl = test_ppl
             print(f"best tmp nll: {best_nll}, best tmp ppl: {best_ppl}")
             for param_group in optimizer.param_groups:
-                print(param_group['lr'])
-            #saver.save(sess, save_path)
+                print(param_group[‘lr’])
+            states = {
+                "model": model.state_dict(),
+                "optimizer": optim.state_dict(),
+                #"scheduler": scheduler.state_dict(),
+            }
+            torch.save(states, save_path)
         else:
             opt_vars['steps_not_improved'] += 1
             if opt_vars['steps_not_improved'] == decay_ts:
@@ -426,7 +430,9 @@ def _main(_):
                         (old_lr, new_lr))
 
                 #saver.restore(sess, save_path)
-
+                ckpt = torch.load(save_path)
+                model.load_state_dict(ckpt['model'])
+                optimizer.load_state_dict(ckpt['optimizer'])
                 decay_cnt += 1
                 if decay_cnt == max_decay:
                     break
