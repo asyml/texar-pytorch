@@ -317,62 +317,75 @@ def _main(_):
         return nll_ / num_sents, np.exp(nll_ / float(num_words))
 
     @torch.no_grad()
-    def _generate(sess, saver, fname=None):
+    def _generate(fname=None):
         '''if tf.train.checkpoint_exists(FLAGS.model):
             saver.restore(sess, FLAGS.model)
         else:
             raise ValueError("cannot find checkpoint model")'''
-        if tf.train.checkpoint_exists(FLAGS.model):
-            saver.restore(sess, FLAGS.model)
-        else:
-            raise ValueError("cannot find checkpoint model")
+        ckpt = torch.load(save_path)
+        model.load_state_dict(ckpt['model'])
+        optimizer.load_state_dict(ckpt['optimizer'])
 
         batch_size = train_data.batch_size
 
-        dst = tfd.MultivariateNormalDiag(
+        '''dst = tfd.MultivariateNormalDiag(
             loc=tf.zeros([batch_size, config.latent_dims]),
-            scale_diag=tf.ones([batch_size, config.latent_dims]))
+            scale_diag=tf.ones([batch_size, config.latent_dims]))'''
+        dst = tx.custom.MultivariateNormalDiag(
+            loc=torch.zeros([batch_size, config.latent_dims]),
+            scale_diag=torch.ones([batch_size, config.latent_dims]))
 
-        dcdr_states, latent_z = connector_stoch(dst)
+        '''dcdr_states, latent_z = connector_stoch(dst)'''
+        latent_z = dst.rsample()
+        dcdr_states = tx.modules.connectors._mlp_transform(
+            latent_z,
+            model.decoder_initial_state_size,
+            model.mlp_linear_layer)
 
         vocab = train_data.vocab
-        start_tokens = tf.ones(batch_size, tf.int32) * vocab.bos_token_id
+        start_tokens = torch.ones(batch_size, tf.int32) * vocab.bos_token_id
         end_token = vocab.eos_token_id
 
         if config.decoder_type == "lstm":
             def _cat_embedder(ids):
                 """Concatenates latent variable to input word embeddings
                 """
-                embedding = decoder_w_embedder(ids)
+                embedding = model.decoder_w_embedder(ids)
                 return tf.concat([embedding, latent_z], axis=1)
 
-            outputs, _, _ = decoder(
-                initial_state=dcdr_states,
-                decoding_strategy="infer_sample",
+            infer_helper = model.decoder.create_helper(
                 embedding=_cat_embedder,
-                max_decoding_length=100,
+                decoding_strategy='infer_sample',
                 start_tokens=start_tokens,
                 end_token=end_token)
+            outputs, _, _ = model.decoder(
+                initial_state=dcdr_states,
+                helper=infer_helper,
+                max_decoding_length=100)
         else:
             def _embedding_fn(ids, times):
-                w_embed = decoder_w_embedder(ids)
-                p_embed = decoder_p_embedder(times)
+                w_embed = mode.decoder_w_embedder(ids)
+                p_embed = mode.decoder_p_embedder(times)
                 return w_embed * config.hidden_size ** 0.5 + p_embed
 
+            infer_helper = model.decoder.create_helper(
+                embedding=_embedding_fn,
+                decoding_strategy='infer_sample',
+                start_tokens=start_tokens,
+                end_token=end_token)
             outputs, _ = decoder(
                 memory=dcdr_states,
-                decoding_strategy="infer_sample",
-                memory_sequence_length=tf.ones(tf.shape(dcdr_states)[0]),
-                embedding=_embedding_fn,
+                memory_sequence_length=torch.ones(dcdr_states.size(0)),
                 max_decoding_length=100,
                 start_tokens=start_tokens,
                 end_token=end_token)
 
         sample_tokens = vocab.map_ids_to_tokens(outputs.sample_id)
-        sess.run(tf.tables_initializer())
+        #sess.run(tf.tables_initializer())
 
-        feed = {tx.global_mode(): tf.estimator.ModeKeys.PREDICT}
-        sample_tokens_ = sess.run(sample_tokens, feed_dict=feed)
+        '''feed = {tx.global_mode(): tf.estimator.ModeKeys.PREDICT}
+        sample_tokens_ = sess.run(sample_tokens, feed_dict=feed)'''
+        sample_tokens_ = sample_tokens
 
         if fname is None:
             fh = sys.stdout
@@ -389,9 +402,12 @@ def _main(_):
         print('Output done')
         fh.close()
 
+
+    if FLAGS.mode == "predict":
+        _generate(saver, FLAGS.out)
+        return
     # Counts trainable parameters
     total_parameters = 0
-
     for name, variable in model.named_parameters():
         size = variable.size()
         total_parameters += np.prod(size)
@@ -411,7 +427,7 @@ def _main(_):
             best_ppl = test_ppl
             print(f"best tmp nll: {best_nll}, best tmp ppl: {best_ppl}")
             for param_group in optimizer.param_groups:
-                print(param_group[‘lr’])
+                print(param_group['lr'])
             states = {
                 "model": model.state_dict(),
                 "optimizer": optim.state_dict(),
