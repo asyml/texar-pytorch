@@ -1,0 +1,2 @@
+class Action:
+    pass
