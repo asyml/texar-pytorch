@@ -35,7 +35,7 @@ pip install -r requirements.txt
 
 This mode will initialize an interactive interface, which allows users to type in the context sentence. The model then generates continuation of the context. The example supports both Top-K and Top-P sample decoding. By default, the GPT-2 `117M` model with Top-K sample decoding is used.
 
-```
+```bash
 python gpt2_generate_main.py --is_interactive \
 --max_decoding_length=100 \
 --temperature=0.7 \
@@ -58,7 +58,7 @@ For *top-p decoding*:
 
 To use the GPT-2 `345M` model, specify `--config_model`:
 
-```
+```bash
 python gpt2_generate_main.py --is_interactive \
 --max_decoding_length=100 \
 --temperature=0.7 \
@@ -72,7 +72,7 @@ Here:
 
 To use Top-P sample decoding, specify `--top_p`:
 
-```
+```bash
 python gpt2_generate_main.py --is_interactive \
 --max_decoding_length=100 \
 --temperature=0.7 \
@@ -86,10 +86,13 @@ Here:
 
 
 **Example input:**
+
 ```
 Model input >>> Micheal Jordan is the greatest player in history !
 ```
+
 **Example output:**
+
 ```
 ======================================== SAMPLE 1 ========================================
 
@@ -107,8 +110,8 @@ The last time we saw him on stage, he
 
 This mode generates a batch of samples from scratch.
 
-```
-python gpt2_generate_main.py
+```bash
+python gpt2_generate_main.py \
 --nsamples=1 \
 --batch_size=1 \
 --max_decoding_len=100 \
@@ -144,13 +147,13 @@ We first preprocess data with the GPT-2 BPE encoding.
 
 A toy dataset is provided under [`data/toy/`](data/toy) which includes `train.txt`, `dev.txt`, and `test.txt`. This example will fit the GPT-2 model on `train.txt`, evaluate perplexity on `dev.txt`, and do continuation generation using `test.txt` as the context.
 
-Run the following cmd to transform the data into [TFRecord](https://www.tensorflow.org/tutorials/load_data/tf_records) format and perform processing such as truncation, BPE encoding, adding special tokens, etc:
+Run the following cmd to transform the data into [pickle](https://docs.python.org/3/library/pickle.html) format and perform processing such as truncation, BPE encoding, adding special tokens, etc:
 
-```
-    python prepare_data.py --data_dir data/toy 
-    [--max_seq_length=128]
-    [--tfrecord_output_dir=data/toy] 
-    [--pretrained_model_name=117M]
+```bash
+python prepare_data.py --data_dir data/toy \
+--max_seq_length=128 \
+--tfrecord_output_dir=data/toy \ 
+--pretrained_model_name=117M
 ```
 
 - `data_dir`: The directory of raw data, wherein data files must be named as 'train.txt', 'dev.txt', or 'test.txt'. It is *not* necessary to provide all three files.
@@ -158,16 +161,16 @@ Run the following cmd to transform the data into [TFRecord](https://www.tensorfl
 - `tfrecord_output_dir`: The output path where the resulting TFRecord files will be put in. Be default, it is set to be the same as `data_dir`. 
 - `pretrained_model_name`: The name of a pre-trained model to load selected in the list of: `117M`, `345M`.
 
-The above cmd will output TFRecord files in the specified output directory. E.g., if `train.txt` is provided under `data_dir`, the output file `train.tf_record` will be produced under `tfrecord_output_dir`.
+The above cmd will output `pickle` files in the specified output directory. E.g., if `train.txt` is provided under `data_dir`, the output file `train.pickle` will be produced under `tfrecord_output_dir`.
 
 ### Train and Evaluate
 
 For **single-GPU** training (and evaluation), run the following cmd. The cmd fine-tunes the pre-trained GPT-2 parameters, and evalautes perplexity on the dev set.
 
-```
-    python gpt2_train_main.py --do_train --do_eval
-    [--config_train=configs.config_train]
-    [--output_dir=output]
+```bash
+python gpt2_train_main.py --do_train --do_eval \
+--config_train=configs.config_train \
+--output_dir=output
 ```
 
 Here:
@@ -177,11 +180,11 @@ Here:
 
 By default, the GPT-2 `117M` model is used. To use the GPT-2 `345M` model instead, specify relevant arguments as below:
 
-```
-    python gpt2_train_main.py --do_train --do_eval \
-    --config_model=configs.config_model_345M \
-    [--config_train=configs.config_train]
-    [--output_dir=output]
+```bash
+python gpt2_train_main.py --do_train --do_eval \
+--config_model=configs.config_model_345M \
+--config_train=configs.config_train \
+--output_dir=output
 ```
 where `pretrained_model_name` in `configs.config_model_345M` is necessary only when you want to load the pretrained checkpoint, and is ignored if `--checkpoint` is specified. 
 

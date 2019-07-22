@@ -28,12 +28,12 @@ opt = {
 # Data configs
 
 feature_original_types = {
-    # Reading features from TFRecord data file.
-    # E.g., Reading feature "text_ids" as dtype `tf.int64`;
+    # Reading features from pickle data file.
+    # E.g., Reading feature "text_ids" as dtype `int64`;
     # "FixedLenFeature" indicates its length is fixed for all data instances;
     # and the sequence length is limited by `max_seq_length`.
-    "text_ids": ["tf.int64", "FixedLenFeature", max_seq_length],
-    "length": ["tf.int64", "FixedLenFeature"]
+    "text_ids": ["int64", "FixedLenFeature", max_seq_length],
+    "length": ["int64", "FixedLenFeature"]
 }
 
 train_hparam = {
@@ -42,7 +42,7 @@ train_hparam = {
     "dataset": {
         "data_name": "data",
         "feature_original_types": feature_original_types,
-        "files": "{}/train.tf_record".format(tfrecord_data_dir)
+        "files": "{}/train.pickle".format(tfrecord_data_dir)
     },
     "shuffle": True,
     "shuffle_buffer_size": 10000
@@ -54,7 +54,7 @@ eval_hparam = {
     "dataset": {
         "data_name": "data",
         "feature_original_types": feature_original_types,
-        "files": "{}/dev.tf_record".format(tfrecord_data_dir)
+        "files": "{}/dev.pickle".format(tfrecord_data_dir)
     },
     "shuffle": False
 }
@@ -67,7 +67,7 @@ test_hparam = {
     "dataset": {
         "data_name": "data",
         "feature_original_types": feature_original_types,
-        "files": "{}/test.tf_record".format(tfrecord_data_dir)
+        "files": "{}/test.pickle".format(tfrecord_data_dir)
     },
     "shuffle": False
 }
