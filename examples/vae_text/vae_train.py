@@ -43,7 +43,7 @@ import tensorflow as tf
 '''import tensorflow as tf
 import tensorflow_probability as tfp'''
 import texar as tx
-
+from texar.custom import MultivariateNormalDiag
 
 '''tfd = tfp.distributions'''
 
@@ -85,7 +85,7 @@ class Vae(nn.Module):
             vocab_size=train_data.vocab.size, hparams=config.enc_emb_hparams)
 
         self.encoder = tx.modules.UnidirectionalRNNEncoder(
-            input_size = self.encoder_w_embedder.dim,
+            input_size = 256,#self.encoder_w_embedder.dim,
             hparams={
                 "rnn_cell": config.enc_cell_hparams,
             })
@@ -94,11 +94,14 @@ class Vae(nn.Module):
             vocab_size=train_data.vocab.size, hparams=config.dec_emb_hparams)
 
         if config.decoder_type == "lstm":
-            decoder_initial_state_size = self.decoder.cell.state_size
+            #decoder_initial_state_size = self.decoder.cell.state_size
             self.decoder = tx.modules.BasicRNNDecoder(
                 vocab_size=train_data.vocab.size,
+                input_size = 288,#self.decoder_w_embedder.dim,
                 hparams={"rnn_cell": config.dec_cell_hparams})
-
+            decoder_initial_state_size = (self.decoder.cell.hidden_size, self.decoder.cell.hidden_size)
+            #print("decoder_initial_state_size", decoder_initial_state_size)
+            #print("self.decoder", self.decoder)
         elif config.decoder_type == 'transformer':
             decoder_initial_state_size = torch.Size(
                 [1, config.dec_emb_hparams["dim"]])
@@ -134,6 +137,7 @@ class Vae(nn.Module):
 
         input_embed = self.encoder_w_embedder(text_ids.to(device))
         output_w_embed = self.decoder_w_embedder(text_ids[:, :-1].to(device))
+        #print("input_embed", input_embed.size())
         _, ecdr_states = self.encoder(
             input_embed,
             sequence_length=data_batch["length"].to(device))
@@ -159,7 +163,7 @@ class Vae(nn.Module):
         mean, logvar = torch.chunk(mean_logvar, 2, 1)
         kl_loss = kl_dvg(mean, logvar)
 
-        dst = tx.custom.MultivariateNormalDiag(
+        dst = MultivariateNormalDiag(
             loc=mean,
             scale_diag=torch.exp(0.5 * logvar))
 
@@ -175,7 +179,9 @@ class Vae(nn.Module):
             latent_z = torch.unsqueeze(latent_z, 1)
 
             latent_z = latent_z.repeat([1, output_embed.size(1), 1])
-            output_embed = torch.concat([output_embed, latent_z], 2)
+            output_embed = torch.cat([output_embed, latent_z], 2)
+            #print("output_embed", output_embed.size(), self.decoder._cell)
+            #print("dcdr_states", len(dcdr_states), type(dcdr_states), dcdr_states[0].size())
             train_helper = self.decoder.create_helper(decoding_strategy='train_greedy')
             outputs, _, _ = self.decoder(
                 initial_state=dcdr_states,
@@ -332,7 +338,7 @@ def _main(_):
         '''dst = tfd.MultivariateNormalDiag(
             loc=tf.zeros([batch_size, config.latent_dims]),
             scale_diag=tf.ones([batch_size, config.latent_dims]))'''
-        dst = tx.custom.MultivariateNormalDiag(
+        dst = MultivariateNormalDiag(
             loc=torch.zeros([batch_size, config.latent_dims]),
             scale_diag=torch.ones([batch_size, config.latent_dims]))
 
@@ -351,14 +357,15 @@ def _main(_):
             def _cat_embedder(ids):
                 """Concatenates latent variable to input word embeddings
                 """
-                embedding = model.decoder_w_embedder(ids)
-                return tf.concat([embedding, latent_z], axis=1)
+                embedding = model.decoder_w_embedder(ids.to(device))
+                return torch.cat([embedding, latent_z.to(device)], 1)
 
             infer_helper = model.decoder.create_helper(
                 embedding=_cat_embedder,
                 decoding_strategy='infer_sample',
-                start_tokens=start_tokens,
+                start_tokens=start_tokens.to(device),
                 end_token=end_token)
+            print("dcdr_states", type(dcdr_states), dcdr_states[0].device, dcdr_states[1].device)
             outputs, _, _ = model.decoder(
                 initial_state=dcdr_states,
                 helper=infer_helper,

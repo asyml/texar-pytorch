@@ -54,10 +54,10 @@ dec_cell_hparams = {
     "type": "LSTMCell",
     "kwargs": {
         "num_units": hidden_size,
-        "forget_bias": 0.
+        "forget_bias": 0.,
     },
     "dropout": {"output_keep_prob": 1. - dec_dropout_out},
-    "num_layers": 1
+    "num_layers": 1,
 }
 
 enc_emb_hparams = {

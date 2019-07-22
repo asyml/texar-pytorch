@@ -201,7 +201,10 @@ class RNNDecoderBase(DecoderBase[State, Output]):
             -> Tuple[torch.ByteTensor, torch.Tensor, Optional[State]]:
         initial_finished, initial_inputs = helper.initialize(
             self.embed_tokens, inputs, sequence_length)
-        state = initial_state or self._cell.init_batch()
+        if initial_state is None:
+            state = self._cell.init_batch()
+        else:
+            state = initial_state
         return (initial_finished, initial_inputs, state)
 
     def step(self, helper: Helper, time: int,
