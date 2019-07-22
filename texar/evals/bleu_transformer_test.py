@@ -48,7 +48,7 @@ class BLEUToolTest(unittest.TestCase):
 
     def test_bleu_tokenize(self):
         s = "Test0, 1 two, 3"
-        tokenized = bleu_tokenize_transformer(s)
+        tokenized = bleu_transformer_tokenize(s)
         self.assertEqual(["Test0", ",", "1", "two", ",", "3"], tokenized)
 
     def test_bleu_version(self):
