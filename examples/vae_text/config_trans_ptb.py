@@ -93,7 +93,6 @@ trans_hparams = {
     'dim': hidden_size,
     'initializer': {
         'type': 'variance_scaling_initializer',
-        #'type': texar.custom.variance_scaling_initializer,
         'kwargs': {
             'factor': 1.0,
             'mode': 'FAN_AVG',
@@ -110,13 +109,8 @@ trans_hparams = {
         'name': 'fnn',
         'layers': [
             {
-                #'type': 'Dense',
                 'type': 'Linear',
                 'kwargs': {
-                    #'name': 'conv1',
-                    #'units': hidden_size*4,
-                    #'activation': 'relu',
-                    #'use_bias': True,
                     "in_features": hidden_size,
                     "out_features": hidden_size * 4,
                     "bias": True,
@@ -134,13 +128,10 @@ trans_hparams = {
             {
                 'type': 'Linear',
                 'kwargs': {
-                    #'name': 'conv2',
-                    #'units': hidden_size,
-                    #'use_bias': True,
                     "in_features": hidden_size * 4,
                     "out_features": hidden_size,
                     "bias": True,
-                    }
+                }
             }
         ],
     }

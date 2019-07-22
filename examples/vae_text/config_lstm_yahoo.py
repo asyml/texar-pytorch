@@ -46,7 +46,7 @@ num_blocks = 3
 decoder_type = 'lstm'
 
 enc_cell_hparams = {
-    "type": "LSTMBlockCell",
+    "type": "LSTMCell",
     "kwargs": {
         "num_units": hidden_size,
         "forget_bias": 0.
@@ -56,7 +56,7 @@ enc_cell_hparams = {
 }
 
 dec_cell_hparams = {
-    "type": "LSTMBlockCell",
+    "type": "LSTMCell",
     "kwargs": {
         "num_units": hidden_size,
         "forget_bias": 0.
@@ -70,7 +70,7 @@ enc_emb_hparams = {
     "dim": embed_dim,
     "dropout_rate": enc_dropout_in,
     'initializer' : {
-        'type': 'random_normal_initializer',
+        'type': 'normal_',
         'kwargs': {
             'mean': 0.0,
             'stddev': embed_dim**-0.5,
@@ -83,7 +83,7 @@ dec_emb_hparams = {
     "dim": embed_dim,
     "dropout_rate": dec_dropout_in,
     'initializer' : {
-        'type': 'random_normal_initializer',
+        'type': 'normal_',
         'kwargs': {
             'mean': 0.0,
             'stddev': embed_dim**-0.5,
@@ -130,13 +130,16 @@ test_data_hparams = {
 
 opt_hparams = {
     "optimizer": {
-        "type": "AdamOptimizer",
+        "type": "Adam",
         "kwargs": {
-            "learning_rate": 0.001
+            "lr": 0.001
         }
     },
-    "gradient_clip": {
-        "type": "clip_by_global_norm",
-        "kwargs": {"clip_norm": 5.}
+    'gradient_clip': {
+        "type": "clip_grad_norm_",
+        "kwargs": {
+            "max_norm": 5,
+            "norm_type": 2
+        }
     }
 }
