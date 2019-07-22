@@ -31,7 +31,7 @@ from texar.utils.types import MaybeList
 
 __all__ = [
     "corpus_bleu_transformer",
-    "bleu_tokenize",
+    "bleu_tokenize_transformer",
     "file_bleu",
 ]
 
@@ -159,7 +159,7 @@ class UnicodeRegex:
 uregex = UnicodeRegex()
 
 
-def bleu_tokenize(string: str) -> List[str]:
+def bleu_tokenize_transformer(string: str) -> List[str]:
     r"""Tokenize a string following the official BLEU implementation.
 
     The BLEU scores from `multi-bleu.perl` depend on your `tokenizer`, which is
@@ -228,10 +228,10 @@ def file_bleu(ref_filename: str,
 
     ref_tokens: List[MaybeList[List[str]]]
     if bleu_version == "corpus_bleu_transformer":
-        ref_tokens = [bleu_tokenize(x) for x in ref_lines]
+        ref_tokens = [bleu_tokenize_transformer(x) for x in ref_lines]
     else:
-        ref_tokens = [[bleu_tokenize(x)] for x in ref_lines]
-    hyp_tokens = [bleu_tokenize(x) for x in hyp_lines]
+        ref_tokens = [[bleu_tokenize_transformer(x)] for x in ref_lines]
+    hyp_tokens = [bleu_tokenize_transformer(x) for x in hyp_lines]
 
     bleu_dict = {
         "corpus_bleu": corpus_bleu,
