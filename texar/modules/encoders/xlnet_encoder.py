@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-XLNet encoders.
+XLNet encoder.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
+
+import itertools
 
 import torch
 import torch.nn as nn
@@ -23,10 +25,12 @@ import torch.nn.functional as F
 
 from texar.core import layers
 from texar.hyperparams import HParams
-from texar.modules.pretrained import (xlnet_utils, XLNetBase, PositionWiseFF,
-                                      RelativePositionalEncoding,
-                                      RelativeMultiheadAttention)
-from texar.utils import dict_fetch
+from texar.modules.encoders.encoder_base import EncoderBase
+from texar.modules.pretrained.pretrained_base import PretrainedBase
+from texar.modules.pretrained.xlnet_utils import init_xlnet_checkpoint
+from texar.modules.pretrained.xlnet_model_utils import (
+    PositionWiseFF, RelativePositionalEncoding, RelativeMultiheadAttention)
+from texar.utils.utils import dict_fetch, sum_tensors
 
 
 __all__ = [
@@ -34,7 +38,7 @@ __all__ = [
 ]
 
 
-class XLNetEncoder(XLNetBase):
+class XLNetEncoder(PretrainedBase, EncoderBase):
     r"""Raw XLNet module for encoding sequences.
 
     This module supports the architecture first proposed
@@ -54,6 +58,8 @@ class XLNetEncoder(XLNetBase):
             and default values.
         init (optional): whether to initialize `XLNetEncoder`.
     """
+
+    model_name = "XLNet"
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
@@ -78,23 +84,19 @@ class XLNetEncoder(XLNetBase):
         self.pos_embed = RelativePositionalEncoding(
             hparams={
                 "dim": self._hparams.hidden_dim,
-                "max_seq_len": self._hparams.max_seq_len,
+                "max_seq_len": self._hparams.max_seq_length,
             })
         self.dropout = nn.Dropout(self._hparams.dropout)
 
-        self.r_r_bias: Optional[nn.Parameter]
-        self.r_w_bias: Optional[nn.Parameter]
-        self.r_s_bias: Optional[nn.Parameter]
+        self.r_r_bias = None
+        self.r_w_bias = None
+        self.r_s_bias = None
 
         if not self._hparams.untie_r:
             self.r_r_bias = nn.Parameter(torch.Tensor(num_heads, head_dim))
             self.r_w_bias = nn.Parameter(torch.Tensor(num_heads, head_dim))
             self.r_s_bias = (nn.Parameter(torch.Tensor(num_heads, head_dim))
                              if self._hparams.use_segments else None)
-        else:
-            self.r_r_bias = None
-            self.r_w_bias = None
-            self.r_s_bias = None
 
         self.attn_layers = nn.ModuleList()
         self.ff_layers = nn.ModuleList()
@@ -113,8 +115,7 @@ class XLNetEncoder(XLNetBase):
 
         if init:
             if self.pretrained_model_dir:
-                xlnet_utils.init_xlnet_checkpoint(self,
-                                                  self.pretrained_model_dir)
+                init_xlnet_checkpoint(self, self.pretrained_model_dir)
             elif self._hparams.initializer:
                 initialize = layers.get_initializer(self._hparams.initializer)
                 assert initialize is not None
@@ -163,7 +164,7 @@ class XLNetEncoder(XLNetBase):
                 "ffn_inner_dim": 3072,
                 "activation": 'gelu',
                 "vocab_size": 32000,
-                "max_seq_len": 512,
+                "max_seq_length": 512,
                 "initializer": None,
                 "name": "xlnet_encoder",
             }
@@ -172,59 +173,59 @@ class XLNetEncoder(XLNetBase):
 
         The default parameters are values for cased XLNet-Base model.
 
-        `pretrained_model_name`: str or None
+        `"pretrained_model_name"`: str or None
             The name of the pre-trained XLNet model. If None, the model
             will be randomly initialized.
 
-        `untie_r`: bool
+        `"untie_r"`: bool
             Whether to untie the biases in attention.
 
-        `num_layers`: int
+        `"num_layers"`: int
             The number of stacked layers.
 
-        `mem_len`: int
+        `"mem_len"`: int
             The number of tokens to cache.
 
-        `reuse_len`: int
+        `"reuse_len"`: int
             The number of tokens in the current batch to be cached and reused
             in the future.
 
-        `num_heads`: int
+        `"num_heads"`: int
             The number of attention heads.
 
-        `hidden_dim`: int
+        `"hidden_dim"`: int
             The hidden size.
 
-        `head_dim`: int
+        `"head_dim"`: int
             The dimension size of each attention head.
 
-        `dropout`: float
+        `"dropout"`: float
             Dropout rate.
 
-        `attention_dropout`: float
+        `"attention_dropout"`: float
             Dropout rate on attention probabilities.
 
-        `use_segments`: bool
+        `"use_segments"`: bool
             Whether to use segment embedding.
 
-        `ffn_inner_dim`: int
+        `"ffn_inner_dim"`: int
             The hidden size in feed-forward layers.
 
-        `activation`: str
+        `"activation"`: str
             `relu` or `gelu`.
 
-        `vocab_size`: int
+        `"vocab_size"`: int
             The vocabulary size.
 
-        `max_seq_len`: int
+        `"max_seq_length"`: int
             The maximum sequence length for `RelativePositionalEncoding`.
 
-        `initializer`: dict, optional
+        `"initializer"`: dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
             See :func:`~texar.core.get_initializer` for details.
 
-        `name`: str
+        `"name"`: str
             Name of the module.
         """
 
@@ -246,11 +247,65 @@ class XLNetEncoder(XLNetBase):
             'activation': 'gelu',
             # embedding
             'vocab_size': 32000,
-            'max_seq_len': 512,
+            'max_seq_length': 512,
             'initializer': None,
             'name': "xlnet_encoder",
             '@no_typecheck': ['pretrained_model_name'],
         }
+
+    def param_groups(self,
+                     lr: Optional[float] = None,
+                     lr_layer_scale: float = 1.0,
+                     decay_base_params: bool = False):
+        r"""Create parameter groups for optimizers. When
+        :attr:`lr_layer_decay_rate` is not 1.0, parameters from each layer form
+        separate groups with different base learning rates.
+
+        Args:
+            lr (float): The learning rate. Can be omitted if
+                :attr:`lr_layer_decay_rate` is 1.0.
+            lr_layer_scale (float): Per-layer LR scaling rate. The `i`-th layer
+                will be scaled by `lr_layer_scale ^ (num_layers - i - 1)`.
+            decay_base_params (bool): If `True`, treat non-layer parameters
+                (e.g. embeddings) as if they're in layer 0. If `False`, these
+                parameters are not scaled.
+
+        Returns:
+            The parameter groups, used as the first argument for optimizers.
+        """
+
+        if lr_layer_scale != 1.0:
+            if lr is None:
+                raise ValueError(
+                    "lr must be specified when lr_layer_decay_rate is not 1.0")
+
+            def params_except_in(module: nn.Module,
+                                 except_names: List[str]) \
+                    -> Iterable[nn.Parameter]:
+                return itertools.chain.from_iterable(
+                    child.parameters() for name, child in
+                    module.named_children()
+                    if name not in except_names)
+
+            num_layers = self._hparams.num_layers
+            base_group = {
+                "params": params_except_in(
+                    self, ['attn_layers', 'ff_layers']),
+                "lr": lr * (lr_layer_scale ** num_layers
+                            if decay_base_params else 1.0)
+            }
+            param_groups = [base_group]
+            for idx in range(num_layers):
+                decay_rate = lr_layer_scale ** (num_layers - idx - 1)
+                param_group = {
+                    "params": [*self.attn_layers[idx].parameters(),
+                               *self.ff_layers[idx].parameters()],
+                    "lr": lr * decay_rate,
+                }
+                param_groups.append(param_group)
+        else:
+            param_groups = self.parameters()
+        return param_groups
 
     @property
     def output_size(self):
@@ -292,18 +347,72 @@ class XLNetEncoder(XLNetBase):
 
     def forward(self,  # type: ignore
                 token_ids: torch.LongTensor,
-                *args,
-                **kwargs) \
+                segment_ids: Optional[torch.LongTensor] = None,
+                input_mask: Optional[torch.Tensor] = None,
+                memory: Optional[List[torch.Tensor]] = None,
+                permute_mask: Optional[torch.Tensor] = None,
+                target_mapping: Optional[torch.Tensor] = None,
+                bi_data: bool = False,
+                clamp_len: Optional[int] = None,
+                cache_len: int = 0,
+                same_length: bool = False,
+                attn_type: str = 'bi',
+                two_stream: bool = False) \
             -> Tuple[torch.Tensor, Optional[List[torch.Tensor]]]:
-        r"""A wrapper for :meth:`_forward`. This layer exists because
-        :class:`XLNetDecoder` compute embeddings in the decoder helper.
-        Please refer to :meth:`_forward` for the full list of arguments.
+        r"""Compute XLNet representations for the input.
 
         Args:
             token_ids: Shape `[batch_size, seq_len]`.
-            **kwargs: Remaining arguments to pass to :meth:`_forward`.
+            segment_ids: Shape `[batch_size, seq_len]`.
+            input_mask: Float tensor of shape `[batch_size, seq_len]`. Note that
+                positions with value 1 are masked out.
+            memory: Memory from previous batches. A list of length `num_layers`,
+                each tensor of shape `[batch_size, mem_len, hidden_dim]`.
+            permute_mask: The permutation mask. Float tensor of shape
+                `[batch_size, seq_len, seq_len]`.
+                A value of 0 for ``permute_mask[i, j, k]`` indicates that
+                position `i` attends to position `j` in batch `k`.
+            target_mapping: The target token mapping. Float tensor of shape
+                `[batch_size, num_targets, seq_len]`.
+                A value of 1 for ``target_mapping[i, j, k]`` indicates that
+                the `i`-th target token (in order of permutation) in batch `k`
+                is the token at position `j`.
+                Each row ``target_mapping[i, :, k]`` can have no more than one
+                value of 1.
+            bi_data (bool): Whether to use bidirectional data input pipeline.
+            clamp_len (int): Clamp all relative distances larger than
+                :attr:`clamp_len`. A value of -1 means no clamping.
+            cache_len (int): Length of memory (number of tokens) to cache.
+            same_length (bool): Whether to use the same attention length for
+                each token.
+            attn_type (str): Attention type. Supported values are `"uni"`
+                and `"bi"`.
+            two_stream (bool): Whether to use two-stream attention. Only set to
+                `True` when pre-training or generating text. Defaults to
+                `False`.
+
+        :returns: A tuple of `(output, new_memory)`:
+
+            - **`output`**: The final layer output representations. Shape
+              `[batch_size, seq_len, hidden_dim]`.
+            - **`new_memory`**: The memory of the current batch.
+              If `cache_len` is 0, then `new_memory` is `None`. Otherwise, it is
+              a list of length `num_layers`, each tensor of shape
+              `[batch_size, cache_len, hidden_dim]`.
+              This can be used as the :attr:`memory` argument in the next batch.
         """
-        return self._forward(self.word_embed(token_ids), *args, **kwargs)
+        return self._forward(self.word_embed(token_ids),
+                             segment_ids=segment_ids,
+                             input_mask=input_mask,
+                             memory=memory,
+                             permute_mask=permute_mask,
+                             target_mapping=target_mapping,
+                             bi_data=bi_data,
+                             clamp_len=clamp_len,
+                             cache_len=cache_len,
+                             same_length=same_length,
+                             attn_type=attn_type,
+                             two_stream=two_stream)
 
     def _forward(self,
                  word_embed: torch.Tensor,
@@ -319,7 +428,8 @@ class XLNetEncoder(XLNetBase):
                  attn_type: str = 'bi',
                  two_stream: bool = False) \
             -> Tuple[torch.Tensor, Optional[List[torch.Tensor]]]:
-        r"""Compute XLNet representations for the input.
+        r"""Compute XLNet representations for the input. This layer exists
+        because :class:`XLNetDecoder` compute embeddings in the decoder helper.
 
         Args:
             word_embed: Shape `[batch_size, seq_len, word_embed_dim]`.
@@ -403,7 +513,7 @@ class XLNetEncoder(XLNetBase):
         # Data mask: input mask & permutation mask.
         if input_mask is not None:
             input_mask = input_mask.expand(seq_len, -1, -1)
-        data_mask = xlnet_utils.sum_tensors([input_mask, permute_mask])
+        data_mask = sum_tensors([input_mask, permute_mask])
         if data_mask is not None:
             # All positions in memory can be attended to.
             memory_mask = data_mask.new_zeros(seq_len, mem_len, batch_size)
@@ -412,7 +522,7 @@ class XLNetEncoder(XLNetBase):
             masks.append(data_mask)
 
         # Exclude the main diagonal (target tokens) from the mask.
-        attn_mask = xlnet_utils.sum_tensors(masks)
+        attn_mask = sum_tensors(masks)
         if attn_mask is None:
             final_mask = None
         else:

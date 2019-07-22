@@ -21,10 +21,12 @@ import itertools
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
+from texar.hyperparams import HParams
 from texar.modules.regressors.regressor_base import RegressorBase
 from texar.modules.encoders.xlnet_encoder import XLNetEncoder
-from texar.utils import utils
+from texar.utils.utils import dict_fetch
 
 
 __all__ = [
@@ -60,10 +62,7 @@ class XLNetRegressor(RegressorBase):
         super().__init__(hparams)
 
         # Create the underlying encoder
-        encoder_hparams = utils.dict_fetch(hparams,
-                                           XLNetEncoder.default_hparams())
-        if encoder_hparams is not None:
-            encoder_hparams['name'] = None
+        encoder_hparams = dict_fetch(hparams, XLNetEncoder.default_hparams())
 
         self._encoder = XLNetEncoder(
             pretrained_model_name=pretrained_model_name,
@@ -71,23 +70,31 @@ class XLNetRegressor(RegressorBase):
             hparams=encoder_hparams)
 
         if self._hparams.use_projection:
-            self.projection = nn.Linear(self._encoder.output_size,
-                                        self._encoder.output_size)
+            if self._hparams.regr_strategy == 'all_time':
+                self.projection = nn.Linear(
+                    self._encoder.output_size * self._hparams.max_seq_length,
+                    self._encoder.output_size * self._hparams.max_seq_length)
+            else:
+                self.projection = nn.Linear(self._encoder.output_size,
+                                            self._encoder.output_size)
         self.dropout = nn.Dropout(self._hparams.dropout)
 
-        if self._hparams.summary_type == 'last':
-            self.summary_op = lambda output: output[:, -1]
-        elif self._hparams.summary_type == 'first':
-            self.summary_op = lambda output: output[:, 0]
-        elif self._hparams.summary_type == 'mean':
-            self.summary_op = lambda output: torch.mean(output, dim=1)
-        elif self._hparams.summary_type == 'attn':
-            raise NotImplementedError
+        logit_kwargs = self._hparams.logit_layer_kwargs
+        if logit_kwargs is None:
+            logit_kwargs = {}
+        elif not isinstance(logit_kwargs, HParams):
+            raise ValueError("hparams['logit_layer_kwargs'] "
+                             "must be a dict.")
         else:
-            raise ValueError(
-                f"Unsupported summary type {self._hparams.summary_type}")
+            logit_kwargs = logit_kwargs.todict()
 
-        self.hidden_to_logits = nn.Linear(self._encoder.output_size, 1)
+        if self._hparams.regr_strategy == 'all_time':
+            self.hidden_to_logits = nn.Linear(
+                self._encoder.output_size * self._hparams.max_seq_length,
+                1, **logit_kwargs)
+        else:
+            self.hidden_to_logits = nn.Linear(
+                self._encoder.output_size, 1, **logit_kwargs)
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
@@ -99,8 +106,9 @@ class XLNetRegressor(RegressorBase):
                 # (1) Same hyperparameters as in XLNetEncoder
                 ...
                 # (2) Additional hyperparameters
-                "summary_type": "last",
+                "regr_strategy": "cls_time",
                 "use_projection": True,
+                "logit_layer_kwargs": None,
                 "name": "xlnet_regressor",
             }
 
@@ -113,48 +121,37 @@ class XLNetRegressor(RegressorBase):
 
         2. Additional hyperparameters:
 
-            `summary_type`: str
-                The summary type, one of:
+            `"regr_strategy"`: str
+                The regression strategy, one of:
 
-                - If **last**, summary based on the output of the last time
-                  step.
-                - If **first**, summary based on the output of the first time
-                  step.
-                - If **mean**, summary based on the mean of the outputs of all
-                  time steps.
+                - **cls_time**: Sequence-level regression based on the
+                  output of the first time step (which is the `CLS` token).
+                  Each sequence has a prediction.
+                - **all_time**: Sequence-level regression based on
+                  the output of all time steps. Each sequence has a prediction.
+                - **time_wise**: Step-wise regression, i.e., make
+                  regression for each time step based on its output.
 
-            `use_projection`: bool
-                If `True`, an additional `Linear` layer is added after the
-                summary step.
+            `"logit_layer_kwargs"`: dict
+                Keyword arguments for the logit :torch_nn:`Linear` layer
+                constructor. Ignored if no extra logit layer is appended.
 
-            `name`: str
+            `"use_projection"`: bool
+                If `True`, an additional :torch_nn:`Linear` layer is added after
+                the summary step.
+
+            `"name"`: str
                 Name of the regressor.
         """
-        return {
-            'pretrained_model_name': 'xlnet-base-cased',
-            'untie_r': True,
-            'num_layers': 12,
-            'mem_len': 0,
-            'reuse_len': 0,
-            # layer
-            'num_heads': 12,
-            'hidden_dim': 768,
-            'head_dim': 64,
-            'dropout': 0.1,
-            'attention_dropout': 0.1,
-            'use_segments': True,
-            # ffn
-            'ffn_inner_dim': 3072,
-            'activation': 'gelu',
-            # embedding
-            'vocab_size': 32000,
-            'max_seq_len': 512,
-            'initializer': None,
-            "summary_type": "last",
+
+        hparams = XLNetEncoder.default_hparams()
+        hparams.update(({
+            "regr_strategy": "cls_time",
             "use_projection": True,
+            "logit_layer_kwargs": None,
             "name": "xlnet_regressor",
-            '@no_typecheck': ['pretrained_model_name'],
-        }
+        }))
+        return hparams
 
     def param_groups(self,
                      lr: Optional[float] = None,
@@ -190,26 +187,14 @@ class XLNetRegressor(RegressorBase):
                     module.named_children()
                     if name not in except_names)
 
-            num_layers = self._hparams.xlnet.num_layers
-            base_group = {
-                "params": params_except_in(
-                    self.xlnet, ['attn_layers', 'ff_layers']),
-                "lr": lr * (lr_layer_scale ** num_layers
-                            if decay_base_params else 1.0)
-            }
             fine_tune_group = {
-                "params": params_except_in(self, ["xlnet"]),
+                "params": params_except_in(self, ["_encoder"]),
                 "lr": lr
             }
-            param_groups = [base_group, fine_tune_group]
-            for idx in range(num_layers):
-                decay_rate = lr_layer_scale ** (num_layers - idx - 1)
-                param_group = {
-                    "params": [*self.xlnet.attn_layers[idx].parameters(),
-                               *self.xlnet.ff_layers[idx].parameters()],
-                    "lr": lr * decay_rate,
-                }
-                param_groups.append(param_group)
+            param_groups = [fine_tune_group]
+            param_group = self._encoder.param_groups(lr, lr_layer_scale,
+                                                     decay_base_params)
+            param_groups.extend(param_group)
         else:
             param_groups = self.parameters()
         return param_groups
@@ -221,24 +206,46 @@ class XLNetRegressor(RegressorBase):
         r"""Feeds the inputs through the network and makes regression.
 
         Args:
-            token_ids: Shape `[batch_size, seq_len]`.
-            segment_ids: Shape `[batch_size, seq_len]`.
-            input_mask: Float tensor of shape `[batch_size, seq_len]`. Note that
-                positions with value 1 are masked out.
+            token_ids: Shape `[batch_size, max_time]`.
+            segment_ids: Shape `[batch_size, max_time]`.
+            input_mask: Float tensor of shape `[batch_size, max_time]`. Note
+                that positions with value 1 are masked out.
 
         Returns:
-            predictions: Shape `[batch_size]`.
+            Regression predictions.
+
+            - If ``regr_strategy`` is ``cls_time`` or ``all_time``, predictions
+              have shape `[batch_size]`.
+
+            - If ``clas_strategy`` is ``time_wise``, predictions have shape
+              `[batch_size, max_time]`.
         """
         # output: [batch_size, seq_len, hidden_dim]
         output, _ = self._encoder(token_ids=token_ids,
                                   segment_ids=segment_ids,
                                   input_mask=input_mask)
-        summary = self.summary_op(output)
+
+        strategy = self._hparams.regr_strategy
+        if strategy == 'time_wise':
+            summary = output
+        elif strategy == 'cls_time':
+            summary = output[:, -1]
+        elif strategy == 'all_time':
+            length_diff = self._hparams.max_seq_length - token_ids.shape[1]
+            summary_input = F.pad(output, [0, 0, 0, length_diff, 0, 0])
+            summary_input_dim = (self._encoder.output_size *
+                                 self._hparams.max_seq_length)
+
+            summary = summary_input.contiguous().view(-1, summary_input_dim)
+        else:
+            raise ValueError('Unknown regression strategy: {}'.format(
+                strategy))
+
         if self._hparams.use_projection:
             summary = torch.tanh(self.projection(summary))
-        # summary: [batch_size, hidden_dim]
+
         summary = self.dropout(summary)
-        # preds: [batch_size]
+
         preds = self.hidden_to_logits(summary).squeeze(-1)
 
         return preds

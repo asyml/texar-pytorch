@@ -8,11 +8,11 @@ import torch
 from texar.modules.decoders.xlnet_decoder import *
 
 
-@unittest.skip("Manual test only")
 class XLNetDecoderTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.XLNetDecoder`
     """
 
+    @unittest.skip("Manual test only")
     def test_hparams(self):
         r"""Tests the priority of the decoer arch parameter.
         """
@@ -62,6 +62,7 @@ class XLNetDecoderTest(unittest.TestCase):
                        max_decoding_length=8)
         self.assertEqual(decoder.hparams.num_layers, 12)
 
+    @unittest.skip("Manual test only")
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
         variables.
@@ -96,6 +97,22 @@ class XLNetDecoderTest(unittest.TestCase):
                        end_token=1,
                        max_decoding_length=8)
         self.assertEqual(len(decoder.trainable_variables), 92 + 1)
+
+    @unittest.skip("Manual test only")
+    def test_decode_infer_sample(self):
+        r"""Tests train_greedy."""
+        hparams = {
+            "pretrained_model_name": None
+        }
+        decoder = XLNetDecoder(hparams=hparams)
+        decoder.train()
+
+        max_time = 8
+        batch_size = 16
+        inputs = torch.randint(32000, (batch_size, max_time), dtype=torch.int64)
+        outputs, _ = decoder(inputs, max_decoding_length=10, end_token=2)
+
+        self.assertIsInstance(outputs, XLNetDecoderOutput)
 
 
 if __name__ == "__main__":

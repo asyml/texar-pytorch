@@ -14,7 +14,6 @@
 """
 GPT2 classifiers.
 """
-
 from typing import Optional, Tuple
 
 import torch
@@ -24,9 +23,11 @@ import torch.nn.functional as F
 from texar.hyperparams import HParams
 from texar.modules.classifiers.classifier_base import ClassifierBase
 from texar.modules.encoders.gpt2_encoder import GPT2Encoder
-from texar.utils import utils
+from texar.utils.utils import dict_fetch
 
-__all__ = ["GPT2Classifier"]
+__all__ = [
+    "GPT2Classifier"
+]
 
 
 class GPT2Classifier(ClassifierBase):
@@ -64,11 +65,7 @@ class GPT2Classifier(ClassifierBase):
         super().__init__(hparams)
 
         # Create the underlying encoder
-        encoder_hparams = utils.dict_fetch(hparams,
-                                           GPT2Encoder.default_hparams())
-
-        if encoder_hparams is not None:
-            encoder_hparams['name'] = None
+        encoder_hparams = dict_fetch(hparams, GPT2Encoder.default_hparams())
 
         self._encoder = GPT2Encoder(pretrained_model_name=pretrained_model_name,
                                     cache_dir=cache_dir,
@@ -93,13 +90,14 @@ class GPT2Classifier(ClassifierBase):
 
             if self._hparams.clas_strategy == 'all_time':
                 self._logits_layer = nn.Linear(
-                    self._hparams.decoder.dim * self._hparams.max_seq_length,
+                    self._encoder.output_size *
+                    self._hparams.max_seq_length,
                     self.num_classes,
                     **logit_kwargs)
             else:
-                self._logits_layer = nn.Linear(self._hparams.decoder.dim,
-                                               self.num_classes,
-                                               **logit_kwargs)
+                self._logits_layer = nn.Linear(
+                    self._encoder.output_size, self.num_classes,
+                    **logit_kwargs)
 
         self.is_binary = (self.num_classes == 1) or \
                          (self.num_classes <= 0 and
@@ -132,7 +130,7 @@ class GPT2Classifier(ClassifierBase):
 
         2. Additional hyperparameters:
 
-            `num_classes`: int
+            `"num_classes"`: int
                 Number of classes:
 
                 - If **> 0**, an additional `Linear`
@@ -142,12 +140,12 @@ class GPT2Classifier(ClassifierBase):
                   classes is assumed to be the final dense layer size of the
                   encoder.
 
-            `logit_layer_kwargs`: dict
+            `"logit_layer_kwargs"`: dict
                 Keyword arguments for the logit Dense layer constructor,
                 except for argument "units" which is set to `num_classes`.
                 Ignored if no extra logit layer is appended.
 
-            `clas_strategy`: str
+            `"clas_strategy"`: str
                 The classification strategy, one of:
 
                 - **cls_time**: Sequence-level classification based on the
@@ -157,14 +155,14 @@ class GPT2Classifier(ClassifierBase):
                 - **time_wise**: Step-wise classification, i.e., make
                   classification for each time step based on its output.
 
-            `max_seq_length`: int, optional
+            `"max_seq_length"`: int, optional
                 Maximum possible length of input sequences. Required if
                 `clas_strategy` is `all_time`.
 
-            `dropout`: float
+            `"dropout"`: float
                 The dropout rate of the GPT2 encoder output.
 
-            `name`: str
+            `"name"`: str
                 Name of the classifier.
         """
 
@@ -231,7 +229,7 @@ class GPT2Classifier(ClassifierBase):
             # Pad `enc_outputs` to have max_seq_length before flatten
             length_diff = self._hparams.max_seq_length - inputs.shape[1]
             logit_input = F.pad(enc_outputs, [0, 0, 0, length_diff, 0, 0])
-            logit_input_dim = (self._hparams.decoder.dim *
+            logit_input_dim = (self._encoder.output_size *
                                self._hparams.max_seq_length)
             logits = logit_input.view(-1, logit_input_dim)
         else:

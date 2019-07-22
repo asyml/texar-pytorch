@@ -15,7 +15,7 @@
 Modules of Texar library classifiers.
 """
 
-from texar.modules.classifiers.bert_classifiers import *
+from texar.modules.classifiers.bert_classifier import *
 from texar.modules.classifiers.classifier_base import *
 from texar.modules.classifiers.conv_classifiers import *
 from texar.modules.classifiers.gpt2_classifier import *

@@ -59,9 +59,9 @@ Encoders
 .. autoclass:: texar.modules.TransformerEncoder
     :members:
 
-:hidden:`BertEncoder`
+:hidden:`BERTEncoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.BertEncoder
+.. autoclass:: texar.modules.BERTEncoder
     :members:
 
 :hidden:`GPT2Encoder`
@@ -73,6 +73,7 @@ Encoders
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.XLNetEncoder
     :members:
+    :exclude-members: _forward
 
 :hidden:`Conv1DEncoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -138,6 +139,7 @@ Decoders
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.XLNetDecoder
     :members:
+    :exclude-members: initialize,step,finalize,_create_input
 
 :hidden:`XLNetDecoderOutput`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -212,9 +214,9 @@ Decoders
 Classifiers
 ============
 
-:hidden:`BertClassifier`
+:hidden:`BERTClassifier`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.BertClassifier
+.. autoclass:: texar.modules.BERTClassifier
     :members:
 
 :hidden:`GPT2Classifier`
@@ -256,28 +258,13 @@ Pre-trained
 .. spelling::
     pooler
 
-:hidden:`BertBase`
+:hidden:`PretrainedBase`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.BertBase
-    :members:
-
-:hidden:`GPT2Base`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.GPT2Base
-    :members:
-
-:hidden:`XLNetBase`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.XLNetBase
+.. autoclass:: texar.modules.PretrainedBase
     :members:
 
 Regressor
 ==========
-
-:hidden:`RegressorBase`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.RegressorBase
-    :members:
 
 :hidden:`XLNetRegressor`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

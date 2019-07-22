@@ -1,5 +1,5 @@
 """
-Unit tests for XLNet encoders.
+Unit tests for XLNet encoder.
 """
 
 import unittest
@@ -9,11 +9,24 @@ import torch
 from texar.modules.encoders.xlnet_encoder import XLNetEncoder
 
 
-@unittest.skip("Manual test only")
 class XLNetEncoderTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.XLNetEncoder` class.
     """
 
+    @unittest.skip("Manual test only")
+    def test_model_loading(self):
+        r"""Tests model loading functionality."""
+        inputs = torch.zeros(32, 16, dtype=torch.int64)
+
+        # case 1
+        encoder = XLNetEncoder(pretrained_model_name="xlnet-base-cased")
+        _, _ = encoder(inputs)
+
+        # case 2
+        encoder = XLNetEncoder(pretrained_model_name="xlnet-large-cased")
+        _, _ = encoder(inputs)
+
+    @unittest.skip("Manual test only")
     def test_hparams(self):
         r"""Tests the priority of the encoder arch parameter.
         """
@@ -51,6 +64,7 @@ class XLNetEncoderTest(unittest.TestCase):
         _, _ = encoder(inputs)
         self.assertEqual(encoder.hparams.num_layers, 12)
 
+    @unittest.skip("Manual test only")
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
         variables.
@@ -83,7 +97,10 @@ class XLNetEncoderTest(unittest.TestCase):
         r"""Tests encoding.
         """
         # case 1: xlnet base
-        encoder = XLNetEncoder()
+        hparams = {
+            "pretrained_model_name": None
+        }
+        encoder = XLNetEncoder(hparams=hparams)
 
         max_time = 8
         batch_size = 16
@@ -111,7 +128,7 @@ class XLNetEncoderTest(unittest.TestCase):
             'ffn_inner_dim': 256,
             'activation': 'gelu',
             'vocab_size': 32000,
-            'max_seq_len': 128,
+            'max_seq_length': 128,
             'initializer': None,
             'name': "xlnet_encoder",
         }

@@ -1,19 +1,54 @@
 """
-Unit tests for Bert encoders.
+Unit tests for BERT encoders.
 """
 
 import unittest
 
 import torch
 
-from texar.modules.encoders.bert_encoders import BertEncoder
+from texar.modules.encoders.bert_encoders import BERTEncoder
 
 
-@unittest.skip("Manual test only")
-class BertEncoderTest(unittest.TestCase):
-    r"""Tests :class:`~texar.modules.BertEncoder` class.
+class BERTEncoderTest(unittest.TestCase):
+    r"""Tests :class:`~texar.modules.BERTEncoder` class.
     """
 
+    @unittest.skip("Manual test only")
+    def test_model_loading(self):
+        r"""Tests model loading functionality."""
+        inputs = torch.zeros(32, 16, dtype=torch.int64)
+
+        # case 1
+        encoder = BERTEncoder(pretrained_model_name="bert-base-uncased")
+        _, _ = encoder(inputs)
+
+        # case 2
+        encoder = BERTEncoder(pretrained_model_name="bert-large-uncased")
+        _, _ = encoder(inputs)
+
+        # case 3
+        encoder = BERTEncoder(pretrained_model_name="bert-base-cased")
+        _, _ = encoder(inputs)
+
+        # case 4
+        encoder = BERTEncoder(pretrained_model_name="bert-large-cased")
+        _, _ = encoder(inputs)
+
+        # case 5
+        encoder = BERTEncoder(
+            pretrained_model_name="bert-base-multilingual-uncased")
+        _, _ = encoder(inputs)
+
+        # case 6
+        encoder = BERTEncoder(
+            pretrained_model_name="bert-base-multilingual-cased")
+        _, _ = encoder(inputs)
+
+        # case 7
+        encoder = BERTEncoder(pretrained_model_name="bert-base-chinese")
+        _, _ = encoder(inputs)
+
+    @unittest.skip("Manual test only")
     def test_hparams(self):
         r"""Tests the priority of the encoder arch parameter.
         """
@@ -23,7 +58,7 @@ class BertEncoderTest(unittest.TestCase):
         hparams = {
             "pretrained_model_name": "bert-large-uncased",
         }
-        encoder = BertEncoder(pretrained_model_name="bert-base-uncased",
+        encoder = BERTEncoder(pretrained_model_name="bert-base-uncased",
                               hparams=hparams)
         _, _ = encoder(inputs)
         self.assertEqual(encoder.hparams.encoder.num_blocks, 12)
@@ -35,7 +70,7 @@ class BertEncoderTest(unittest.TestCase):
                 "num_blocks": 6
             }
         }
-        encoder = BertEncoder(hparams=hparams)
+        encoder = BERTEncoder(hparams=hparams)
         _, _ = encoder(inputs)
         self.assertEqual(encoder.hparams.encoder.num_blocks, 24)
 
@@ -46,15 +81,16 @@ class BertEncoderTest(unittest.TestCase):
                 "num_blocks": 6
             },
         }
-        encoder = BertEncoder(hparams=hparams)
+        encoder = BERTEncoder(hparams=hparams)
         _, _ = encoder(inputs)
         self.assertEqual(encoder.hparams.encoder.num_blocks, 6)
 
         # case 4: using default hparams
-        encoder = BertEncoder()
+        encoder = BERTEncoder()
         _, _ = encoder(inputs)
         self.assertEqual(encoder.hparams.encoder.num_blocks, 12)
 
+    @unittest.skip("Manual test only")
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
         variables.
@@ -62,7 +98,7 @@ class BertEncoderTest(unittest.TestCase):
         inputs = torch.zeros(32, 16, dtype=torch.int64)
 
         # case 1: bert base
-        encoder = BertEncoder()
+        encoder = BERTEncoder()
         _, _ = encoder(inputs)
         self.assertEqual(len(encoder.trainable_variables), 3 + 2 + 12 * 16 + 2)
 
@@ -70,7 +106,7 @@ class BertEncoderTest(unittest.TestCase):
         hparams = {
             "pretrained_model_name": "bert-large-uncased"
         }
-        encoder = BertEncoder(hparams=hparams)
+        encoder = BERTEncoder(hparams=hparams)
         _, _ = encoder(inputs)
         self.assertEqual(len(encoder.trainable_variables), 3 + 2 + 24 * 16 + 2)
 
@@ -81,7 +117,7 @@ class BertEncoderTest(unittest.TestCase):
             },
             "pretrained_model_name": None
         }
-        encoder = BertEncoder(hparams=hparams)
+        encoder = BERTEncoder(hparams=hparams)
         _, _ = encoder(inputs)
         self.assertEqual(len(encoder.trainable_variables), 3 + 2 + 6 * 16 + 2)
 
@@ -89,7 +125,10 @@ class BertEncoderTest(unittest.TestCase):
         r"""Tests encoding.
         """
         # case 1: bert base
-        encoder = BertEncoder()
+        hparams = {
+            "pretrained_model_name": None
+        }
+        encoder = BERTEncoder(hparams=hparams)
 
         max_time = 8
         batch_size = 16
@@ -148,7 +187,7 @@ class BertEncoderTest(unittest.TestCase):
             },
             'hidden_size': 96
         }
-        encoder = BertEncoder(hparams=hparams)
+        encoder = BERTEncoder(hparams=hparams)
 
         max_time = 8
         batch_size = 16

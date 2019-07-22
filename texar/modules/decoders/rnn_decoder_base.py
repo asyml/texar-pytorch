@@ -50,7 +50,7 @@ class RNNDecoderBase(DecoderBase[State, Output]):
                  input_time_major: bool = False,
                  output_time_major: bool = False,
                  hparams=None):
-        super().__init__(input_size, vocab_size, input_time_major,
+        super().__init__(vocab_size, input_time_major,
                          output_time_major, hparams)
 
         # Make RNN cell

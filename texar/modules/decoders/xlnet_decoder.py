@@ -135,7 +135,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
                 "ffn_inner_dim": 3072,
                 "activation": 'gelu',
                 "vocab_size": 32000,
-                "max_seq_len": 512,
+                "max_seq_length": 512,
                 "initializer": None,
                 "name": "xlnet_decoder",
             }
@@ -144,59 +144,59 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
 
         The default parameters are values for cased XLNet-Base model.
 
-        `pretrained_model_name`: str or None
+        `"pretrained_model_name"`: str or None
             The name of the pre-trained XLNet model. If None, the model
             will be randomly initialized.
 
-        `untie_r`: bool
+        `"untie_r"`: bool
             Whether to untie the biases in attention.
 
-        `num_layers`: int
+        `"num_layers"`: int
             The number of stacked layers.
 
-        `mem_len`: int
+        `"mem_len"`: int
             The number of tokens to cache.
 
-        `reuse_len`: int
+        `"reuse_len"`: int
             The number of tokens in the current batch to be cached and reused
             in the future.
 
-        `num_heads`: int
+        `"num_heads"`: int
             The number of attention heads.
 
-        `hidden_dim`: int
+        `"hidden_dim"`: int
             The hidden size.
 
-        `head_dim`: int
+        `"head_dim"`: int
             The dimension size of each attention head.
 
-        `dropout`: float
+        `"dropout"`: float
             Dropout rate.
 
-        `attention_dropout`: float
+        `"attention_dropout"`: float
             Dropout rate on attention probabilities.
 
-        `use_segments`: bool
+        `"use_segments"`: bool
             Whether to use segment embedding.
 
-        `ffn_inner_dim`: int
+        `"ffn_inner_dim"`: int
             The hidden size in feed-forward layers.
 
-        `activation`: str
+        `"activation"`: str
             `relu` or `gelu`.
 
-        `vocab_size`: int
+        `"vocab_size"`: int
             The vocabulary size.
 
-        `max_seq_len`: int
+        `"max_seq_length"`: int
             The maximum sequence length for `RelativePositionalEncoding`.
 
-        `initializer`: dict, optional
+        `"initializer"`: dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
             See :func:`~texar.core.get_initializer` for details.
 
-        `name`: str
+        `"name"`: str
             Name of the module.
         """
         return {
@@ -217,7 +217,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
             'activation': 'gelu',
             # embedding
             'vocab_size': 32000,
-            'max_seq_len': 512,
+            'max_seq_length': 512,
             'initializer': None,
             'name': "xlnet_decoder",
             '@no_typecheck': ['pretrained_model_name'],

@@ -8,11 +8,11 @@ import unittest
 from texar.modules.pretrained.gpt2_utils import *
 
 
-class GPTUtilsTest(unittest.TestCase):
+class GPT2UtilsTest(unittest.TestCase):
     r"""Tests GPT2 utils.
     """
 
-    def test_load_pretrained_model_AND_transform_gpt2_to_texar_config(self):
+    def test_load_pretrained_gpt2_AND_transform_gpt2_to_texar_config(self):
 
         pretrained_model_dir = load_pretrained_gpt2(
             pretrained_model_name="117M")

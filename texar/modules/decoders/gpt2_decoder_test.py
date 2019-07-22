@@ -10,11 +10,11 @@ from texar.modules.decoders.gpt2_decoder import GPT2Decoder
 from texar.modules.decoders.transformer_decoders import TransformerDecoderOutput
 
 
-@unittest.skip("Manual test only")
 class GPT2DecoderTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.GPT2Decoder`
     """
 
+    @unittest.skip("Manual test only")
     def test_hparams(self):
         r"""Tests the priority of the decoer arch parameter.
         """
@@ -24,10 +24,10 @@ class GPT2DecoderTest(unittest.TestCase):
         hparams = {
             "pretrained_model_name": "345M",
         }
-        encoder = GPT2Decoder(pretrained_model_name="117M",
+        decoder = GPT2Decoder(pretrained_model_name="117M",
                               hparams=hparams)
-        _ = encoder(inputs)
-        self.assertEqual(encoder.hparams.decoder.num_blocks, 12)
+        _ = decoder(inputs)
+        self.assertEqual(decoder.hparams.decoder.num_blocks, 12)
 
         # case 2: set "pretrained_mode_name" by hparams
         hparams = {
@@ -36,9 +36,9 @@ class GPT2DecoderTest(unittest.TestCase):
                 "num_blocks": 6
             }
         }
-        encoder = GPT2Decoder(hparams=hparams)
-        _ = encoder(inputs)
-        self.assertEqual(encoder.hparams.decoder.num_blocks, 12)
+        decoder = GPT2Decoder(hparams=hparams)
+        _ = decoder(inputs)
+        self.assertEqual(decoder.hparams.decoder.num_blocks, 12)
 
         # case 3: set to None in both hparams and constructor argument
         hparams = {
@@ -47,15 +47,16 @@ class GPT2DecoderTest(unittest.TestCase):
                 "num_blocks": 6
             },
         }
-        encoder = GPT2Decoder(hparams=hparams)
-        _ = encoder(inputs)
-        self.assertEqual(encoder.hparams.decoder.num_blocks, 6)
+        decoder = GPT2Decoder(hparams=hparams)
+        _ = decoder(inputs)
+        self.assertEqual(decoder.hparams.decoder.num_blocks, 6)
 
         # case 4: using default hparams
-        encoder = GPT2Decoder()
-        _ = encoder(inputs)
-        self.assertEqual(encoder.hparams.decoder.num_blocks, 12)
+        decoder = GPT2Decoder()
+        _ = decoder(inputs)
+        self.assertEqual(decoder.hparams.decoder.num_blocks, 12)
 
+    @unittest.skip("Manual test only")
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
         variables.
@@ -63,17 +64,17 @@ class GPT2DecoderTest(unittest.TestCase):
         inputs = torch.zeros(32, 16, dtype=torch.int64)
 
         # case 1: GPT2 117M
-        encoder = GPT2Decoder()
-        _ = encoder(inputs)
-        self.assertEqual(len(encoder.trainable_variables), 1 + 1 + 12 * 26 + 2)
+        decoder = GPT2Decoder()
+        _ = decoder(inputs)
+        self.assertEqual(len(decoder.trainable_variables), 1 + 1 + 12 * 26 + 2)
 
         # case 2: GPT2 345M
         hparams = {
             "pretrained_model_name": "345M"
         }
-        encoder = GPT2Decoder(hparams=hparams)
-        _ = encoder(inputs)
-        self.assertEqual(len(encoder.trainable_variables), 1 + 1 + 24 * 26 + 2)
+        decoder = GPT2Decoder(hparams=hparams)
+        _ = decoder(inputs)
+        self.assertEqual(len(decoder.trainable_variables), 1 + 1 + 24 * 26 + 2)
 
         # case 3: self-designed GPT2
         hparams = {
@@ -82,14 +83,17 @@ class GPT2DecoderTest(unittest.TestCase):
             },
             "pretrained_model_name": None
         }
-        encoder = GPT2Decoder(hparams=hparams)
-        _ = encoder(inputs)
-        self.assertEqual(len(encoder.trainable_variables), 1 + 1 + 6 * 26 + 2)
+        decoder = GPT2Decoder(hparams=hparams)
+        _ = decoder(inputs)
+        self.assertEqual(len(decoder.trainable_variables), 1 + 1 + 6 * 26 + 2)
 
     def test_decode_train(self):
         r"""Tests train_greedy.
         """
-        decoder = GPT2Decoder()
+        hparams = {
+            "pretrained_model_name": None
+        }
+        decoder = GPT2Decoder(hparams=hparams)
         decoder.train()
 
         max_time = 8
@@ -106,7 +110,10 @@ class GPT2DecoderTest(unittest.TestCase):
     def test_decode_infer_greedy(self):
         r"""Tests train_greedy
         """
-        decoder = GPT2Decoder()
+        hparams = {
+            "pretrained_model_name": None
+        }
+        decoder = GPT2Decoder(hparams=hparams)
         decoder.eval()
 
         start_tokens = torch.full((16,), 1, dtype=torch.int64)
@@ -128,7 +135,10 @@ class GPT2DecoderTest(unittest.TestCase):
     def test_decode_infer_sample(self):
         r"""Tests infer_sample
         """
-        decoder = GPT2Decoder()
+        hparams = {
+            "pretrained_model_name": None
+        }
+        decoder = GPT2Decoder(hparams=hparams)
         decoder.eval()
 
         start_tokens = torch.full((16,), 1, dtype=torch.int64)
@@ -150,7 +160,10 @@ class GPT2DecoderTest(unittest.TestCase):
     def test_beam_search(self):
         r"""Tests beam_search
         """
-        decoder = GPT2Decoder()
+        hparams = {
+            "pretrained_model_name": None
+        }
+        decoder = GPT2Decoder(hparams=hparams)
         decoder.eval()
 
         start_tokens = torch.full((16,), 1, dtype=torch.int64)
@@ -175,7 +188,10 @@ class GPT2DecoderTest(unittest.TestCase):
     def test_greedy_embedding_helper(self):
         r"""Tests with tf.contrib.seq2seq.GreedyEmbeddingHelper
         """
-        decoder = GPT2Decoder()
+        hparams = {
+            "pretrained_model_name": None
+        }
+        decoder = GPT2Decoder(hparams=hparams)
         decoder.eval()
 
         start_tokens = torch.full((16,), 1, dtype=torch.int64)
@@ -197,7 +213,10 @@ class GPT2DecoderTest(unittest.TestCase):
     def test_topk_embedding_helper(self):
         r"""Tests TopKSampleEmbeddingHelper
         """
-        decoder = GPT2Decoder()
+        hparams = {
+            "pretrained_model_name": None
+        }
+        decoder = GPT2Decoder(hparams=hparams)
         decoder.eval()
 
         start_tokens = torch.full((16,), 1, dtype=torch.int64)

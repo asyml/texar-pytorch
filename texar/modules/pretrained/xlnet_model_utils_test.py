@@ -1,5 +1,5 @@
 """
-Unit tests for xlnet model utils.
+Unit tests for XLNet model utils.
 """
 
 import unittest
@@ -10,7 +10,7 @@ from texar.modules.pretrained.xlnet_model_utils import *
 
 
 class XLNetModelUtilsTest(unittest.TestCase):
-    r"""Tests xlnet model utils.
+    r"""Tests XLNet model utils.
     """
 
     def test_PositionWiseFF(self):
