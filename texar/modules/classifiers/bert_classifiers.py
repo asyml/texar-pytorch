@@ -22,22 +22,22 @@ import torch.nn.functional as F
 
 from texar.hyperparams import HParams
 from texar.modules.classifiers.classifier_base import ClassifierBase
-from texar.modules.encoders.bert_encoders import BertEncoder
-from texar.utils import utils
+from texar.modules.encoders.bert_encoders import BERTEncoder
+from texar.utils.utils import dict_fetch
 
-__all__ = ["BertClassifier"]
+__all__ = ["BERTClassifier"]
 
 
-class BertClassifier(ClassifierBase):
+class BERTClassifier(ClassifierBase):
     r"""Classifier based on BERT modules.
 
     This is a combination of the
-    :class:`~texar.modules.BertEncoder` with a classification
+    :class:`~texar.modules.BERTEncoder` with a classification
     layer. Both step-wise classification and sequence-level classification
     are supported, specified in :attr:`hparams`.
 
     Arguments are the same as in
-    :class:`~texar.modules.BertEncoder`.
+    :class:`~texar.modules.BERTEncoder`.
 
     Args:
         pretrained_model_name (optional): a str with the name
@@ -65,12 +65,11 @@ class BertClassifier(ClassifierBase):
         super().__init__(hparams)
 
         # Create the underlying encoder
-        encoder_hparams = utils.dict_fetch(hparams,
-                                           BertEncoder.default_hparams())
+        encoder_hparams = dict_fetch(hparams, BERTEncoder.default_hparams())
         if encoder_hparams is not None:
             encoder_hparams['name'] = None
 
-        self._encoder = BertEncoder(pretrained_model_name=pretrained_model_name,
+        self._encoder = BERTEncoder(pretrained_model_name=pretrained_model_name,
                                     cache_dir=cache_dir,
                                     hparams=encoder_hparams)
 
@@ -126,9 +125,9 @@ class BertClassifier(ClassifierBase):
         Here:
 
         1. Same hyperparameters as in
-           :class:`~texar.modules.BertEncoder`.
-           See the :meth:`~texar.modules.BertEncoder.default_hparams`.
-           An instance of BertEncoder is created for feature extraction.
+           :class:`~texar.modules.BERTEncoder`.
+           See the :meth:`~texar.modules.BERTEncoder.default_hparams`.
+           An instance of BERTEncoder is created for feature extraction.
 
         2. Additional hyperparameters:
 
@@ -169,7 +168,7 @@ class BertClassifier(ClassifierBase):
                 Name of the classifier.
         """
 
-        hparams = BertEncoder.default_hparams()
+        hparams = BERTEncoder.default_hparams()
         hparams.update({
             "num_classes": 2,
             "logit_layer_kwargs": None,
@@ -187,7 +186,7 @@ class BertClassifier(ClassifierBase):
             -> Tuple[torch.Tensor, torch.LongTensor]:
         r"""Feeds the inputs through the network and makes classification.
 
-        The arguments are the same as in :class:`~texar.modules.BertEncoder`.
+        The arguments are the same as in :class:`~texar.modules.BERTEncoder`.
 
         Args:
             inputs: A 2D Tensor of shape `[batch_size, max_time]`,

@@ -15,11 +15,10 @@
 Utils of XLNet Modules.
 """
 
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, Optional, Union
 
 import json
 import os
-import sys
 import numpy as np
 
 import torch
@@ -28,13 +27,13 @@ import torch.nn as nn
 from texar.data.data_utils import maybe_download
 from texar.modules.pretrained.xlnet_model_utils import \
     (PositionWiseFF, RelativeMultiheadAttention)
+from texar.modules.pretrained.pretrained_utils import default_download_dir
 
 
 __all__ = [
     "init_xlnet_checkpoint",
     "load_pretrained_xlnet",
     "transform_xlnet_to_texar_config",
-    "sum_tensors",
 ]
 
 
@@ -155,32 +154,6 @@ def init_xlnet_checkpoint(model: nn.Module, cache_dir: str):
               f"{list(filtered_to_params)}")
 
 
-def _default_download_dir() -> str:
-    r"""Return the directory to which packages will be downloaded by default.
-    """
-    package_dir = os.path.dirname(os.path.dirname(
-        os.path.dirname(os.path.dirname(__file__))))
-    if os.access(package_dir, os.W_OK):
-        texar_download_dir = os.path.join(package_dir, 'texar_download')
-    else:
-        # On Windows, use %APPDATA%
-        if sys.platform == 'win32' and 'APPDATA' in os.environ:
-            home_dir = os.environ['APPDATA']
-
-        # Otherwise, install in the user's home directory.
-        else:
-            home_dir = os.path.expanduser('~/')
-            if home_dir == '~/':
-                raise ValueError("Could not find a default download directory")
-
-        texar_download_dir = os.path.join(home_dir, 'texar_download')
-
-    if not os.path.exists(texar_download_dir):
-        os.mkdir(texar_download_dir)
-
-    return os.path.join(texar_download_dir, 'xlnet')
-
-
 def load_pretrained_xlnet(pretrained_model_name: str,
                           cache_dir: Optional[str] = None) -> str:
     r"""Return the directory in which the pretrained `XLNet` is cached.
@@ -192,7 +165,7 @@ def load_pretrained_xlnet(pretrained_model_name: str,
             "Pre-trained model not found: {}".format(pretrained_model_name))
 
     if cache_dir is None:
-        cache_dir = _default_download_dir()
+        cache_dir = default_download_dir("xlnet")
 
     file_name = download_path.split('/')[-1]
 
@@ -232,16 +205,3 @@ def transform_xlnet_to_texar_config(cache_dir: str) -> Dict:
     configs["untie_r"] = config_ckpt["untie_r"]
 
     return configs
-
-
-def sum_tensors(xs: List[Optional[torch.Tensor]]) -> Optional[torch.Tensor]:
-    r"""Sum a list of tensors with possible `None` values.
-    """
-    idx = next((idx for idx, tensor in enumerate(xs) if tensor is not None), -1)
-    if idx == -1:
-        return None
-    ret = xs[idx]
-    for tensor in xs[(idx + 1):]:
-        if tensor is not None:
-            ret = ret + tensor
-    return ret

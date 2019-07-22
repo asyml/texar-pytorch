@@ -23,10 +23,11 @@ import torch.nn.functional as F
 
 from texar.core import layers
 from texar.hyperparams import HParams
-from texar.modules.pretrained import (xlnet_utils, XLNetBase, PositionWiseFF,
-                                      RelativePositionalEncoding,
-                                      RelativeMultiheadAttention)
-from texar.utils import dict_fetch
+from texar.modules.pretrained.pretrained_base import PretrainedBase
+from texar.modules.pretrained.xlnet_utils import init_xlnet_checkpoint
+from texar.modules.pretrained.xlnet_model_utils import (
+    PositionWiseFF, RelativePositionalEncoding, RelativeMultiheadAttention)
+from texar.utils.utils import dict_fetch, sum_tensors
 
 
 __all__ = [
@@ -34,7 +35,7 @@ __all__ = [
 ]
 
 
-class XLNetEncoder(XLNetBase):
+class XLNetEncoder(PretrainedBase):
     r"""Raw XLNet module for encoding sequences.
 
     This module supports the architecture first proposed
@@ -113,8 +114,7 @@ class XLNetEncoder(XLNetBase):
 
         if init:
             if self.pretrained_model_dir:
-                xlnet_utils.init_xlnet_checkpoint(self,
-                                                  self.pretrained_model_dir)
+                init_xlnet_checkpoint(self, self.pretrained_model_dir)
             elif self._hparams.initializer:
                 initialize = layers.get_initializer(self._hparams.initializer)
                 assert initialize is not None
@@ -403,7 +403,7 @@ class XLNetEncoder(XLNetBase):
         # Data mask: input mask & permutation mask.
         if input_mask is not None:
             input_mask = input_mask.expand(seq_len, -1, -1)
-        data_mask = xlnet_utils.sum_tensors([input_mask, permute_mask])
+        data_mask = sum_tensors([input_mask, permute_mask])
         if data_mask is not None:
             # All positions in memory can be attended to.
             memory_mask = data_mask.new_zeros(seq_len, mem_len, batch_size)
@@ -412,7 +412,7 @@ class XLNetEncoder(XLNetBase):
             masks.append(data_mask)
 
         # Exclude the main diagonal (target tokens) from the mask.
-        attn_mask = xlnet_utils.sum_tensors(masks)
+        attn_mask = sum_tensors(masks)
         if attn_mask is None:
             final_mask = None
         else:

@@ -8,7 +8,7 @@ import unittest
 from texar.modules.pretrained.gpt2_utils import *
 
 
-class GPTUtilsTest(unittest.TestCase):
+class GPT2UtilsTest(unittest.TestCase):
     r"""Tests GPT2 utils.
     """
 

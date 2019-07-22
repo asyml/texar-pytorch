@@ -1,11 +1,9 @@
 """
-Unit tests for xlnet utils.
+Unit tests for XLNet utils.
 """
 
 import os
 import unittest
-
-import torch
 
 from texar.modules.pretrained.xlnet_utils import *
 
@@ -39,20 +37,6 @@ class XLNetUtilsTest(unittest.TestCase):
                       'untie_r': True}
 
         self.assertDictEqual(model_config, exp_config)
-
-    def test_sum_tensors(self):
-
-        inputs = [torch.tensor(1), torch.tensor(2)]
-        self.assertEqual(sum_tensors(inputs), torch.tensor(3))
-
-        inputs = [torch.tensor(1), None, torch.tensor(2)]
-        self.assertEqual(sum_tensors(inputs), torch.tensor(3))
-
-        inputs = [torch.tensor(1), None, None]
-        self.assertEqual(sum_tensors(inputs), torch.tensor(1))
-
-        inputs = [None, None, None]
-        self.assertEqual(sum_tensors(inputs), None)
 
 
 if __name__ == "__main__":

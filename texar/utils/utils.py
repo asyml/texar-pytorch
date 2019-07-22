@@ -65,6 +65,7 @@ __all__ = [
     'default_str',
     'uniquify_str',
     'ceildiv',
+    'sum_tensors',
 ]
 
 T = TypeVar('T')  # type argument
@@ -1093,3 +1094,22 @@ def ceildiv(a: int, b: int) -> int:
         int: The quotient, rounded up.
     """
     return -(-a // b)
+
+
+def sum_tensors(xs: List[Optional[torch.Tensor]]) -> Optional[torch.Tensor]:
+    r"""Sum a list of tensors with possible `None` values.
+
+    Args:
+        xs: A list of tensors.
+
+    Returns:
+        The summation of all the elements in the list.
+    """
+    idx = next((idx for idx, tensor in enumerate(xs) if tensor is not None), -1)
+    if idx == -1:
+        return None
+    ret = xs[idx]
+    for tensor in xs[(idx + 1):]:
+        if tensor is not None:
+            ret = ret + tensor
+    return ret

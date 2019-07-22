@@ -154,6 +154,20 @@ class UtilsTest(unittest.TestCase):
         unique_str = utils.uniquify_str('str', str_set)
         self.assertEqual(unique_str, 'str_3')
 
+    def test_sum_tensors(self):
+
+        inputs = [torch.tensor(1), torch.tensor(2)]
+        self.assertEqual(utils.sum_tensors(inputs), torch.tensor(3))
+
+        inputs = [torch.tensor(1), None, torch.tensor(2)]
+        self.assertEqual(utils.sum_tensors(inputs), torch.tensor(3))
+
+        inputs = [torch.tensor(1), None, None]
+        self.assertEqual(utils.sum_tensors(inputs), torch.tensor(1))
+
+        inputs = [None, None, None]
+        self.assertEqual(utils.sum_tensors(inputs), None)
+
     # def test_map_ids_to_strs(self):
     #    """Tests :func:`texar.utils.map_ids_to_strs`.
     #    """

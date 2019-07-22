@@ -9,11 +9,27 @@ import torch
 from texar.modules.encoders.gpt2_encoder import GPT2Encoder
 
 
-@unittest.skip("Manual test only")
 class GPT2EncoderTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.GPT2Encoder` class.
     """
 
+    def test_ci(self):
+        r"""Tests for CI."""
+        max_time = 8
+        batch_size = 16
+        inputs = torch.randint(30521, (batch_size, max_time), dtype=torch.int64)
+
+        hparams = {
+            "pretrained_model_name": None,
+        }
+        encoder = GPT2Encoder(hparams=hparams)
+        outputs = encoder(inputs)
+        outputs_dim = encoder.hparams.decoder.dim
+        self.assertEqual(outputs.shape, torch.Size([batch_size,
+                                                    max_time,
+                                                    outputs_dim]))
+
+    @unittest.skip("Manual test only")
     def test_hparams(self):
         r"""Tests the priority of the encoder arch parameter.
         """
@@ -55,6 +71,7 @@ class GPT2EncoderTest(unittest.TestCase):
         _ = encoder(inputs)
         self.assertEqual(encoder.hparams.decoder.num_blocks, 12)
 
+    @unittest.skip("Manual test only")
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
         variables.
@@ -85,6 +102,7 @@ class GPT2EncoderTest(unittest.TestCase):
         _ = encoder(inputs)
         self.assertEqual(len(encoder.trainable_variables), 1 + 1 + 6 * 26 + 2)
 
+    @unittest.skip("Manual test only")
     def test_encode(self):
         r"""Tests encoding.
         """

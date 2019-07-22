@@ -9,11 +9,27 @@ import torch
 from texar.modules.classifiers.gpt2_classifier import *
 
 
-@unittest.skip("Manual test only")
 class GPT2ClassifierTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.GPT2Classifier` class.
     """
 
+    def test_ci(self):
+        r"""Tests for CI."""
+        max_time = 8
+        batch_size = 16
+        inputs = torch.randint(30521, (batch_size, max_time), dtype=torch.int64)
+
+        hparams = {
+            "pretrained_model_name": None,
+        }
+        classifier = GPT2Classifier(hparams=hparams)
+        logits, preds = classifier(inputs)
+
+        self.assertEqual(logits.shape, torch.Size(
+            [batch_size, classifier.hparams.num_classes]))
+        self.assertEqual(preds.shape, torch.Size([batch_size]))
+
+    @unittest.skip("Manual test only")
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
         variables.
@@ -42,8 +58,9 @@ class GPT2ClassifierTest(unittest.TestCase):
         _, _ = classifier(inputs)
         self.assertEqual(len(classifier.trainable_variables), 318)
 
-    def test_encode(self):
-        r"""Tests encoding.
+    @unittest.skip("Manual test only")
+    def test_classification(self):
+        r"""Tests classificaiton.
         """
         max_time = 8
         batch_size = 16
@@ -95,6 +112,7 @@ class GPT2ClassifierTest(unittest.TestCase):
             [batch_size, classifier.hparams.num_classes]))
         self.assertEqual(preds.shape, torch.Size([batch_size]))
 
+    @unittest.skip("Manual test only")
     def test_binary(self):
         r"""Tests binary classification.
         """

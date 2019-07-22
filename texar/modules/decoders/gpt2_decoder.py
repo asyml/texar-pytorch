@@ -21,8 +21,10 @@ import torch
 
 from texar.core import layers
 from texar.hyperparams import HParams
-from texar.modules.pretrained import GPT2Base, gpt2_utils
-from texar.modules.embedders import PositionEmbedder, WordEmbedder
+from texar.modules.pretrained.gpt2_utils import init_gpt2_checkpoint
+from texar.modules.pretrained.pretrained_base import PretrainedBase
+from texar.modules.embedders.embedders import WordEmbedder
+from texar.modules.embedders.position_embedders import PositionEmbedder
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.modules.decoders.transformer_decoders import (
     TransformerDecoder, TransformerDecoderOutput)
@@ -32,7 +34,7 @@ __all__ = [
 ]
 
 
-class GPT2Decoder(GPT2Base):
+class GPT2Decoder(PretrainedBase):
     r"""Raw GPT2 Transformer for decoding sequences.
 
     This module basically stacks
@@ -87,7 +89,7 @@ class GPT2Decoder(GPT2Base):
             hparams=self._hparams.decoder)
 
         if self.pretrained_model_dir:
-            gpt2_utils.init_gpt2_checkpoint(self, self.pretrained_model_dir)
+            init_gpt2_checkpoint(self, self.pretrained_model_dir)
         elif self._hparams.initializer:
             initialize = layers.get_initializer(self._hparams.initializer)
             assert initialize is not None

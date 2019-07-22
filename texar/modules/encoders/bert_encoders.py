@@ -22,17 +22,19 @@ import torch.nn as nn
 
 from texar.core import layers
 from texar.hyperparams import HParams
-from texar.modules.pretrained import BertBase, bert_utils
-from texar.modules.embedders import PositionEmbedder, WordEmbedder
+from texar.modules.pretrained.bert_utils import init_bert_checkpoint
+from texar.modules.pretrained.pretrained_base import PretrainedBase
+from texar.modules.embedders.embedders import WordEmbedder
+from texar.modules.embedders.position_embedders import PositionEmbedder
 from texar.modules.encoders.transformer_encoder import TransformerEncoder
 
 
 __all__ = [
-    "BertEncoder",
+    "BERTEncoder",
 ]
 
 
-class BertEncoder(BertBase):
+class BERTEncoder(PretrainedBase):
     r"""Raw BERT Transformer for encoding sequences.
 
     This module basically stacks
@@ -63,6 +65,8 @@ class BertEncoder(BertBase):
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None):
+
+        self.model_name = "BERT"
 
         super().__init__(pretrained_model_name=pretrained_model_name,
                          cache_dir=cache_dir,
@@ -95,7 +99,7 @@ class BertEncoder(BertBase):
             nn.Tanh())
 
         if self.pretrained_model_dir:
-            bert_utils.init_bert_checkpoint(self, self.pretrained_model_dir)
+            init_bert_checkpoint(self, self.pretrained_model_dir)
         elif self._hparams.initializer:
             initialize = layers.get_initializer(self._hparams.initializer)
             assert initialize is not None

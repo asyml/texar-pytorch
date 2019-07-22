@@ -24,7 +24,7 @@ import torch.nn.functional as F
 from texar.hyperparams import HParams
 from texar.modules.classifiers.classifier_base import ClassifierBase
 from texar.modules.encoders.gpt2_encoder import GPT2Encoder
-from texar.utils import utils
+from texar.utils.utils import dict_fetch
 
 __all__ = ["GPT2Classifier"]
 
@@ -64,8 +64,7 @@ class GPT2Classifier(ClassifierBase):
         super().__init__(hparams)
 
         # Create the underlying encoder
-        encoder_hparams = utils.dict_fetch(hparams,
-                                           GPT2Encoder.default_hparams())
+        encoder_hparams = dict_fetch(hparams, GPT2Encoder.default_hparams())
 
         if encoder_hparams is not None:
             encoder_hparams['name'] = None
