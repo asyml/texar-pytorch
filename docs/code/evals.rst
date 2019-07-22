@@ -32,9 +32,9 @@ BLEU
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.evals.corpus_bleu_transformer
 
-:hidden:`bleu_tokenize`
+:hidden:`bleu_tokenize_transformer`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.evals.bleu_tokenize
+.. autofunction:: texar.evals.bleu_tokenize_transformer
 
 :hidden:`file_bleu`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
