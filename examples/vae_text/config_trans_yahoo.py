@@ -62,7 +62,7 @@ enc_emb_hparams = {
         'type': 'normal_',
         'kwargs': {
             'mean': 0.0,
-            'stddev': embed_dim**-0.5,
+            'std': embed_dim**-0.5,
         },
     }
 }
@@ -75,7 +75,7 @@ dec_emb_hparams = {
         'type': 'normal_',
         'kwargs': {
             'mean': 0.0,
-            'stddev': embed_dim**-0.5,
+            'std': embed_dim**-0.5,
         },
     }
 }
@@ -96,7 +96,7 @@ trans_hparams = {
     'initializer': {
         'type': 'variance_scaling_initializer',
         'kwargs': {
-            'scale': 1.0,
+            'factor': 1.0,
             'mode': 'FAN_AVG',
             'uniform': True,
         },
@@ -128,7 +128,7 @@ trans_hparams = {
                 }
             },
             {
-                'type':'Dense',
+                'type':'Linear',
                 'kwargs': {
                     "in_features": hidden_size * 4,
                     "out_features": hidden_size,

@@ -22,10 +22,6 @@ $ python vae_train.py
 Hyperparameters and data path may be specified in config_trans.py
 
 """
-'''from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals'''
 
 # pylint: disable=invalid-name, no-member, too-many-locals
 # pylint: disable=too-many-branches, too-many-statements, redefined-variable-type
@@ -33,30 +29,41 @@ from __future__ import unicode_literals'''
 import os
 import sys
 import time
+import argparse
 import importlib
 from io import open
 
 import numpy as np
 import torch
 import torch.nn as nn
-import tensorflow as tf
-'''import tensorflow as tf
-import tensorflow_probability as tfp'''
+
 import texar as tx
 from texar.custom import MultivariateNormalDiag
 
-'''tfd = tfp.distributions'''
 
-flags = tf.flags
+parser = argparse.ArgumentParser()
+parser.add_argument('--config',
+                    type=str,
+                    default="config_model",
+                    help="The config to use.")
+parser.add_argument('--mode',
+                    type=str,
+                    default="train",
+                    help="Train or predict.")
+parser.add_argument('--model',
+                    type=str,
+                    default="train",
+                    help="Model path for generating sentences.")
+parser.add_argument('--out',
+                    type=str,
+                    default="train",
+                    help="Generation output path.")
 
-flags.DEFINE_string("config", "config", "The config to use.")
-flags.DEFINE_string("mode", "train", "train or predict")
-flags.DEFINE_string("model", None, "model path for generating sentences")
-flags.DEFINE_string("out", None, "generation output path")
+args = parser.parse_args()
 
-FLAGS = flags.FLAGS
+config = importlib.import_module(args.config)
 
-config = importlib.import_module(FLAGS.config)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def kl_dvg(means, logvars):
@@ -74,18 +81,15 @@ def adjust_learning_rate(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 class Vae(nn.Module):
     def __init__(self, train_data):
-
         super().__init__()
         # Model architecture
         self.encoder_w_embedder = tx.modules.WordEmbedder(
             vocab_size=train_data.vocab.size, hparams=config.enc_emb_hparams)
 
         self.encoder = tx.modules.UnidirectionalRNNEncoder(
-            input_size = 256,#self.encoder_w_embedder.dim,
+            input_size = self.encoder_w_embedder.dim,
             hparams={
                 "rnn_cell": config.enc_cell_hparams,
             })
@@ -94,14 +98,12 @@ class Vae(nn.Module):
             vocab_size=train_data.vocab.size, hparams=config.dec_emb_hparams)
 
         if config.decoder_type == "lstm":
-            #decoder_initial_state_size = self.decoder.cell.state_size
             self.decoder = tx.modules.BasicRNNDecoder(
                 vocab_size=train_data.vocab.size,
-                input_size = 288,#self.decoder_w_embedder.dim,
+                input_size = self.decoder_w_embedder.dim + config.batch_size,
                 hparams={"rnn_cell": config.dec_cell_hparams})
             decoder_initial_state_size = (self.decoder.cell.hidden_size, self.decoder.cell.hidden_size)
-            #print("decoder_initial_state_size", decoder_initial_state_size)
-            #print("self.decoder", self.decoder)
+
         elif config.decoder_type == 'transformer':
             decoder_initial_state_size = torch.Size(
                 [1, config.dec_emb_hparams["dim"]])
@@ -126,18 +128,17 @@ class Vae(nn.Module):
         self.mlp_linear_layer = nn.Linear(
             32, tx.modules.connectors._sum_output_size(decoder_initial_state_size))
 
-    def forward(self, data_batch, kl_weight, mode):
+    def forward(self, data_batch, kl_weight):
         ## encoder -> connector -> decoder
         tmp_batch = []
         for i, data in enumerate(data_batch["text_ids"]):
-            #data_batch["text_ids"][i] = data[data!=3]
+            filter_data = data[data!=3]
+            delta = data.size(0) - filter_data.size(0)
             tmp_batch.append(data[data!=3])
             data_batch["length"][i] -= 2
         text_ids = torch.stack(tmp_batch)
-
         input_embed = self.encoder_w_embedder(text_ids.to(device))
         output_w_embed = self.decoder_w_embedder(text_ids[:, :-1].to(device))
-        #print("input_embed", input_embed.size())
         _, ecdr_states = self.encoder(
             input_embed,
             sequence_length=data_batch["length"].to(device))
@@ -151,10 +152,7 @@ class Vae(nn.Module):
             max_seq_len = text_ids.size(1) - 1
             batch_max_seq_len = torch.ones([batch_size]).type(torch.long) * max_seq_len
             output_p_embed = self.decoder_p_embedder(sequence_length=batch_max_seq_len.to(device))
-
             output_w_embed = output_w_embed * config.hidden_size ** 0.5
-            #print("output_w_embed", output_w_embed.size())
-            #print("output_p_embed", output_p_embed.size())
             output_embed = output_w_embed + output_p_embed
 
         else:
@@ -180,8 +178,7 @@ class Vae(nn.Module):
 
             latent_z = latent_z.repeat([1, output_embed.size(1), 1])
             output_embed = torch.cat([output_embed, latent_z], 2)
-            #print("output_embed", output_embed.size(), self.decoder._cell)
-            #print("dcdr_states", len(dcdr_states), type(dcdr_states), dcdr_states[0].size())
+
             train_helper = self.decoder.create_helper(decoding_strategy='train_greedy')
             outputs, _, _ = self.decoder(
                 initial_state=dcdr_states,
@@ -215,11 +212,15 @@ class Vae(nn.Module):
         return fetches
 
 
-def _main(_):
+def main():
     # Data
-    train_data = tx.data.MonoTextData(config.train_data_hparams)
-    val_data = tx.data.MonoTextData(config.val_data_hparams)
-    test_data = tx.data.MonoTextData(config.test_data_hparams)
+    train_data = tx.data.MonoTextData(config.train_data_hparams,
+                                      device=device)
+    val_data = tx.data.MonoTextData(config.val_data_hparams,
+                                    device=device)
+    test_data = tx.data.MonoTextData(config.test_data_hparams,
+                                     device=device)
+
     iterator = tx.data.TrainTestDataIterator(train=train_data,
                                              val=val_data,
                                              test=test_data)
@@ -248,25 +249,22 @@ def _main(_):
 
     # KL term annealing rate
     anneal_r = 1.0 / (config.kl_anneal_hparams["warm_up"] * \
-        (train_data._dataset_size / config.batch_size))
-        #(train_data.dataset_size() / config.batch_size))
+        (train_data.__len__() / config.batch_size))
     
     model = Vae(train_data)
     model.to(device)
 
     optimizer = tx.core.get_optimizer(params=model.parameters(),
                                     hparams=config.opt_hparams)
-    '''train_op = tx.core.get_train_op(params=model.parameters(),
-                                    hparams=config.opt_hparams)'''
 
-    def _run_epoch(epoch, mode_string, display=10):
-        if mode_string == 'train':
+    def _run_epoch(epoch, mode, display=10):
+        if mode == 'train':
             iterator.switch_to_train_data()
-        elif mode_string == 'valid':
+        elif mode == 'valid':
             iterator.switch_to_val_data()
-        elif mode_string == 'test':
+        elif mode == 'test':
             iterator.switch_to_test_data()
-        if mode_string == 'train':
+        if mode == 'train':
             model.train()
         else:
             model.eval()
@@ -277,72 +275,69 @@ def _main(_):
         kl_loss_ = rc_loss_ = 0.
 
         for batch in iterator:
+            if mode == 'train':
+                opt_vars["kl_weight"] = min(
+                    1.0, opt_vars["kl_weight"] + anneal_r)
 
-                if mode_string == 'train':
-                    opt_vars["kl_weight"] = min(
-                        1.0, opt_vars["kl_weight"] + anneal_r)
+                kl_weight_ = opt_vars["kl_weight"]
+            else:
+                kl_weight_ = 1.0
 
-                    kl_weight_ = opt_vars["kl_weight"]
-                else:
-                    kl_weight_ = 1.0
+            mode = mode
 
-                mode = mode_string
+            if mode == "train":
+                adjust_learning_rate(optimizer, opt_vars["learning_rate"])
 
-                if mode == "train":
-                    adjust_learning_rate(optimizer, opt_vars["learning_rate"])
+            fetches_ = model(batch, kl_weight_, mode)
+            if mode == "train":
+                fetches_["nll"].backward()
+                #train_op()
+                optimizer.step()
+                optimizer.zero_grad()
 
-                fetches_ = model(batch, kl_weight_, mode)
-                if mode == "train":
-                    fetches_["nll"].backward()
-                    #train_op()
-                    optimizer.step()
-                    optimizer.zero_grad()
+            batch_size_ = len(fetches_["lengths"])
+            num_sents += batch_size_
+            num_words += sum(fetches_["lengths"])
+            nll_ += fetches_["nll"].item() * batch_size_
+            kl_loss_ += fetches_["kl_loss"] * batch_size_
+            rc_loss_ += fetches_["rc_loss"] * batch_size_
 
-                batch_size_ = len(fetches_["lengths"])
-                num_sents += batch_size_
-                num_words += sum(fetches_["lengths"])
-                nll_ += fetches_["nll"].item() * batch_size_
-                kl_loss_ += fetches_["kl_loss"] * batch_size_
-                rc_loss_ += fetches_["rc_loss"] * batch_size_
+            if step % display == 0 and mode == 'train':
+                nll = nll_ / float(num_sents)
+                klw = opt_vars["kl_weight"]
+                KL = kl_loss_ / num_sents
+                rc = rc_loss_ / num_sents
+                log_ppl = nll_ / float(num_words)
+                ppl = np.exp(log_ppl)
+                time_cost = time.time() - start_time
 
-                if step % display == 0 and mode_string == 'train':
-                    print('%s: epoch %d, step %d, nll %.4f, klw: %.4f, ' \
-                           'KL %.4f,  rc %.4f, log_ppl %.4f, ppl %.4f, ' \
-                           'time elapsed: %.1fs' % \
-                          (mode_string, epoch, step, nll_ / num_sents,
-                           opt_vars["kl_weight"], kl_loss_ / num_sents,
-                           rc_loss_ / num_sents, nll_ / float(num_words),
-                           np.exp(nll_ / float(num_words)), time.time() - start_time))
+                print(f"{mode}: epoch {epoch}, step {step}, nll {nll}, " \ 
+                      f"klw {klw}, KL {KL}, rc {rc}, log_ppl {log_ppl}, " \
+                      f"ppl {ppl}, time_cost {time_cost}")
+                sys.stdout.flush()
 
-                    sys.stdout.flush()
+            step += 1
 
-                step += 1
-
-        print('\n%s: epoch %d, nll %.4f, KL %.4f, rc %.4f, log_ppl %.4f, ppl %.4f\n' % (mode_string, epoch, nll_ / float(num_sents), kl_loss_ / float(num_sents), rc_loss_ / float(num_sents), nll_ / float(num_words), np.exp(nll_ / float(num_words))))
-
-        return nll_ / num_sents, np.exp(nll_ / float(num_words))
+        nll = nll_ / float(num_sents)
+        KL = kl_loss_ / num_sents
+        rc = rc_loss_ / num_sents
+        log_ppl = nll_ / float(num_words)
+        ppl = np.exp(log_ppl)
+        print(f"\n{mode}: epoch {epoch}, nll {nll}, KL {KL}, rc {rc}, log_ppl {log_ppl}, ppl {ppl}")
+        return nll, ppl
 
     @torch.no_grad()
     def _generate(fname=None):
-        '''if tf.train.checkpoint_exists(FLAGS.model):
-            saver.restore(sess, FLAGS.model)
-        else:
-            raise ValueError("cannot find checkpoint model")'''
-        ckpt = torch.load(save_path)
+        ckpt = torch.load(args.model)
         model.load_state_dict(ckpt['model'])
-        #optimizer.load_state_dict(ckpt['optimizer'])
         model.eval()
 
         batch_size = train_data.batch_size
 
-        '''dst = tfd.MultivariateNormalDiag(
-            loc=tf.zeros([batch_size, config.latent_dims]),
-            scale_diag=tf.ones([batch_size, config.latent_dims]))'''
         dst = MultivariateNormalDiag(
             loc=torch.zeros([batch_size, config.latent_dims]),
             scale_diag=torch.ones([batch_size, config.latent_dims]))
 
-        '''dcdr_states, latent_z = connector_stoch(dst)'''
         latent_z = dst.rsample()
         dcdr_states = tx.modules.connectors._mlp_transform(
             latent_z.to(device),
@@ -365,7 +360,7 @@ def _main(_):
                 decoding_strategy='infer_sample',
                 start_tokens=start_tokens.to(device),
                 end_token=end_token)
-            print("dcdr_states", type(dcdr_states), dcdr_states[0].device, dcdr_states[1].device)
+
             outputs, _, _ = model.decoder(
                 initial_state=dcdr_states,
                 helper=infer_helper,
@@ -385,12 +380,8 @@ def _main(_):
                 start_tokens=start_tokens.to(device),
                 end_token=end_token)
 
-        #sample_tokens = vocab.map_ids_to_tokens(outputs.sample_id)
         sample_tokens = vocab.map_ids_to_tokens_py(outputs.sample_id.cpu())
-        #sess.run(tf.tables_initializer())
 
-        '''feed = {tx.global_mode(): tf.estimator.ModeKeys.PREDICT}
-        sample_tokens_ = sess.run(sample_tokens, feed_dict=feed)'''
         sample_tokens_ = sample_tokens
 
         if fname is None:
@@ -409,35 +400,32 @@ def _main(_):
         fh.close()
 
 
-    if FLAGS.mode == "predict":
-        _generate(FLAGS.out)
+    if args.mode == "predict":
+        _generate(args.out)
         return
     # Counts trainable parameters
     total_parameters = 0
     for name, variable in model.named_parameters():
         size = variable.size()
         total_parameters += np.prod(size)
-    print("%d total parameters" % total_parameters)
+    print(f"{total_parameters} total parameters")
 
     best_nll = best_ppl = 0.
 
     for epoch in range(config.num_epochs):
-        _, _ = _run_epoch(epoch, 'train', display=200)
-        val_nll, _ = _run_epoch(epoch, 'valid')
-        test_nll, test_ppl = _run_epoch(epoch, 'test')
+        _train_epoch(epoch, display=200)
+        val_nll, _ = _eval_epoch(epoch, 'valid')
+        test_nll, test_ppl = _eval_epoch(epoch, 'test')
 
         if val_nll < opt_vars['best_valid_nll']:
             opt_vars['best_valid_nll'] = val_nll
             opt_vars['steps_not_improved'] = 0
             best_nll = test_nll
             best_ppl = test_ppl
-            print(f"best tmp nll: {best_nll}, best tmp ppl: {best_ppl}")
-            for param_group in optimizer.param_groups:
-                print(param_group['lr'])
+
             states = {
                 "model": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
-                #"scheduler": scheduler.state_dict(),
             }
             torch.save(states, save_path)
         else:
@@ -448,10 +436,9 @@ def _main(_):
                 opt_vars['steps_not_improved'] = 0
                 new_lr = opt_vars['learning_rate']
 
-                print('-----\nchange lr, old lr: %f, new lr: %f\n-----' %
-                        (old_lr, new_lr))
+                print(f"-----\nchange lr, old lr: {old_lr}, " \
+                      f"new lr: {new_lr}\n-----")
 
-                #saver.restore(sess, save_path)
                 ckpt = torch.load(save_path)
                 model.load_state_dict(ckpt['model'])
                 optimizer.load_state_dict(ckpt['optimizer'])
@@ -464,4 +451,4 @@ def _main(_):
 
 
 if __name__ == '__main__':
-    tf.app.run(main=_main)
+    main()
