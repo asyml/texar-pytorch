@@ -28,17 +28,17 @@ BLEU
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.evals.corpus_bleu_moses
 
-:hidden:`compute_bleu`
+:hidden:`corpus_bleu_transformer`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.evals.compute_bleu
+.. autofunction:: texar.evals.corpus_bleu_transformer
 
-:hidden:`bleu_tokenize`
+:hidden:`bleu_transformer_tokenize`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.evals.bleu_tokenize
+.. autofunction:: texar.evals.bleu_transformer_tokenize
 
-:hidden:`bleu_wrapper`
+:hidden:`file_bleu`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.evals.bleu_wrapper
+.. autofunction:: texar.evals.file_bleu
 
 
 Accuracy
