@@ -44,19 +44,19 @@ from texar.custom import MultivariateNormalDiag
 parser = argparse.ArgumentParser()
 parser.add_argument('--config',
                     type=str,
-                    default="config_model",
+                    default=None,
                     help="The config to use.")
 parser.add_argument('--mode',
                     type=str,
-                    default="train",
+                    default='train',
                     help="Train or predict.")
 parser.add_argument('--model',
                     type=str,
-                    default="train",
+                    default=None,
                     help="Model path for generating sentences.")
 parser.add_argument('--out',
                     type=str,
-                    default="train",
+                    default=None,
                     help="Generation output path.")
 
 args = parser.parse_args()
