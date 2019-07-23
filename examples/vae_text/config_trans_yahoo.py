@@ -81,7 +81,7 @@ dec_emb_hparams = {
 }
 
 
-max_pos = 200 # max sequence length in training data
+max_pos = 300 # max sequence length in training data
 dec_pos_emb_hparams = {
     'dim': hidden_size,
 }

@@ -73,7 +73,7 @@ enc_emb_hparams = {
         'type': 'normal_',
         'kwargs': {
             'mean': 0.0,
-            'stddev': embed_dim**-0.5,
+            'std': embed_dim**-0.5,
         },
     }
 }
@@ -86,7 +86,7 @@ dec_emb_hparams = {
         'type': 'normal_',
         'kwargs': {
             'mean': 0.0,
-            'stddev': embed_dim**-0.5,
+            'std': embed_dim**-0.5,
         },
     }
 }

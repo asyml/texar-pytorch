@@ -65,7 +65,6 @@ config = importlib.import_module(args.config)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
 def kl_dvg(means, logvars):
     """compute the KL divergence between Gaussian distribution
     """
@@ -135,7 +134,7 @@ class Vae(nn.Module):
             filter_data = data[data!=3]
             delta = data.size(0) - filter_data.size(0)
             tmp_batch.append(data[data!=3])
-            data_batch["length"][i] -= 2
+            data_batch["length"][i] -= delta
         text_ids = torch.stack(tmp_batch)
         input_embed = self.encoder_w_embedder(text_ids.to(device))
         output_w_embed = self.decoder_w_embedder(text_ids[:, :-1].to(device))
@@ -150,8 +149,8 @@ class Vae(nn.Module):
 
             batch_size = text_ids.size(0)
             max_seq_len = text_ids.size(1) - 1
-            batch_max_seq_len = torch.ones([batch_size]).type(torch.long) * max_seq_len
-            output_p_embed = self.decoder_p_embedder(sequence_length=batch_max_seq_len.to(device))
+            batch_max_seq_len = torch.ones([batch_size], dtype=torch.long, device=device) * max_seq_len
+            output_p_embed = self.decoder_p_embedder(sequence_length=batch_max_seq_len)
             output_w_embed = output_w_embed * config.hidden_size ** 0.5
             output_embed = output_w_embed + output_p_embed
 
@@ -288,7 +287,7 @@ def main():
             if mode == "train":
                 adjust_learning_rate(optimizer, opt_vars["learning_rate"])
 
-            fetches_ = model(batch, kl_weight_, mode)
+            fetches_ = model(batch, kl_weight_)
             if mode == "train":
                 fetches_["nll"].backward()
                 #train_op()
@@ -311,9 +310,9 @@ def main():
                 ppl = np.exp(log_ppl)
                 time_cost = time.time() - start_time
 
-                print(f"{mode}: epoch {epoch}, step {step}, nll {nll}, " \ 
-                      f"klw {klw}, KL {KL}, rc {rc}, log_ppl {log_ppl}, " \
-                      f"ppl {ppl}, time_cost {time_cost}")
+                print(f"{mode}: epoch {epoch}, step {step}, nll {nll:.4f}, " 
+                      f"klw {klw:.4f}, KL {KL:.4f}, rc {rc:.4f}, log_ppl {log_ppl:.4f}, "
+                      f"ppl {ppl:.4f}, time_cost {time_cost}")
                 sys.stdout.flush()
 
             step += 1
@@ -323,7 +322,7 @@ def main():
         rc = rc_loss_ / num_sents
         log_ppl = nll_ / float(num_words)
         ppl = np.exp(log_ppl)
-        print(f"\n{mode}: epoch {epoch}, nll {nll}, KL {KL}, rc {rc}, log_ppl {log_ppl}, ppl {ppl}")
+        print(f"\n{mode}: epoch {epoch}, nll {nll:.4f}, KL {KL:.4f}, rc {rc:.4f}, log_ppl {log_ppl:.4f}, ppl {ppl:.4f}")
         return nll, ppl
 
     @torch.no_grad()
@@ -413,9 +412,9 @@ def main():
     best_nll = best_ppl = 0.
 
     for epoch in range(config.num_epochs):
-        _train_epoch(epoch, display=200)
-        val_nll, _ = _eval_epoch(epoch, 'valid')
-        test_nll, test_ppl = _eval_epoch(epoch, 'test')
+        _, _ = _run_epoch(epoch, 'train', display=200)
+        val_nll, _ = _run_epoch(epoch, 'valid')
+        test_nll, test_ppl = _run_epoch(epoch, 'test')
 
         if val_nll < opt_vars['best_valid_nll']:
             opt_vars['best_valid_nll'] = val_nll
