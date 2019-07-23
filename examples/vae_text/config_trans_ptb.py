@@ -57,7 +57,7 @@ enc_emb_hparams = {
     'name': 'lookup_table',
     'dim': embed_dim,
     'dropout_rate': enc_dropout_in,
-    'initializer' : {
+    'initializer': {
         'type': 'normal_',
         'kwargs': {
             'mean': 0.0,
@@ -70,7 +70,7 @@ dec_emb_hparams = {
     'name': 'lookup_table',
     'dim': embed_dim,
     'dropout_rate': dec_dropout_in,
-    'initializer' : {
+    'initializer': {
         'type': 'normal_',
         'kwargs': {
             'mean': 0.0,
@@ -79,7 +79,7 @@ dec_emb_hparams = {
     }
 }
 
-max_pos = 200 # max sequence length in training data
+max_pos = 200    # max sequence length in training data
 dec_pos_emb_hparams = {
     'dim': hidden_size,
 }
@@ -117,7 +117,7 @@ trans_hparams = {
                 },
             },
             {
-                "type": "ReLU",
+                'type': 'ReLU',
             },
             {
                 'type': 'Dropout',

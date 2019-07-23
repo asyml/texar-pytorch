@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ import os
 import argparse
 
 import texar as tx
+
 
 def prepare_data(data_name):
     """Prepare datasets.
@@ -51,6 +52,7 @@ def prepare_data(data_name):
                                    extract=True)
     else:
         raise ValueError('Unknown data: {}'.format(data_name))
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='prepare data')

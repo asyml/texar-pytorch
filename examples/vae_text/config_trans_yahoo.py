@@ -58,7 +58,7 @@ enc_emb_hparams = {
     'name': 'lookup_table',
     "dim": embed_dim,
     "dropout_rate": enc_dropout_in,
-    'initializer' : {
+    'initializer': {
         'type': 'normal_',
         'kwargs': {
             'mean': 0.0,
@@ -71,7 +71,7 @@ dec_emb_hparams = {
     'name': 'lookup_table',
     "dim": embed_dim,
     "dropout_rate": dec_dropout_in,
-    'initializer' : {
+    'initializer': {
         'type': 'normal_',
         'kwargs': {
             'mean': 0.0,
@@ -81,7 +81,7 @@ dec_emb_hparams = {
 }
 
 
-max_pos = 300 # max sequence length in training data
+max_pos = 300    # max sequence length in training data
 dec_pos_emb_hparams = {
     'dim': hidden_size,
 }
@@ -108,8 +108,8 @@ trans_hparams = {
         'output_dim': hidden_size
     },
     'poswise_feedforward': {
-        'name':'fnn',
-        'layers':[
+        'name': 'fnn',
+       'layers': [
             {
                 'type': 'Linear',
                 'kwargs': {
@@ -119,16 +119,16 @@ trans_hparams = {
                 },
             },
             {
-                "type": "ReLU",
+                'type': 'ReLU',
             },
             {
-                'type':'Dropout',
+                'type': 'Dropout',
                 'kwargs': {
                     'p': relu_dropout,
                 }
             },
             {
-                'type':'Linear',
+                'type': 'Linear',
                 'kwargs': {
                     "in_features": hidden_size * 4,
                     "out_features": hidden_size,
@@ -189,4 +189,3 @@ opt_hparams = {
         }
     }
 }
-

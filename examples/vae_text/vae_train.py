@@ -24,7 +24,7 @@ Hyperparameters and data path may be specified in config_trans.py
 """
 
 # pylint: disable=invalid-name, no-member, too-many-locals
-# pylint: disable=too-many-branches, too-many-statements, redefined-variable-type
+# pylint: disable=too-many-branches, too-many-statements
 
 import os
 import sys
@@ -65,6 +65,7 @@ config = importlib.import_module(args.config)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 def kl_dvg(means, logvars):
     """compute the KL divergence between Gaussian distribution
     """
@@ -75,10 +76,12 @@ def kl_dvg(means, logvars):
 
     return torch.sum(kl_cost)
 
+
 def adjust_learning_rate(optimizer, lr):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+
 
 class Vae(nn.Module):
     def __init__(self, train_data):
@@ -88,7 +91,7 @@ class Vae(nn.Module):
             vocab_size=train_data.vocab.size, hparams=config.enc_emb_hparams)
 
         self.encoder = tx.modules.UnidirectionalRNNEncoder(
-            input_size = self.encoder_w_embedder.dim,
+            input_size=self.encoder_w_embedder.dim,
             hparams={
                 "rnn_cell": config.enc_cell_hparams,
             })
@@ -99,16 +102,18 @@ class Vae(nn.Module):
         if config.decoder_type == "lstm":
             self.decoder = tx.modules.BasicRNNDecoder(
                 vocab_size=train_data.vocab.size,
-                input_size = self.decoder_w_embedder.dim + config.batch_size,
+                input_size=self.decoder_w_embedder.dim + config.batch_size,
                 hparams={"rnn_cell": config.dec_cell_hparams})
-            decoder_initial_state_size = (self.decoder.cell.hidden_size, self.decoder.cell.hidden_size)
+            decoder_initial_state_size = (self.decoder.cell.hidden_size,
+                                          self.decoder.cell.hidden_size)
 
         elif config.decoder_type == 'transformer':
             decoder_initial_state_size = torch.Size(
                 [1, config.dec_emb_hparams["dim"]])
             # position embedding
             self.decoder_p_embedder = tx.modules.SinusoidsPositionEmbedder(
-                position_size=config.max_pos, hparams=config.dec_pos_emb_hparams)
+                position_size=config.max_pos,
+                hparams=config.dec_pos_emb_hparams)
             # decoder
             self.decoder = tx.modules.TransformerDecoder(
                 # tie word embedding with output layer
@@ -123,19 +128,21 @@ class Vae(nn.Module):
             config.latent_dims * 2,
             linear_layer_dim=self.encoder.cell.hidden_size * 2)
 
-
         self.mlp_linear_layer = nn.Linear(
-            32, tx.modules.connectors._sum_output_size(decoder_initial_state_size))
+            config.batch_size,
+            tx.modules.connectors.sum_output_size(decoder_initial_state_size))
 
     def forward(self, data_batch, kl_weight):
-        ## encoder -> connector -> decoder
+        # encoder -> connector -> decoder
+
         tmp_batch = []
         for i, data in enumerate(data_batch["text_ids"]):
-            filter_data = data[data!=3]
+            filter_data = data[data != 3]
             delta = data.size(0) - filter_data.size(0)
-            tmp_batch.append(data[data!=3])
+            tmp_batch.append(filter_data)
             data_batch["length"][i] -= delta
         text_ids = torch.stack(tmp_batch)
+
         input_embed = self.encoder_w_embedder(text_ids.to(device))
         output_w_embed = self.decoder_w_embedder(text_ids[:, :-1].to(device))
         _, ecdr_states = self.encoder(
@@ -149,8 +156,10 @@ class Vae(nn.Module):
 
             batch_size = text_ids.size(0)
             max_seq_len = text_ids.size(1) - 1
-            batch_max_seq_len = torch.ones([batch_size], dtype=torch.long, device=device) * max_seq_len
-            output_p_embed = self.decoder_p_embedder(sequence_length=batch_max_seq_len)
+            batch_max_seq_len = torch.ones(
+                batch_size, dtype=torch.long, device=device) * max_seq_len
+            output_p_embed = self.decoder_p_embedder(
+                sequence_length=batch_max_seq_len)
             output_w_embed = output_w_embed * config.hidden_size ** 0.5
             output_embed = output_w_embed + output_p_embed
 
@@ -165,7 +174,7 @@ class Vae(nn.Module):
             scale_diag=torch.exp(0.5 * logvar))
 
         latent_z = dst.rsample()
-        dcdr_states = tx.modules.connectors._mlp_transform(
+        dcdr_states = tx.modules.connectors.mlp_transform(
                 latent_z,
                 self.decoder_initial_state_size,
                 self.mlp_linear_layer)
@@ -178,12 +187,13 @@ class Vae(nn.Module):
             latent_z = latent_z.repeat([1, output_embed.size(1), 1])
             output_embed = torch.cat([output_embed, latent_z], 2)
 
-            train_helper = self.decoder.create_helper(decoding_strategy='train_greedy')
+            train_helper = self.decoder.create_helper(
+                decoding_strategy='train_greedy')
             outputs, _, _ = self.decoder(
                 initial_state=dcdr_states,
                 helper=train_helper,
                 inputs=output_embed,
-                sequence_length=data_batch["length"]-1)
+                sequence_length=data_batch["length"] - 1)
         else:
             outputs = self.decoder(
                 inputs=output_embed,
@@ -197,7 +207,7 @@ class Vae(nn.Module):
         rc_loss = tx.losses.sequence_sparse_softmax_cross_entropy(
             labels=text_ids[:, 1:].to(device),
             logits=logits,
-            sequence_length=(data_batch["length"]-1).to(device))
+            sequence_length=(data_batch["length"] - 1).to(device))
 
         nll = rc_loss + kl_weight * kl_loss
 
@@ -236,20 +246,19 @@ def main():
     decay_factor = config.lr_decay_hparams["decay_factor"]
     decay_ts = config.lr_decay_hparams["threshold"]
 
-    save_dir = "./models/%s" % config.dataset
+    save_dir = f"./models/{config.dataset}"
 
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    suffix = "%s_%sDecoder.ckpt" % \
-            (config.dataset, config.decoder_type)
+    suffix = f"{config.dataset}_{config.decoder_type}Decoder.ckpt"
 
     save_path = os.path.join(save_dir, suffix)
 
     # KL term annealing rate
-    anneal_r = 1.0 / (config.kl_anneal_hparams["warm_up"] * \
+    anneal_r = 1.0 / (config.kl_anneal_hparams["warm_up"] *
         (train_data.__len__() / config.batch_size))
-    
+
     model = Vae(train_data)
     model.to(device)
 
@@ -290,7 +299,6 @@ def main():
             fetches_ = model(batch, kl_weight_)
             if mode == "train":
                 fetches_["nll"].backward()
-                #train_op()
                 optimizer.step()
                 optimizer.zero_grad()
 
@@ -310,9 +318,10 @@ def main():
                 ppl = np.exp(log_ppl)
                 time_cost = time.time() - start_time
 
-                print(f"{mode}: epoch {epoch}, step {step}, nll {nll:.4f}, " 
-                      f"klw {klw:.4f}, KL {KL:.4f}, rc {rc:.4f}, log_ppl {log_ppl:.4f}, "
-                      f"ppl {ppl:.4f}, time_cost {time_cost}")
+                print(f"{mode}: epoch {epoch}, step {step}, nll {nll:.4f}, "
+                      f"klw {klw:.4f}, KL {KL:.4f}, rc {rc:.4f}, "
+                      f"log_ppl {log_ppl:.4f}, ppl {ppl:.4f}, "
+                      f"time_cost {time_cost}")
                 sys.stdout.flush()
 
             step += 1
@@ -322,7 +331,8 @@ def main():
         rc = rc_loss_ / num_sents
         log_ppl = nll_ / float(num_words)
         ppl = np.exp(log_ppl)
-        print(f"\n{mode}: epoch {epoch}, nll {nll:.4f}, KL {KL:.4f}, rc {rc:.4f}, log_ppl {log_ppl:.4f}, ppl {ppl:.4f}")
+        print(f"\n{mode}: epoch {epoch}, nll {nll:.4f}, KL {KL:.4f}, "
+              f"rc {rc:.4f}, log_ppl {log_ppl:.4f}, ppl {ppl:.4f}")
         return nll, ppl
 
     @torch.no_grad()
@@ -338,13 +348,14 @@ def main():
             scale_diag=torch.ones([batch_size, config.latent_dims]))
 
         latent_z = dst.rsample()
-        dcdr_states = tx.modules.connectors._mlp_transform(
+        dcdr_states = tx.modules.connectors.mlp_transform(
             latent_z.to(device),
             model.decoder_initial_state_size,
             model.mlp_linear_layer)
 
         vocab = train_data.vocab
-        start_tokens = torch.ones(batch_size).type(torch.long) * vocab.bos_token_id
+        start_tokens = torch.ones(
+            batch_size, dtype=torch.long, device=device) * vocab.bos_token_id
         end_token = vocab.eos_token_id.item()
 
         if config.decoder_type == "lstm":
@@ -357,7 +368,7 @@ def main():
             infer_helper = model.decoder.create_helper(
                 embedding=_cat_embedder,
                 decoding_strategy='infer_sample',
-                start_tokens=start_tokens.to(device),
+                start_tokens=start_tokens,
                 end_token=end_token)
 
             outputs, _, _ = model.decoder(
@@ -393,18 +404,17 @@ def main():
             end_id = len(sent)
             if vocab.eos_token in sent:
                 end_id = sent.index(vocab.eos_token)
-            fh.write(' '.join(sent[:end_id+1]) + '\n')
+            fh.write(' '.join(sent[:end_id + 1]) + '\n')
 
         print('Output done')
         fh.close()
-
 
     if args.mode == "predict":
         _generate(args.out)
         return
     # Counts trainable parameters
     total_parameters = 0
-    for name, variable in model.named_parameters():
+    for _, variable in model.named_parameters():
         size = variable.size()
         total_parameters += np.prod(size)
     print(f"{total_parameters} total parameters")
@@ -435,7 +445,7 @@ def main():
                 opt_vars['steps_not_improved'] = 0
                 new_lr = opt_vars['learning_rate']
 
-                print(f"-----\nchange lr, old lr: {old_lr}, " \
+                print(f"-----\nchange lr, old lr: {old_lr}, "
                       f"new lr: {new_lr}\n-----")
 
                 ckpt = torch.load(save_path)
