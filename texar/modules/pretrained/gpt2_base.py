@@ -51,10 +51,10 @@ class GPT2Base(ModuleBase):
         self.pretrained_model_dir: Optional[str] = None
 
         if pretrained_model_name:
-            self.pretrained_model_dir = gpt2_utils.load_pretrained_model(
+            self.pretrained_model_dir = gpt2_utils.load_pretrained_gpt2(
                 pretrained_model_name, cache_dir)
         elif self._hparams.pretrained_model_name is not None:
-            self.pretrained_model_dir = gpt2_utils.load_pretrained_model(
+            self.pretrained_model_dir = gpt2_utils.load_pretrained_gpt2(
                 self._hparams.pretrained_model_name, cache_dir)
 
         if self.pretrained_model_dir:

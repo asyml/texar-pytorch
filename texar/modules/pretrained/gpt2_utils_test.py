@@ -14,7 +14,7 @@ class GPTUtilsTest(unittest.TestCase):
 
     def test_load_pretrained_model_AND_transform_gpt2_to_texar_config(self):
 
-        pretrained_model_dir = load_pretrained_model(
+        pretrained_model_dir = load_pretrained_gpt2(
             pretrained_model_name="117M")
 
         info = list(os.walk(pretrained_model_dir))
