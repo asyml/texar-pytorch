@@ -46,7 +46,7 @@ Example = TypeVar('Example')  # type of a data example
 class DataSource(Generic[RawExample], ABC):
     r"""Base class for all datasets. Different to PyTorch
     :class:`~torch.utils.data.Dataset`, subclasses of this class are not
-    required to implement `__getitem__` (default implementation raises
+    required to implement :meth:`__getitem__` (default implementation raises
     `TypeError`), which is beneficial for certain sources that only supports
     iteration (reading from text files, reading Python iterators, etc.)
     """
@@ -63,6 +63,12 @@ class DataSource(Generic[RawExample], ABC):
 
 class SequenceDataSource(DataSource[RawExample]):
     r"""Data source for reading from Python sequences.
+
+    This data source supports indexing.
+
+    Args:
+        sequence: The Python sequence to read from. Note that a sequence should
+            be iterable and supports `len`.
     """
 
     def __init__(self, sequence: Sequence[RawExample]):
@@ -82,6 +88,11 @@ class IterDataSource(DataSource[RawExample]):
     r"""Data source for reading from Python iterables. Please note: if passed
     an *iterator* and caching strategy is set to 'none', then the data source
     can only be iterated over once.
+
+    This data source does not support indexing.
+
+    Args:
+        iterable: The Python iterable to read from.
     """
 
     def __init__(self, iterable: Iterable[RawExample]):
@@ -92,7 +103,15 @@ class IterDataSource(DataSource[RawExample]):
 
 
 class ZipDataSource(DataSource[Tuple[RawExample, ...]]):
-    r"""Data source by combining multiple sources.
+    r"""Data source by combining multiple sources. The raw examples returned
+    from this data source are tuples, with elements being raw examples from each
+    of the constituting data sources.
+
+    This data source supports indexing if all the constituting data sources
+    support indexing.
+
+    Args:
+        sources: The list of data sources to combine.
     """
 
     def __init__(self, *sources: DataSource[RawExample]):
@@ -109,9 +128,18 @@ class ZipDataSource(DataSource[Tuple[RawExample, ...]]):
 
 
 class FilterDataSource(DataSource[RawExample]):
-    r"""Data source for filtering raw example with user-specified filter
-    function. Only those examples for which the filter functions returns
-    `True` are returned.
+    r"""Data source for filtering raw examples with a user-specified filter
+    function. Only examples for which the filter functions returns `True` are
+    returned.
+
+    This data source supports indexing if the wrapped data source supports
+    indexing.
+
+    Args:
+        source: The data source to filter.
+        filter_fn: A callable taking a raw example as argument and returning a
+            boolean value, indicating whether the raw example should be
+            **kept**.
     """
 
     def __init__(self, source: DataSource[RawExample],
@@ -126,7 +154,16 @@ class FilterDataSource(DataSource[RawExample]):
 
 
 class RecordDataSource(DataSource[Dict[str, RawExample]]):
-    r"""Data source by structuring multiple source.
+    r"""Data source by structuring multiple sources. The raw examples returned
+    from this data source are dictionaries, with values being raw examples from
+    each of the constituting data sources.
+
+    This data source supports indexing if all the constituting data sources
+    support indexing.
+
+    Args:
+        sources: A dictionary mapping names to data sources, containing the
+            data sources to combine.
     """
 
     def __init__(self, sources: Dict[str, DataSource[RawExample]]):

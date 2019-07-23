@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Data class that supports reading TFRecord data and data type converting.
+Data class that supports reading pickled data as record structures.
 """
 import io
 import pickle
@@ -38,9 +38,9 @@ __all__ = [
 
 
 def _default_record_dataset_hparams():
-    r"""Returns hyperparameters of a TFRecord dataset with default values.
+    r"""Returns hyperparameters of a record dataset with default values.
 
-    See :meth:`texar.data.TFRecordData.default_hparams` for details.
+    See :meth:`texar.data.RecordData.default_hparams` for details.
     """
     return {
         "files": [],
@@ -232,7 +232,7 @@ def _convert_feature_hparams(feature_types: Union[Dict[str, Any], HParams]) \
 
 
 class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
-    r"""TFRecord data which loads and processes TFRecord files.
+    r"""Record data which loads and processes pickled files.
 
     This module can be used to process image data, features, etc.
 
@@ -242,10 +242,10 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
         device: The device of the produced batches. For GPU training, set to
             current CUDA device.
 
-    The module reads and restores data from TFRecord files and
-    results in a TF Dataset whose element is a Python `dict` that maps feature
-    names to feature values. The features names and dtypes are specified in
-    :attr:`hparams["dataset"]["feature_original_types"]`.
+    The module reads and restores data from pickled files and results in a
+    dataset whose element is a Python `dict` that maps feature names to feature
+    values. The features names and dtypes are specified in
+    :attr:`hparams.dataset.feature_original_types`.
 
     The module also provides simple processing options for image data, such
     as image resize.
@@ -254,26 +254,24 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
         .. code-block:: python
 
-            # Read data from TFRecord file
+            # Read data from pickled file
             hparams={
                 'dataset': {
-                    'files': 'image1.tfrecord',
+                    'files': 'image1.pkl',
                     'feature_original_types': {
-                        'height': ['tf.int64', 'FixedLenFeature'],
-                        'width': ['tf.int64', 'FixedLenFeature'],
-                        'label': ['tf.int64', 'FixedLenFeature'],
-                        'image_raw': ['tf.string', 'FixedLenFeature']
+                        'height': ['int64', 'FixedLenFeature'],
+                        'width': ['int64', 'FixedLenFeature'],
+                        'label': ['int64', 'FixedLenFeature'],
+                        'image_raw': ['string', 'FixedLenFeature']
                     }
                 },
                 'batch_size': 1
             }
-            data = TFRecordData(hparams)
+            data = RecordData(hparams)
             iterator = DataIterator(data)
-            batch = iterator.get_next()
 
-            iterator.switch_to_dataset(sess) # initializes the dataset
-            batch_ = sess.run(batch)
-            # batch_ == {
+            batch = next(iter(iterator))  # get the first batch in dataset
+            # batch == {
             #    'data': {
             #        'height': [239],
             #        'width': [149],
@@ -287,13 +285,13 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
         .. code-block:: python
 
-            # Read image data from TFRecord file and do resizing
+            # Read image data from pickled file and do resizing
             hparams={
                 'dataset': {
-                    'files': 'image2.tfrecord',
+                    'files': 'image2.pkl',
                     'feature_original_types': {
-                        'label': ['tf.int64', 'FixedLenFeature'],
-                        'image_raw': ['tf.string', 'FixedLenFeature']
+                        'label': ['int64', 'FixedLenFeature'],
+                        'image_raw': ['string', 'FixedLenFeature']
                     },
                     'image_options': {
                         'image_feature_name': 'image_raw',
@@ -303,13 +301,11 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
                 },
                 'batch_size': 1
             }
-            data = TFRecordData(hparams)
+            data = RecordData(hparams)
             iterator = DataIterator(data)
-            batch = iterator.get_next()
 
-            iterator.switch_to_dataset(sess) # initializes the dataset
-            batch_ = sess.run(batch)
-            # batch_ == {
+            batch = next(iter(iterator))  # get the first batch in dataset
+            # batch == {
             #    'data': {
             #        'label': [1],
             #
@@ -422,7 +418,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
         Example:
             .. code-block:: python
 
-                output_file = "data/train.record"
+                output_file = "data/train.pkl"
                 feature_original_types = {
                     "input_ids": ["int64", "FixedLenFeature", 128],
                     "label_ids": ["int64", "FixedLenFeature"],
@@ -452,7 +448,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
         .. code-block:: python
 
             {
-                # (1) Hyperparameters specific to TFRecord dataset
+                # (1) Hyperparameters specific to the record data
                 'dataset': {
                     'files': [],
                     'feature_original_types': {},
@@ -481,127 +477,126 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
 
         1. For the hyperparameters in the :attr:`"dataset"` field:
 
-            `"files"`: str or list
-                A (list of) TFRecord file path(s).
+           `"files"`: str or list
+               A (list of) pickled file path(s).
 
-            `"feature_original_types"`: dict
-                The feature names (str) with their data types and length types,
-                key and value in pair
-                `feature_name: [dtype, feature_len_type, len]`,
+           `"feature_original_types"`: dict
+               The feature names (`str`) with their data types and length types,
+               key and value in pair
+               ``feature_name: [dtype, feature_len_type, len]``,
 
-                - `dtype` is a Python type (`int`, `str`), dtype instance from
-                  PyTorch (``torch.float``), NumPy (``np.int64``),
-                  or TensorFlow (``tf.string``), or their stringified names such
-                  as ``"torch.float"`` and ``"np.int64"``. The feature will be
-                  read from the files and parsed into this dtype.
+               - ``dtype`` is a Python type (``int``, ``str``), dtype instance
+                 from PyTorch (``torch.float``), NumPy (``np.int64``),
+                 or TensorFlow (``tf.string``), or their stringified names such
+                 as ``"torch.float"`` and ``"np.int64"``. The feature will be
+                 read from the files and parsed into this dtype.
 
-                - `feature_len_type` is of type `str`, and can be either
-                  'FixedLenFeature' or 'VarLenFeature' for fixed length
-                  features and non-fixed length features, respectively.
+               - ``feature_len_type`` is of type ``str``, and can be either
+                 ``"FixedLenFeature"`` or ``"VarLenFeature"`` for fixed length
+                 features and non-fixed length features, respectively.
 
-                - `len` is an `int` and is optional. It is the length for
-                  'FixedLenFeature'. Ignored if 'VarLenFeature' is used.
+               - ``len`` is an ``int`` and is optional. It is the length for
+                 ``"FixedLenFeature"``. Ignored if ``"VarLenFeature"`` is used.
 
-                Example:
+               Example:
 
-                .. code-block:: python
+               .. code-block:: python
 
-                    feature_original_types = {
-                        "input_ids": ["tf.int64", "FixedLenFeature", 128],
-                        "label_ids": ["tf.int64", "FixedLenFeature"],
-                        "name_lists": ["tf.string", "VarLenFeature"],
-                    }
+                   feature_original_types = {
+                       "input_ids": ["int64", "FixedLenFeature", 128],
+                       "label_ids": ["int64", "FixedLenFeature"],
+                       "name_lists": ["string", "VarLenFeature"],
+                   }
 
-            `"feature_convert_types"`: dict, optional
-                Specifies dtype converting after reading the data files. This
-                `dict` maps feature names to desired data dtypes. For example,
-                you can first read a feature into dtype ``torch.int32`` by
-                specifying in "feature_original_types" above, and convert
-                the feature to dtype ``"torch.long"`` by specifying here.
-                Features not specified here will not do dtype-convert.
+           `"feature_convert_types"`: dict, optional
+               Specifies dtype converting after reading the data files. This
+               `dict` maps feature names to desired data dtypes. For example,
+               you can first read a feature into dtype ``torch.int32`` by
+               specifying in :attr:`"feature_original_types"` above, and convert
+               the feature to dtype ``"torch.long"`` by specifying here.
+               Features not specified here will not do dtype-convert.
 
-                - `dtype` is a Python type (`int`, `str`), dtype instance from
-                  PyTorch (``torch.float``), NumPy (``np.int64``),
-                  or TensorFlow (``tf.string``), or their stringified names such
-                  as ``"torch.float"`` and ``"np.int64"``.
+               - ``dtype`` is a Python type (`int`, `str`), dtype instance from
+                 PyTorch (``torch.float``), NumPy (``np.int64``),
+                 or TensorFlow (``tf.string``), or their stringified names such
+                 as ``"torch.float"`` and ``"np.int64"``.
 
-                Be noticed that this converting process is after all the data
-                are restored, `feature_original_types` has to be set firstly.
+               Note that this converting process happens after all the data
+               are restored.
 
-                Example:
+               Example:
 
-                .. code-block:: python
+               .. code-block:: python
 
-                    feature_convert_types = {
-                        "input_ids": "tf.int32",
-                        "label_ids": "tf.int32",
-                    }
+                   feature_convert_types = {
+                       "input_ids": "int32",
+                       "label_ids": "int32",
+                   }
 
-            `"image_options"`: dict, optional
-                Specifies the image feature name and performs image resizing,
-                includes three fields:
+           `"image_options"`: dict, optional
+               Specifies the image feature name and performs image resizing,
+               includes three fields:
 
-                - "image_feature_name":
-                    A `str`, the name of the feature which contains
-                    the image data. If set, the image data
-                    will be restored in format `numpy.ndarray`.
-                - "resize_height":
-                    A `int`, the height of the image after resizing.
-                - "resize_width":
-                    A `int`, the width of the image after resizing
+               - `"image_feature_name"`: str
+                   The name of the feature which contains the image data. If
+                   set, the image data will be restored in a `numpy.ndarray`.
+               - `"resize_height"`: int
+                   The height of the image after resizing.
+               - `"resize_width"`: int
+                   The width of the image after resizing.
 
-                If either `resize_height` or `resize_width` is not set,
-                image data will be restored with original shape.
+               If any of :attr:`"resize_height"` or :attr:`"resize_width"` is
+               not set, image data will be restored with original shape.
 
-            .. warning::
-                  Sharding is not yet supported. This option (and
-                  related ones below) will be ignored.
+           `"num_shards"`: int, optional
+               The number of data shards in distributed mode. Usually set to
+               the number of processes in distributed computing.
+               Used in combination with :attr:`"shard_id"`.
 
-            "num_shards": int, optional
-                The number of data shards in distributed mode. Usually set to
-                the number of processes in distributed computing.
-                Used in combination with :attr:`"shard_id"`.
+               .. warning::
+                   Sharding is not yet supported. This option (and
+                   related ones below) will be ignored.
 
-            `"shard_id"`: int, optional
-                Sets the unique id to identify a shard. The module will
-                processes only the corresponding shard of the whole data.
-                Used in combination with :attr:`"num_shards"`.
+           `"shard_id"`: int, optional
+               Sets the unique id to identify a shard. The module will
+               processes only the corresponding shard of the whole data.
+               Used in combination with :attr:`"num_shards"`.
 
-                E.g., in a case of distributed computing on 2 GPUs, the hparams
-                of the data module for the two processes can be as below,
-                respectively.
+               For example, in a case of distributed computing on 2 GPUs, the
+               hyperparameters of the data module for the two processes can be
+               configured as below, respectively.
 
-                For gpu 0:
+               For GPU 0:
 
-                .. code-block:: python
+               .. code-block:: python
 
-                    dataset: {
-                        ...
-                        "num_shards": 2,
-                        "shard_id": 0
-                    }
+                   dataset: {
+                       ...
+                       "num_shards": 2,
+                       "shard_id": 0
+                   }
 
-                For gpu 1:
+               For GPU 1:
 
-                .. code-block:: python
+               .. code-block:: python
 
-                    dataset: {
-                        ...
-                        "num_shards": 2,
-                        "shard_id": 1
-                    }
+                   dataset: {
+                       ...
+                       "num_shards": 2,
+                       "shard_id": 1
+                   }
 
-                Also refer to `examples/bert` for a use case.
+               Also refer to `examples/bert` for a use case.
 
-            `"other_transformations"`: list
-                A list of transformation functions or function names/paths to
-                further transform each single data instance.
+           `"other_transformations"`: list
+               A list of transformation functions or function names/paths to
+               further transform each single data instance.
 
-            `"data_name"`: str
-                Name of the dataset.
+           `"data_name"`: str
+               Name of the dataset.
 
         2. For the **general** hyperparameters, see
-        :meth:`texar.data.DataBase.default_hparams` for details.
+           :meth:`texar.data.DataBase.default_hparams` for details.
         """
         hparams = DataBase.default_hparams()
         hparams["name"] = "record_data"
