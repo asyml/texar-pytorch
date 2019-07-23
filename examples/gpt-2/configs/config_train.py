@@ -2,7 +2,7 @@
 """
 # pylint: disable=invalid-name
 
-tfrecord_data_dir = "data/toy"
+pickle_data_dir = "data/toy"
 max_seq_length = 128
 max_decoding_length = max_seq_length
 
@@ -42,7 +42,7 @@ train_hparam = {
     "dataset": {
         "data_name": "data",
         "feature_original_types": feature_original_types,
-        "files": "{}/train.pickle".format(tfrecord_data_dir)
+        "files": "{}/train.pickle".format(pickle_data_dir)
     },
     "shuffle": True,
     "shuffle_buffer_size": 10000
@@ -54,7 +54,7 @@ eval_hparam = {
     "dataset": {
         "data_name": "data",
         "feature_original_types": feature_original_types,
-        "files": "{}/dev.pickle".format(tfrecord_data_dir)
+        "files": "{}/dev.pickle".format(pickle_data_dir)
     },
     "shuffle": False
 }
@@ -67,7 +67,7 @@ test_hparam = {
     "dataset": {
         "data_name": "data",
         "feature_original_types": feature_original_types,
-        "files": "{}/test.pickle".format(tfrecord_data_dir)
+        "files": "{}/test.pickle".format(pickle_data_dir)
     },
     "shuffle": False
 }

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Preprocesses raw data and produces TFRecord files
+"""Preprocesses raw data and produces pickle files
 """
 
 import argparse
@@ -30,8 +30,8 @@ parser.add_argument(
     '--max_seq_length', type=int, default=128,
     help="The maxium length of sequence, longer sequence will be trimmed.")
 parser.add_argument(
-    '--tfrecord_output_dir', type=str, default=None,
-    help="The output directory where the TFRecord files will be generated. "
+    '--output_dir', type=str, default=None,
+    help="The output directory where the pickle files will be generated. "
          "By default it is set to be the same as `--data_dir`.")
 parser.add_argument(
     '--pretrained_model_name', type=str, default='117M',
@@ -42,15 +42,15 @@ args = parser.parse_args()
 
 
 def prepare_data():
-    r"""Preprocesses raw data and produces TFRecord files.
+    r"""Preprocesses raw data and produces pickle files.
     """
     data_dir = args.data_dir
-    if args.tfrecord_output_dir is None:
-        tfrecord_output_dir = data_dir
+    if args.output_dir is None:
+        pickle_output_dir = data_dir
     else:
-        tfrecord_output_dir = args.tfrecord_output_dir
+        pickle_output_dir = args.output_dir
 
-    tx.utils.maybe_create_dir(tfrecord_output_dir)
+    tx.utils.maybe_create_dir(pickle_output_dir)
 
     pretrained_model_dir = tx.modules.load_pretrained_gpt2(
         pretrained_model_name=args.pretrained_model_name,
@@ -66,7 +66,7 @@ def prepare_data():
         data_dir=data_dir,
         max_seq_length=args.max_seq_length,
         encoder=proc,
-        output_dir=tfrecord_output_dir,
+        output_dir=pickle_output_dir,
         feature_original_types=feature_original_types)
 
 

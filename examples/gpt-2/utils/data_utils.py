@@ -82,7 +82,7 @@ def file_based_convert_examples_to_features(
         BOS_token: Optional[str] = "<|endoftext|>",
         EOS_token: Optional[str] = "<|endoftext|>",
         PAD_token: Optional[str] = "<|endoftext|>"):
-    r"""Converts a set of examples to a TFRecord file."""
+    r"""Converts a set of examples to a `pickle` file."""
 
     with tx.data.RecordData.writer(
             output_file, feature_original_types) as writer:
@@ -97,7 +97,7 @@ def file_based_convert_examples_to_features(
                 "text_ids": text_ids,
                 "length": length
             }
-            writer.write(features)  # type: ignoreq
+            writer.write(features)  # type: ignore
 
 
 def prepare_pickle_data(data_dir: str,

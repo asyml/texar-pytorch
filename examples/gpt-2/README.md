@@ -8,7 +8,7 @@ In sum, this example showcases:
 
 * Contructing and using pre-trained GPT-2 models in Texar
 * Using GPT-2 to generate text samples with or without context
-* **Train or fine-tune** the model with **single GPU**
+* **Train or fine-tune** the model
 * Examples of other use cases
 
 Future work:
@@ -152,16 +152,16 @@ Run the following cmd to transform the data into [pickle](https://docs.python.or
 ```bash
 python prepare_data.py --data_dir data/toy \
 --max_seq_length=128 \
---tfrecord_output_dir=data/toy \ 
+--output_dir=data/toy \ 
 --pretrained_model_name=117M
 ```
 
 - `data_dir`: The directory of raw data, wherein data files must be named as 'train.txt', 'dev.txt', or 'test.txt'. It is *not* necessary to provide all three files.
 - `max_seq_length`: The maxium length of sequence after BPE encoding. This includes GPT-2 special tokens that will be automatically added. Longer sequence will be trimmed. 
-- `tfrecord_output_dir`: The output path where the resulting TFRecord files will be put in. Be default, it is set to be the same as `data_dir`. 
+- `output_dir`: The output path where the resulting pickle files will be put in. Be default, it is set to be the same as `data_dir`. 
 - `pretrained_model_name`: The name of a pre-trained model to load selected in the list of: `117M`, `345M`.
 
-The above cmd will output `pickle` files in the specified output directory. E.g., if `train.txt` is provided under `data_dir`, the output file `train.pickle` will be produced under `tfrecord_output_dir`.
+The above cmd will output pickle files in the specified output directory. E.g., if `train.txt` is provided under `data_dir`, the output file `train.pickle` will be produced under `tfrecord_output_dir`.
 
 ### Train and Evaluate
 
