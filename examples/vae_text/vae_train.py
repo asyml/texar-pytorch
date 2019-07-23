@@ -141,13 +141,13 @@ class Vae(nn.Module):
             delta = data.size(0) - filter_data.size(0)
             tmp_batch.append(filter_data)
             data_batch["length"][i] -= delta
-        text_ids = torch.stack(tmp_batch)
+        text_ids = torch.stack(tmp_batch).to(device)
 
-        input_embed = self.encoder_w_embedder(text_ids.to(device))
-        output_w_embed = self.decoder_w_embedder(text_ids[:, :-1].to(device))
+        input_embed = self.encoder_w_embedder(text_ids)
+        output_w_embed = self.decoder_w_embedder(text_ids[:, :-1])
         _, ecdr_states = self.encoder(
             input_embed,
-            sequence_length=data_batch["length"].to(device))
+            sequence_length=data_batch["length"])
 
         if config.decoder_type == "lstm":
             output_embed = output_w_embed
@@ -205,9 +205,9 @@ class Vae(nn.Module):
         seq_lengths = data_batch["length"] - 1
         # Losses & train ops
         rc_loss = tx.losses.sequence_sparse_softmax_cross_entropy(
-            labels=text_ids[:, 1:].to(device),
+            labels=text_ids[:, 1:],
             logits=logits,
-            sequence_length=(data_batch["length"] - 1).to(device))
+            sequence_length=data_batch["length"] - 1)
 
         nll = rc_loss + kl_weight * kl_loss
 
@@ -347,9 +347,9 @@ def main():
             loc=torch.zeros([batch_size, config.latent_dims]),
             scale_diag=torch.ones([batch_size, config.latent_dims]))
 
-        latent_z = dst.rsample()
+        latent_z = dst.rsample().to(device)
         dcdr_states = tx.modules.connectors.mlp_transform(
-            latent_z.to(device),
+            latent_z,
             model.decoder_initial_state_size,
             model.mlp_linear_layer)
 
@@ -363,7 +363,7 @@ def main():
                 """Concatenates latent variable to input word embeddings
                 """
                 embedding = model.decoder_w_embedder(ids.to(device))
-                return torch.cat([embedding, latent_z.to(device)], 1)
+                return torch.cat([embedding, latent_z], 1)
 
             infer_helper = model.decoder.create_helper(
                 embedding=_cat_embedder,
@@ -387,7 +387,7 @@ def main():
                 max_decoding_length=100,
                 decoding_strategy='infer_sample',
                 embedding=_embedding_fn,
-                start_tokens=start_tokens.to(device),
+                start_tokens=start_tokens,
                 end_token=end_token)
 
         sample_tokens = vocab.map_ids_to_tokens_py(outputs.sample_id.cpu())
