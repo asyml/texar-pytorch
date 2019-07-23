@@ -37,6 +37,24 @@ class TextLineDataSource(DataSource[str]):
     as an example.
 
     This data source does not support indexing.
+
+    Args:
+        file_paths (str or list[str]): Paths to the text files.
+        compression_type (str, optional): The compression type for the text
+            files, ``"gzip"`` and ``"zlib"`` are supported. Default is
+            `None`, in which case files are treated as plain text files.
+        encoding (str, optional): Encoding for the files. By default uses
+            the default locale of the system (usually UTF-8).
+        delimiter (str, optional): Delimiter for tokenization purposes. This
+            is used in combination with ``max_length``.
+        max_length (int, optional): Maximum length for data examples. Length
+            is measured as the number of tokens in a line after being
+            tokenized using the provided ``delimiter``. Lines with more than
+            ``max_length`` tokens will be dropped.
+
+            .. note::
+                ``delimiter`` and ``max_length`` should both be `None` or
+                not `None`.
     """
 
     def __init__(self, file_paths: MaybeList[str],
@@ -44,26 +62,6 @@ class TextLineDataSource(DataSource[str]):
                  encoding: Optional[str] = None,
                  delimiter: Optional[str] = None,
                  max_length: Optional[int] = None):
-        r"""Construct a :class:`TextLineDataSource` instance.
-
-        Args:
-            file_paths (str or list[str]): Paths to the text files.
-            compression_type (str, optional): The compression type for the text
-                files, ``"gzip"`` and ``"zlib"`` are supported. Default is
-                `None`, in which case files are treated as plain text files.
-            encoding (str, optional): Encoding for the files. By default uses
-                the default locale of the system (usually UTF-8).
-            delimiter (str, optional): Delimiter for tokenization purposes. This
-                is used in combination with ``max_length``.
-            max_length (int, optional): Maximum length for data examples. Length
-                is measured as the number of tokens in a line after being
-                tokenized using the provided ``delimiter``. Lines with more than
-                ``max_length`` tokens will be dropped.
-
-                .. note::
-                    ``delimiter`` and ``max_length`` should both be `None` or
-                    not `None`.
-        """
         if compression_type is not None:
             compression_type = compression_type.lower()
             if compression_type not in ['gzip', 'zlib']:
