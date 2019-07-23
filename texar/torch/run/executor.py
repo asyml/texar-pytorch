@@ -18,11 +18,38 @@ from texar.torch.run.metric import Metric
 from texar.torch.utils.types import MaybeList
 from texar.torch.utils.utils import get_instance
 
+__all__ = [
+    "make_deterministic",
+    "Executor",
+]
+
 T = TypeVar('T')
 K = TypeVar('K')
 V = TypeVar('V')
 OptionalList = Optional[MaybeList[T]]
 Instance = Union[T, Dict[str, Any]]
+
+
+def make_deterministic(seed: int = 19260817,
+                       cudnn_deterministic: bool = False):
+    r"""Make experiment deterministic by using specific random seeds across
+    all frameworks and (optionally) use deterministic algorithms.
+
+    Args:
+        seed (int): The random seed to set.
+        cudnn_deterministic (bool): If `True`, set CuDNN to use
+            deterministic algorithms. Setting this to `True` can negatively
+            impact performance, and might not be necessary for most cases.
+            Defaults to `False`.
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+    if cudnn_deterministic:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
 
 def _to_list(xs: OptionalList[T]) -> List[T]:
