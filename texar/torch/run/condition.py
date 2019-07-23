@@ -143,6 +143,7 @@ class consecutive(Condition):
         self.cond = cond
         self.times = times
         self.count = 0
+        self.clear_after_trigger = clear_after_trigger
 
         for hook_point, method in self.cond._hooks.items():
             self._hooks[hook_point] = self._create_check_method(method)
