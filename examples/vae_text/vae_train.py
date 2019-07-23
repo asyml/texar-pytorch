@@ -312,8 +312,8 @@ def main():
             if step % display == 0 and mode == 'train':
                 nll = nll_ / float(num_sents)
                 klw = opt_vars["kl_weight"]
-                KL = kl_loss_ / num_sents
-                rc = rc_loss_ / num_sents
+                KL = kl_loss_ / float(num_sents)
+                rc = rc_loss_ / float(num_sents)
                 log_ppl = nll_ / float(num_words)
                 ppl = np.exp(log_ppl)
                 time_cost = time.time() - start_time
@@ -321,14 +321,14 @@ def main():
                 print(f"{mode}: epoch {epoch}, step {step}, nll {nll:.4f}, "
                       f"klw {klw:.4f}, KL {KL:.4f}, rc {rc:.4f}, "
                       f"log_ppl {log_ppl:.4f}, ppl {ppl:.4f}, "
-                      f"time_cost {time_cost}")
+                      f"time_cost {time_cost:.1f}")
                 sys.stdout.flush()
 
             step += 1
 
         nll = nll_ / float(num_sents)
-        KL = kl_loss_ / num_sents
-        rc = rc_loss_ / num_sents
+        KL = kl_loss_ / float(num_sents)
+        rc = rc_loss_ / float(num_sents)
         log_ppl = nll_ / float(num_words)
         ppl = np.exp(log_ppl)
         print(f"\n{mode}: epoch {epoch}, nll {nll:.4f}, KL {KL:.4f}, "
