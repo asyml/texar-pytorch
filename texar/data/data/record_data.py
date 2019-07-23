@@ -38,7 +38,7 @@ __all__ = [
 
 
 def _default_record_dataset_hparams():
-    r"""Returns hyperparameters of a TFRecord dataset with default values.
+    r"""Returns hyperparameters of a record dataset with default values.
 
     See :meth:`texar.data.RecordData.default_hparams` for details.
     """
@@ -448,7 +448,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
         .. code-block:: python
 
             {
-                # (1) Hyperparameters specific to TFRecord dataset
+                # (1) Hyperparameters specific to the record data
                 'dataset': {
                     'files': [],
                     'feature_original_types': {},
