@@ -8,7 +8,7 @@ In sum, this example showcases:
 
 * Use of pre-trained Google BERT models in Texar
 * Building and fine-tuning on downstream tasks
-* Use of Texar `TFRecordData` module for data loading and processing
+* Use of Texar `RecordData` module for data loading and processing
 
 ## Prerequisite
 

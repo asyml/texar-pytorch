@@ -161,7 +161,7 @@ python prepare_data.py --data_dir data/toy \
 - `output_dir`: The output path where the resulting pickle files will be put in. Be default, it is set to be the same as `data_dir`. 
 - `pretrained_model_name`: The name of a pre-trained model to load selected in the list of: `117M`, `345M`.
 
-The above cmd will output pickle files in the specified output directory. E.g., if `train.txt` is provided under `data_dir`, the output file `train.pickle` will be produced under `tfrecord_output_dir`.
+The above cmd will output pickle files in the specified output directory. E.g., if `train.txt` is provided under `data_dir`, the output file `train.pickle` will be produced under `output_dir`.
 
 ### Train and Evaluate
 
