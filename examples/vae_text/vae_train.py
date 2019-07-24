@@ -29,18 +29,20 @@ import sys
 import time
 import argparse
 import importlib
-from typing import Optional, List
+from typing import Optional, List, Any, Union, Dict, Tuple
 
 import numpy as np
 import torch
+from torch import Tensor
 import torch.nn as nn
 from torch.optim.lr_scheduler import ExponentialLR
 
 import texar as tx
-from texar.hyperparams import HParams
+from texar.modules import BasicRNNDecoderOutput, TransformerDecoderOutput
 from texar.custom import MultivariateNormalDiag
 from texar.data.data.dataset_utils import Batch
 
+BLANK_ID = 3
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config',
@@ -62,14 +64,12 @@ parser.add_argument('--out',
 
 args = parser.parse_args()
 
-config = importlib.import_module(args.config)
+config: Any = importlib.import_module(args.config)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-BLANK_ID = 3
 
-
-def kl_divergence(means, logvars):
+def kl_divergence(means: Tensor, logvars: Tensor) -> Tensor:
     """Compute the KL divergence between Gaussian distribution
     """
 
@@ -80,67 +80,64 @@ def kl_divergence(means, logvars):
     return torch.sum(kl_cost)
 
 
-def adjust_learning_rate(optimizer, lr):
-    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-
-
 class VAE(nn.Module):
-    def __init__(self, vocab_size, bos_token_id, eos_token_id, config):
+    def __init__(self,
+        vocab_size: int, bos_token_id: int,
+        eos_token_id: int, config_model):
         super().__init__()
         # Model architecture
         self._bos_token_id = bos_token_id
         self._eos_token_id = eos_token_id
-        self._config = config
+        self._config = config_model
         self.encoder_w_embedder = tx.modules.WordEmbedder(
-            vocab_size=vocab_size, hparams=config.enc_emb_hparams)
+            vocab_size=vocab_size, hparams=config_model.enc_emb_hparams)
 
         self.encoder = tx.modules.UnidirectionalRNNEncoder(
             input_size=self.encoder_w_embedder.dim,
             hparams={
-                "rnn_cell": config.enc_cell_hparams,
+                "rnn_cell": config_model.enc_cell_hparams,
             })
 
         self.decoder_w_embedder = tx.modules.WordEmbedder(
-            vocab_size=vocab_size, hparams=config.dec_emb_hparams)
+            vocab_size=vocab_size, hparams=config_model.dec_emb_hparams)
 
-        if config.decoder_type == "lstm":
+        if config_model.decoder_type == "lstm":
             self.decoder = tx.modules.BasicRNNDecoder(
                 vocab_size=vocab_size,
-                input_size=self.decoder_w_embedder.dim + config.batch_size,
-                hparams={"rnn_cell": config.dec_cell_hparams})
+                input_size=(self.decoder_w_embedder.dim +
+                    config_model.batch_size),
+                hparams={"rnn_cell": config_model.dec_cell_hparams})
             decoder_initial_state_size = (self.decoder.cell.hidden_size,
                                           self.decoder.cell.hidden_size)
             sum_state_size = sum(decoder_initial_state_size)
 
-        elif config.decoder_type == 'transformer':
+        elif config_model.decoder_type == 'transformer':
             decoder_initial_state_size = torch.Size(
-                [1, config.dec_emb_hparams["dim"]])
+                [1, config_model.dec_emb_hparams["dim"]])
             sum_state_size = np.prod(decoder_initial_state_size)
             # position embedding
             self.decoder_p_embedder = tx.modules.SinusoidsPositionEmbedder(
-                position_size=config.max_pos,
-                hparams=config.dec_pos_emb_hparams)
+                position_size=config_model.max_pos,
+                hparams=config_model.dec_pos_emb_hparams)
             # decoder
             self.decoder = tx.modules.TransformerDecoder(
                 # tie word embedding with output layer
                 output_layer=self.decoder_w_embedder.embedding,
-                hparams=config.trans_hparams)
+                hparams=config_model.trans_hparams)
         else:
             raise NotImplementedError
 
         self.decoder_initial_state_size = decoder_initial_state_size
 
         self.connector_mlp = tx.modules.MLPTransformConnector(
-            config.latent_dims * 2,
+            config_model.latent_dims * 2,
             linear_layer_dim=self.encoder.cell.hidden_size * 2)
 
         self.mlp_linear_layer = nn.Linear(
-            config.latent_dims,
+            config_model.latent_dims,
             sum_state_size)
 
-    def forward(self, data_batch, kl_weight):
+    def forward(self, data_batch: Dict, kl_weight: float) -> Dict:
         # encoder -> connector -> decoder
         text_ids = data_batch["text_ids"]
         input_embed = self.encoder_w_embedder(text_ids)
@@ -184,18 +181,18 @@ class VAE(nn.Module):
             dcdr_states = torch.reshape(
                 fc_output, (-1, ) + self.decoder_initial_state_size)
 
+        seq_lengths = data_batch["length"] - 1
         # decode
         outputs = self.decode(
-            dcdr_states, latent_z, output_embed, is_generate=False)
+            dcdr_states, latent_z, output_embed, seq_lengths, is_generate=False)
 
         logits = outputs.logits
 
-        seq_lengths = data_batch["length"] - 1
         # Losses & train ops
         rc_loss = tx.losses.sequence_sparse_softmax_cross_entropy(
             labels=text_ids[:, 1:],
             logits=logits,
-            sequence_length=data_batch["length"] - 1)
+            sequence_length=seq_lengths)
 
         nll = rc_loss + kl_weight * kl_loss
 
@@ -208,7 +205,13 @@ class VAE(nn.Module):
 
         return fetches
 
-    def decode(self, dcdr_states, latent_z, output_embed, is_generate):
+    def decode(self,
+        dcdr_states: Tensor,
+        latent_z: Tensor,
+        output_embed: Optional[Tensor] = None,
+        seq_lengths: Optional[Tensor] = None,
+        is_generate: bool = False) -> \
+        Union[BasicRNNDecoderOutput, TransformerDecoderOutput]:
         if not is_generate:
             if self._config.decoder_type == "lstm":
                 # concat latent variable to input at every time step
@@ -220,7 +223,7 @@ class VAE(nn.Module):
                 outputs, _, _ = self.decoder(
                     initial_state=dcdr_states,
                     inputs=output_embed,
-                    sequence_length=data_batch["length"] - 1)
+                    sequence_length=seq_lengths)
             else:
                 outputs = self.decoder(
                     inputs=output_embed,
@@ -267,9 +270,8 @@ class VAE(nn.Module):
 
 
 class VAEData(tx.data.MonoTextData):
-    def __init__(self, hparams, device: Optional[torch.device] = None):
-        super().__init__(hparams, device)
-
+    r""" Wrap `tx.data.MonoTextData` to implement data preprocessing.
+    """
     def collate(self, examples: List[List[str]]) -> Batch:
         text_ids = [self._vocab.map_tokens_to_ids_py(sent) for sent in examples]
         text_ids, lengths = tx.data.padded_batch(text_ids, self._pad_length,
@@ -295,8 +297,10 @@ class VAEData(tx.data.MonoTextData):
                  self.length_name: lengths}
         return Batch(len(examples), batch=batch)
 
+
 def main():
-    # Data
+    """Entrypoint.
+    """
     train_data = VAEData(config.train_data_hparams,
                                       device=device)
     val_data = VAEData(config.val_data_hparams,
@@ -344,7 +348,8 @@ def main():
         hparams=config.opt_hparams)
     scheduler = ExponentialLR(optimizer, decay_factor)
 
-    def _run_epoch(epoch, mode, display=10):
+    def _run_epoch(epoch: int, mode: str, display: int = 10) -> \
+        Tuple[Tensor, float]:
         if mode == 'train':
             iterator.switch_to_dataset("train")
         elif mode == 'valid':
@@ -363,7 +368,7 @@ def main():
             kl_weight_ = 1.0
         step = 0
         start_time = time.time()
-        num_words = num_sents = 0
+        num_words = 0
         nll_ = 0.
 
         avg_rec = tx.utils.AverageRecorder()
@@ -371,7 +376,8 @@ def main():
 
             fetches_ = model(batch, kl_weight_)
             if mode == "train":
-                opt_vars["kl_weight"] = min(1.0, opt_vars["kl_weight"] + anneal_r)
+                opt_vars["kl_weight"] = min(
+                    1.0, opt_vars["kl_weight"] + anneal_r)
                 kl_weight_ = opt_vars["kl_weight"]
                 fetches_["nll"].backward()
                 optimizer.step()
@@ -381,7 +387,9 @@ def main():
             num_words += sum(fetches_["lengths"]).item()
             nll_ += fetches_["nll"].item() * batch_size_
             avg_rec.add(
-                [fetches_["nll"].item(), fetches_["kl_loss"], fetches_["rc_loss"]],
+                [fetches_["nll"].item(),
+                 fetches_["kl_loss"],
+                 fetches_["rc_loss"]],
                 batch_size_)
             if step % display == 0 and mode == 'train':
                 nll = avg_rec.avg(0)
@@ -410,7 +418,7 @@ def main():
         return nll, ppl
 
     @torch.no_grad()
-    def _generate(filename=None):
+    def _generate(filename: Optional[str] = None):
         ckpt = torch.load(args.model)
         model.load_state_dict(ckpt['model'])
         model.eval()
@@ -431,7 +439,9 @@ def main():
             dcdr_states = torch.reshape(
                 fc_output, (-1, ) + model.decoder_initial_state_size)
 
-        outputs = mode.decode(dcdr_states, latent_z, output_embed=None, is_generate=True)
+        outputs = model.decode(
+            dcdr_states, latent_z, output_embed=None,
+            seq_lengths=None, is_generate=True)
 
         sample_tokens = vocab.map_ids_to_tokens_py(outputs.sample_id.cpu())
 
