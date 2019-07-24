@@ -37,8 +37,6 @@ __all__ = [
     "MLPTransformConnector",
     "ReparameterizedStochasticConnector",
     "StochasticConnector",
-    "sum_output_size",
-    "mlp_transform"
     # "ConcatConnector"
 ]
 
@@ -83,7 +81,7 @@ def _get_tensor_depth(x: torch.Tensor) -> int:
     return int(np.prod(x.size()[1:]))
 
 
-def sum_output_size(output_size: OutputSize) -> int:
+def _sum_output_size(output_size: OutputSize) -> int:
     r"""Return sum of all dim values in :attr:`output_size`
 
     Args:
@@ -98,11 +96,11 @@ def sum_output_size(output_size: OutputSize) -> int:
             size_list[i] = np.prod([dim for dim in shape])
     else:
         size_list = flat_output_size
-    sum_output_size_ = sum(size_list)
-    return sum_output_size_
+    _sum_output_size_ = sum(size_list)
+    return _sum_output_size_
 
 
-def mlp_transform(inputs: TensorStruct,
+def _mlp_transform(inputs: TensorStruct,
                    output_size: OutputSize,
                    linear_layer: Optional[LinearLayer] = None,
                    activation_fn: Optional[ActivationFn] = None,
@@ -398,7 +396,7 @@ class MLPTransformConnector(ConnectorBase):
                  hparams: Optional[HParams] = None):
         super().__init__(output_size, hparams=hparams)
         self._linear_layer = nn.Linear(
-            linear_layer_dim, sum_output_size(output_size))
+            linear_layer_dim, _sum_output_size(output_size))
         self._activation_fn = get_activation_fn(
             self.hparams.activation_fn)
 
@@ -444,7 +442,7 @@ class MLPTransformConnector(ConnectorBase):
             same structure of :attr:`output_size`.
         """
 
-        output = mlp_transform(
+        output = _mlp_transform(
             inputs, self._output_size,
             self._linear_layer, self._activation_fn)
 
@@ -530,7 +528,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
         else:
             input_feature = np.prod(mlp_input_size)
         self._linear_layer = nn.Linear(
-            input_feature, sum_output_size(output_size))
+            input_feature, _sum_output_size(output_size))
 
         self._activation_fn = get_activation_fn(
             self.hparams.activation_fn)
@@ -613,7 +611,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
             sample = dstr.rsample()
 
         if transform:
-            output = mlp_transform(
+            output = _mlp_transform(
                 sample,
                 self._output_size,
                 self._linear_layer,
@@ -683,7 +681,7 @@ class StochasticConnector(ConnectorBase):
         else:
             input_feature = np.prod(mlp_input_size)
         self._linear_layer = nn.Linear(
-            input_feature, sum_output_size(output_size))
+            input_feature, _sum_output_size(output_size))
 
         self._activation_fn = get_activation_fn(
             self.hparams.activation_fn)
@@ -762,7 +760,7 @@ class StochasticConnector(ConnectorBase):
         # Disable gradients through samples
         sample = sample.detach().float()
         if transform:
-            output = mlp_transform(
+            output = _mlp_transform(
                 sample,
                 self._output_size,
                 self._linear_layer,
@@ -850,7 +848,7 @@ class StochasticConnector(ConnectorBase):
 #            fn_modules = ['texar.custom', 'torch', 'torch.nn']
 #            activation_fn = utils.get_function(self.hparams.activation_fn,
 #                                         fn_modules)
-#            output, linear_layer = mlp_transform(
+#            output, linear_layer = _mlp_transform(
 #               output, self._output_size, activation_fn)
 #            self._linear_layers.append(linear_layer)
 #        _assert_same_size(output, self._output_size)
