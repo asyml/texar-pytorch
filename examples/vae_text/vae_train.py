@@ -432,7 +432,7 @@ def main():
         latent_z = dst.rsample().to(device)
 
         fc_output = model.mlp_linear_layer(latent_z)
-        if isinstance(model.decoder_initial_state_size, tuple):
+        if not isinstance(model.decoder_initial_state_size, torch.Size):
             dcdr_states = torch.split(
                 fc_output, model.decoder_initial_state_size, dim=1)
         else:
