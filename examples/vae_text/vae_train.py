@@ -29,6 +29,7 @@ import sys
 import time
 import argparse
 import importlib
+from typing import Optional, List
 
 import numpy as np
 import torch
@@ -38,6 +39,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 import texar as tx
 from texar.hyperparams import HParams
 from texar.custom import MultivariateNormalDiag
+from texar.data.data.dataset_utils import Batch
 
 
 parser = argparse.ArgumentParser()
@@ -60,8 +62,7 @@ parser.add_argument('--out',
 
 args = parser.parse_args()
 
-#config = importlib.import_module(args.config)
-config = HParams(args.config)
+config = importlib.import_module(args.config)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -141,7 +142,7 @@ class VAE(nn.Module):
 
     def forward(self, data_batch, kl_weight):
         # encoder -> connector -> decoder
-
+        text_ids = data_batch["text_ids"]
         input_embed = self.encoder_w_embedder(text_ids)
         output_w_embed = self.decoder_w_embedder(text_ids[:, :-1])
         _, ecdr_states = self.encoder(
@@ -156,10 +157,10 @@ class VAE(nn.Module):
             batch_size = text_ids.size(0)
             max_seq_len = text_ids.size(1) - 1
             batch_max_seq_len = torch.full(
-                (batch_size,), max_seq_len dtype=torch.long, device=device)
+                (batch_size,), max_seq_len, dtype=torch.long, device=device)
             output_p_embed = self.decoder_p_embedder(
                 sequence_length=batch_max_seq_len)
-            output_w_embed = output_w_embed *
+            output_w_embed = output_w_embed * \
                 self._config.hidden_size ** 0.5
             output_embed = output_w_embed + output_p_embed
 
@@ -202,7 +203,7 @@ class VAE(nn.Module):
             "nll": nll,
             "kl_loss": kl_loss.item(),
             "rc_loss": rc_loss.item(),
-            "lengths": seq_lengths.item()
+            "lengths": seq_lengths
         }
 
         return fetches
@@ -304,7 +305,7 @@ def main():
                                      device=device)
 
     iterator = tx.data.DataIterator(
-        {"train": train_data, "val": val_data, "test": test_data})
+        {"train": train_data, "valid": val_data, "test": test_data})
 
     opt_vars = {
         'learning_rate': config.lr_decay_hparams["init_lr"],
@@ -333,7 +334,7 @@ def main():
 
     vocab = train_data.vocab
     model = VAE(
-        train_data.vocab_size,
+        train_data.vocab.size,
         vocab.bos_token_id.item(),
         vocab.eos_token_id.item(), config)
     model.to(device)
@@ -364,32 +365,30 @@ def main():
         start_time = time.time()
         num_words = num_sents = 0
         nll_ = 0.
-        kl_loss_ = rc_loss_ = 0.
 
         avg_rec = tx.utils.AverageRecorder()
         for batch in iterator:
 
             fetches_ = model(batch, kl_weight_)
             if mode == "train":
+                opt_vars["kl_weight"] = min(1.0, opt_vars["kl_weight"] + anneal_r)
+                kl_weight_ = opt_vars["kl_weight"]
                 fetches_["nll"].backward()
                 optimizer.step()
                 optimizer.zero_grad()
 
             batch_size_ = len(fetches_["lengths"])
+            num_words += sum(fetches_["lengths"]).item()
+            nll_ += fetches_["nll"].item() * batch_size_
             avg_rec.add(
                 [fetches_["nll"].item(), fetches_["kl_loss"], fetches_["rc_loss"]],
                 batch_size_)
-            ppl_avg_rec = tx.utils.AverageRecorder()
-            ppl_avg_rec.add(
-                [fetches_["nll"].item()],
-                sum(fetches_["lengths"]))
-
             if step % display == 0 and mode == 'train':
                 nll = avg_rec.avg(0)
                 klw = opt_vars["kl_weight"]
                 KL = avg_rec.avg(1)
                 rc = avg_rec.avg(2)
-                log_ppl = ppl_avg_rec.avg(0)
+                log_ppl = nll_ / num_words
                 ppl = np.exp(log_ppl)
                 time_cost = time.time() - start_time
 
@@ -404,7 +403,7 @@ def main():
         nll = avg_rec.avg(0)
         KL = avg_rec.avg(1)
         rc = avg_rec.avg(2)
-        log_ppl = ppl_avg_rec.avg(0)
+        log_ppl = nll_ / num_words
         ppl = np.exp(log_ppl)
         print(f"\n{mode}: epoch {epoch}, nll {nll:.4f}, KL {KL:.4f}, "
               f"rc {rc:.4f}, log_ppl {log_ppl:.4f}, ppl {ppl:.4f}")
