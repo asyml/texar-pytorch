@@ -18,6 +18,7 @@
 With the design goals of **modularity, versatility, and extensibility** in mind, Texar extracts the common patterns underlying the diverse tasks and methodologies, creates a library of highly reusable modules and functionalities, and facilitates **arbitrary model architectures and algorithmic paradigms**, e.g., 
    * encoder(s) to decoder(s), sequential- and self-attentions, memory, hierarchical models, classifiers, ... 
    * maximum likelihood learning, reinforcement learning, adversarial learning, probabilistic modeling, ... 
+   * **pretrained models** such as **BERT**, **GPT2**, **XLNet**, ...
 
 With Texar, cutting-edge complex models can be easily constructed, freely enriched with best modeling/training practices, readily fitted into standard training/evaluation pipelines, and fastly experimented and evolved by, e.g., plugging-in and swapping-out different modules.
 
@@ -33,7 +34,6 @@ Users can construct their own models at a high conceptual level just like assemb
 * **Extensibility**. It is straightforward to integrate any user-customized, external modules. Also, Texar is fully compatible with the native PyTorch interfaces and can take advantage of the rich PyTorch features, and resources from the vibrant open-source community.
 * Interfaces with different functionality levels. Users can customize a model through 1) simple **Python/YAML configuration files** of provided model templates/examples; 2) programming with **Python Library APIs** for maximal customizability.
 * Easy-to-use APIs; rich configuration options for each module, all with default values.
-* **Pretrained Models** such as **BERT**, **GPT2**, and more!
 * Well-structured high-quality code of uniform design patterns and consistent styles. 
 * Clean, detailed [documentation](https://texar-pytorch.readthedocs.io) and rich [examples](./examples).
 
@@ -78,7 +78,7 @@ data = tx.data.PairedTextData(hparams=hparams_data)
 iterator = tx.data.DataIterator(data)
 
 model = Seq2seq(data)
-for batch in iterator.get_iterator():
+for batch in iterator:
     loss = model(batch)
     # ...
 ```
