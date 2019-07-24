@@ -35,12 +35,12 @@ class Average(StreamingMetric[Input, float]):
         return self.correct / self.count
 
 
-class _ConfusionMatrix(StreamingMetric[str, Value], ABC):
+class _ConfusionMatrix(StreamingMetric[Input, Value], ABC):
     count: int
     matrix: Optional[np.ndarray]  # matrix[pred][label]
     pred_count: List[int]
     label_count: List[int]
-    class_id: Dict[str, int]
+    class_id: Dict[Input, int]
 
     def reset(self) -> None:
         super().reset()
@@ -49,7 +49,7 @@ class _ConfusionMatrix(StreamingMetric[str, Value], ABC):
         self.label_count = []
         self.class_id = {}
 
-    def _convert_ids(self, classes: List[str]) -> List[int]:
+    def _convert_ids(self, classes: List[Input]) -> List[int]:
         ids = []
         cnt = 0
         for klass in classes:
@@ -66,7 +66,7 @@ class _ConfusionMatrix(StreamingMetric[str, Value], ABC):
         self.label_count.extend([0] * cnt)
         return ids
 
-    def add(self, predicted: List[str], labels: List[str]) -> None:
+    def add(self, predicted: List[Input], labels: List[Input]) -> None:
         super().add(predicted, labels)
         predicted = self._convert_ids(predicted)
         labels = self._convert_ids(labels)
@@ -77,12 +77,12 @@ class _ConfusionMatrix(StreamingMetric[str, Value], ABC):
             self.label_count[label] += 1
 
 
-class ConfusionMatrix(_ConfusionMatrix[Optional[np.ndarray]]):
+class ConfusionMatrix(_ConfusionMatrix[Input, Optional[np.ndarray]]):
     def value(self) -> Optional[np.ndarray]:
         return self.matrix
 
 
-class _MicroMacro(_ConfusionMatrix[float], ABC):
+class _MicroMacro(_ConfusionMatrix[Input, float], ABC):
     _valid_modes = ['micro', 'macro', 'macro_weighted']
 
     def __init__(self, mode: str = 'micro', **kwargs):
@@ -119,26 +119,22 @@ class _MicroMacro(_ConfusionMatrix[float], ABC):
         return value.sum() if self.mode == 'micro' else value
 
 
-class Precision(_MicroMacro):
+class Precision(_MicroMacro[Input]):
     def value(self) -> float:
         return self._wrap_micro_macro(
             self._true_positive() /
             (self._true_positive() + self._false_positive()))
 
 
-class Recall(_MicroMacro):
+class Recall(_MicroMacro[Input]):
     def value(self) -> float:
         return self._wrap_micro_macro(
             self._true_positive() /
             (self._true_positive() + self._false_negative()))
 
 
-class F1(_MicroMacro):
+class F1(Precision[Input], Recall[Input]):
     def value(self) -> float:
-        precision = self._wrap_micro_macro(
-            self._true_positive() /
-            (self._true_positive() + self._false_positive()))
-        recall = self._wrap_micro_macro(
-            self._true_positive() /
-            (self._true_positive() + self._false_negative()))
+        precision = Precision.value(self)
+        recall = Recall.value(self)
         return 2 * precision * recall / (precision + recall)

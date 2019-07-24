@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Optional, List
+from typing import Generic, List, TypeVar
 
 __all__ = [
     "Metric",
@@ -14,10 +14,18 @@ Value = TypeVar('Value')
 class Metric(Generic[Input, Value], ABC):
     higher_is_better: bool = True
 
-    def __init__(self, *, pred_name: Optional[str] = None,
-                 label_name: Optional[str] = "label"):
+    def __init__(self, *, pred_name: str = "loss", label_name: str = "label"):
         self.reset()
-        # TODO: add logic to select tensors by names
+        self._pred_name = pred_name
+        self._label_name = label_name
+
+    @property
+    def pred_name(self) -> str:
+        return self._pred_name
+
+    @property
+    def label_name(self) -> str:
+        return self._label_name
 
     @abstractmethod
     def reset(self) -> None:

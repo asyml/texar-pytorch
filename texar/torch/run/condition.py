@@ -1,8 +1,12 @@
 import functools
+import re
 import types
+from abc import ABC, abstractmethod
 from enum import Enum, auto
 from time import time as time_now
 from typing import Any, Dict, Optional, Tuple
+
+from texar.utils.types import MaybeTuple
 
 __all__ = [
     "Event",
@@ -16,24 +20,41 @@ __all__ = [
 ]
 
 
-class StrEnum(Enum):
-    def _generate_next_value_(name, start, count, last_values):
-        return name.lower()
+# class StrEnum(Enum):
+#     def _generate_next_value_(name: str, start, count, last_values):
+#         name = re.sub(r"([A-Z]+)([A-Z][a-z])", r'\1_\2', name)
+#         name = re.sub(r"([a-z\d])([A-Z])", r'\1_\2', name)
+#         name = name.replace("-", "_")
+#         return name.lower()
 
 
-class Event(StrEnum):
+class Event(Enum):  # use primitive as underlying type for fast dict lookup
     Iteration = auto()
     Epoch = auto()
     Training = auto()
     Validation = auto()
+    ValidationIteration = auto()
     Testing = auto()
+    TestingIteration = auto()
+    ParameterUpdate = auto()
 
 
-HookPoint = Tuple[Event, str]
+HookPoint = Tuple[Event, bool]
 
 
-class Condition:
+class Condition(ABC):
     _hooks: Dict[HookPoint, Any]
+
+    @abstractmethod
+    @property
+    def _hash_attributes(self) -> MaybeTuple[Any]:
+        raise NotImplementedError
+
+    def __eq__(self, other: 'Condition'):
+        return self._hash_attributes == other._hash_attributes
+
+    def __hash__(self):
+        return hash(self._hash_attributes)
 
     def __init__(self):
         self._hooks = {}
@@ -65,6 +86,9 @@ class epoch(Condition):
         self.num_epochs = num_epochs
         self.count = 0
 
+    def _hash_attributes(self):
+        return self.num_epochs
+
     def check_epoch_end(self) -> bool:
         self.count += 1
         if self.count == self.num_epochs:
@@ -86,6 +110,9 @@ class iteration(Condition):
         super().__init__()
         self.num_iters = num_iters
         self.count = 0
+
+    def _hash_attributes(self):
+        return self.num_iters
 
     def check_iteration_end(self) -> bool:
         self.count += 1
@@ -109,6 +136,9 @@ class validation(Condition):
     def __init__(self, better: Optional[bool] = None):
         super().__init__()
         self.better = better
+
+    def _hash_attributes(self):
+        return self.better
 
     def check_validation_end(self, metrics) -> bool:
         pass
@@ -148,6 +178,9 @@ class consecutive(Condition):
         for hook_point, method in self.cond._hooks.items():
             self._hooks[hook_point] = self._create_check_method(method)
 
+    def _hash_attributes(self):
+        return self.cond, self.times, self.clear_after_trigger
+
     def _create_check_method(self, method):
         @functools.wraps(method)
         def check_fn(self, *args, **kwargs) -> bool:
@@ -180,6 +213,9 @@ class time(Condition):
         self.only_training = only_training
         self.start_time: Optional[float] = None
         self.accumulated_time = 0.0
+
+    def _hash_attributes(self):
+        return self.seconds, self.only_training
 
     def _should_trigger(self) -> bool:
         total_time = self.accumulated_time
