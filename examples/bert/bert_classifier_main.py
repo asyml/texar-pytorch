@@ -78,7 +78,7 @@ def main():
     num_train_data = config_data.num_train_data
 
     # Builds BERT
-    model = tx.modules.BertClassifier(
+    model = tx.modules.BERTClassifier(
         pretrained_model_name=args.pretrained_model_name,
         cache_dir='bert_pretrained_models',
         hparams=config_downstream)

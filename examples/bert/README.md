@@ -91,7 +91,7 @@ Here:
 
 After convergence, the evaluation performance is around the following. Due to certain randomness (e.g., random initialization of the classification layer), the evaluation accuracy is reasonable as long as it's `>0.84`.
 
-```bash
+```
 INFO:root:dev accu: 0.8676470588235294
 ```
 

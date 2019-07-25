@@ -413,7 +413,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
 def file_based_convert_examples_to_features(
         examples, label_list, max_seq_length, tokenizer, output_file,
         feature_original_types):
-    r"""Convert a set of `InputExample`s to a pickle file."""
+    r"""Convert a set of `InputExample`s to a pickled file."""
 
     with tx.data.RecordData.writer(
             output_file, feature_original_types) as writer:
@@ -459,25 +459,25 @@ def prepare_record_data(processor, tokenizer,
             SentencePiece Model.
         data_dir: The input data directory.
         max_seq_length: Max sequence length.
-        output_dir: The directory to save the pickle file in.
+        output_dir: The directory to save the pickled file in.
         feature_original_types: The original type of the feature.
     """
     label_list = processor.get_labels()
 
     train_examples = processor.get_train_examples(data_dir)
-    train_file = os.path.join(output_dir, "train.pickle")
+    train_file = os.path.join(output_dir, "train.pkl")
     file_based_convert_examples_to_features(
         train_examples, label_list, max_seq_length,
         tokenizer, train_file, feature_original_types)
 
     eval_examples = processor.get_dev_examples(data_dir)
-    eval_file = os.path.join(output_dir, "eval.pickle")
+    eval_file = os.path.join(output_dir, "eval.pkl")
     file_based_convert_examples_to_features(
         eval_examples, label_list,
         max_seq_length, tokenizer, eval_file, feature_original_types)
 
     test_examples = processor.get_test_examples(data_dir)
-    test_file = os.path.join(output_dir, "predict.pickle")
+    test_file = os.path.join(output_dir, "predict.pkl")
     file_based_convert_examples_to_features(
         test_examples, label_list,
         max_seq_length, tokenizer, test_file, feature_original_types)

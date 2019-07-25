@@ -14,7 +14,7 @@ eval_batch_size = 8
 test_batch_size = 8
 
 feature_original_types = {
-    # Reading features from pickle data file.
+    # Reading features from pickled data file.
     # E.g., Reading feature "input_ids" as dtype `int64`;
     # "FixedLenFeature" indicates its length is fixed for all data instances;
     # and the sequence length is limited by `max_seq_length`.
@@ -30,7 +30,7 @@ train_hparam = {
     "dataset": {
         "data_name": "data",
         "feature_original_types": feature_original_types,
-        "files": "{}/train.pickle".format(pickle_data_dir)
+        "files": "{}/train.pkl".format(pickle_data_dir)
     },
     "shuffle": True,
     "shuffle_buffer_size": 100
@@ -42,7 +42,7 @@ eval_hparam = {
     "dataset": {
         "data_name": "data",
         "feature_original_types": feature_original_types,
-        "files": "{}/eval.pickle".format(pickle_data_dir)
+        "files": "{}/eval.pkl".format(pickle_data_dir)
     },
     "shuffle": False
 }
@@ -53,7 +53,7 @@ test_hparam = {
     "dataset": {
         "data_name": "data",
         "feature_original_types": feature_original_types,
-        "files": "{}/predict.pickle".format(pickle_data_dir)
+        "files": "{}/predict.pkl".format(pickle_data_dir)
     },
     "shuffle": False
 }
