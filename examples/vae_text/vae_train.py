@@ -431,14 +431,12 @@ def main():
 
         sample_tokens = vocab.map_ids_to_tokens_py(outputs.sample_id.cpu())
 
-        sample_tokens_ = sample_tokens
-
         if filename is None:
             fh = sys.stdout
         else:
             fh = open(filename, 'w', encoding='utf-8')
 
-        for sent in sample_tokens_:
+        for sent in sample_tokens:
             sent = tx.utils.compat_as_text(list(sent))
             end_id = len(sent)
             if vocab.eos_token in sent:
