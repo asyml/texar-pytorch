@@ -1,12 +1,15 @@
 import functools
 import os
 import random
+import re
+import time
 import warnings
 from collections import defaultdict, Counter
 from typing import (Any, Callable, Counter as CounterType, Dict, IO, List,
-                    NamedTuple, Optional, Type, TypeVar, Union, overload)
+                    NamedTuple, Optional, Type, TypeVar, Union, overload, Set)
 
 import numpy as np
+from mypy_extensions import TypedDict
 import torch
 from torch import nn
 from torch.optim.lr_scheduler import _LRScheduler as LRScheduler
@@ -109,20 +112,25 @@ class SavedTrainingState(NamedTuple):
     torch_rng: Any
 
 
-class TrainingStatus(NamedTuple):
-    pass
+class TrainingStatus(TypedDict):
+    epoch: int
+    iteration: int
+    progress: float
+    split: str
+    metric: Dict[str, Metric]
 
 
 class Executor:
     _defaults = {
-        "log_format": "{date} {time} : Epoch {epoch} @ {iteration}it "
+        "log_format": "{time} : Epoch {epoch} @ {iteration}it "
                       "({progress}%), loss = {loss:.3f}",
-        "eval_log_format": "{date} {time} : Epoch {epoch}, "
+        "eval_log_format": "{time} : Epoch {epoch}, "
                            "{split} result = {{{metrics:.3f}}}",
     }
 
     # TODO: Add a unified `state` that is readonly and keeps track of
     #   everything. We'll only have to pass it to hooks.
+    status: TrainingStatus
 
     def __init__(self, model: nn.Module,
                  train_data: Optional[DataBase] = None,
@@ -232,10 +240,10 @@ class Executor:
         for cond in self._test_conditions:
             self.register_action(cond, self.test)
         for cond in self._log_conditions:
-            self.register_action(cond, lambda: self._log(log_format))
+            self.register_action(cond, self._log(log_format))
         for event in (Event.Validation, Event.Testing):
             self._register_hook(
-                (event, True), lambda: self._log(eval_log_format))
+                (event, True), self._log(eval_log_format))
         for cond in self._save_conditions:
             self.register_action(cond, self._save)
         for cond in self._plateau_conditions:
@@ -247,8 +255,91 @@ class Executor:
 
         # Validate arguments.
 
-    def _log(self, format_str: str):
-        pass
+    def _log(self, format_str: str) -> HookFn:
+        r"""Create a hook function given a logging format string.
+
+        The format string follows the syntax of Python format strings. The
+        status variables you can reference include:
+
+        - ``epoch`` (int): The current epoch.
+        - ``iteration`` (int): The current iteration.
+        - ``progress`` (float): The epoch progress represented in percentage,
+          i.e. a floating-point number between 0 and 100. It should be noted
+          that progress may not be accurate, and may not be available if the
+          data is loaded lazily.
+        - ``speed`` (float): Average number of data examples processed per
+          second. It should be noted that speed may not be accurate.
+        - ``time``: The current date and time. Time format can be set using the
+          "format spec" syntax of Python format strings, i.e.:
+          ``{time:%H:%M:%S}`` prints time in the format ``08:26:03``. If time
+          format is not specified, it is equivalent to
+          ``{time:%Y-%m-%d %H:%M:%S}``, which corresponds to the format
+          ``2018-07-06 08:26:03``. For more information on time formatting,
+          please refer to documentation for Python built-in function
+          :meth:`date.strftime`.
+        - ``metric``: An aggregated representation of all metrics, in the
+          format of ``<name1>: <value1>, <name2>: <value2>, ...``, sorted in
+          alphabetical order of metric names. The format spec for ``metric``
+          will be applied to all metrics whose value supports such format spec.
+          For more fine grained control over metric formatting, use the
+          following methods.
+        - ``metric.<name>``: Value of the metric under the specified name
+          ``<name>``.
+        - ``<name>``: Value of the metric under the specified name ``<name>``.
+          **Note:** The metric can only be looked-up if its name does not
+          coincide with built-in status variables. For instance, a metric named
+          "loss" can be looked-up by ``loss`` and ``metric.loss``, but a metric
+          named "time" can only be looked-up by ``metric.time``.
+
+        Args:
+            format_str (str): The logging format string.
+
+        Returns:
+            A hook function to print logs given the format string.
+        """
+        format_var_regex = re.compile(r"{([a-zA-Z_0-9]+)(:([^{}]+))?}")
+        format_vars: Dict[str, Optional[str]] = {
+            match.group(1): match.group(3)
+            for match in format_var_regex.finditer(format_str)
+        }
+
+        # Set default time format.
+        if "time" in format_vars and format_vars["time"] is None:
+            format_vars["time"] = "%Y-%m-%d %H:%M:%S"
+            format_str = re.sub(r"{time(:([^{}]+))?}", format_str, "{time}")
+
+        # Set metric print formats for aggregated format variable.
+        if "metric" in format_vars and format_vars["metric"] is not None:
+            # Check which metrics can be printed with specified format.
+            supported_metrics: Set[str] = set()
+            metric_format = format_vars["metric"]
+            for name, metric in self.status.metric.items():
+                try:
+                    metric_format.format(metric.value())
+                    supported_metrics.add(name)
+                except ValueError:
+                    pass
+            metric_format_parts = []
+            for name in sorted(self.status.metric):
+                metric_format_parts.append(
+                    f"{name}: {{{name}"
+                    f"{metric_format if name in supported_metrics else ''}}}")
+            metric_format_str = ', '.join(metric_format_parts)
+            format_vars["metric"] = metric_format_str
+            format_str = re.sub(r"{metric(:([^{}]+))?}", format_str, "{metric}")
+
+        # Gather metrics represented as "name" or "metric.name".
+
+        def log_fn(self):
+            format_args = self.status.copy()
+            if "time" in format_vars:
+                format_args["time"] = time.strftime(format_vars["time"])
+            if "metric" in format_vars:
+                metric_vals = {name: metric.value()
+                               for name, metric in self.status.metric.items()}
+                format_args["metric"] = format_vars["metric"].format(**metric_vals)
+
+        return log_fn
 
     def register_action(self, cond: Condition, action: Action):
         for hook_point in cond._hooks:
