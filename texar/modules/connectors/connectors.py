@@ -96,8 +96,8 @@ def _sum_output_size(output_size: OutputSize) -> int:
             size_list[i] = np.prod([dim for dim in shape])
     else:
         size_list = flat_output_size
-    _sum_output_size_ = sum(size_list)
-    return _sum_output_size_
+    sum_output_size_ = sum(size_list)
+    return sum_output_size_
 
 
 def _mlp_transform(inputs: TensorStruct,

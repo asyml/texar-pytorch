@@ -82,8 +82,8 @@ def kl_divergence(means: Tensor, logvars: Tensor) -> Tensor:
 
 class VAE(nn.Module):
     def __init__(self,
-        vocab_size: int, bos_token_id: int,
-        eos_token_id: int, config_model):
+                 vocab_size: int, bos_token_id: int,
+                 eos_token_id: int, config_model):
         super().__init__()
         # Model architecture
         self._bos_token_id = bos_token_id
@@ -107,14 +107,13 @@ class VAE(nn.Module):
                 input_size=(self.decoder_w_embedder.dim +
                     config_model.batch_size),
                 hparams={"rnn_cell": config_model.dec_cell_hparams})
-            decoder_initial_state_size = (self.decoder.cell.hidden_size,
-                                          self.decoder.cell.hidden_size)
+            decoder_initial_state_size = self.decoder.cell.hidden_size * 2
             sum_state_size = sum(decoder_initial_state_size)
 
         elif config_model.decoder_type == 'transformer':
             decoder_initial_state_size = torch.Size(
                 [1, config_model.dec_emb_hparams["dim"]])
-            sum_state_size = np.prod(decoder_initial_state_size)
+            sum_state_size = config_model.dec_emb_hparams["dim"]
             # position embedding
             self.decoder_p_embedder = tx.modules.SinusoidsPositionEmbedder(
                 position_size=config_model.max_pos,
@@ -153,8 +152,8 @@ class VAE(nn.Module):
 
             batch_size = text_ids.size(0)
             max_seq_len = text_ids.size(1) - 1
-            batch_max_seq_len = torch.full(
-                (batch_size,), max_seq_len, dtype=torch.long, device=device)
+            batch_max_seq_len = text_ids.new_full(
+                (batch_size,), max_seq_len, dtype=torch.long)
             output_p_embed = self.decoder_p_embedder(
                 sequence_length=batch_max_seq_len)
             output_w_embed = output_w_embed * \
@@ -196,14 +195,14 @@ class VAE(nn.Module):
 
         nll = rc_loss + kl_weight * kl_loss
 
-        fetches = {
+        ret = {
             "nll": nll,
             "kl_loss": kl_loss.item(),
             "rc_loss": rc_loss.item(),
             "lengths": seq_lengths
         }
 
-        return fetches
+        return ret
 
     def decode(self,
         dcdr_states: Tensor,
@@ -350,68 +349,62 @@ def main():
 
     def _run_epoch(epoch: int, mode: str, display: int = 10) -> \
         Tuple[Tensor, float]:
-        if mode == 'train':
-            iterator.switch_to_dataset("train")
-        elif mode == 'valid':
-            iterator.switch_to_dataset("valid")
-        elif mode == 'test':
-            iterator.switch_to_dataset("test")
+        iterator.switch_to_dataset(mode)
 
         if mode == 'train':
             model.train()
             opt_vars["kl_weight"] = min(
                     1.0, opt_vars["kl_weight"] + anneal_r)
 
-            kl_weight_ = opt_vars["kl_weight"]
+            kl_weight = opt_vars["kl_weight"]
         else:
             model.eval()
-            kl_weight_ = 1.0
+            kl_weight = 1.0
         step = 0
         start_time = time.time()
         num_words = 0
-        nll_ = 0.
+        nll_total = 0.
 
         avg_rec = tx.utils.AverageRecorder()
         for batch in iterator:
 
-            fetches_ = model(batch, kl_weight_)
+            ret = model(batch, kl_weight)
             if mode == "train":
                 opt_vars["kl_weight"] = min(
                     1.0, opt_vars["kl_weight"] + anneal_r)
-                kl_weight_ = opt_vars["kl_weight"]
-                fetches_["nll"].backward()
+                kl_weight = opt_vars["kl_weight"]
+                ret["nll"].backward()
                 optimizer.step()
                 optimizer.zero_grad()
 
-            batch_size_ = len(fetches_["lengths"])
-            num_words += sum(fetches_["lengths"]).item()
-            nll_ += fetches_["nll"].item() * batch_size_
+            batch_size = len(ret["lengths"])
+            num_words += torch.sum(ret["lengths"]).item()
+            nll_total += ret["nll"].item() * batch_size
             avg_rec.add(
-                [fetches_["nll"].item(),
-                 fetches_["kl_loss"],
-                 fetches_["rc_loss"]],
-                batch_size_)
+                [ret["nll"].item(),
+                 ret["kl_loss"],
+                 ret["rc_loss"]],
+                batch_size)
             if step % display == 0 and mode == 'train':
                 nll = avg_rec.avg(0)
                 klw = opt_vars["kl_weight"]
                 KL = avg_rec.avg(1)
                 rc = avg_rec.avg(2)
-                log_ppl = nll_ / num_words
+                log_ppl = nll_total / num_words
                 ppl = np.exp(log_ppl)
                 time_cost = time.time() - start_time
 
                 print(f"{mode}: epoch {epoch}, step {step}, nll {nll:.4f}, "
                       f"klw {klw:.4f}, KL {KL:.4f}, rc {rc:.4f}, "
                       f"log_ppl {log_ppl:.4f}, ppl {ppl:.4f}, "
-                      f"time_cost {time_cost:.1f}")
-                sys.stdout.flush()
+                      f"time_cost {time_cost:.1f}", flush=True)
 
             step += 1
 
         nll = avg_rec.avg(0)
         KL = avg_rec.avg(1)
         rc = avg_rec.avg(2)
-        log_ppl = nll_ / num_words
+        log_ppl = nll_total / num_words
         ppl = np.exp(log_ppl)
         print(f"\n{mode}: epoch {epoch}, nll {nll:.4f}, KL {KL:.4f}, "
               f"rc {rc:.4f}, log_ppl {log_ppl:.4f}, ppl {ppl:.4f}")
