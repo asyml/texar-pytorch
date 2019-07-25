@@ -143,8 +143,8 @@ class Vocab:
         vocab_idx = np.arange(vocab_size)
 
         # Creates python maps to interface with python code
-        id_to_token_map_py = dict(zip(vocab_idx, vocab))
-        token_to_id_map_py = dict(zip(vocab, vocab_idx))
+        id_to_token_map_py = dict(zip(range(vocab_size), vocab))
+        token_to_id_map_py = dict(zip(vocab, range(vocab_size)))
 
         return id_to_token_map_py, token_to_id_map_py
 
