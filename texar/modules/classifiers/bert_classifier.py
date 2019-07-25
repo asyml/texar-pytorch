@@ -22,22 +22,24 @@ import torch.nn.functional as F
 
 from texar.hyperparams import HParams
 from texar.modules.classifiers.classifier_base import ClassifierBase
-from texar.modules.encoders.bert_encoders import BertEncoder
-from texar.utils import utils
+from texar.modules.encoders.bert_encoders import BERTEncoder
+from texar.utils.utils import dict_fetch
 
-__all__ = ["BertClassifier"]
+__all__ = [
+    "BERTClassifier"
+]
 
 
-class BertClassifier(ClassifierBase):
+class BERTClassifier(ClassifierBase):
     r"""Classifier based on BERT modules.
 
     This is a combination of the
-    :class:`~texar.modules.BertEncoder` with a classification
+    :class:`~texar.modules.BERTEncoder` with a classification
     layer. Both step-wise classification and sequence-level classification
     are supported, specified in :attr:`hparams`.
 
     Arguments are the same as in
-    :class:`~texar.modules.BertEncoder`.
+    :class:`~texar.modules.BERTEncoder`.
 
     Args:
         pretrained_model_name (optional): a str with the name
@@ -62,15 +64,12 @@ class BertClassifier(ClassifierBase):
                  cache_dir: Optional[str] = None,
                  hparams=None):
 
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
 
         # Create the underlying encoder
-        encoder_hparams = utils.dict_fetch(hparams,
-                                           BertEncoder.default_hparams())
-        if encoder_hparams is not None:
-            encoder_hparams['name'] = None
+        encoder_hparams = dict_fetch(hparams, BERTEncoder.default_hparams())
 
-        self._encoder = BertEncoder(pretrained_model_name=pretrained_model_name,
+        self._encoder = BERTEncoder(pretrained_model_name=pretrained_model_name,
                                     cache_dir=cache_dir,
                                     hparams=encoder_hparams)
 
@@ -93,13 +92,14 @@ class BertClassifier(ClassifierBase):
 
             if self._hparams.clas_strategy == 'all_time':
                 self._logits_layer = nn.Linear(
-                    self._hparams.hidden_size * self._hparams.max_seq_length,
+                    self._encoder.output_size *
+                    self._hparams.max_seq_length,
                     self.num_classes,
                     **logit_kwargs)
             else:
-                self._logits_layer = nn.Linear(self._hparams.hidden_size,
-                                               self.num_classes,
-                                               **logit_kwargs)
+                self._logits_layer = nn.Linear(
+                    self._encoder.output_size, self.num_classes,
+                    **logit_kwargs)
 
         self.is_binary = (self.num_classes == 1) or \
                          (self.num_classes <= 0 and
@@ -126,13 +126,13 @@ class BertClassifier(ClassifierBase):
         Here:
 
         1. Same hyperparameters as in
-           :class:`~texar.modules.BertEncoder`.
-           See the :meth:`~texar.modules.BertEncoder.default_hparams`.
-           An instance of BertEncoder is created for feature extraction.
+           :class:`~texar.modules.BERTEncoder`.
+           See the :meth:`~texar.modules.BERTEncoder.default_hparams`.
+           An instance of BERTEncoder is created for feature extraction.
 
         2. Additional hyperparameters:
 
-            `num_classes`: int
+            `"num_classes"`: int
                 Number of classes:
 
                 - If **> 0**, an additional `Linear`
@@ -142,12 +142,12 @@ class BertClassifier(ClassifierBase):
                   classes is assumed to be the final dense layer size of the
                   encoder.
 
-            `logit_layer_kwargs`: dict
+            `"logit_layer_kwargs"`: dict
                 Keyword arguments for the logit Dense layer constructor,
                 except for argument "units" which is set to `num_classes`.
                 Ignored if no extra logit layer is appended.
 
-            `clas_strategy`: str
+            `"clas_strategy"`: str
                 The classification strategy, one of:
 
                 - **cls_time**: Sequence-level classification based on the
@@ -158,18 +158,18 @@ class BertClassifier(ClassifierBase):
                 - **time_wise**: Step-wise classification, i.e., make
                   classification for each time step based on its output.
 
-            `max_seq_length`: int, optional
+            `"max_seq_length"`: int, optional
                 Maximum possible length of input sequences. Required if
                 `clas_strategy` is `all_time`.
 
-            `dropout`: float
+            `"dropout"`: float
                 The dropout rate of the BERT encoder output.
 
-            `name`: str
+            `"name"`: str
                 Name of the classifier.
         """
 
-        hparams = BertEncoder.default_hparams()
+        hparams = BERTEncoder.default_hparams()
         hparams.update({
             "num_classes": 2,
             "logit_layer_kwargs": None,
@@ -187,7 +187,7 @@ class BertClassifier(ClassifierBase):
             -> Tuple[torch.Tensor, torch.LongTensor]:
         r"""Feeds the inputs through the network and makes classification.
 
-        The arguments are the same as in :class:`~texar.modules.BertEncoder`.
+        The arguments are the same as in :class:`~texar.modules.BERTEncoder`.
 
         Args:
             inputs: A 2D Tensor of shape `[batch_size, max_time]`,
@@ -233,7 +233,7 @@ class BertClassifier(ClassifierBase):
             # Pad `enc_outputs` to have max_seq_length before flatten
             length_diff = self._hparams.max_seq_length - inputs.shape[1]
             logit_input = F.pad(enc_outputs, [0, 0, 0, length_diff, 0, 0])
-            logit_input_dim = (self._hparams.hidden_size *
+            logit_input_dim = (self._encoder.output_size *
                                self._hparams.max_seq_length)
             logits = logit_input.view(-1, logit_input_dim)
         else:

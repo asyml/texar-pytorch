@@ -180,7 +180,7 @@ class XLNetDecoder(XLNet, tx.modules.DecoderBase[Optional[State], Output]):
         if not recompute_memory and start_tokens.size(0) > 1:
             _, memory = self._forward(
                 memory=memory, cache_len=cache_len,
-                **self.create_input(
+                **self._create_input(
                     self._state_previous_inputs, initial=True))
         start_tokens = start_tokens[-1]
 

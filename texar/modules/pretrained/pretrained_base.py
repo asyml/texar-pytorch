@@ -12,30 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Base class for Bert Modules.
+Base class for Pre-trained Modules.
 """
 
 from typing import Optional
 
 from texar.module_base import ModuleBase
-from texar.modules.pretrained import bert_utils
+from texar.modules.pretrained.bert_utils import (
+    load_pretrained_bert, transform_bert_to_texar_config)
+from texar.modules.pretrained.gpt2_utils import (
+    load_pretrained_gpt2, transform_gpt2_to_texar_config)
+from texar.modules.pretrained.xlnet_utils import (
+    load_pretrained_xlnet, transform_xlnet_to_texar_config)
+
 
 __all__ = [
-    "BertBase",
+    "PretrainedBase",
 ]
 
 
-class BertBase(ModuleBase):
-    r"""Base class for all BERT classes to inherit.
+class PretrainedBase(ModuleBase):
+    r"""Base class for all pre-trained classes to inherit.
 
     Args:
-        pretrained_model_name (optional): a str with the name
-            of a pre-trained model to load selected in the list of:
-            `bert-base-uncased`, `bert-large-uncased`, `bert-base-cased`,
-            `bert-large-cased`, `bert-base-multilingual-uncased`,
-            `bert-base-multilingual-cased`, `bert-base-chinese`.
-            If `None`, will use the model name in :attr:`hparams`.
-        cache_dir (optional): the path to a folder in which the
+        pretrained_model_name (optional): A str with the name
+            of a pre-trained model to load. If `None`, will use the model
+            name in :attr:`hparams`.
+        cache_dir (optional): The path to a folder in which the
             pre-trained models will be cached. If `None` (default),
             a default directory will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
@@ -48,20 +51,33 @@ class BertBase(ModuleBase):
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None):
-        super().__init__(hparams)
+
+        super().__init__(hparams=hparams)
 
         self.pretrained_model_dir: Optional[str] = None
 
+        if self.model_name == "BERT":
+            load_func = load_pretrained_bert
+            transform_func = transform_bert_to_texar_config
+        elif self.model_name == "GPT2":
+            load_func = load_pretrained_gpt2
+            transform_func = transform_gpt2_to_texar_config
+        elif self.model_name == "XLNet":
+            load_func = load_pretrained_xlnet
+            transform_func = transform_xlnet_to_texar_config
+        else:
+            raise ValueError("Could not find this pre-trained model.")
+
         if pretrained_model_name:
-            self.pretrained_model_dir = bert_utils.load_pretrained_bert(
+            self.pretrained_model_dir = load_func(
                 pretrained_model_name, cache_dir)
         elif self._hparams.pretrained_model_name is not None:
-            self.pretrained_model_dir = bert_utils.load_pretrained_bert(
+            self.pretrained_model_dir = load_func(
                 self._hparams.pretrained_model_name, cache_dir)
 
         if self.pretrained_model_dir:
-            self.pretrained_model_hparams = bert_utils.\
-                transform_bert_to_texar_config(self.pretrained_model_dir)
+            self.pretrained_model_hparams = transform_func(
+                self.pretrained_model_dir)
 
     @staticmethod
     def default_hparams():
@@ -70,12 +86,13 @@ class BertBase(ModuleBase):
         .. code-block:: python
 
             {
-                "name": "bert"
+                "pretrained_model_name": None,
+                "name": "pretrained_base"
             }
         """
         return {
-            'pretrained_model_name': 'bert-base-uncased',
-            'name': 'bert_base',
+            'pretrained_model_name': None,
+            'name': "pretrained_base",
             '@no_typecheck': ['pretrained_model_name']
         }
 
@@ -83,7 +100,7 @@ class BertBase(ModuleBase):
         r"""Encodes the inputs and (optionally) conduct downstream prediction.
 
         Args:
-            inputs: Inputs to the BERT module.
+            inputs: Inputs to the pre-trained module.
             *args: Other arguments.
             **kwargs: Keyword arguments.
 

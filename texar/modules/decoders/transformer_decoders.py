@@ -92,7 +92,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                  vocab_size: Optional[int] = None,
                  output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
                  hparams=None):
-        super().__init__(0, vocab_size,  # dummy value for input_size
+        super().__init__(vocab_size,
                          input_time_major=False,
                          output_time_major=False, hparams=hparams)
         self._input_size = self._hparams.dim
