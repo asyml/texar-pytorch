@@ -21,7 +21,7 @@ import csv
 from pathlib import Path
 from typing import List
 
-from xlnet.data.processor import DataProcessor, InputExample
+from utils.processor import DataProcessor, InputExample
 
 
 @DataProcessor.register("Yelp5")

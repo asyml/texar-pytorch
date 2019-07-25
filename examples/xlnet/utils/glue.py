@@ -21,7 +21,7 @@ import logging
 from abc import ABC
 from typing import List
 
-from xlnet.data.processor import InputExample, DataProcessor
+from utils.processor import InputExample, DataProcessor
 
 
 class GLUEProcessor(DataProcessor, ABC):

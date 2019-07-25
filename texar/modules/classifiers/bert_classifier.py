@@ -20,6 +20,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from texar.core.layers import get_initializer
 from texar.hyperparams import HParams
 from texar.modules.classifiers.classifier_base import ClassifierBase
 from texar.modules.encoders.bert_encoders import BERTEncoder
@@ -100,6 +101,14 @@ class BERTClassifier(ClassifierBase):
                 self._logits_layer = nn.Linear(
                     self._encoder.output_size, self.num_classes,
                     **logit_kwargs)
+
+        if self._hparams.initializer:
+            initialize = get_initializer(self._hparams.initializer)
+            assert initialize is not None
+            if self._logits_layer:
+                initialize(self._logits_layer.weight)
+                if self._logits_layer.bias:
+                    initialize(self._logits_layer.bias)
 
         self.is_binary = (self.num_classes == 1) or \
                          (self.num_classes <= 0 and

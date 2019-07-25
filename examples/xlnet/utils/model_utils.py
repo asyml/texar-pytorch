@@ -11,30 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Model utilities.
 """
 
-from typing import Callable, List, Optional
+from typing import Callable
 
-import torch
-from torch import nn
 
 __all__ = [
-    "init_weights",
     "warmup_lr_lambda",
-    "sum_tensors",
 ]
-
-
-def init_weights(module):
-    if isinstance(module, nn.Linear):
-        nn.init.normal_(module.weight, 0.0, 0.02)
-        if module.bias is not None:
-            nn.init.zeros_(module.bias)
-    elif isinstance(module, nn.Embedding):
-        nn.init.normal_(module.weight, 0.0, 0.02)
 
 
 def warmup_lr_lambda(total_steps: int, warmup_steps: int = 0,
@@ -65,16 +51,3 @@ def warmup_lr_lambda(total_steps: int, warmup_steps: int = 0,
         return polynomial_lr(total_steps - warmup_steps, step - warmup_steps)
 
     return lambda_lr
-
-
-def sum_tensors(xs: List[Optional[torch.Tensor]]) -> Optional[torch.Tensor]:
-    r"""Sum a list of tensors with possible `None` values.
-    """
-    idx = next((idx for idx, tensor in enumerate(xs) if tensor is not None), -1)
-    if idx == -1:
-        return None
-    ret = xs[idx]
-    for tensor in xs[(idx + 1):]:
-        if tensor is not None:
-            ret = ret + tensor
-    return ret
