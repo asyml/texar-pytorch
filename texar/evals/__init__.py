@@ -17,5 +17,5 @@ Modules of texar evals.
 
 from texar.evals.bleu import *
 from texar.evals.bleu_moses import *
-from texar.evals.bleu_tool import *
+from texar.evals.bleu_transformer import *
 from texar.evals.metrics import *

@@ -369,8 +369,8 @@ class GPT2Decoder(PretrainedBase):
                 :attr:`memory_sequence_length` is used to automatically
                 create an attention bias.
             inputs (optional): Input tensor for teacher forcing decoding, of
-                shape ``[batch_size, target_max_time, emb_dim]`` containing the
-                target sequence word embeddings. Used when
+                shape ``[batch_size, target_max_time]`` containing the
+                target sequence token ids. Used when
                 :attr:`decoding_strategy` is set to ``"train_greedy"``.
             sequence_length (optional): A :tensor:`LongTensor` of shape
                 ``[batch_size]``, containing the sequence length of

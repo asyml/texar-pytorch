@@ -16,7 +16,7 @@ Python implementation of BLEU adapted from:
     `https://github.com/tensorflow/models/blob/master/official/transformer/compute_bleu.py`
 """
 
-from typing import Counter, List, Tuple
+from typing import Callable, Counter, List, Tuple
 
 import re
 import sys
@@ -25,10 +25,14 @@ import collections
 import math
 import numpy as np
 
+from texar.evals.bleu import corpus_bleu
+from texar.evals.bleu_moses import corpus_bleu_moses
+from texar.utils.types import MaybeList
+
 __all__ = [
-    "compute_bleu",
-    "bleu_tokenize",
-    "bleu_wrapper",
+    "corpus_bleu_transformer",
+    "bleu_transformer_tokenize",
+    "file_bleu",
 ]
 
 
@@ -54,10 +58,10 @@ def _get_ngrams(segment: List[str],
     return ngram_counts
 
 
-def compute_bleu(reference_corpus: List[List[str]],
-                 translation_corpus: List[List[str]],
-                 max_order: int = 4,
-                 use_bp: bool = True) -> float:
+def corpus_bleu_transformer(reference_corpus: List[List[str]],
+                            translation_corpus: List[List[str]],
+                            max_order: int = 4,
+                            use_bp: bool = True) -> float:
     r"""Computes BLEU score of translated segments against references.
 
     This BLEU has been used in evaluating Transformer (Vaswani et al.)
@@ -155,8 +159,13 @@ class UnicodeRegex:
 uregex = UnicodeRegex()
 
 
-def bleu_tokenize(string: str) -> List[str]:
+def bleu_transformer_tokenize(string: str) -> List[str]:
     r"""Tokenize a string following the official BLEU implementation.
+
+    The BLEU scores from `multi-bleu.perl` depend on your `tokenizer`, which is
+    unlikely to be reproducible from your experiment or consistent across
+    different users. This function provides a standard tokenization following
+    `mteval-v14.pl`.
 
     See
     `https://github.com/moses-smt/mosesdecoder/blob/master/scripts/generic/mteval-v14.pl#L954-L983`.
@@ -185,14 +194,18 @@ def bleu_tokenize(string: str) -> List[str]:
     return string.split()
 
 
-def bleu_wrapper(ref_filename: str,
-                 hyp_filename: str,
-                 case_sensitive: bool = False) -> float:
+def file_bleu(ref_filename: str,
+              hyp_filename: str,
+              bleu_version: str = "corpus_bleu_transformer",
+              case_sensitive: bool = False) -> float:
     r"""Compute BLEU for two files (reference and hypothesis translation).
 
     Args:
         ref_filename: Reference file path.
         hyp_filename: Hypothesis file path.
+        bleu_version: A str with the name of a BLEU computing method selected
+            in the list of: `corpus_bleu`, `corpus_bleu_moses`,
+            `corpus_bleu_transformer`.
         case_sensitive: If `False`, lowercase reference and hypothesis
             tokens.
 
@@ -212,6 +225,20 @@ def bleu_wrapper(ref_filename: str,
     if not case_sensitive:
         ref_lines = [x.lower() for x in ref_lines]
         hyp_lines = [x.lower() for x in hyp_lines]
-    ref_tokens = [bleu_tokenize(x) for x in ref_lines]
-    hyp_tokens = [bleu_tokenize(x) for x in hyp_lines]
-    return compute_bleu(ref_tokens, hyp_tokens)
+
+    ref_tokens: List[MaybeList[List[str]]]
+    if bleu_version == "corpus_bleu_transformer":
+        ref_tokens = [bleu_transformer_tokenize(x) for x in ref_lines]
+    else:
+        ref_tokens = [[bleu_transformer_tokenize(x)] for x in ref_lines]
+    hyp_tokens = [bleu_transformer_tokenize(x) for x in hyp_lines]
+
+    bleu_dict = {
+        "corpus_bleu": corpus_bleu,
+        "corpus_bleu_moses": corpus_bleu_moses,
+        "corpus_bleu_transformer": corpus_bleu_transformer
+    }
+    fn: Callable[[List[MaybeList[List[str]]], List[List[str]]], float]
+    fn = bleu_dict[bleu_version]  # type: ignore
+
+    return fn(ref_tokens, hyp_tokens)

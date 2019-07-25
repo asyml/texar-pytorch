@@ -8,8 +8,22 @@ In sum, this example showcases:
 
 * Contructing and using pre-trained GPT-2 models in Texar
 * Using GPT-2 to generate text samples with or without context
-* **Train or fine-tune** the model with **distributed GPU** (coming soon)
+* **Train or fine-tune** the model
 * Examples of other use cases
+
+Future work:
+
+* **Train or fine-tune** the model with **distributed GPU** (coming soon)
+
+## Prerequisite
+
+#### Install dependencies
+
+Apart from requiring Texar-PyTorch, you should also satisfy dependencies in `requirements.txt` by running:
+
+```bash
+pip install -r requirements.txt
+```
 
 ## Quick Start (I) - Generation with the Pre-trained Model
 
@@ -21,7 +35,7 @@ In sum, this example showcases:
 
 This mode will initialize an interactive interface, which allows users to type in the context sentence. The model then generates continuation of the context. The example supports both Top-K and Top-P sample decoding. By default, the GPT-2 `117M` model with Top-K sample decoding is used.
 
-```
+```bash
 python gpt2_generate_main.py --is_interactive \
 --max_decoding_length=100 \
 --temperature=0.7 \
@@ -44,7 +58,7 @@ For *top-p decoding*:
 
 To use the GPT-2 `345M` model, specify `--config_model`:
 
-```
+```bash
 python gpt2_generate_main.py --is_interactive \
 --max_decoding_length=100 \
 --temperature=0.7 \
@@ -58,7 +72,7 @@ Here:
 
 To use Top-P sample decoding, specify `--top_p`:
 
-```
+```bash
 python gpt2_generate_main.py --is_interactive \
 --max_decoding_length=100 \
 --temperature=0.7 \
@@ -72,10 +86,13 @@ Here:
 
 
 **Example input:**
+
 ```
 Model input >>> Micheal Jordan is the greatest player in history !
 ```
+
 **Example output:**
+
 ```
 ======================================== SAMPLE 1 ========================================
 
@@ -93,8 +110,8 @@ The last time we saw him on stage, he
 
 This mode generates a batch of samples from scratch.
 
-```
-python gpt2_generate_main.py
+```bash
+python gpt2_generate_main.py \
 --nsamples=1 \
 --batch_size=1 \
 --max_decoding_len=100 \
@@ -122,7 +139,56 @@ in this way".
 
 ## Quick Start (II) - Fine-tune the Pre-trained Model 
 
-Coming soon!
+This section shows how we can fine-tune the pre-trained GPT2 model and use the resulting model for generation.
+
+### Prepare data
+
+We first preprocess data with the GPT-2 BPE encoding. 
+
+A toy dataset is provided under [`data/toy/`](data/toy) which includes `train.txt`, `dev.txt`, and `test.txt`. This example will fit the GPT-2 model on `train.txt`, evaluate perplexity on `dev.txt`, and do continuation generation using `test.txt` as the context.
+
+Run the following cmd to transform the data into [pickle](https://docs.python.org/3/library/pickle.html) format and perform processing such as truncation, BPE encoding, adding special tokens, etc:
+
+```bash
+python prepare_data.py --data_dir data/toy \
+--max_seq_length=128 \
+--output_dir=data/toy \ 
+--pretrained_model_name=117M
+```
+
+- `data_dir`: The directory of raw data, wherein data files must be named as 'train.txt', 'dev.txt', or 'test.txt'. It is *not* necessary to provide all three files.
+- `max_seq_length`: The maxium length of sequence after BPE encoding. This includes GPT-2 special tokens that will be automatically added. Longer sequence will be trimmed. 
+- `output_dir`: The output path where the resulting pickle files will be put in. Be default, it is set to be the same as `data_dir`. 
+- `pretrained_model_name`: The name of a pre-trained model to load selected in the list of: `117M`, `345M`.
+
+The above cmd will output pickle files in the specified output directory. E.g., if `train.txt` is provided under `data_dir`, the output file `train.pickle` will be produced under `output_dir`.
+
+### Train and Evaluate
+
+For **single-GPU** training (and evaluation), run the following cmd. The cmd fine-tunes the pre-trained GPT-2 parameters, and evalautes perplexity on the dev set.
+
+```bash
+python gpt2_train_main.py --do_train --do_eval \
+--config_train=configs.config_train \
+--output_dir=output
+```
+
+Here:
+
+- `config_train`: Configurations of GPT-2 training, including data and optimization hyperparameters. By default, the config file [`configs/config_train.py`](configs/config_train.py) is used. Remember to specify correct data path if you are using your own data.
+- `output_dir`: The output path where checkpoints are saved.
+
+By default, the GPT-2 `117M` model is used. To use the GPT-2 `345M` model instead, specify relevant arguments as below:
+
+```bash
+python gpt2_train_main.py --do_train --do_eval \
+--config_model=configs.config_model_345M \
+--config_train=configs.config_train \
+--output_dir=output
+```
+where `pretrained_model_name` in `configs.config_model_345M` is necessary only when you want to load the pretrained checkpoint, and is ignored if `--checkpoint` is specified. 
+
+Please see the arguments in the code for more options.
 
 ## Other Use Cases
 
@@ -176,12 +242,10 @@ output, output_length = decoder(
 **Ex. Use 3): Fine-tuning for conditional generation**
 
 ```python
-tgt_embed = decoder.word_embedder(truth_target[:, :-1]) + decoder.position_embedder(sequence_length=tgt_len-1)
-
 output = decoder(
     memory=source_hidden_states, 
     memory_sequence_length=src_len,
-    inputs=tgt_embed,
+    inputs=input_ids,
     decoding_strategy='train_greedy') # teacher-forcing decoding
     
 loss = tx.losses.sequence_sparse_softmax_cross_entropy(

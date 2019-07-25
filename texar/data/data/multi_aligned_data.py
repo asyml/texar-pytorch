@@ -103,8 +103,8 @@ class MultiAlignedData(
     the "datasets" list of :attr:`hparams`, and result in a Dataset whose
     element is a python `dict` containing data fields from each of the
     specified datasets. Fields from a text dataset or Record dataset have
-    names prefixed by its "data_name". Fields from a scalar dataset are
-    specified by its "data_name".
+    names prefixed by its :attr:`"data_name"`. Fields from a scalar dataset are
+    specified by its :attr:`"data_name"`.
 
     Example:
 
