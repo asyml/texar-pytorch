@@ -33,6 +33,13 @@ parser.add_argument(
     "--config_downstream", default="config_classifier",
     help="Configuration of the downstream part of the model")
 parser.add_argument(
+    '--pretrained_model_name', type=str, default='bert-base-uncased',
+    help="The name of a pre-trained model to load selected in the "
+         "list of: `bert-base-uncased`, `bert-large-uncased`, "
+         "`bert-base-cased`, `bert-large-cased`, "
+         "`bert-base-multilingual-uncased`, `bert-base-multilingual-cased`, "
+         "and `bert-base-chinese`.")
+parser.add_argument(
     "--config_data", default="config_data", help="The dataset config.")
 parser.add_argument(
     "--output_dir", default="output/",
@@ -71,8 +78,10 @@ def main():
     num_train_data = config_data.num_train_data
 
     # Builds BERT
-    model = tx.modules.BertClassifier(cache_dir='bert_pretrained_models',
-                                      hparams=config_downstream)
+    model = tx.modules.BertClassifier(
+        pretrained_model_name=args.pretrained_model_name,
+        cache_dir='bert_pretrained_models',
+        hparams=config_downstream)
     model.to(device)
 
     num_train_steps = int(num_train_data / config_data.train_batch_size *
