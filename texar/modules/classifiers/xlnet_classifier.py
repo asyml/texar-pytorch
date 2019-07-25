@@ -15,9 +15,7 @@
 XLNet Classifier.
 """
 
-from typing import Any, Dict, Iterable, List, Optional, Tuple
-
-import itertools
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -26,6 +24,7 @@ import torch.nn.functional as F
 from texar.hyperparams import HParams
 from texar.modules.classifiers.classifier_base import ClassifierBase
 from texar.modules.encoders.xlnet_encoder import XLNetEncoder
+from texar.modules.pretrained.xlnet_utils import params_except_in
 from texar.utils.utils import dict_fetch
 
 
@@ -59,7 +58,7 @@ class XLNetClassifier(ClassifierBase):
                  cache_dir: Optional[str] = None,
                  hparams=None):
 
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
 
         # Create the underlying encoder
         encoder_hparams = dict_fetch(hparams, XLNetEncoder.default_hparams())
@@ -197,14 +196,6 @@ class XLNetClassifier(ClassifierBase):
                 raise ValueError(
                     "lr must be specified when lr_layer_decay_rate is not 1.0")
 
-            def params_except_in(module: nn.Module,
-                                 except_names: List[str]) \
-                    -> Iterable[nn.Parameter]:
-                return itertools.chain.from_iterable(
-                    child.parameters() for name, child in
-                    module.named_children()
-                    if name not in except_names)
-
             fine_tune_group = {
                 "params": params_except_in(self, ["_encoder"]),
                 "lr": lr
@@ -268,8 +259,7 @@ class XLNetClassifier(ClassifierBase):
 
             summary = summary_input.contiguous().view(-1, summary_input_dim)
         else:
-            raise ValueError('Unknown classification strategy: {}'.format(
-                strategy))
+            raise ValueError(f"Unknown classification strategy: {strategy}.")
 
         if self._hparams.use_projection:
             summary = torch.tanh(self.projection(summary))

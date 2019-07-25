@@ -15,7 +15,9 @@
 Utils of XLNet Modules.
 """
 
-from typing import Callable, Dict, Optional, Union
+from typing import Callable, Dict, Iterable, List, Optional, Union
+
+import itertools
 
 import json
 import os
@@ -34,6 +36,7 @@ __all__ = [
     "init_xlnet_checkpoint",
     "load_pretrained_xlnet",
     "transform_xlnet_to_texar_config",
+    "params_except_in",
 ]
 
 
@@ -205,3 +208,12 @@ def transform_xlnet_to_texar_config(cache_dir: str) -> Dict:
     configs["untie_r"] = config_ckpt["untie_r"]
 
     return configs
+
+
+def params_except_in(module: nn.Module,
+                     except_names: List[str]) \
+        -> Iterable[nn.Parameter]:
+    return itertools.chain.from_iterable(
+        child.parameters() for name, child in
+        module.named_children()
+        if name not in except_names)

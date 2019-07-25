@@ -64,7 +64,7 @@ class BERTClassifier(ClassifierBase):
                  cache_dir: Optional[str] = None,
                  hparams=None):
 
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
 
         # Create the underlying encoder
         encoder_hparams = dict_fetch(hparams, BERTEncoder.default_hparams())

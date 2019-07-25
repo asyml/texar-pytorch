@@ -15,9 +15,8 @@
 XLNet encoder.
 """
 
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-import itertools
 
 import torch
 import torch.nn as nn
@@ -27,7 +26,8 @@ from texar.core import layers
 from texar.hyperparams import HParams
 from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.pretrained.pretrained_base import PretrainedBase
-from texar.modules.pretrained.xlnet_utils import init_xlnet_checkpoint
+from texar.modules.pretrained.xlnet_utils import (init_xlnet_checkpoint,
+                                                  params_except_in)
 from texar.modules.pretrained.xlnet_model_utils import (
     PositionWiseFF, RelativePositionalEncoding, RelativeMultiheadAttention)
 from texar.utils.utils import dict_fetch, sum_tensors
@@ -278,14 +278,6 @@ class XLNetEncoder(PretrainedBase, EncoderBase):
             if lr is None:
                 raise ValueError(
                     "lr must be specified when lr_layer_decay_rate is not 1.0")
-
-            def params_except_in(module: nn.Module,
-                                 except_names: List[str]) \
-                    -> Iterable[nn.Parameter]:
-                return itertools.chain.from_iterable(
-                    child.parameters() for name, child in
-                    module.named_children()
-                    if name not in except_names)
 
             num_layers = self._hparams.num_layers
             base_group = {
