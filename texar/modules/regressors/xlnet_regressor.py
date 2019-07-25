@@ -255,3 +255,7 @@ class XLNetRegressor(RegressorBase):
         preds = self.hidden_to_logits(summary).squeeze(-1)
 
         return preds
+
+    @property
+    def output_size(self) -> int:
+        return 1

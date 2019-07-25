@@ -193,8 +193,7 @@ class TransformerEncoder(EncoderBase):
         if self._hparams.use_bert_config:
             self.input_normalizer = nn.LayerNorm(self._input_size, eps=eps)
         else:
-            self.final_layer_normalizer = nn.LayerNorm(
-                self._input_size, eps=eps)
+            self.final_layer_norm = nn.LayerNorm(self._input_size, eps=eps)
 
         if self._hparams.initializer:
             initialize = layers.get_initializer(self._hparams.initializer)
@@ -379,7 +378,7 @@ class TransformerEncoder(EncoderBase):
                 x = self.output_layer_norm[i](x)
 
         if not self._hparams.use_bert_config:
-            x = self.final_layer_normalizer(x)
+            x = self.final_layer_norm(x)
         return x
 
     @property

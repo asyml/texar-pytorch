@@ -28,13 +28,11 @@ from texar.core import layers
 from texar.data.data_utils import maybe_download
 from texar.modules.pretrained.pretrained_utils import default_download_dir
 
-
 __all__ = [
     "init_gpt2_checkpoint",
     "load_pretrained_gpt2",
     "transform_gpt2_to_texar_config",
 ]
-
 
 _GPT2_PATH = "https://storage.googleapis.com/gpt-2/models/"
 _MODEL2URL = {
@@ -43,7 +41,8 @@ _MODEL2URL = {
 }
 
 
-def init_gpt2_checkpoint(model: nn.Module, cache_dir: str):
+def init_gpt2_checkpoint(model: nn.Module, cache_dir: str,
+                         load_output_layer: bool = True):
     r"""Initializes GPT2 model parameters from a checkpoint provided by Google.
     """
     try:
@@ -91,7 +90,7 @@ def init_gpt2_checkpoint(model: nn.Module, cache_dir: str):
         tensor_names.append(name)
     for name, _ in model.position_embedder.named_parameters():
         tensor_names.append(name)
-    for name, _ in model.decoder.named_parameters():
+    for name, _ in model.named_parameters():
         tensor_names.append(name)
 
     idx = 0
@@ -106,21 +105,22 @@ def init_gpt2_checkpoint(model: nn.Module, cache_dir: str):
             v_name = global_tensor_map[name]
 
             if name == "model/wte":
-                pointer = model.word_embedder.embedding
-                assert pointer.shape == array.shape
-                pointer.data = torch.from_numpy(array)
+                if load_output_layer:
+                    pointer = model.word_embedder.embedding
+                    assert pointer.shape == array.shape
+                    pointer.data = torch.from_numpy(array)
 
-                output_pointer = name_to_variable(
-                    model.decoder, "_output_layer.weight")
-                if not isinstance(output_pointer, layers.Identity):
-                    assert output_pointer.shape == array.shape
-                    output_pointer.data = torch.from_numpy(array)
+                    output_pointer = name_to_variable(
+                        model, "_output_layer.weight")
+                    if not isinstance(output_pointer, nn.Identity):
+                        assert output_pointer.shape == array.shape
+                        output_pointer.data = torch.from_numpy(array)
             elif name == "model/wpe":
                 pointer = model.position_embedder.embedding
                 assert pointer.shape == array.shape
                 pointer.data = torch.from_numpy(array)
             else:
-                pointer = name_to_variable(model.decoder, v_name)
+                pointer = name_to_variable(model, v_name)
                 assert pointer.shape == array.shape
                 pointer.data = torch.from_numpy(array)
 
@@ -130,12 +130,12 @@ def init_gpt2_checkpoint(model: nn.Module, cache_dir: str):
             name = "/".join(name_tmp[2:])
             if name in layer_tensor_map:
                 v_name = layer_tensor_map[name].format(layer_no)
-                pointer = name_to_variable(model.decoder, v_name)
+                pointer = name_to_variable(model, v_name)
                 assert pointer.shape == array.shape
                 pointer.data = torch.from_numpy(array)
             elif name in layer_transpose_map:
                 v_name = layer_transpose_map[name].format(layer_no)
-                pointer = name_to_variable(model.decoder, v_name)
+                pointer = name_to_variable(model, v_name)
                 array_t = np.transpose(array)
                 assert pointer.shape == array_t.shape
                 pointer.data = torch.from_numpy(array_t)
@@ -147,11 +147,11 @@ def init_gpt2_checkpoint(model: nn.Module, cache_dir: str):
                 V_w = np.transpose(array[:, 2 * index_d:])
 
                 q_weight = name_to_variable(
-                    model.decoder, f"self_attns.{layer_no}.Q_dense.weight")
+                    model, f"self_attns.{layer_no}.Q_dense.weight")
                 k_weight = name_to_variable(
-                    model.decoder, f"self_attns.{layer_no}.K_dense.weight")
+                    model, f"self_attns.{layer_no}.K_dense.weight")
                 v_weight = name_to_variable(
-                    model.decoder, f"self_attns.{layer_no}.V_dense.weight")
+                    model, f"self_attns.{layer_no}.V_dense.weight")
 
                 assert q_weight.shape == Q_w.shape
                 assert k_weight.shape == K_w.shape
@@ -167,11 +167,11 @@ def init_gpt2_checkpoint(model: nn.Module, cache_dir: str):
                 K_b = array[d // 3: 2 * d // 3]
                 V_b = array[2 * d // 3:]
                 q_bias = name_to_variable(
-                    model.decoder, f"self_attns.{layer_no}.Q_dense.bias")
+                    model, f"self_attns.{layer_no}.Q_dense.bias")
                 k_bias = name_to_variable(
-                    model.decoder, f"self_attns.{layer_no}.K_dense.bias")
+                    model, f"self_attns.{layer_no}.K_dense.bias")
                 v_bias = name_to_variable(
-                    model.decoder, f"self_attns.{layer_no}.V_dense.bias")
+                    model, f"self_attns.{layer_no}.V_dense.bias")
 
                 assert q_bias.shape == Q_b.shape
                 assert k_bias.shape == K_b.shape
@@ -209,7 +209,7 @@ def load_pretrained_gpt2(pretrained_model_name: str,
         download_path = _MODEL2URL[pretrained_model_name]
     else:
         raise ValueError(
-            "Pre-trained model not found: {}".format(pretrained_model_name))
+            f"Pre-trained model not found: {pretrained_model_name}")
 
     if cache_dir is None:
         cache_dir = default_download_dir("gpt2")
@@ -223,7 +223,7 @@ def load_pretrained_gpt2(pretrained_model_name: str,
                          "model.ckpt.meta", "vocab.bpe"]:
             maybe_download(os.path.join(download_path, filename), cache_path)
     else:
-        print("Using cached pre-trained GPT2 model from: %s." % cache_path)
+        print(f"Using cached pre-trained GPT2 model from: {cache_path}.")
 
     return cache_path
 
@@ -244,19 +244,19 @@ def transform_gpt2_to_texar_config(cache_dir: str) -> Dict:
     with open(config_path) as f:
         config_gpt = json.loads(f.read())
 
-    configs = {}
-    configs["vocab_size"] = config_gpt["n_vocab"]
-    configs["context_size"] = config_gpt["n_ctx"]
-    configs["embedding_size"] = config_gpt["n_embd"]
     hidden_dim = config_gpt["n_embd"]
-    configs["embed"] = {
-        "dim": hidden_dim,
+    configs = {
+        "vocab_size": config_gpt["n_vocab"],
+        "context_size": config_gpt["n_ctx"],
+        "embedding_size": config_gpt["n_embd"], "embed": {
+            "dim": hidden_dim,
+        },
+        "position_size": config_gpt["n_ctx"],
+        "position_embed": {
+            "dim": hidden_dim
+        }
     }
-    configs["position_size"] = config_gpt["n_ctx"]
-    configs["position_embed"] = {
-        "dim": hidden_dim
-    }
-    configs["decoder"] = {
+    configs.update({
         "dim": hidden_dim,
         "num_blocks": config_gpt["n_layer"],
         "use_gpt_config": True,
@@ -301,5 +301,5 @@ def transform_gpt2_to_texar_config(cache_dir: str) -> Dict:
             ],
             "name": "ffn",
         },
-    }
+    })
     return configs

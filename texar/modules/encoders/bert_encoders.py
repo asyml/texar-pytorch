@@ -23,19 +23,18 @@ import torch.nn as nn
 from texar.core import layers
 from texar.hyperparams import HParams
 from texar.modules.pretrained.bert_utils import init_bert_checkpoint
-from texar.modules.pretrained.pretrained_base import PretrainedBase
+from texar.modules.pretrained.pretrained_base import PretrainedMixin
 from texar.modules.embedders.embedders import WordEmbedder
 from texar.modules.embedders.position_embedders import PositionEmbedder
 from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.encoders.transformer_encoder import TransformerEncoder
-
 
 __all__ = [
     "BERTEncoder",
 ]
 
 
-class BERTEncoder(PretrainedBase, EncoderBase):
+class BERTEncoder(EncoderBase, PretrainedMixin):
     r"""Raw BERT Transformer for encoding sequences.
 
     This module basically stacks
@@ -68,14 +67,9 @@ class BERTEncoder(PretrainedBase, EncoderBase):
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None):
+        super().__init__(hparams=hparams)
 
-        super().__init__(pretrained_model_name=pretrained_model_name,
-                         cache_dir=cache_dir,
-                         hparams=hparams)
-
-        if self.pretrained_model_dir:
-            self._hparams = HParams(self.pretrained_model_hparams,
-                                    self._hparams.todict())
+        self.load_pretrained_config(pretrained_model_name, cache_dir)
 
         # Word embedding
         self.word_embedder = WordEmbedder(
@@ -325,21 +319,21 @@ class BERTEncoder(PretrainedBase, EncoderBase):
 
         segment_embeds = self.segment_embedder(segment_ids)
 
-        batch_size = inputs.shape[0]
-        pos_length = inputs.new_full((batch_size,), inputs.shape[1],
+        batch_size = inputs.size(0)
+        pos_length = inputs.new_full((batch_size,), inputs.size(1),
                                      dtype=torch.int64)
         pos_embeds = self.position_embedder(sequence_length=pos_length)
 
         inputs_embeds = word_embeds + segment_embeds + pos_embeds
 
         if sequence_length is None:
-            sequence_length = inputs.new_full((batch_size,), inputs.shape[1],
+            sequence_length = inputs.new_full((batch_size,), inputs.size(1),
                                               dtype=torch.int64)
 
         output = self.encoder(inputs_embeds, sequence_length)
 
         # taking the hidden state corresponding to the first token.
-        first_token_tensor = torch.squeeze(output[:, 0:1, :], dim=1)
+        first_token_tensor = output[:, 0, :]
 
         pooled_output = self.pooler(first_token_tensor)
 

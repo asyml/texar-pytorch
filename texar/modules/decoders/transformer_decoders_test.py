@@ -17,11 +17,11 @@ class TransformerDecoderTest(unittest.TestCase):
     """
 
     def setUp(self):
-        self._vocab_size = 15
-        self._batch_size = 6
-        self._max_time = 10
+        self._vocab_size = 101
+        self._batch_size = 3
+        self._max_time = 5
         self._emb_dim = 512
-        self._max_decode_len = 32
+        self._max_decode_len = 7
 
         self._inputs = torch.randint(
             self._vocab_size, size=(self._batch_size, self._max_time))

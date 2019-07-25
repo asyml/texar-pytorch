@@ -15,7 +15,7 @@ from texar.modules.decoders.rnn_decoders import (
     AttentionRNNDecoder, AttentionRNNDecoderOutput, BasicRNNDecoder,
     BasicRNNDecoderOutput)
 from texar.modules.embedders.embedders import WordEmbedder
-from utils import map_structure
+from texar.utils.utils import map_structure
 
 
 class BasicRNNDecoderTest(unittest.TestCase):

@@ -18,7 +18,6 @@ Various RNN decoders.
 from typing import Callable, Dict, NamedTuple, Optional, Tuple, Union
 
 import torch
-from modules import EmbedderBase
 from torch import nn
 
 from texar.core import layers
@@ -28,6 +27,7 @@ from texar.core.cell_wrappers import AttentionWrapper, HiddenState, RNNCellBase
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.modules.decoders.rnn_decoder_base import RNNDecoderBase
+from texar.modules.embedders.embedder_base import EmbedderBase
 from texar.utils import utils
 from texar.utils.beam_search import beam_search
 from texar.utils.types import MaybeList, MaybeTuple

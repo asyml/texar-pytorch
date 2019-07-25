@@ -19,28 +19,23 @@ from typing import Optional
 
 import torch
 
-from texar.core import layers
-from texar.hyperparams import HParams
-from texar.modules.pretrained.gpt2_utils import init_gpt2_checkpoint
-from texar.modules.pretrained.pretrained_base import PretrainedBase
 from texar.modules.embedders.embedders import WordEmbedder
 from texar.modules.embedders.position_embedders import PositionEmbedder
-from texar.modules.encoders.encoder_base import EncoderBase
-from texar.modules.decoders.transformer_decoders import TransformerDecoder
-
+from texar.modules.encoders.transformer_encoder import TransformerEncoder
+from texar.modules.pretrained.pretrained_base import PretrainedMixin
 
 __all__ = [
     "GPT2Encoder",
 ]
 
 
-class GPT2Encoder(PretrainedBase, EncoderBase):
+class GPT2Encoder(TransformerEncoder, PretrainedMixin):
     r"""Raw GPT2 Transformer for encoding sequences.
 
     This module basically stacks
     :class:`~texar.modules.embedders.WordEmbedder`,
     :class:`~texar.modules.embedders.PositionEmbedder`,
-    :class:`~texar.modules.encoders.TransformerDecoder`.
+    :class:`~texar.modules.encoders.TransformerEncoder`.
 
     This module supports the architecture first proposed
     in `(Radford et al.)` GPT2.
@@ -65,40 +60,26 @@ class GPT2Encoder(PretrainedBase, EncoderBase):
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None):
-
-        super().__init__(pretrained_model_name=pretrained_model_name,
-                         cache_dir=cache_dir,
-                         hparams=hparams)
-
-        if self.pretrained_model_dir:
-            self._hparams = HParams(self.pretrained_model_hparams,
-                                    self._hparams.todict())
+        self.load_pretrained_config(pretrained_model_name, cache_dir, hparams)
 
         # Word embedding
-        self.word_embedder = WordEmbedder(
+        word_embedder = WordEmbedder(
             vocab_size=self._hparams.vocab_size,
             hparams=self._hparams.embed)
 
         # Position embedding
-        self.position_embedder = PositionEmbedder(
+        position_embedder = PositionEmbedder(
             position_size=self._hparams.position_size,
             hparams=self._hparams.position_embed)
 
-        # The GPT2 encoder (a TransformerDecoder)
-        self.decoder = TransformerDecoder(  # type: ignore
-            vocab_size=self._hparams.vocab_size,
-            output_layer=layers.identity,
-            hparams=self._hparams.decoder)
+        # The GPT2 encoder (a TransformerEncoder)
+        super().__init__(hparams=None)
 
-        if self.pretrained_model_dir:
-            init_gpt2_checkpoint(self, self.pretrained_model_dir)
-        elif self._hparams.initializer:
-            initialize = layers.get_initializer(self._hparams.initializer)
-            assert initialize is not None
-            # Do not re-initialize LayerNorm modules.
-            for name, param in self.named_parameters():
-                if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:
-                    initialize(param)
+        # Register modules after `__init__` is called.
+        self.word_embedder = word_embedder
+        self.position_embedder = position_embedder
+
+        self.init_pretrained_weights(load_output_layer=False)
 
     @staticmethod
     def default_hparams():
@@ -214,6 +195,53 @@ class GPT2Encoder(PretrainedBase, EncoderBase):
             Name of the module.
         """
         return {
+            **TransformerEncoder.default_hparams(),
+            'dim': 768,
+            'num_blocks': 12,
+            'use_bert_config': False,
+            'use_gpt_config': True,
+            'embedding_dropout': 0,
+            'residual_dropout': 0,
+            'multihead_attention': {
+                'use_bias': True,
+                'num_units': 768,
+                'num_heads': 12,
+                'output_dim': 768
+            },
+            'initializer': {
+                'type': 'variance_scaling_initializer',
+                'kwargs': {
+                    'factor': 1.0,
+                    'mode': 'FAN_AVG',
+                    'uniform': True
+                }
+            },
+            'poswise_feedforward': {
+                'layers': [
+                    {
+                        'type': 'Linear',
+                        'kwargs': {
+                            'in_features': 768,
+                            'out_features': 3072,
+                            'bias': True
+                        }
+                    },
+                    {
+                        'type': 'GPTGELU',
+                        'kwargs': {}
+                    },
+                    {
+                        'type': 'Linear',
+                        'kwargs': {
+                            'in_features': 3072,
+                            'out_features': 768,
+                            'bias': True
+                        }
+                    }
+                ],
+                'name': 'ffn'
+            },
+
             'pretrained_model_name': '117M',
             'vocab_size': 50257,
             'context_size': 1024,
@@ -228,55 +256,8 @@ class GPT2Encoder(PretrainedBase, EncoderBase):
                 'name': 'position_embeddings'
             },
 
-            'decoder': {
-                'dim': 768,
-                'num_blocks': 12,
-                'use_gpt_config': True,
-                'embedding_dropout': 0,
-                'residual_dropout': 0,
-                'multihead_attention': {
-                    'use_bias': True,
-                    'num_units': 768,
-                    'num_heads': 12,
-                    'output_dim': 768
-                },
-                'initializer': {
-                    'type': 'variance_scaling_initializer',
-                    'kwargs': {
-                        'factor': 1.0,
-                        'mode': 'FAN_AVG',
-                        'uniform': True
-                    }
-                },
-                'poswise_feedforward': {
-                    'layers': [
-                        {
-                            'type': 'Linear',
-                            'kwargs': {
-                                'in_features': 768,
-                                'out_features': 3072,
-                                'bias': True
-                            }
-                        },
-                        {
-                            'type': 'GPTGELU',
-                            'kwargs': {}
-                        },
-                        {
-                            'type': 'Linear',
-                            'kwargs': {
-                                'in_features': 3072,
-                                'out_features': 768,
-                                'bias': True
-                            }
-                        }
-                    ],
-                    'name': 'ffn'
-                }
-            },
-            'initializer': None,
             'name': 'gpt2_encoder',
-            '@no_typecheck': ['pretrained_model_name']
+            '@no_typecheck': ['pretrained_model_name'],
         }
 
     def forward(self,  # type: ignore
@@ -298,24 +279,22 @@ class GPT2Encoder(PretrainedBase, EncoderBase):
             `[batch_size, max_time, dim]` containing the encoded vectors.
         """
         word_embeds = self.word_embedder(inputs)
-        batch_size = inputs.shape[0]
-        pos_length = inputs.new_full((batch_size,),
-                                     inputs.shape[1],
-                                     dtype=torch.int64)
+        batch_size = inputs.size(0)
+        pos_length = inputs.new_full(
+            (batch_size,), inputs.size(1), dtype=torch.long)
         pos_embeds = self.position_embedder(sequence_length=pos_length)
 
         inputs_embeds = word_embeds + pos_embeds
 
         if sequence_length is None:
-            sequence_length = inputs.new_full((batch_size,),
-                                              inputs.shape[1],
-                                              dtype=torch.int64)
+            sequence_length = inputs.new_full(
+                (batch_size,), inputs.size(1), dtype=torch.long)
 
-        output = self.decoder(inputs=inputs_embeds,
-                              sequence_length=sequence_length)
+        output = super().forward(
+            inputs=inputs_embeds, sequence_length=sequence_length)
 
-        return output.logits
+        return output
 
     @property
     def output_size(self):
-        return self._hparams.decoder.dim
+        return self._hparams.dim

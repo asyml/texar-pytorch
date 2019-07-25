@@ -28,7 +28,6 @@ from texar.modules.encoders.xlnet_encoder import XLNetEncoder
 from texar.modules.pretrained.xlnet_utils import params_except_in, init_weights
 from texar.utils.utils import dict_fetch
 
-
 __all__ = [
     "XLNetClassifier",
 ]
@@ -303,3 +302,18 @@ class XLNetClassifier(ClassifierBase):
             preds = torch.flatten(preds)
 
         return logits, preds
+
+    @property
+    def output_size(self) -> int:
+        r"""The final dimension(s) of :meth:`forward` output tensor(s).
+
+        Here output is :attr:`logits`. The final dimension equals to ``1``
+        when output final dimension is only determined by input.
+        """
+        if self._hparams.num_classes > 1:
+            logit_dim = self._hparams.num_classes
+        elif self._hparams.num_classes == 1:
+            logit_dim = 1
+        else:
+            logit_dim = self._hparams.hidden_dim
+        return logit_dim

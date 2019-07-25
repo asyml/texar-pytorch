@@ -13,6 +13,7 @@ from texar.data.data.data_iterators import DataIterator
 from texar.data.data.dataset_utils import Batch
 from texar.data.data.text_data_base import TextLineDataSource
 from texar.data.vocabulary import Vocab
+from texar.utils.test import data_test
 from texar.utils.utils import AnyDict
 
 RawExample = str
@@ -69,7 +70,7 @@ def get_process_memory():
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 / 1024
 
 
-@unittest.skip("Manual test only")
+@data_test
 class LargeFileTest(unittest.TestCase):
     def setUp(self) -> None:
         self.source = TextLineDataSource(

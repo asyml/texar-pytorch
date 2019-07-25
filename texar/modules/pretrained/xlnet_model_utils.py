@@ -63,6 +63,10 @@ class PositionWiseFF(ModuleBase):
             "activation": 'relu',
         }
 
+    @property
+    def output_size(self):
+        return self._hparams.hidden_dim
+
     def forward(self,  # type: ignore
                 input: torch.Tensor) -> torch.Tensor:
         # position-wise feed-forward
@@ -109,6 +113,10 @@ class RelativePositionalEncoding(ModuleBase):
             "dim": 768,
             "max_seq_len": 512,
         }
+
+    @property
+    def output_size(self):
+        return self._hparams.dim
 
     def _create_positional_embedding(self,
                                      start: int,
@@ -215,6 +223,10 @@ class RelativeMultiheadAttention(ModuleBase):
             "attention_dropout": 0.1,
             "use_segments": True,
         }
+
+    @property
+    def output_size(self):
+        return self._hparams.hidden_dim
 
     @staticmethod
     def _rel_shift(x: torch.Tensor, klen: int) -> torch.Tensor:
