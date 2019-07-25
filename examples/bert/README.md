@@ -51,13 +51,13 @@ python prepare_data.py --task=MRPC \
 - `task`: Specifies the dataset name to preprocess. BERT provides default support for `{'CoLA', 'MNLI', 'MRPC', 'XNLI', 'SST'}` data.
 - `max_seq_length`: The maxium length of sequence. This includes BERT special tokens that will be automatically added. Longer sequence will be trimmed. 
 - `pretrained_model_name`: The name of a pre-trained model to load selected in the list of: `bert-base-uncased`, `bert-large-uncased`, `bert-base-cased`, `bert-large-cased`, `bert-base-multilingual-uncased`, `bert-base-multilingual-cased`, and `bert-base-chinese`.
-- `output_dir`: The output path where the resulting pickled files will be put in. Be default, it is set to `data/{task}` where `{task}` is the (upper-cased) dataset name specified in `--task` above. So in the above commend, the pickled files are output to `data/MRPC`.
+- `output_dir`: The output path where the resulting pickled files will be put in. Be default, it is set to `data/{task}` where `{task}` is the (upper-cased) dataset name specified in `--task` above. So in the above command, the pickled files are output to `data/MRPC`.
 
 **Outcome of the Preprocessing**:
 
 - The preprocessing will output 3 pickled data files `{train.pkl, eval.pkl, test.pkl}` in the specified output directory.
 
-- The commend also prints logs as follows:
+- The command also prints logs as follows:
 
   ```
     INFO:root:Loading data
@@ -68,13 +68,13 @@ python prepare_data.py --task=MRPC \
     INFO:root:config_data.py has been updated
     INFO:root:Data preparation finished
   ```
-  **Note that** the data info `num_classes` and `num_train_data`, as well as `max_seq_length` specified in the commend, are required for BERT training in the following. They should be specified in the data configuration file passed to BERT training (see below). 
+  **Note that** the data info `num_classes` and `num_train_data`, as well as `max_seq_length` specified in the command, are required for BERT training in the following. They should be specified in the data configuration file passed to BERT training (see below). 
   
-- For convenience, the above commend automatically writes `num_classes`, `num_train_data` and `max_seq_length` to `config_data.py`.
+- For convenience, the above command automatically writes `num_classes`, `num_train_data` and `max_seq_length` to `config_data.py`.
 
 ### Train and Evaluate
 
-For **single-GPU** training (and evaluation), run the following commend. The training updates the classification layer and fine-tunes the pre-trained BERT parameters.
+For **single-GPU** training (and evaluation), run the following command. The training updates the classification layer and fine-tunes the pre-trained BERT parameters.
 
 ```bash
 python bert_classifier_main.py --do_train --do_eval \
