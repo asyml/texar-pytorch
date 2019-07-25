@@ -140,7 +140,6 @@ class Vocab:
                  self._unk_token] + vocab
         # Must make sure this is consistent with the above line
         vocab_size = len(vocab)
-        vocab_idx = np.arange(vocab_size)
 
         # Creates python maps to interface with python code
         id_to_token_map_py = dict(zip(range(vocab_size), vocab))

@@ -40,7 +40,6 @@ from torch.optim.lr_scheduler import ExponentialLR
 import texar as tx
 from texar.modules import BasicRNNDecoderOutput, TransformerDecoderOutput
 from texar.custom import MultivariateNormalDiag
-from texar.data.data.dataset_utils import Batch
 
 BLANK_ID = 3
 
@@ -179,7 +178,8 @@ class VAE(nn.Module):
         seq_lengths = data_batch["length"] - 1
         # decode
         outputs = self.decode(
-            decoder_states, latent_z, output_embed, seq_lengths, is_generate=False)
+            decoder_states, latent_z,
+            output_embed, seq_lengths, is_generate=False)
 
         logits = outputs.logits
 
@@ -205,7 +205,7 @@ class VAE(nn.Module):
                latent_z: Tensor,
                output_embed: Optional[Tensor] = None,
                seq_lengths: Optional[Tensor] = None,
-               is_generate: bool = False) \ 
+               is_generate: bool = False) \
             -> Union[BasicRNNDecoderOutput, TransformerDecoderOutput]:
         if not is_generate:
             if self._config.decoder_type == "lstm":
@@ -228,13 +228,13 @@ class VAE(nn.Module):
             start_tokens = torch.full(
                 (self._config.batch_size,),
                 self._bos_token_id,
-                dtype=torch.long, device=device)
+                dtype=torch.long, device=self.device)
             end_token = self._eos_token_id
             if self._config.decoder_type == "lstm":
                 def _cat_embedder(ids):
                     """Concatenates latent variable to input word embeddings
                     """
-                    embedding = self.decoder_w_embedder(ids.to(device))
+                    embedding = self.decoder_w_embedder(ids.to(self.device))
                     return torch.cat([embedding, latent_z], 1)
 
                 infer_helper = self.decoder.create_helper(
@@ -251,7 +251,7 @@ class VAE(nn.Module):
                 def _embedding_fn(ids, times):
                     w_embed = self.decoder_w_embedder(ids)
                     p_embed = self.decoder_p_embedder(times)
-                    return w_embed * config.hidden_size ** 0.5 + p_embed
+                    return w_embed * self._config.hidden_size ** 0.5 + p_embed
 
                 outputs, _ = self.decoder(
                     memory=decoder_states,
@@ -272,7 +272,7 @@ class VAEData(tx.data.MonoTextData):
         words = raw_example.strip().split(self._delimiter)
         if (self._max_seq_length is not None and
                 len(words) > self._max_seq_length):
-            if self._length_filter_mode is _LengthFilterMode.TRUNC:
+            if self._length_filter_mode == "truncate":
                 words = words[:self._max_seq_length]
 
         if self._hparams.dataset["bos_token"] != '':
