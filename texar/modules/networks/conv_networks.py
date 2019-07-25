@@ -79,7 +79,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
     def __init__(self, in_channels: int, in_features: Optional[int] = None,
                  hparams=None):
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
         if self.hparams.num_dense_layers > 0 and in_features is None:
             raise ValueError("\"in_features\" cannot be None "
                              "if \"num_dense_layers\" > 0")

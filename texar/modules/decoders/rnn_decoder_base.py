@@ -25,6 +25,7 @@ from texar.core.cell_wrappers import RNNCellBase
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
 from texar.modules.decoders.decoder_helpers import Helper
+from texar.modules.embedders.embedder_base import EmbedderBase
 from texar.utils import utils
 
 __all__ = [
@@ -45,13 +46,17 @@ class RNNDecoderBase(DecoderBase[State, Output]):
     def __init__(self,
                  input_size: int,
                  vocab_size: int,
+                 embedder: EmbedderBase,
                  cell: Optional[RNNCellBase] = None,
                  output_layer: Optional[nn.Module] = None,
                  input_time_major: bool = False,
                  output_time_major: bool = False,
                  hparams=None):
-        super().__init__(vocab_size, input_time_major,
-                         output_time_major, hparams)
+        super().__init__(input_time_major, output_time_major, hparams=hparams)
+
+        self._input_size = input_size
+        self._vocab_size = vocab_size
+        self._embedder = embedder
 
         # Make RNN cell
         self._cell = cell or layers.get_rnn_cell(
@@ -108,19 +113,13 @@ class RNNDecoderBase(DecoderBase[State, Output]):
                 Used when :attr:`decoding_strategy` is set to
                 ``"train_greedy"``, or when `hparams`-configured helper is used.
 
-                - If :attr:`embedding` is `None`, :attr:`inputs` is directly
-                  fed to the decoder. E.g., in ``"train_greedy"`` strategy,
-                  :attr:`inputs` must be a 3D Tensor of shape
-                  ``[batch_size, max_time, emb_dim]`` (or
-                  ``[max_time, batch_size, emb_dim]`` if
-                  ``"input_time_major"`` is `True`).
-                - If :attr:`embedding` is given, :attr:`inputs` is used as
-                  index to look up embeddings and feed in the decoder. E.g.,
-                  if `embedding` is an instance of
-                  :class:`~texar.modules.WordEmbedder`, then :attr:`inputs`
-                  is usually a 2D int Tensor `[batch_size, max_time]` (or
-                  `[max_time, batch_size]` if `input_time_major` == True)
-                  containing the token indexes.
+                The attr:`inputs` is a :tensor:`LongTensor` used as index to
+                look up embeddings and feed in the decoder. For example, if
+                :attr:`embedder` is an instance of
+                :class:`~texar.modules.WordEmbedder`, then :attr:`inputs`
+                is usually a 2D int Tensor `[batch_size, max_time]` (or
+                `[max_time, batch_size]` if `input_time_major` == `True`)
+                containing the token indexes.
             sequence_length (optional): A 1D int Tensor containing the
                 sequence length of :attr:`inputs`.
                 Used when `decoding_strategy="train_greedy"` or
@@ -200,7 +199,7 @@ class RNNDecoderBase(DecoderBase[State, Output]):
                    initial_state: Optional[State]) \
             -> Tuple[torch.ByteTensor, torch.Tensor, Optional[State]]:
         initial_finished, initial_inputs = helper.initialize(
-            inputs, sequence_length)
+            self.embed_tokens, inputs, sequence_length)
         state = initial_state or self._cell.init_batch()
         return (initial_finished, initial_inputs, state)
 

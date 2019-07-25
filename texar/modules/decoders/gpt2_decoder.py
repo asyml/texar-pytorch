@@ -15,26 +15,26 @@
 GPT2 decoder.
 """
 
-from typing import Optional, Union, Tuple, Dict
+from typing import Dict, Optional, Tuple, Union
 
 import torch
 
 from texar.core import layers
 from texar.hyperparams import HParams
-from texar.modules.pretrained.gpt2_utils import init_gpt2_checkpoint
-from texar.modules.pretrained.pretrained_base import PretrainedBase
-from texar.modules.embedders.embedders import WordEmbedder
-from texar.modules.embedders.position_embedders import PositionEmbedder
+from texar.modules.decoders.decoder_base import DecoderBase
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.modules.decoders.transformer_decoders import (
-    TransformerDecoder, TransformerDecoderOutput)
+    Cache, TransformerDecoder, TransformerDecoderOutput)
+from texar.modules.embedders import PositionEmbedder, WordEmbedder
+from texar.modules.pretrained.gpt2_utils import init_gpt2_checkpoint
+from texar.modules.pretrained.pretrained_base import PretrainedBase
 
 __all__ = [
     "GPT2Decoder",
 ]
 
 
-class GPT2Decoder(PretrainedBase):
+class GPT2Decoder(PretrainedBase, DecoderBase[Cache, TransformerDecoderOutput]):
     r"""Raw GPT2 Transformer for decoding sequences.
 
     This module basically stacks
@@ -86,9 +86,15 @@ class GPT2Decoder(PretrainedBase):
 
         # The GPT2 decoder (a TransformerDecoder)
         self.decoder = TransformerDecoder(
+            self.embed_tokens,
             vocab_size=self._hparams.vocab_size,
             output_layer=self.word_embedder.embedding,
             hparams=self._hparams.decoder)
+
+        self.forward = self.decoder.forward
+        self.initialize = self.decoder.initialize
+        self.step = self.decoder.step
+        self.finalize = self.decoder.finalize
 
         if self.pretrained_model_dir:
             init_gpt2_checkpoint(self, self.pretrained_model_dir)
@@ -99,6 +105,12 @@ class GPT2Decoder(PretrainedBase):
             for name, param in self.named_parameters():
                 if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:
                     initialize(param)
+
+    def embed_tokens(self, tokens: torch.Tensor,
+                     positions: torch.LongTensor) -> torch.Tensor:
+        word_embeds = self.word_embedder(tokens)
+        pos_embeds = self.position_embedder(positions)
+        return word_embeds + pos_embeds
 
     @staticmethod
     def default_hparams():
@@ -439,16 +451,6 @@ class GPT2Decoder(PretrainedBase):
                   ``[batch_size, beam_width]`` containing the log probability
                   of each sequence sample.
         """
-        if inputs is not None:
-            word_embeds = self.word_embedder(inputs)
-            batch_size = inputs.shape[0]
-            pos_length = inputs.new_full((batch_size,),
-                                         inputs.shape[1],
-                                         dtype=torch.int64)
-            pos_embeds = self.position_embedder(sequence_length=pos_length)
-
-            inputs = word_embeds + pos_embeds
-
         outputs = self.decoder(
             inputs=inputs,
             sequence_length=sequence_length,

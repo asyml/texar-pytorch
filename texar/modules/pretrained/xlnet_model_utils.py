@@ -37,7 +37,7 @@ __all__ = [
 class PositionWiseFF(ModuleBase):
 
     def __init__(self, hparams=None):
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
 
         hidden_dim = self._hparams.hidden_dim
         ffn_inner_dim = self._hparams.ffn_inner_dim
@@ -95,7 +95,12 @@ class PositionalEmbedding(nn.Module):
 class RelativePositionalEncoding(ModuleBase):
 
     def __init__(self, hparams=None):
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
+        # self.sinusoid_embed = tx.modules.SinusoidsPositionEmbedder(
+        #     None, hparams={
+        #         "dim": self._hparams.dim,
+        #         "cache_embeddings": False,
+        #     })
         self.sinusoid_embed = PositionalEmbedding(self._hparams.dim)
 
     @staticmethod
@@ -157,7 +162,7 @@ class RelativeMultiheadAttention(ModuleBase):
                  r_w_bias: Optional[nn.Parameter] = None,
                  r_s_bias: Optional[nn.Parameter] = None,
                  hparams=None):
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
 
         self.num_heads = self._hparams.num_heads
         self.head_dim = self._hparams.head_dim

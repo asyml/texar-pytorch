@@ -51,7 +51,6 @@ class PretrainedBase(ModuleBase):
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None):
-
         super().__init__(hparams=hparams)
 
         self.pretrained_model_dir: Optional[str] = None

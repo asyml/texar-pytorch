@@ -38,7 +38,7 @@ class ParallelData(DataBase[RawExample, Example]):
         self.src_vocab = Vocab(src_vocab_path)
         self.tgt_vocab = Vocab(tgt_vocab_path)
         self.device = device
-        super().__init__(source, hparams)
+        super().__init__(source, hparams=hparams)
 
     def process(self, raw_example: RawExample) -> Example:
         src, tgt = raw_example.strip().split('\t')

@@ -141,7 +141,7 @@ class TransformerEncoder(EncoderBase):
     """
 
     def __init__(self, hparams=None):
-        EncoderBase.__init__(self, hparams)
+        super().__init__(hparams=hparams)
         self._input_size = self._hparams.dim
         self.self_attns = nn.ModuleList()
         if not self._hparams.use_bert_config:

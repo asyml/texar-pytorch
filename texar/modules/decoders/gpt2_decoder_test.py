@@ -1,6 +1,7 @@
 """
 Unit tests for GPT2 decoder.
 """
+import os
 import unittest
 
 import torch
@@ -9,12 +10,15 @@ from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.gpt2_decoder import GPT2Decoder
 from texar.modules.decoders.transformer_decoders import TransformerDecoderOutput
 
+manual_test = unittest.skipUnless(
+    os.environ.get('TEST_ALL', 0), "Manual test only")
+
 
 class GPT2DecoderTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.GPT2Decoder`
     """
 
-    @unittest.skip("Manual test only")
+    @manual_test
     def test_hparams(self):
         r"""Tests the priority of the decoer arch parameter.
         """
@@ -56,7 +60,7 @@ class GPT2DecoderTest(unittest.TestCase):
         _ = decoder(inputs)
         self.assertEqual(decoder.hparams.decoder.num_blocks, 12)
 
-    @unittest.skip("Manual test only")
+    @manual_test
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
         variables.
@@ -105,7 +109,7 @@ class GPT2DecoderTest(unittest.TestCase):
                                                            max_time,
                                                            50257]))
         self.assertEqual(outputs.sample_id.shape, torch.Size([batch_size,
-                                                             max_time]))
+                                                              max_time]))
 
     def test_decode_infer_greedy(self):
         r"""Tests train_greedy

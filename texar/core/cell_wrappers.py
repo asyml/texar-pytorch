@@ -549,7 +549,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
                 for attention_mechanism in attention_mechanisms)
 
         self._cell = cell
-        self._attention_mechanisms = attention_mechanisms
+        self.attention_mechanisms = attention_mechanisms
         self._cell_input_fn = cell_input_fn
         self._output_attention = output_attention
         self._alignment_history = alignment_history
@@ -602,7 +602,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
         """
         cell_state: torch.Tensor = super().zero_state(batch_size)  # type:ignore
 
-        initial_alignments = [None for _ in self._attention_mechanisms]
+        initial_alignments = [None for _ in self.attention_mechanisms]
 
         alignment_history: List[List[Optional[torch.Tensor]]]
         alignment_history = [[] for _ in initial_alignments]
@@ -688,7 +688,7 @@ class AttentionWrapper(RNNCellBase[AttentionWrapperState]):
         all_attentions = []
         all_attention_states = []
         maybe_all_histories = []
-        for i, attention_mechanism in enumerate(self._attention_mechanisms):
+        for i, attention_mechanism in enumerate(self.attention_mechanisms):
             if previous_attention_state[i] is not None:
                 attention_state = previous_attention_state[i]
             else:

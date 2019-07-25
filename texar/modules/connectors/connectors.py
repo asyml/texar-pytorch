@@ -215,7 +215,7 @@ class ConstantConnector(ConnectorBase):
                  output_size: OutputSize,
                  hparams: Optional[HParams] = None):
 
-        super().__init__(output_size, hparams)
+        super().__init__(output_size, hparams=hparams)
 
         self.value = self.hparams.value
 
@@ -310,7 +310,7 @@ class ForwardConnector(ConnectorBase):
     def __init__(self,
                  output_size: OutputSize,
                  hparams: Optional[HParams] = None):
-        super().__init__(output_size, hparams)
+        super().__init__(output_size, hparams=hparams)
 
     @staticmethod
     def default_hparams() -> dict:
@@ -403,7 +403,7 @@ class MLPTransformConnector(ConnectorBase):
                  output_size: OutputSize,
                  linear_layer_dim: int,
                  hparams: Optional[HParams] = None):
-        super().__init__(output_size, hparams)
+        super().__init__(output_size, hparams=hparams)
         self._linear_layer = nn.Linear(
             linear_layer_dim, _sum_output_size(output_size))
         self._activation_fn = get_activation_fn(
@@ -521,7 +521,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
                  distribution: Union[Distribution, str] = 'MultivariateNormal',
                  distribution_kwargs: Optional[Dict[str, Any]] = None,
                  hparams: Optional[HParams] = None):
-        super().__init__(output_size, hparams)
+        super().__init__(output_size, hparams=hparams)
         if distribution_kwargs is None:
             distribution_kwargs = {}
         self._dstr_type = distribution
@@ -671,7 +671,7 @@ class StochasticConnector(ConnectorBase):
                  distribution: Union[Distribution, str] = 'MultivariateNormal',
                  distribution_kwargs: Optional[Dict[str, Any]] = None,
                  hparams: Optional[HParams] = None):
-        super().__init__(output_size, hparams)
+        super().__init__(output_size, hparams=hparams)
         if distribution_kwargs is None:
             distribution_kwargs = {}
         self._dstr_kwargs = distribution_kwargs
