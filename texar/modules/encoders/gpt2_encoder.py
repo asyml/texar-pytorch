@@ -22,8 +22,11 @@ import torch.nn as nn
 
 from texar.core import layers
 from texar.hyperparams import HParams
-from texar.modules.pretrained import GPT2Base, gpt2_utils
-from texar.modules.embedders import PositionEmbedder, WordEmbedder
+from texar.modules.pretrained.gpt2_utils import init_gpt2_checkpoint
+from texar.modules.pretrained.pretrained_base import PretrainedBase
+from texar.modules.embedders.embedders import WordEmbedder
+from texar.modules.embedders.position_embedders import PositionEmbedder
+from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.decoders.transformer_decoders import TransformerDecoder
 
 
@@ -32,7 +35,7 @@ __all__ = [
 ]
 
 
-class GPT2Encoder(GPT2Base):
+class GPT2Encoder(PretrainedBase, EncoderBase):
     r"""Raw GPT2 Transformer for encoding sequences.
 
     This module basically stacks
@@ -56,6 +59,8 @@ class GPT2Encoder(GPT2Base):
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
+
+    model_name = "GPT2"
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
@@ -87,7 +92,7 @@ class GPT2Encoder(GPT2Base):
             hparams=self._hparams.decoder)
 
         if self.pretrained_model_dir:
-            gpt2_utils.init_gpt2_checkpoint(self, self.pretrained_model_dir)
+            init_gpt2_checkpoint(self, self.pretrained_model_dir)
         elif self._hparams.initializer:
             initialize = layers.get_initializer(self._hparams.initializer)
             assert initialize is not None
@@ -180,33 +185,33 @@ class GPT2Encoder(GPT2Base):
 
         The default parameters are values for 117M GPT2 model.
 
-        `pretrained_model_name`: str or None
+        `"pretrained_model_name"`: str or None
             The name of the pre-trained GPT2 model. If None, the model
             will be randomly initialized.
 
-        `embed`: dict
+        `"embed"`: dict
             Hyperparameters for word embedding layer.
 
-        `vocab_size`: int
+        `"vocab_size"`: int
             The vocabulary size of `inputs` in `GPT2Model`.
 
-        `position_embed`: dict
+        `"position_embed"`: dict
             Hyperparameters for position embedding layer.
 
-        `position_size`:  int
+        `"position_size"`:  int
             The maximum sequence length that this model might ever be used with.
 
-        `decoder`: dict
+        `"decoder"`: dict
             Hyperparameters for the TransformerDecoder.
             See :func:`~texar.modules.TransformerDecoder.default_harams`
             for details.
 
-        `initializer`: dict, optional
+        `"initializer"`: dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
             See :func:`~texar.core.get_initializer` for details.
 
-        `name`: str
+        `"name"`: str
             Name of the module.
         """
         return {
@@ -311,3 +316,7 @@ class GPT2Encoder(GPT2Base):
                               sequence_length=sequence_length)
 
         return output.logits
+
+    @property
+    def output_size(self):
+        return self._hparams.decoder.dim

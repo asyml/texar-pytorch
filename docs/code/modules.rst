@@ -59,15 +59,21 @@ Encoders
 .. autoclass:: texar.modules.TransformerEncoder
     :members:
 
-:hidden:`BertEncoder`
+:hidden:`BERTEncoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.BertEncoder
+.. autoclass:: texar.modules.BERTEncoder
     :members:
 
 :hidden:`GPT2Encoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.GPT2Encoder
     :members:
+
+:hidden:`XLNetEncoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.XLNetEncoder
+    :members:
+    :exclude-members: _forward
 
 :hidden:`Conv1DEncoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -127,6 +133,17 @@ Decoders
 :hidden:`GPT2Decoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.GPT2Decoder
+    :members:
+
+:hidden:`XLNetDecoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.XLNetDecoder
+    :members:
+    :exclude-members: initialize,step,finalize,_create_input
+
+:hidden:`XLNetDecoderOutput`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.XLNetDecoderOutput
     :members:
 
 :hidden:`TransformerDecoder`
@@ -197,9 +214,9 @@ Decoders
 Classifiers
 ============
 
-:hidden:`BertClassifier`
+:hidden:`BERTClassifier`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.BertClassifier
+.. autoclass:: texar.modules.BERTClassifier
     :members:
 
 :hidden:`GPT2Classifier`
@@ -210,6 +227,11 @@ Classifiers
 :hidden:`Conv1DClassifier`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.modules.Conv1DClassifier
+    :members:
+
+:hidden:`XLNetClassifier`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.XLNetClassifier
     :members:
 
 Networks
@@ -236,14 +258,17 @@ Pre-trained
 .. spelling::
     pooler
 
-:hidden:`BertBase`
+:hidden:`PretrainedBase`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.BertBase
+.. autoclass:: texar.modules.PretrainedBase
     :members:
 
-:hidden:`GPT2Base`
+Regressor
+==========
+
+:hidden:`XLNetRegressor`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.GPT2Base
+.. autoclass:: texar.modules.XLNetRegressor
     :members:
 
 Connectors

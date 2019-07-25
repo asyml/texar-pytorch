@@ -12,14 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of Texar library module.
+Base class for regressors.
 """
+from abc import ABC
+from typing import Any, Dict
 
-from texar.modules.classifiers import *
-from texar.modules.connectors import *
-from texar.modules.decoders import *
-from texar.modules.embedders import *
-from texar.modules.encoders import *
-from texar.modules.networks import *
-from texar.modules.pretrained import *
-from texar.modules.regressors import *
+from texar.module_base import ModuleBase
+
+__all__ = [
+    "RegressorBase",
+]
+
+
+class RegressorBase(ModuleBase, ABC):
+    r"""Base class inherited by all regressor classes.
+    """
+
+    @staticmethod
+    def default_hparams() -> Dict[str, Any]:
+        r"""Returns a dictionary of hyperparameters with default values.
+        """
+        return {
+            "name": "regressor"
+        }

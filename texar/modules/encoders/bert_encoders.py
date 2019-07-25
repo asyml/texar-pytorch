@@ -22,17 +22,20 @@ import torch.nn as nn
 
 from texar.core import layers
 from texar.hyperparams import HParams
-from texar.modules.pretrained import BertBase, bert_utils
-from texar.modules.embedders import PositionEmbedder, WordEmbedder
+from texar.modules.pretrained.bert_utils import init_bert_checkpoint
+from texar.modules.pretrained.pretrained_base import PretrainedBase
+from texar.modules.embedders.embedders import WordEmbedder
+from texar.modules.embedders.position_embedders import PositionEmbedder
+from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.encoders.transformer_encoder import TransformerEncoder
 
 
 __all__ = [
-    "BertEncoder",
+    "BERTEncoder",
 ]
 
 
-class BertEncoder(BertBase):
+class BERTEncoder(PretrainedBase, EncoderBase):
     r"""Raw BERT Transformer for encoding sequences.
 
     This module basically stacks
@@ -58,6 +61,8 @@ class BertEncoder(BertBase):
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
+
+    model_name = "BERT"
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
@@ -95,7 +100,7 @@ class BertEncoder(BertBase):
             nn.Tanh())
 
         if self.pretrained_model_dir:
-            bert_utils.init_bert_checkpoint(self, self.pretrained_model_dir)
+            init_bert_checkpoint(self, self.pretrained_model_dir)
         elif self._hparams.initializer:
             initialize = layers.get_initializer(self._hparams.initializer)
             assert initialize is not None
@@ -183,42 +188,42 @@ class BertEncoder(BertBase):
 
         The default parameters are values for uncased BERT-Base model.
 
-        `pretrained_model_name`: str or None
+        `"pretrained_model_name"`: str or None
             The name of the pre-trained BERT model. If None, the model
             will be randomly initialized.
 
-        `embed`: dict
+        `"embed"`: dict
             Hyperparameters for word embedding layer.
 
-        `vocab_size`: int
+        `"vocab_size"`: int
             The vocabulary size of `inputs` in `BertModel`.
 
-        `segment_embed`: dict
+        `"segment_embed"`: dict
             Hyperparameters for segment embedding layer.
 
-        `type_vocab_size`: int
+        `"type_vocab_size"`: int
             The vocabulary size of the `segment_ids` passed into `BertModel`.
 
-        `position_embed`: dict
+        `"position_embed"`: dict
             Hyperparameters for position embedding layer.
 
-        `position_size`: int
+        `"position_size"`: int
             The maximum sequence length that this model might ever be used with.
 
-        `encoder`: dict
+        `"encoder"`: dict
             Hyperparameters for the TransformerEncoder.
             See :func:`~texar.modules.TransformerEncoder.default_harams`
             for details.
 
-        `hidden_size`: int
+        `"hidden_size"`: int
             Size of the pooler dense layer.
 
-        `initializer`: dict, optional
+        `"initializer"`: dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
             See :func:`~texar.core.get_initializer` for details.
 
-        `name`: str
+        `"name"`: str
             Name of the module.
         """
 
@@ -339,3 +344,7 @@ class BertEncoder(BertBase):
         pooled_output = self.pooler(first_token_tensor)
 
         return output, pooled_output
+
+    @property
+    def output_size(self):
+        return self._hparams.hidden_size

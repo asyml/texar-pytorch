@@ -25,6 +25,7 @@ import torch
 import torch.nn as nn
 
 from texar.data.data_utils import maybe_download
+from texar.modules.pretrained.pretrained_utils import default_download_dir
 
 
 __all__ = [
@@ -199,35 +200,9 @@ def name_to_variable(model: nn.Module, name: str) -> nn.Module:
     return pointer
 
 
-def _default_download_dir() -> str:
-    r"""Return the directory to which packages will be downloaded by default.
-    """
-    package_dir = os.path.dirname(os.path.dirname(
-        os.path.dirname(os.path.dirname(__file__))))
-    if os.access(package_dir, os.W_OK):
-        texar_download_dir = os.path.join(package_dir, 'texar_download')
-    else:
-        # On Windows, use %APPDATA%
-        if sys.platform == 'win32' and 'APPDATA' in os.environ:
-            home_dir = os.environ['APPDATA']
-
-        # Otherwise, install in the user's home directory.
-        else:
-            home_dir = os.path.expanduser('~/')
-            if home_dir == '~/':
-                raise ValueError("Could not find a default download directory")
-
-        texar_download_dir = os.path.join(home_dir, 'texar_download')
-
-    if not os.path.exists(texar_download_dir):
-        os.mkdir(texar_download_dir)
-
-    return os.path.join(texar_download_dir, 'gpt2')
-
-
 def load_pretrained_gpt2(pretrained_model_name: str,
                          cache_dir: Optional[str] = None) -> str:
-    r"""Return the directory in which the pretrained GPT2 is cached.
+    r"""Return the directory in which the pretrained `GPT2` is cached.
     """
     if pretrained_model_name in _MODEL2URL:
         download_path = _MODEL2URL[pretrained_model_name]
@@ -236,7 +211,7 @@ def load_pretrained_gpt2(pretrained_model_name: str,
             "Pre-trained model not found: {}".format(pretrained_model_name))
 
     if cache_dir is None:
-        cache_dir = _default_download_dir()
+        cache_dir = default_download_dir("gpt2")
 
     file_name = download_path.split('/')[-1]
 

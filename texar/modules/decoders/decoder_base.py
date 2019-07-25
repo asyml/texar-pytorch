@@ -88,7 +88,6 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
     """
 
     def __init__(self,
-                 input_size: int,
                  vocab_size: Optional[int] = None,
                  input_time_major: bool = False,
                  output_time_major: bool = False,
@@ -100,7 +99,6 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         self._input_time_major = input_time_major
         self._output_time_major = output_time_major
 
-        self._input_size = input_size
         self._vocab_size = vocab_size
 
     def create_helper(self, *,

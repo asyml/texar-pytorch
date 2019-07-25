@@ -12,14 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of Texar library module.
+Modules of Texar library regressors.
 """
 
-from texar.modules.classifiers import *
-from texar.modules.connectors import *
-from texar.modules.decoders import *
-from texar.modules.embedders import *
-from texar.modules.encoders import *
-from texar.modules.networks import *
-from texar.modules.pretrained import *
-from texar.modules.regressors import *
+from texar.modules.regressors.regressor_base import *
+from texar.modules.regressors.xlnet_regressor import *

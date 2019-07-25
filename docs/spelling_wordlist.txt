@@ -58,3 +58,5 @@ fastly
 CUDA
 precompute
 Tokenize
+Regressor
+regressor

@@ -1,5 +1,5 @@
 """
-Unit tests for bert utils.
+Unit tests for BERT utils.
 """
 
 import os
@@ -8,11 +8,11 @@ import unittest
 from texar.modules.pretrained.bert_utils import *
 
 
-class BertUtilsTest(unittest.TestCase):
-    r"""Tests bert utils.
+class BERTUtilsTest(unittest.TestCase):
+    r"""Tests BERT utils.
     """
 
-    def test_load_pretrained_model_AND_transform_bert_to_texar_config(self):
+    def test_load_pretrained_bert_AND_transform_bert_to_texar_config(self):
 
         pretrained_model_dir = load_pretrained_bert(
             pretrained_model_name="bert-base-uncased")
