@@ -88,7 +88,7 @@ class GPT2Encoder(PretrainedBase, EncoderBase):
         # The GPT2 encoder (a TransformerDecoder)
         self.decoder = TransformerDecoder(
             vocab_size=self._hparams.vocab_size,
-            output_layer=nn.Identity(),
+            output_layer=layers.Identity(),
             hparams=self._hparams.decoder)
 
         if self.pretrained_model_dir:
