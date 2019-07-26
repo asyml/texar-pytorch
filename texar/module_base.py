@@ -14,7 +14,7 @@
 """
 Base class for modules.
 """
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any, Dict, List, Optional, Union
 
 from torch import nn
@@ -72,7 +72,6 @@ class ModuleBase(nn.Module, ABC):
             'name': 'module'
         }
 
-    @abstractmethod
     def forward(self, *input):  # pylint: disable=redefined-builtin
         raise NotImplementedError
 

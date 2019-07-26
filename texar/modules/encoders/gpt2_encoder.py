@@ -22,14 +22,14 @@ import torch
 from texar.modules.embedders.embedders import WordEmbedder
 from texar.modules.embedders.position_embedders import PositionEmbedder
 from texar.modules.encoders.transformer_encoder import TransformerEncoder
-from texar.modules.pretrained.pretrained_base import PretrainedMixin
+from texar.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
 
 __all__ = [
     "GPT2Encoder",
 ]
 
 
-class GPT2Encoder(TransformerEncoder, PretrainedMixin):
+class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
     r"""Raw GPT2 Transformer for encoding sequences.
 
     This module basically stacks
@@ -53,8 +53,6 @@ class GPT2Encoder(TransformerEncoder, PretrainedMixin):
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
-
-    model_name = "GPT2"
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
@@ -262,8 +260,7 @@ class GPT2Encoder(TransformerEncoder, PretrainedMixin):
 
     def forward(self,  # type: ignore
                 inputs: torch.Tensor,
-                sequence_length: Optional[torch.LongTensor] = None,
-                **kwargs):
+                sequence_length: Optional[torch.LongTensor] = None):
         r"""Encodes the inputs.
 
         Args:
@@ -272,7 +269,6 @@ class GPT2Encoder(TransformerEncoder, PretrainedMixin):
             sequence_length (optional): A 1D Tensor of shape `[batch_size]`.
                 Input tokens beyond respective sequence lengths are masked
                 out automatically.
-            **kwargs: Keyword arguments.
 
         Returns:
             outputs:  A Tensor of shape

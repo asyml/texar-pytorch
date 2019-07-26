@@ -15,15 +15,12 @@
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, Union
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
+from torch.nn import functional as F
 
-from texar.core import layers
 from texar.modules.decoders.decoder_base import DecoderBase
 from texar.modules.decoders.decoder_helpers import Helper, SampleEmbeddingHelper
 from texar.modules.encoders.xlnet_encoder import XLNetEncoder
-from texar.modules.pretrained.xlnet_utils import (init_xlnet_checkpoint,
-                                                  init_weights)
 from texar.utils import get_instance
 
 __all__ = [
@@ -246,8 +243,8 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
 
         return return_dict
 
-    def embed_tokens(self, tokens: torch.Tensor,
-                     positions: torch.LongTensor) -> torch.Tensor:
+    def embed_tokens(self, tokens: torch.LongTensor,
+                     positions: torch.LongTensor) -> torch.Tensor:  # pylint: disable=unused-argument
         return self.word_embed(tokens)
 
     def initialize(self,  # pylint: disable=no-self-use

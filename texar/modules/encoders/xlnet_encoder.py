@@ -21,15 +21,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from texar.core import layers
-from texar.hyperparams import HParams
 from texar.modules.encoders.encoder_base import EncoderBase
-from texar.modules.pretrained.pretrained_base import PretrainedMixin
-from texar.modules.pretrained.xlnet_utils import (init_xlnet_checkpoint,
-                                                  params_except_in,
-                                                  init_weights)
+from texar.modules.pretrained.xlnet_utils import (
+    params_except_in, init_weights)
+from texar.modules.pretrained.pretrained_xlnet import PretrainedXLNetMixin
 from texar.modules.pretrained.xlnet_model_utils import (
-    PositionWiseFF, RelativePositionalEncoding, RelativeMultiheadAttention)
+    PositionWiseFF, RelativeMultiheadAttention,
+    RelativePositionalEncoding, params_except_in)
 from texar.utils.utils import dict_fetch, sum_tensors
 
 __all__ = [
@@ -37,7 +35,7 @@ __all__ = [
 ]
 
 
-class XLNetEncoder(EncoderBase, PretrainedMixin):
+class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
     r"""Raw XLNet module for encoding sequences.
 
     This module supports the architecture first proposed
@@ -57,8 +55,6 @@ class XLNetEncoder(EncoderBase, PretrainedMixin):
             and default values.
         init (optional): whether to initialize `XLNetEncoder`.
     """
-
-    model_name = "XLNet"
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,

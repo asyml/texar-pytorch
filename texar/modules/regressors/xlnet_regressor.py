@@ -18,8 +18,8 @@ XLNet Regressors.
 from typing import Any, Dict, Optional
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
+from torch.nn import functional as F
 
 from texar.core.layers import get_initializer
 from texar.hyperparams import HParams

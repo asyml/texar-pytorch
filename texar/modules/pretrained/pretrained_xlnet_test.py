@@ -5,7 +5,7 @@ Unit tests for XLNet utils.
 import os
 import unittest
 
-from texar.modules.pretrained.xlnet_utils import *
+from texar.modules.pretrained.pretrained_xlnet import *
 
 
 class XLNetUtilsTest(unittest.TestCase):
@@ -14,7 +14,7 @@ class XLNetUtilsTest(unittest.TestCase):
 
     def test_load_pretrained_xlnet_AND_transform_xlnet_to_texar_config(self):
 
-        pretrained_model_dir = load_pretrained_xlnet(
+        pretrained_model_dir = PretrainedXLNetMixin._download_checkpoint(
             pretrained_model_name="xlnet-base-cased")
 
         info = list(os.walk(pretrained_model_dir))
@@ -25,7 +25,8 @@ class XLNetUtilsTest(unittest.TestCase):
         self.assertIn('xlnet_model.ckpt.index', files)
         self.assertIn('xlnet_config.json', files)
 
-        model_config = transform_xlnet_to_texar_config(pretrained_model_dir)
+        model_config = PretrainedXLNetMixin._transform_config(
+            pretrained_model_dir)
 
         exp_config = {'head_dim': 64,
                       'ffn_inner_dim': 3072,

@@ -14,7 +14,7 @@
 """
 Transformer decoder.
 """
-
+import warnings
 from typing import Callable, Dict, NamedTuple, Optional, Tuple, Union
 
 import torch
@@ -105,12 +105,19 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         self._input_size = self._hparams.dim
 
         if embedding_fn is None:
-            if self.embed_tokens.__func__ is TransformerDecoder.embed_tokens:
+            if (self.embed_tokens.__func__ is  # type: ignore
+                    TransformerDecoder.embed_tokens):
                 raise ValueError(
                     "`embedding_fn` cannot be `None` if "
                     "`TransformerDecoder.embed_tokens` is not overridden.")
         else:
-            self.embed_tokens = embedding_fn
+            if (self.embed_tokens.__func__ is not  # type: ignore
+                    TransformerDecoder.embed_tokens):
+                warnings.warn(
+                    "`embedding_fn` is specified, but `embed_tokens` is also "
+                    "overridden. The overridden `embed_tokens` method will be "
+                    "replaced by `embedding_fn`.")
+            self.embed_tokens = embedding_fn  # type: ignore
         self._output_layer, self._vocab_size = _make_output_layer(
             output_layer, vocab_size, self._input_size,
             self._hparams.output_layer_bias)
@@ -280,7 +287,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             'name': "transformer_decoder",
         }
 
-    def embed_tokens(self, tokens: torch.Tensor,
+    def embed_tokens(self, tokens: torch.LongTensor,  # pylint: disable=method-hidden
                      positions: torch.LongTensor) -> torch.Tensor:
         # The `NotImplementError` is intended. The user should either override
         # this method, or specify `embedding_fn` in the constructor, in which

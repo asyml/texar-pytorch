@@ -18,23 +18,21 @@ BERT encoders.
 from typing import Optional
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from texar.core import layers
-from texar.hyperparams import HParams
-from texar.modules.pretrained.bert_utils import init_bert_checkpoint
-from texar.modules.pretrained.pretrained_base import PretrainedMixin
 from texar.modules.embedders.embedders import WordEmbedder
 from texar.modules.embedders.position_embedders import PositionEmbedder
 from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.encoders.transformer_encoder import TransformerEncoder
+from texar.modules.pretrained.pretrained_bert import PretrainedBERTMixin
 
 __all__ = [
     "BERTEncoder",
 ]
 
 
-class BERTEncoder(EncoderBase, PretrainedMixin):
+class BERTEncoder(EncoderBase, PretrainedBERTMixin):
     r"""Raw BERT Transformer for encoding sequences.
 
     This module basically stacks
@@ -60,8 +58,6 @@ class BERTEncoder(EncoderBase, PretrainedMixin):
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
-
-    model_name = "BERT"
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
@@ -93,11 +89,11 @@ class BERTEncoder(EncoderBase, PretrainedMixin):
             nn.Linear(self._hparams.hidden_size, self._hparams.hidden_size),
             nn.Tanh())
 
-        if self.pretrained_model_dir:
-            init_bert_checkpoint(self, self.pretrained_model_dir)
-        elif self._hparams.initializer:
-            initialize = layers.get_initializer(self._hparams.initializer)
-            assert initialize is not None
+        self.init_pretrained_weights()
+
+    def reset_parameters(self):
+        initialize = layers.get_initializer(self._hparams.initializer)
+        if initialize is not None:
             # Do not re-initialize LayerNorm modules.
             for name, param in self.named_parameters():
                 if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:

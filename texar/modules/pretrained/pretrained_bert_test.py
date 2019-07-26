@@ -5,7 +5,7 @@ Unit tests for BERT utils.
 import os
 import unittest
 
-from texar.modules.pretrained.bert_utils import *
+from texar.modules.pretrained.pretrained_bert import *
 
 
 class BERTUtilsTest(unittest.TestCase):
@@ -14,7 +14,7 @@ class BERTUtilsTest(unittest.TestCase):
 
     def test_load_pretrained_bert_AND_transform_bert_to_texar_config(self):
 
-        pretrained_model_dir = load_pretrained_bert(
+        pretrained_model_dir = PretrainedBERTMixin._download_checkpoint(
             pretrained_model_name="bert-base-uncased")
 
         info = list(os.walk(pretrained_model_dir))
@@ -24,7 +24,8 @@ class BERTUtilsTest(unittest.TestCase):
         self.assertIn('bert_model.ckpt.index', files)
         self.assertIn('bert_config.json', files)
 
-        model_config = transform_bert_to_texar_config(pretrained_model_dir)
+        model_config = PretrainedBERTMixin._transform_config(
+            pretrained_model_dir)
 
         exp_config = {
             'hidden_size': 768,

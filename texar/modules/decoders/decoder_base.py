@@ -107,8 +107,8 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         """
         return self._embedder
 
-    def embed_tokens(self, tokens: torch.Tensor,
-                     positions: torch.LongTensor) -> torch.Tensor:
+    def embed_tokens(self, tokens: torch.LongTensor,
+                     positions: torch.LongTensor) -> torch.Tensor:  # pylint: disable=unused-argument
         r"""Convert tokens along with positions to embeddings.
 
         Args:

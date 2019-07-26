@@ -14,29 +14,73 @@
 """
 Base class for Pre-trained Modules.
 """
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
 
-from typing import Optional
+from torch import nn
 
 from texar.hyperparams import HParams
 from texar.module_base import ModuleBase
-from texar.modules.pretrained.bert_utils import (
-    load_pretrained_bert, transform_bert_to_texar_config, init_bert_checkpoint)
-from texar.modules.pretrained.gpt2_utils import (
-    load_pretrained_gpt2, transform_gpt2_to_texar_config, init_gpt2_checkpoint)
-from texar.modules.pretrained.xlnet_utils import (
-    load_pretrained_xlnet, transform_xlnet_to_texar_config, init_xlnet_checkpoint)
 
 __all__ = [
     "PretrainedMixin",
 ]
 
 
-class PretrainedMixin(ModuleBase):
+class PretrainedMixin(ModuleBase, ABC):
     r"""A mixin class for all pre-trained classes to inherit.
     """
 
     model_name: str
     pretrained_model_dir: Optional[str]
+
+    @staticmethod
+    @abstractmethod
+    def _download_checkpoint(pretrained_model_name: str,
+                             cache_dir: Optional[str] = None) -> str:
+        r"""Download the specified pre-trained checkpoint, and return the
+        directory in which the checkpoint is cached.
+
+        Args:
+            pretrained_model_name (str): Name of the model checkpoint.
+            cache_dir (str, optional): Path to the cache directory. If `None`,
+                uses the default directory given by
+                :meth:`~texar.modules.default_download_dir`.
+
+        Returns:
+            Path to the cache directory.
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    @abstractmethod
+    def _transform_config(cache_dir: str) -> Dict[str, Any]:
+        r"""Load the official config file and transform it into Texar-style
+        hyperparameters.
+
+        Args:
+            cache_dir (str): Path to the cache directory.
+
+        Returns:
+            dict: Texar module hyperparameters.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def _init_from_checkpoint(self, cache_dir: str, **kwargs):
+        raise NotImplementedError
+
+    def _name_to_variable(self, name: str) -> nn.Module:
+        r"""Find the corresponding variable given the specified name.
+        """
+        pointer = self
+        for m_name in name.split("."):
+            if m_name.isdigit():
+                num = int(m_name)
+                pointer = pointer[num]  # type: ignore
+            else:
+                pointer = getattr(pointer, m_name)
+        return pointer
 
     def load_pretrained_config(self,
                                pretrained_model_name: Optional[str] = None,
@@ -69,39 +113,20 @@ class PretrainedMixin(ModuleBase):
 
         self.pretrained_model_dir = None
 
-        if self.model_name == "BERT":
-            load_func = load_pretrained_bert
-            transform_func = transform_bert_to_texar_config
-        elif self.model_name == "GPT2":
-            load_func = load_pretrained_gpt2
-            transform_func = transform_gpt2_to_texar_config
-        elif self.model_name == "XLNet":
-            load_func = load_pretrained_xlnet
-            transform_func = transform_xlnet_to_texar_config
-        else:
-            raise ValueError("Could not find this pre-trained model.")
-
         if pretrained_model_name is None:
             pretrained_model_name = self._hparams.pretrained_model_name
         if pretrained_model_name is not None:
-            self.pretrained_model_dir = load_func(
+            self.pretrained_model_dir = self._download_checkpoint(
                 pretrained_model_name, cache_dir)
-            pretrained_model_hparams = transform_func(self.pretrained_model_dir)
+            pretrained_model_hparams = self._transform_config(
+                self.pretrained_model_dir)
             self._hparams = HParams(
                 pretrained_model_hparams, self._hparams.todict())
 
     def init_pretrained_weights(self, *args, **kwargs):
-        if self.model_name == "BERT":
-            init_func = init_bert_checkpoint
-        elif self.model_name == "GPT2":
-            init_func = init_gpt2_checkpoint
-        elif self.model_name == "XLNet":
-            init_func = init_xlnet_checkpoint
-        else:
-            raise ValueError("Could not find this pre-trained model.")
-
         if self.pretrained_model_dir:
-            init_func(self, self.pretrained_model_dir, *args, **kwargs)
+            self._init_from_checkpoint(
+                self.pretrained_model_dir, *args, **kwargs)
         else:
             self.reset_parameters()
 
@@ -127,16 +152,3 @@ class PretrainedMixin(ModuleBase):
             'name': "pretrained_base",
             '@no_typecheck': ['pretrained_model_name']
         }
-
-    def forward(self, inputs, *args, **kwargs):
-        r"""Encodes the inputs and (optionally) conduct downstream prediction.
-
-        Args:
-            inputs: Inputs to the pre-trained module.
-            *args: Other arguments.
-            **kwargs: Keyword arguments.
-
-        Returns:
-            Encoding results or prediction results.
-        """
-        raise NotImplementedError

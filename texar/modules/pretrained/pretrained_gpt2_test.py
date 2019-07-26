@@ -5,7 +5,7 @@ Unit tests for GPT2 utils.
 import os
 import unittest
 
-from texar.modules.pretrained.gpt2_utils import *
+from texar.modules.pretrained.pretrained_gpt2 import *
 
 
 class GPT2UtilsTest(unittest.TestCase):
@@ -13,7 +13,7 @@ class GPT2UtilsTest(unittest.TestCase):
     """
 
     def test_load_pretrained_gpt2_AND_transform_gpt2_to_texar_config(self):
-        pretrained_model_dir = load_pretrained_gpt2(
+        pretrained_model_dir = PretrainedGPT2Mixin._download_checkpoint(
             pretrained_model_name="117M")
 
         info = list(os.walk(pretrained_model_dir))
@@ -26,7 +26,8 @@ class GPT2UtilsTest(unittest.TestCase):
         self.assertIn('model.ckpt.meta', files)
         self.assertIn('vocab.bpe', files)
 
-        model_config = transform_gpt2_to_texar_config(pretrained_model_dir)
+        model_config = PretrainedGPT2Mixin._transform_config(
+            pretrained_model_dir)
 
         exp_config = {
             'vocab_size': 50257,

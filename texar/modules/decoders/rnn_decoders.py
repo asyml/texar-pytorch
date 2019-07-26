@@ -526,6 +526,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         else:
             tensor = utils.get_first_in_structure(initial_state)
             assert tensor is not None
+            tensor: torch.Tensor
             state = self._cell.zero_state(batch_size=tensor.size(0))
             state = state._replace(cell_state=initial_state)
 

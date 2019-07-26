@@ -21,14 +21,14 @@ import torch
 
 from texar.modules.decoders.transformer_decoders import TransformerDecoder
 from texar.modules.embedders import PositionEmbedder, WordEmbedder
-from texar.modules.pretrained.pretrained_base import PretrainedMixin
+from texar.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
 
 __all__ = [
     "GPT2Decoder",
 ]
 
 
-class GPT2Decoder(TransformerDecoder, PretrainedMixin):
+class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
     r"""Raw GPT2 Transformer for decoding sequences.
 
     This module basically stacks
@@ -53,13 +53,10 @@ class GPT2Decoder(TransformerDecoder, PretrainedMixin):
             and default values.
     """
 
-    model_name = "GPT2"
-
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None):
-
         self.load_pretrained_config(pretrained_model_name, cache_dir, hparams)
 
         # Word embedding
@@ -73,7 +70,8 @@ class GPT2Decoder(TransformerDecoder, PretrainedMixin):
             hparams=self._hparams.position_embed)
 
         # The GPT2 decoder (a TransformerDecoder)
-        super().__init__(vocab_size=self._hparams.vocab_size,
+        super().__init__(embedding_fn=None,
+                         vocab_size=self._hparams.vocab_size,
                          output_layer=word_embedder.embedding,
                          hparams=None)
 
@@ -83,7 +81,7 @@ class GPT2Decoder(TransformerDecoder, PretrainedMixin):
 
         self.init_pretrained_weights()
 
-    def embed_tokens(self, tokens: torch.Tensor,
+    def embed_tokens(self, tokens: torch.LongTensor,  # pylint: disable=method-hidden
                      positions: torch.LongTensor) -> torch.Tensor:
         word_embeds = self.word_embedder(tokens)
         pos_embeds = self.position_embedder(positions)

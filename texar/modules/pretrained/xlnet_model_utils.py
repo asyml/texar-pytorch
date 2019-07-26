@@ -17,12 +17,12 @@ Model Utils of XLNet Modules.
 Adapted from
 https://github.com/zihangdai/xlnet/blob/master/modeling.py
 """
-
-from typing import Any, Dict, Optional, Tuple
+import itertools
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
+from torch.nn import functional as F
 
 from texar.core import get_layer
 from texar.module_base import ModuleBase
@@ -31,6 +31,7 @@ __all__ = [
     "PositionWiseFF",
     "RelativeMultiheadAttention",
     "RelativePositionalEncoding",
+    "params_except_in",
 ]
 
 
@@ -357,3 +358,12 @@ class RelativeMultiheadAttention(ModuleBase):
             output_g = None
 
         return output_h, output_g
+
+
+def params_except_in(module: nn.Module,
+                     except_names: List[str]) \
+        -> Iterable[nn.Parameter]:
+    return itertools.chain.from_iterable(
+        child.parameters() for name, child in
+        module.named_children()
+        if name not in except_names)

@@ -15,13 +15,12 @@
 Various helper classes and utilities for RNN decoders.
 """
 from abc import ABC
-from typing import (
-    Callable, Generic, List, Optional, Tuple, Type, TypeVar, Union, overload)
+from typing import Callable, Generic, Optional, Tuple, Type, TypeVar, Union
 
-import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical, Gumbel
 
+import torch
 from texar.utils import utils
 
 __all__ = [
@@ -236,7 +235,7 @@ class SingleEmbeddingHelper(EmbeddingHelper[torch.LongTensor], ABC):
         all_finished = torch.all(finished).item()
 
         times = torch.full_like(sample_ids, time + 1)
-        embeddings = embedding_fn(sample_ids, times)  # type: ignore
+        embeddings = embedding_fn(sample_ids, times)
 
         next_inputs = (embeddings if not all_finished else self._start_inputs)
         return (finished, next_inputs)
