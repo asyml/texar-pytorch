@@ -69,6 +69,8 @@ class XLNetRegressor(RegressorBase):
             cache_dir=cache_dir,
             hparams=encoder_hparams)
 
+        # TODO: The logic here is very similar to that in XLNetClassifier.
+        #  We need to reduce the code redundancy.
         if self._hparams.use_projection:
             if self._hparams.regr_strategy == 'all_time':
                 self.projection = nn.Linear(
@@ -187,6 +189,8 @@ class XLNetRegressor(RegressorBase):
         Returns:
             The parameter groups, used as the first argument for optimizers.
         """
+
+        # TODO: Same logic in XLNetClassifier. Reduce code redundancy.
 
         if lr_layer_scale != 1.0:
             if lr is None:
