@@ -112,7 +112,8 @@ def init_gpt2_checkpoint(model: nn.Module, cache_dir: str):
 
                 output_pointer = name_to_variable(
                     model.decoder, "_output_layer.weight")
-                if not isinstance(output_pointer, layers.Identity):
+                if (output_pointer is not layers.identity) or \
+                        (not isinstance(output_pointer, layers.Identity)):
                     assert output_pointer.shape == array.shape
                     output_pointer.data = torch.from_numpy(array)
             elif name == "model/wpe":
@@ -196,7 +197,8 @@ def name_to_variable(model: nn.Module, name: str) -> nn.Module:
             num = int(m_name)
             pointer = pointer[num]  # type: ignore
         else:
-            if not isinstance(pointer, layers.Identity):
+            if (pointer is not layers.identity) or \
+                    (not isinstance(pointer, layers.Identity)):
                 pointer = getattr(pointer, m_name)
     return pointer
 

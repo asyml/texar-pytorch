@@ -37,10 +37,15 @@ State = TypeVar('State')
 Output = TypeVar('Output')  # output type can be of any nested structure
 
 
-def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
+def _make_output_layer(layer: Optional[Union[nn.Module,
+                                             torch.Tensor,
+                                             Callable[[torch.Tensor],
+                                                      torch.Tensor]]],
                        vocab_size: Optional[int],
                        output_size: int,
-                       bias: bool) -> Tuple[nn.Module, Optional[int]]:
+                       bias: bool) -> \
+        Tuple[Union[nn.Module, Callable[[torch.Tensor], torch.Tensor]],
+              Optional[int]]:
     r"""Construct the output layer for decoders. Based on the input, multiple
     types of output layers could be constructed:
 
@@ -65,6 +70,7 @@ def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
                 "wanted.")
         output_layer = nn.Linear(output_size, vocab_size, bias)
     elif torch.is_tensor(layer):
+        assert isinstance(layer, torch.Tensor)
         vocab_size = layer.size(0)
         output_layer = nn.Linear(layer.size(1), vocab_size, bias)
         if not isinstance(layer, nn.Parameter):

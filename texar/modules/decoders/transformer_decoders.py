@@ -90,7 +90,10 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
     def __init__(self,
                  vocab_size: Optional[int] = None,
-                 output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
+                 output_layer: Optional[Union[nn.Module,
+                                              torch.Tensor,
+                                              Callable[[torch.Tensor],
+                                                       torch.Tensor]]] = None,
                  hparams=None):
         super().__init__(vocab_size,
                          input_time_major=False,
