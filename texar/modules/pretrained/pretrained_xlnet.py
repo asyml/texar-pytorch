@@ -17,14 +17,13 @@ Utils of XLNet Modules.
 
 import json
 import os
-from typing import Callable, Dict, Optional, Union, Any
+from abc import ABC
+from typing import Any, Callable, Dict, Optional, Union
 
 import torch
 from torch import nn
 
-from texar.data.data_utils import maybe_download
 from texar.modules.pretrained.pretrained_base import PretrainedMixin
-from texar.modules.pretrained.pretrained_utils import default_download_dir
 from texar.modules.pretrained.xlnet_model_utils import (
     PositionWiseFF, RelativeMultiheadAttention)
 
@@ -33,39 +32,19 @@ __all__ = [
 ]
 
 _XLNET_PATH = "https://storage.googleapis.com/xlnet/released_models/"
-_MODEL2URL = {
-    'xlnet-base-cased':
-        _XLNET_PATH + "cased_L-12_H-768_A-12.zip",
-    'xlnet-large-cased':
-        _XLNET_PATH + "cased_L-24_H-1024_A-16.zip",
-}
 
 
-class PretrainedXLNetMixin(PretrainedMixin):
-    @staticmethod
-    def _download_checkpoint(pretrained_model_name: str,
-                             cache_dir: Optional[str] = None) -> str:
-        if pretrained_model_name in _MODEL2URL:
-            download_path = _MODEL2URL[pretrained_model_name]
-        else:
-            raise ValueError(
-                "Pre-trained model not found: {}".format(pretrained_model_name))
+class PretrainedXLNetMixin(PretrainedMixin, ABC):
+    _MODEL_NAME = "XLNet"
+    _MODEL2URL = {
+        'xlnet-base-cased':
+            _XLNET_PATH + "cased_L-12_H-768_A-12.zip",
+        'xlnet-large-cased':
+            _XLNET_PATH + "cased_L-24_H-1024_A-16.zip",
+    }
 
-        if cache_dir is None:
-            cache_dir = default_download_dir("xlnet")
-
-        file_name = download_path.split('/')[-1]
-
-        cache_path = os.path.join(cache_dir, 'xlnet_' + file_name.split('.')[0])
-        if not os.path.exists(cache_path):
-            maybe_download(download_path, cache_dir, extract=True)
-        else:
-            print("Using cached pre-trained XLNet model from: %s." % cache_path)
-
-        return cache_path
-
-    @staticmethod
-    def _transform_config(cache_dir: str) -> Dict[str, Any]:
+    @classmethod
+    def _transform_config(cls, cache_dir: str) -> Dict[str, Any]:
         info = list(os.walk(cache_dir))
         root, _, files = info[0]
         config_path = None

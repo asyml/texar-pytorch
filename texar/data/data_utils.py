@@ -124,15 +124,14 @@ def maybe_download(urls, path, filenames=None, extract=False):
 def _download(url: str, filename: str, path: str) -> str:
     def _progress_hook(count, block_size, total_size):
         percent = float(count * block_size) / float(total_size) * 100.
-        sys.stdout.write(f'\r>> Downloading {filename} {percent:.1f}%%')
+        sys.stdout.write(f'\r>> Downloading {filename} {percent:.1f}%')
         sys.stdout.flush()
 
     filepath = os.path.join(path, filename)
     filepath, _ = urllib.request.urlretrieve(url, filepath, _progress_hook)
     print()
     statinfo = os.stat(filepath)
-    print('Successfully downloaded {} {} bytes.'.format(
-        filename, statinfo.st_size))
+    print(f'Successfully downloaded {filename} {statinfo.st_size} bytes')
 
     return filepath
 
@@ -172,7 +171,7 @@ def _download_from_google_drive(url: str, filename: str, path: str) -> str:
             if chunk:
                 f.write(chunk)
 
-    print('Successfully downloaded {}.'.format(filename))
+    print(f'Successfully downloaded {filename}')
 
     return filepath
 

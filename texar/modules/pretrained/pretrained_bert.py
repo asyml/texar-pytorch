@@ -17,67 +17,41 @@ Utils of BERT Modules.
 
 import json
 import os
-from typing import Any, Dict, Optional
+from abc import ABC
+from typing import Any, Dict
 
 import torch
 
-from texar.data.data_utils import maybe_download
 from texar.modules.pretrained.pretrained_base import PretrainedMixin
-from texar.modules.pretrained.pretrained_utils import default_download_dir
 
 __all__ = [
     "PretrainedBERTMixin",
 ]
 
 _BERT_PATH = "https://storage.googleapis.com/bert_models/"
-_MODEL2URL = {
-    'bert-base-uncased':
-        _BERT_PATH + "2018_10_18/uncased_L-12_H-768_A-12.zip",
-    'bert-large-uncased':
-        _BERT_PATH + "2018_10_18/uncased_L-24_H-1024_A-16.zip",
-    'bert-base-cased':
-        _BERT_PATH + "2018_10_18/cased_L-12_H-768_A-12.zip",
-    'bert-large-cased':
-        _BERT_PATH + "2018_10_18/cased_L-24_H-1024_A-16.zip",
-    'bert-base-multilingual-uncased':
-        _BERT_PATH + "2018_11_23/multi_cased_L-12_H-768_A-12.zip",
-    'bert-base-multilingual-cased':
-        _BERT_PATH + "2018_11_03/multilingual_L-12_H-768_A-12.zip",
-    'bert-base-chinese':
-        _BERT_PATH + "2018_11_03/chinese_L-12_H-768_A-12.zip",
-}
 
 
-class PretrainedBERTMixin(PretrainedMixin):
-    @staticmethod
-    def _download_checkpoint(pretrained_model_name: str,
-                             cache_dir: Optional[str] = None) -> str:
-        r"""Return the directory in which the pretrained `BERT` is cached.
-            """
-        if pretrained_model_name in _MODEL2URL:
-            download_path = _MODEL2URL[pretrained_model_name]
-        else:
-            raise ValueError(
-                f"Pre-trained model not found: {pretrained_model_name}")
+class PretrainedBERTMixin(PretrainedMixin, ABC):
+    _MODEL_NAME = "BERT"
+    _MODEL2URL = {
+        'bert-base-uncased':
+            _BERT_PATH + "2018_10_18/uncased_L-12_H-768_A-12.zip",
+        'bert-large-uncased':
+            _BERT_PATH + "2018_10_18/uncased_L-24_H-1024_A-16.zip",
+        'bert-base-cased':
+            _BERT_PATH + "2018_10_18/cased_L-12_H-768_A-12.zip",
+        'bert-large-cased':
+            _BERT_PATH + "2018_10_18/cased_L-24_H-1024_A-16.zip",
+        'bert-base-multilingual-uncased':
+            _BERT_PATH + "2018_11_23/multi_cased_L-12_H-768_A-12.zip",
+        'bert-base-multilingual-cased':
+            _BERT_PATH + "2018_11_03/multilingual_L-12_H-768_A-12.zip",
+        'bert-base-chinese':
+            _BERT_PATH + "2018_11_03/chinese_L-12_H-768_A-12.zip",
+    }
 
-        if cache_dir is None:
-            cache_dir = default_download_dir("bert")
-
-        file_name = download_path.split('/')[-1]
-
-        cache_path = os.path.join(cache_dir, file_name.split('.')[0])
-        if not os.path.exists(cache_path):
-            maybe_download(download_path, cache_dir, extract=True)
-        else:
-            print(f"Using cached pre-trained BERT model from: {cache_path}.")
-
-        return cache_path
-
-    @staticmethod
-    def _transform_config(cache_dir: str) -> Dict[str, Any]:
-        r"""Load the Json config file and transform it into Texar style
-            configuration.
-            """
+    @classmethod
+    def _transform_config(cls, cache_dir: str) -> Dict[str, Any]:
         info = list(os.walk(cache_dir))
         root, _, files = info[0]
         config_path = None
@@ -90,63 +64,61 @@ class PretrainedBERTMixin(PretrainedMixin):
         with open(config_path) as f:
             config_ckpt = json.loads(f.read())
 
-        configs = {}
         hidden_dim = config_ckpt['hidden_size']
-        configs['hidden_size'] = hidden_dim
-        configs['embed'] = {
-            'name': 'word_embeddings',
-            'dim': hidden_dim}
-        configs['vocab_size'] = config_ckpt['vocab_size']
-
-        configs['segment_embed'] = {
-            'name': 'token_type_embeddings',
-            'dim': hidden_dim}
-        configs['type_vocab_size'] = config_ckpt['type_vocab_size']
-
-        configs['position_embed'] = {
-            'name': 'position_embeddings',
-            'dim': hidden_dim}
-        configs['position_size'] = config_ckpt['max_position_embeddings']
-
-        configs['encoder'] = {
-            'name': 'encoder',
-            'embedding_dropout': config_ckpt['hidden_dropout_prob'],
-            'num_blocks': config_ckpt['num_hidden_layers'],
-            'multihead_attention': {
-                'use_bias': True,
-                'num_units': hidden_dim,
-                'num_heads': config_ckpt['num_attention_heads'],
-                'output_dim': hidden_dim,
-                'dropout_rate': config_ckpt['attention_probs_dropout_prob'],
-                'name': 'self'
+        configs = {
+            'hidden_size': hidden_dim,
+            'embed': {
+                'name': 'word_embeddings',
+                'dim': hidden_dim
             },
-            'residual_dropout': config_ckpt['hidden_dropout_prob'],
-            'dim': hidden_dim,
-            'use_bert_config': True,
-            'poswise_feedforward': {
-                "layers": [
-                    {
+            'vocab_size': config_ckpt['vocab_size'],
+            'segment_embed': {
+                'name': 'token_type_embeddings',
+                'dim': hidden_dim
+            },
+            'type_vocab_size': config_ckpt['type_vocab_size'],
+            'position_embed': {
+                'name': 'position_embeddings',
+                'dim': hidden_dim
+            },
+            'position_size': config_ckpt['max_position_embeddings'],
+            'encoder': {
+                'name': 'encoder',
+                'embedding_dropout': config_ckpt['hidden_dropout_prob'],
+                'num_blocks': config_ckpt['num_hidden_layers'],
+                'multihead_attention': {
+                    'use_bias': True,
+                    'num_units': hidden_dim,
+                    'num_heads': config_ckpt['num_attention_heads'],
+                    'output_dim': hidden_dim,
+                    'dropout_rate': config_ckpt['attention_probs_dropout_prob'],
+                    'name': 'self'
+                },
+                'residual_dropout': config_ckpt['hidden_dropout_prob'],
+                'dim': hidden_dim,
+                'use_bert_config': True,
+                'poswise_feedforward': {
+                    "layers": [{
                         'type': 'Linear',
                         'kwargs': {
                             'in_features': hidden_dim,
                             'out_features': config_ckpt['intermediate_size'],
                             'bias': True,
                         }
-                    },
-                    {
+                    }, {
                         'type': 'Bert' + config_ckpt['hidden_act'].upper()
-                    },
-                    {
+                    }, {
                         'type': 'Linear',
                         'kwargs': {
                             'in_features': config_ckpt['intermediate_size'],
                             'out_features': hidden_dim,
                             'bias': True,
                         }
-                    },
-                ],
-            },
+                    }],
+                },
+            }
         }
+
         return configs
 
     def _init_from_checkpoint(self, cache_dir: str, **kwargs):

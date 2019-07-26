@@ -18,59 +18,33 @@ Utils of GPT2 Modules.
 import json
 import os
 import sys
-from typing import Any, Dict, Optional
+from abc import ABC
+from typing import Any, Dict
 
 import torch
 from torch import nn
 
-from texar.data.data_utils import maybe_download
 from texar.modules.pretrained.pretrained_base import PretrainedMixin
-from texar.modules.pretrained.pretrained_utils import default_download_dir
 
 __all__ = [
     "PretrainedGPT2Mixin",
 ]
 
 _GPT2_PATH = "https://storage.googleapis.com/gpt-2/models/"
-_MODEL2URL = {
-    '117M': _GPT2_PATH + "117M",
-    '345M': _GPT2_PATH + "345M",
-}
+_CHECKPOINT_FILES = [
+    "checkpoint", "encoder.json", "hparams.json", "vocab.bpe",
+    "model.ckpt.data-00000-of-00001", "model.ckpt.index", "model.ckpt.meta"]
 
 
-class PretrainedGPT2Mixin(PretrainedMixin):
-    @staticmethod
-    def _download_checkpoint(pretrained_model_name: str,
-                             cache_dir: Optional[str] = None) -> str:
-        r"""Return the directory in which the pretrained `GPT2` is cached.
-            """
-        if pretrained_model_name in _MODEL2URL:
-            download_path = _MODEL2URL[pretrained_model_name]
-        else:
-            raise ValueError(
-                f"Pre-trained model not found: {pretrained_model_name}")
+class PretrainedGPT2Mixin(PretrainedMixin, ABC):
+    _MODEL_NAME = "GPT2"
+    _MODEL2URL = {
+        '117M': [_GPT2_PATH + f"117M/{file}" for file in _CHECKPOINT_FILES],
+        '345M': [_GPT2_PATH + f"345M/{file}" for file in _CHECKPOINT_FILES],
+    }
 
-        if cache_dir is None:
-            cache_dir = default_download_dir("gpt2")
-
-        file_name = download_path.split('/')[-1]
-
-        cache_path = os.path.join(cache_dir, file_name.split('.')[0])
-        if not os.path.exists(cache_path):
-            files_to_load = [
-                "checkpoint", "encoder.json", "hparams.json",
-                "model.ckpt.data-00000-of-00001", "model.ckpt.index",
-                "model.ckpt.meta", "vocab.bpe"]
-            for filename in files_to_load:
-                maybe_download(
-                    os.path.join(download_path, filename), cache_path)
-        else:
-            print(f"Using cached pre-trained GPT2 model from: {cache_path}.")
-
-        return cache_path
-
-    @staticmethod
-    def _transform_config(cache_dir: str) -> Dict[str, Any]:
+    @classmethod
+    def _transform_config(cls, cache_dir: str) -> Dict[str, Any]:
         info = list(os.walk(cache_dir))
         root, _, files = info[0]
         config_path = None
