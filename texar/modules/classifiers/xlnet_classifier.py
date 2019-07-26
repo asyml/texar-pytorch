@@ -21,10 +21,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from texar.core.layers import get_initializer
 from texar.hyperparams import HParams
 from texar.modules.classifiers.classifier_base import ClassifierBase
 from texar.modules.encoders.xlnet_encoder import XLNetEncoder
-from texar.modules.pretrained.xlnet_utils import params_except_in
+from texar.modules.pretrained.xlnet_utils import params_except_in, init_weights
 from texar.utils.utils import dict_fetch
 
 
@@ -101,6 +102,22 @@ class XLNetClassifier(ClassifierBase):
                 self.hidden_to_logits = nn.Linear(
                     self._encoder.output_size, self.num_classes,
                     **logit_kwargs)
+
+        if self._hparams.initializer:
+            initialize = get_initializer(self._hparams.initializer)
+            assert initialize is not None
+            if self._hparams.use_projection:
+                initialize(self.projection.weight)
+                initialize(self.projection.bias)
+            if self.hidden_to_logits:
+                initialize(self.hidden_to_logits.weight)
+                if self.hidden_to_logits.bias:
+                    initialize(self.hidden_to_logits.bias)
+        else:
+            if self._hparams.use_projection:
+                self.projection.apply(init_weights)
+            if self.hidden_to_logits:
+                self.hidden_to_logits.apply(init_weights)
 
         self.is_binary = (self.num_classes == 1) or \
                          (self.num_classes <= 0 and

@@ -37,6 +37,7 @@ __all__ = [
     "load_pretrained_xlnet",
     "transform_xlnet_to_texar_config",
     "params_except_in",
+    "init_weights",
 ]
 
 
@@ -217,3 +218,12 @@ def params_except_in(module: nn.Module,
         child.parameters() for name, child in
         module.named_children()
         if name not in except_names)
+
+
+def init_weights(module: nn.Module):
+    if isinstance(module, nn.Linear):
+        nn.init.normal_(module.weight, 0.0, 0.02)
+        if module.bias is not None:
+            nn.init.zeros_(module.bias)
+    elif isinstance(module, nn.Embedding):
+        nn.init.normal_(module.weight, 0.0, 0.02)

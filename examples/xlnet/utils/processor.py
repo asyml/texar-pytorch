@@ -13,15 +13,91 @@
 # limitations under the License.
 
 """
-Data processors for GLUE datasets. Adapted from
+Data processors. Adapted from
 https://github.com/zihangdai/xlnet/blob/master/run_classifier.py
 """
 
+import csv
 import logging
 from abc import ABC
-from typing import List
+from pathlib import Path
+from typing import NamedTuple, Optional, Union, List, Dict, Type
 
-from xlnet.data.processor import InputExample, DataProcessor
+
+class InputExample(NamedTuple):
+    r"""A single training/test example for simple sequence classification."""
+    guid: str
+    r"""Unique id for the example."""
+    text_a: str
+    r"""string. The untokenized text of the first sequence. For single sequence
+    tasks, only this sequence must be specified."""
+    text_b: Optional[str]
+    r"""(Optional) string. The untokenized text of the second sequence. Only
+    needs to be specified for sequence pair tasks."""
+    label: Optional[Union[str, float]]
+    r"""(Optional) string. The label of the example. This should be specified
+    for train and dev examples, but not for test examples."""
+
+
+class DataProcessor:
+    r"""Base class for data converters for sequence classification data sets."""
+    labels: List[str]
+    is_regression: bool = False
+
+    task_name: str
+    __task_dict__: Dict[str, Type['DataProcessor']] = {}
+
+    def __init__(self, data_dir: str):
+        self.data_dir = Path(data_dir)
+
+    @classmethod
+    def register(cls, *names):
+        def decorator(klass):
+            for name in names:
+                prev_processor = DataProcessor.__task_dict__.get(
+                    name.lower(), None)
+                if prev_processor is not None:
+                    raise ValueError(
+                        f"Cannot register {klass} as {name}. "
+                        f"The name is already taken by {prev_processor}")
+                DataProcessor.__task_dict__[name.lower()] = klass
+            klass.task_name = names[0]
+            return klass
+
+        return decorator
+
+    def get_train_examples(self) -> List[InputExample]:
+        r"""Gets a collection of `InputExample`s for the train set."""
+        raise NotImplementedError
+
+    def get_dev_examples(self) -> List[InputExample]:
+        r"""Gets a collection of `InputExample`s for the dev set."""
+        raise NotImplementedError
+
+    def get_test_examples(self) -> List[InputExample]:
+        r"""Gets a collection of `InputExample`s for prediction."""
+        raise NotImplementedError
+
+    @classmethod
+    def _read_tsv(cls, input_file: Path,
+                  quotechar: Optional[str] = None) -> List[List[str]]:
+        """Reads a tab separated value file."""
+        with input_file.open('r') as f:
+            reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
+            lines = []
+            for line in reader:
+                if len(line) == 0:
+                    continue
+                lines.append(line)
+            return lines
+
+
+def get_processor_class(task: str) -> Type[DataProcessor]:
+    task = task.lower()
+    klass = DataProcessor.__task_dict__.get(task, None)
+    if klass is None:
+        raise ValueError(f"Unsupported task {task}")
+    return klass
 
 
 class GLUEProcessor(DataProcessor, ABC):
@@ -161,4 +237,59 @@ class StsbProcessor(GLUEProcessor):
                 label = float(line[self.label_column])
             examples.append(InputExample(guid, text_a, text_b, label))
 
+        return examples
+
+
+@DataProcessor.register("Yelp5")
+class Yelp5Processor(DataProcessor):
+    labels = ["1", "2", "3", "4", "5"]
+
+    def get_train_examples(self) -> List[InputExample]:
+        return self._create_examples(self.data_dir / "train.csv")
+
+    def get_dev_examples(self) -> List[InputExample]:
+        return self._create_examples(self.data_dir / "test.csv")
+
+    def get_test_examples(self):  # pylint: disable=no-self-use
+        raise TypeError("The Yelp 5 dataset does not have a test set.")
+
+    @staticmethod
+    def _create_examples(input_file: Path) -> List[InputExample]:
+        """Creates examples for the training and dev sets."""
+        examples = []
+        with input_file.open() as f:
+            reader = csv.reader(f)
+            for i, line in enumerate(reader):
+                label = line[0]
+                text_a = line[1].replace('""', '"').replace('\\"', '"')
+                examples.append(InputExample(
+                    guid=str(i), text_a=text_a, text_b=None, label=label))
+        return examples
+
+
+@DataProcessor.register("IMDB")
+class ImdbProcessor(DataProcessor):
+    labels = ["neg", "pos"]
+
+    def get_train_examples(self) -> List[InputExample]:
+        return self._create_examples(self.data_dir / "train")
+
+    def get_dev_examples(self) -> List[InputExample]:
+        return self._create_examples(self.data_dir / "test")
+
+    def get_test_examples(self):  # pylint: disable=no-self-use
+        raise TypeError("The IMDB dataset does not have a test set.")
+
+    @staticmethod
+    def _create_examples(data_dir: Path) -> List[InputExample]:
+        examples = []
+        for label in ["neg", "pos"]:
+            cur_dir = data_dir / label
+            for filename in cur_dir.iterdir():
+                if filename.suffix != "txt":
+                    continue
+                with (cur_dir / filename).open() as f:
+                    text = f.read().strip().replace("<br />", " ")
+                examples.append(InputExample(
+                    guid=str(filename), text_a=text, text_b=None, label=label))
         return examples

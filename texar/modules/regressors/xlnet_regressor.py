@@ -21,10 +21,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from texar.core.layers import get_initializer
 from texar.hyperparams import HParams
 from texar.modules.regressors.regressor_base import RegressorBase
 from texar.modules.encoders.xlnet_encoder import XLNetEncoder
-from texar.modules.pretrained.xlnet_utils import params_except_in
+from texar.modules.pretrained.xlnet_utils import params_except_in, init_weights
 from texar.utils.utils import dict_fetch
 
 
@@ -94,6 +95,20 @@ class XLNetRegressor(RegressorBase):
         else:
             self.hidden_to_logits = nn.Linear(
                 self._encoder.output_size, 1, **logit_kwargs)
+
+        if self._hparams.initializer:
+            initialize = get_initializer(self._hparams.initializer)
+            assert initialize is not None
+            if self._hparams.use_projection:
+                initialize(self.projection.weight)
+                initialize(self.projection.bias)
+            initialize(self.hidden_to_logits.weight)
+            if self.hidden_to_logits.bias:
+                initialize(self.hidden_to_logits.bias)
+        else:
+            if self._hparams.use_projection:
+                self.projection.apply(init_weights)
+            self.hidden_to_logits.apply(init_weights)
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:

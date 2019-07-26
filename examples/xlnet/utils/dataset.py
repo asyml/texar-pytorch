@@ -26,8 +26,8 @@ import torch
 import tqdm
 import texar as tx
 
-from xlnet.data import utils
-from xlnet.data.processor import DataProcessor, get_processor_class
+from utils import data_utils
+from utils.processor import DataProcessor, get_processor_class
 
 __all__ = [
     "construct_dataset",
@@ -49,7 +49,7 @@ def get_record_feature_types(seq_length: int, is_regression: bool):
 
 
 def construct_dataset(processor: DataProcessor, output_dir: str,
-                      max_seq_length: int, tokenize_fn: utils.TokenizeFn,
+                      max_seq_length: int, tokenize_fn: data_utils.TokenizeFn,
                       file_prefix: Optional[str] = None,
                       overwrite_data: bool = False):
     """Convert a set of `InputExample`s to a TFRecord file."""
@@ -82,7 +82,7 @@ def construct_dataset(processor: DataProcessor, output_dir: str,
         output_file = os.path.join(output_dir, f"{file_prefix}{split}.pkl")
         writer = tx.data.RecordData.writer(output_file, feature_types)
         for example in tqdm.tqdm(examples, ncols=80):
-            feature = utils.convert_single_example(
+            feature = data_utils.convert_single_example(
                 example, processor.labels, max_seq_length, tokenize_fn)
 
             features: Dict[str, Any] = collections.OrderedDict()

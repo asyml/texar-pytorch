@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Example of building XLNet language model for classification/regression.
+"""
+
+from typing import Optional, Dict
 
 import argparse
 import importlib
@@ -18,15 +22,20 @@ import logging
 import os
 import random
 import time
-from typing import Optional, Dict
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 import tqdm
 import sentencepiece as spm
+
 import texar as tx
 
-import xlnet
+# pylint: disable=wildcard-import
+
+from utils.processor import *
+from utils.processor import get_processor_class
+from utils import data_utils, dataset, metrics, model_utils
 
 
 def load_config_into_args(config_path: str, args):
@@ -55,9 +64,10 @@ def parse_args():
         help="Directory to save model checkpoints")
 
     parser.add_argument(
-        "--pretrained", type=str,
-        default="pretrained/xlnet_cased_L-24_H-1024_A-16/xlnet_model.ckpt",
-        help="Path to the pretrained XLNet model checkpoint")
+        "--pretrained-model-name", type=str,
+        default="xlnet-large-cased",
+        help="The pre-trained model name to load selected in the list of: "
+             "`xlnet-base-cased`, `xlnet-large-cased`.")
     parser.add_argument(
         "--data-dir", type=str, default=None,
         help="Path to the directory containing raw data. "
@@ -66,10 +76,6 @@ def parse_args():
         "--cache-dir", type=str, default=None,
         help="Path to the directory to cache processed data. "
              "Defaults to 'processed_data/<task name>'")
-    parser.add_argument(
-        "--spm-model-path", type=str,
-        default="pretrained/xlnet_cased_L-24_H-1024_A-16/spiece.model",
-        help="Path to the sentencepiece model")
     parser.add_argument(
         "--uncased", type=bool, default=False,
         help="Whether the pretrained model is an uncased model")
@@ -84,22 +90,28 @@ def evaluate(model, iterator, is_regression: bool = False, print_fn=None,
              tqdm_kwargs=None):
     if print_fn is None:
         print_fn = print
-    metric: xlnet.model.StreamingMetric
+    metric: metrics.StreamingMetric
     if is_regression:
-        metric = xlnet.model.StreamingPearsonR()
+        metric = metrics.StreamingPearsonR()
     else:
-        metric = xlnet.model.StreamingAccuracy()
+        metric = metrics.StreamingAccuracy()
     avg_loss = tx.utils.AverageRecorder()
     progress = tqdm.tqdm(iterator, ncols=80, **(tqdm_kwargs or {}))
     for batch in progress:
-        loss, logits = model(
-            batch.input_ids.t(), batch.segment_ids.t(),
-            batch.label_ids, batch.input_mask.t())
-        gold_labels = batch.label_ids.view(-1).tolist()
+        labels = batch.label_ids
         if is_regression:
-            pred_labels = logits.tolist()
+            preds = model(token_ids=batch.input_ids,
+                          segment_ids=batch.segment_ids,
+                          input_mask=batch.input_mask)
+            loss = (preds - labels.view(-1)) ** 2
         else:
-            pred_labels = torch.argmax(logits, dim=1).tolist()
+            logits, preds = model(token_ids=batch.input_ids,
+                                  segment_ids=batch.segment_ids,
+                                  input_mask=batch.input_mask)
+            loss = F.cross_entropy(logits, labels.view(-1), reduction='none')
+
+        gold_labels = labels.view(-1).tolist()
+        pred_labels = preds.tolist()
         metric.add(gold_labels, pred_labels)
         avg_loss.add(loss.mean().item())
         progress.set_postfix({metric.name: f"{metric.value():.4f}"})
@@ -110,19 +122,26 @@ def evaluate(model, iterator, is_regression: bool = False, print_fn=None,
 def construct_datasets(args, device: Optional[torch.device] = None) \
         -> Dict[str, tx.data.RecordData]:
     sp_model = spm.SentencePieceProcessor()
-    sp_model.Load(args.spm_model_path)
+
+    pretrained_model_dir = tx.modules.load_pretrained_xlnet(
+        pretrained_model_name=args.pretrained_model_name)
+
+    spm_model_path = os.path.join(pretrained_model_dir, "spiece.model")
+    sp_model.Load(spm_model_path)
 
     cache_prefix = f"length{args.max_seq_len}"
-    tokenize_fn = xlnet.data.create_tokenize_fn(sp_model, args.uncased)
-    processor_class = xlnet.data.get_processor_class(args.task)
+    tokenize_fn = data_utils.create_tokenize_fn(sp_model, args.uncased)
+    processor_class = get_processor_class(args.task)
     data_dir = args.data_dir or f"data/{processor_class.task_name}"
     cache_dir = args.cache_dir or f"processed_data/{processor_class.task_name}"
     task_processor = processor_class(data_dir)
-    xlnet.data.construct_dataset(
-        task_processor, cache_dir, args.max_seq_len,
-        tokenize_fn, file_prefix=cache_prefix)
+    dataset.construct_dataset(task_processor,
+                              cache_dir,
+                              args.max_seq_len,
+                              tokenize_fn,
+                              file_prefix=cache_prefix)
 
-    datasets = xlnet.data.load_datasets(
+    datasets = dataset.load_datasets(
         args.task, cache_dir, args.max_seq_len, args.batch_size,
         file_prefix=cache_prefix, eval_batch_size=args.eval_batch_size,
         shuffle_buffer=None, device=device)
@@ -150,25 +169,23 @@ def main(args):
     iterator = tx.data.DataIterator(datasets)
     print("Dataset constructed")
 
-    processor_class = xlnet.data.get_processor_class(args.task)
+    processor_class = get_processor_class(args.task)
     is_regression = processor_class.is_regression
     if is_regression:
-        model = xlnet.model.XLNetRegressor()
+        model = tx.modules.XLNetRegressor(
+            pretrained_model_name=args.pretrained_model_name)
     else:
-        model = xlnet.model.XLNetClassifier(
+        model = tx.modules.XLNetClassifier(
+            pretrained_model_name=args.pretrained_model_name,
             hparams={"num_classes": len(processor_class.labels)})
-    model.apply(xlnet.model.init_weights)
     print("Weights initialized")
 
     if args.checkpoint is not None:
         model.load_state_dict(torch.load(args.checkpoint, map_location=device))
         print(f"Loaded checkpoint from {args.checkpoint}")
-    else:
-        xlnet.model.load_from_tf_checkpoint(model, args.pretrained)
-        print(f"Loaded pretrained weights from {args.pretrained}")
+
     model = model.to(device)
     print("Model constructed")
-    print("Model structure:", model)
 
     def eval_all_splits():
         model.eval()
@@ -193,7 +210,7 @@ def main(args):
     optim = torch.optim.Adam(
         model.param_groups(args.lr, args.lr_layer_decay_rate), lr=args.lr,
         eps=args.adam_eps, weight_decay=args.weight_decay)
-    lambda_lr = xlnet.model.warmup_lr_lambda(
+    lambda_lr = model_utils.warmup_lr_lambda(
         args.train_steps, args.warmup_steps, args.min_lr_ratio)
     scheduler = torch.optim.lr_scheduler.LambdaLR(optim, lambda_lr)
 
@@ -201,13 +218,21 @@ def main(args):
     train_steps = 0
     grad_steps = 0
     total_batch_size = args.batch_size * args.backwards_per_step
-    progress = tqdm.tqdm(xlnet.data.repeat(
+    progress = tqdm.tqdm(data_utils.repeat(
         lambda: iterator.get_iterator('train')), ncols=80)
     for batch in progress:
         model.train()
-        loss, _ = model(
-            batch.input_ids.t(), batch.segment_ids.t(),
-            batch.label_ids, batch.input_mask.t())
+        labels = batch.label_ids
+        if is_regression:
+            preds = model(token_ids=batch.input_ids,
+                          segment_ids=batch.segment_ids,
+                          input_mask=batch.input_mask)
+            loss = (preds - labels.view(-1)) ** 2
+        else:
+            logits, _ = model(token_ids=batch.input_ids,
+                              segment_ids=batch.segment_ids,
+                              input_mask=batch.input_mask)
+            loss = F.cross_entropy(logits, labels.view(-1), reduction='none')
         loss = loss.sum() / total_batch_size
         avg_loss.add(loss.item() * args.backwards_per_step)
         loss.backward()

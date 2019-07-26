@@ -22,7 +22,8 @@ from texar.core import layers
 from texar.modules.decoders.decoder_base import DecoderBase
 from texar.modules.decoders.decoder_helpers import Helper, SampleEmbeddingHelper
 from texar.modules.encoders.xlnet_encoder import XLNetEncoder
-from texar.modules.pretrained import xlnet_utils
+from texar.modules.pretrained.xlnet_utils import (init_xlnet_checkpoint,
+                                                  init_weights)
 from texar.utils import get_instance
 
 __all__ = [
@@ -79,8 +80,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
         self.lm_bias = nn.Parameter(torch.zeros(self._hparams.vocab_size))
 
         if self.pretrained_model_dir:
-            xlnet_utils.init_xlnet_checkpoint(self,
-                                              self.pretrained_model_dir)
+            init_xlnet_checkpoint(self, self.pretrained_model_dir)
         elif self._hparams.initializer:
             initialize = layers.get_initializer(self._hparams.initializer)
             assert initialize is not None
@@ -93,6 +93,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
             self.reset_parameters()
 
     def reset_parameters(self):
+        self.apply(init_weights)
         if not self._hparams.untie_r:
             nn.init.normal_(self.r_w_bias, 0.0, 0.02)
             nn.init.normal_(self.r_r_bias, 0.0, 0.02)

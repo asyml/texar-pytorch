@@ -27,7 +27,8 @@ from texar.hyperparams import HParams
 from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.pretrained.pretrained_base import PretrainedBase
 from texar.modules.pretrained.xlnet_utils import (init_xlnet_checkpoint,
-                                                  params_except_in)
+                                                  params_except_in,
+                                                  init_weights)
 from texar.modules.pretrained.xlnet_model_utils import (
     PositionWiseFF, RelativePositionalEncoding, RelativeMultiheadAttention)
 from texar.utils.utils import dict_fetch, sum_tensors
@@ -128,6 +129,7 @@ class XLNetEncoder(PretrainedBase, EncoderBase):
                 self.reset_parameters()
 
     def reset_parameters(self):
+        self.apply(init_weights)
         if not self._hparams.untie_r:
             nn.init.normal_(self.r_w_bias, 0.0, 0.02)
             nn.init.normal_(self.r_r_bias, 0.0, 0.02)
