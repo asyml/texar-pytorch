@@ -18,7 +18,6 @@ GPT2 encoders.
 from typing import Optional
 
 import torch
-import torch.nn as nn
 
 from texar.core import layers
 from texar.hyperparams import HParams
