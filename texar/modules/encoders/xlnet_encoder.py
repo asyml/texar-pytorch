@@ -424,7 +424,7 @@ class XLNetEncoder(PretrainedBase, EncoderBase):
             -> Tuple[torch.Tensor, Optional[List[torch.Tensor]]]:
         r"""Compute XLNet representations for the input. This layer exists
         because :class:`XLNetDecoder` compute embeddings in the decoder helper.
-        word_embed has shape `[batch_size, seq_len, word_embed_dim]`.
+        `word_embed` has shape `[batch_size, seq_len, word_embed_dim]`.
         Please refer to :meth:`forward` for the detailed information of other
         arguments.
         """
