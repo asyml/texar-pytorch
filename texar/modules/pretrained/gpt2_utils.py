@@ -24,6 +24,7 @@ import sys
 import torch
 import torch.nn as nn
 
+from texar.core import layers
 from texar.data.data_utils import maybe_download
 from texar.modules.pretrained.pretrained_utils import default_download_dir
 
@@ -111,7 +112,7 @@ def init_gpt2_checkpoint(model: nn.Module, cache_dir: str):
 
                 output_pointer = name_to_variable(
                     model.decoder, "_output_layer.weight")
-                if not isinstance(output_pointer, nn.Identity):
+                if not isinstance(output_pointer, layers.Identity):
                     assert output_pointer.shape == array.shape
                     output_pointer.data = torch.from_numpy(array)
             elif name == "model/wpe":
@@ -195,7 +196,7 @@ def name_to_variable(model: nn.Module, name: str) -> nn.Module:
             num = int(m_name)
             pointer = pointer[num]  # type: ignore
         else:
-            if not isinstance(pointer, nn.Identity):
+            if not isinstance(pointer, layers.Identity):
                 pointer = getattr(pointer, m_name)
     return pointer
 
