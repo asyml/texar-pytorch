@@ -102,7 +102,7 @@ class VAE(nn.Module):
                 input_size=(self.decoder_w_embedder.dim +
                     config_model.batch_size),
                 hparams={"rnn_cell": config_model.dec_cell_hparams})
-            decoder_initial_state_size = self.decoder.cell.hidden_size * 2
+            decoder_initial_state_size = (self.decoder.cell.hidden_size,) * 2
             sum_state_size = sum(decoder_initial_state_size)
 
         elif config_model.decoder_type == 'transformer':
@@ -228,13 +228,14 @@ class VAE(nn.Module):
             start_tokens = torch.full(
                 (self._config.batch_size,),
                 self._bos_token_id,
-                dtype=torch.long, device=self.device)
+                dtype=torch.long, device=decoder_states.device)
             end_token = self._eos_token_id
             if self._config.decoder_type == "lstm":
                 def _cat_embedder(ids):
                     """Concatenates latent variable to input word embeddings
                     """
-                    embedding = self.decoder_w_embedder(ids.to(self.device))
+                    embedding = self.decoder_w_embedder(
+                        ids.to(decoder_states.device))
                     return torch.cat([embedding, latent_z], 1)
 
                 infer_helper = self.decoder.create_helper(
