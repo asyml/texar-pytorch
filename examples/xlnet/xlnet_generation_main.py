@@ -26,7 +26,7 @@ from utils import data_utils
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', type=str, default=None,
                     help="Checkpoint to load model weights from.")
-parser.add_argument("--pretrained_model_name", type=str,
+parser.add_argument("--pretrained-model-name", type=str,
                     default="xlnet-large-cased",
                     help="The pre-trained model to load selected in the list "
                          "of: `xlnet-base-cased`, `xlnet-large-cased`.")
@@ -34,23 +34,23 @@ parser.add_argument('--seed', type=int, default=None, help="Random seed.")
 parser.add_argument('--nsamples', type=int, default=1,
                     help="Total number of samples to generate. Used in "
                          "non-interactive mode.")
-parser.add_argument('--batch_size', type=int, default=1,
+parser.add_argument('--batch-size', type=int, default=1,
                     help="The batch size of input.")
-parser.add_argument('--max_decoding_length', type=int, default=100,
+parser.add_argument('--max-decoding-length', type=int, default=100,
                     help="The maximun length of generated text.")
 parser.add_argument('--temperature', type=float, default=0.7,
                     help="Softmax temperature for top-k sample decoding. Must "
                          "be strictly greater than 0. Defaults to 0.7.")
-parser.add_argument('--top_k', type=int, default=40,
+parser.add_argument('--top-k', type=int, default=40,
                     help="The number of top most likely candidates to choose "
                          "from at each step. This is use "
                          "TopKSampleEmbeddingHelper for decoding. Ignored if "
                          "'p' is given.")
-parser.add_argument('--top_p', type=float, default=None,
+parser.add_argument('--top-p', type=float, default=None,
                     help="Select tokens with cumulative probability of at most "
-                         "'top_p' when arranged in decreasing order. This "
+                         "'top-p' when arranged in decreasing order. This "
                          "will use TopPSampleEmbeddingHelper for decoding.")
-parser.add_argument('--is_interactive', action='store_true',
+parser.add_argument('--is-interactive', action='store_true',
                     help="Interactive mode or not.")
 
 args = parser.parse_args()
@@ -63,14 +63,12 @@ def main():
         device = 'cpu'
 
     pretrained_model_dir = tx.modules.load_pretrained_xlnet(
-        pretrained_model_name=args.pretrained_model_name,
-        cache_dir='xlnet_pretrained_models')
+        pretrained_model_name=args.pretrained_model_name)
 
     spm_model_path = os.path.join(pretrained_model_dir, "spiece.model")
 
     model = tx.modules.XLNetDecoder(
-        pretrained_model_name=args.pretrained_model_name,
-        cache_dir='xlnet_pretrained_models')
+        pretrained_model_name=args.pretrained_model_name)
     if args.checkpoint is not None:
         model.load_state_dict(torch.load(args.checkpoint, map_location=device))
         print(f"Loaded checkpoint from {args.checkpoint}")

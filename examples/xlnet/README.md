@@ -65,7 +65,7 @@ Data will be processed and cached when the dataset is loaded for the first time.
 `--cache-dir` flags. Note that it is not required to indicate that the task is a regression task --- the data loader
 will figure it out.
 
-You can use `--pretrained_model_name` to specify the pre-trained model we want to use. Models are saved every 500
+You can use `--pretrained-model-name` to specify the pre-trained model you want to use. Models are saved every 500
 steps under the directory `saved_models`.
 
 We use a batch size of 4 because this is the maximum batch size that fits under 12GB GPU memory. The official training
@@ -152,25 +152,25 @@ examples to showcase text generation abilities of XLNet:
 This mode will initialize an interactive interface, which allows users to type in the context sentence. The model then generates continuation of the context. The example supports both Top-K and Top-P sample decoding. 
 
 ```bash
-python xlnet_generation_main.py --is_interactive \
---max_decoding_length=200 \
+python xlnet_generation_main.py --is-interactive \
+--max-decoding-length=200 \
 --temperature=0.7 \
---top_k=40
+--top-k=40
 ```
 
 Here:
 
-- `is_interactive`: Specifies interactive mode.
-- `max_decoding_length`: The maximum number of tokens in the sample. **Note that this includes tokens in the context**. 
+- `is-interactive`: Specifies interactive mode.
+- `max-decoding-length`: The maximum number of tokens in the sample. **Note that this includes tokens in the context**. 
 - `nsamples`: Number of samples to generate for each input. 
 
 For *top-k decoding*: 
 
 - `temperature`: Softmax temperature of top-k sample decoding. Larger values (above 1.0) result in more random samples, while smaller values push the sampling distribution towards the argmax. Must be strictly greater than 0. Defaults to `0.7`.
-- `top_k`: Number of top most likely candidates from a vocab distribution in each decoding step. Defaults to `40`.
+- `top-k`: Number of top most likely candidates from a vocab distribution in each decoding step. Defaults to `40`.
 
 For *top-p decoding*:
-- `top_p`: Select tokens with cumulative probability of at most 'top_p' as candidates for sampling. Do not specify it if you want to use top-k decoding. 
+- `top-p`: Select tokens with cumulative probability of at most 'top-p' as candidates for sampling. Do not specify it if you want to use top-k decoding. 
 
 
 **Example input:**
@@ -203,16 +203,16 @@ This mode generates a batch of samples from scratch.
 ```bash
 python xlnet_generation_main.py
 --nsamples=1 \
---batch_size=1 \
---max_decoding_len=100 \
+--batch-size=1 \
+--max-decoding-len=100 \
 --temperature=0.7 \
---top_k=40
+--top-k=40
 ```
 
 Here:
 
-- `nsamples`: Total number of samples to generate, must be dividable by the `batch_size`.
-- `batch_size`: Each iteration generates `batch_size` number of samples.
+- `nsamples`: Total number of samples to generate, must be dividable by the `batch-size`.
+- `batch-size`: Each iteration generates `batch-size` number of samples.
 
 **Example output:**
 
@@ -272,8 +272,7 @@ module in other tasks.
 #### Use your own dataset by writing a custom data processor
 
 It is easy to adapt the code to fine-tune XLNet on your custom dataset. To do this, you will need to write a custom
-data processor inheriting `utils.processor.DataProcessor`. For concrete examples, please refer to the built-in processors
-under `utils/classification.py` and `utils/glue.py`.
+data processor inheriting `utils.processor.DataProcessor`. For concrete examples, please refer to the built-in processors under `utils/processor.py`.
 
 The processor should implement `get_train_examples` and `get_dev_examples` (also `get_test_examples` if test set
 exists). Each method returns a list of `utils.processor.InputExample`s, each representing an example in the data split.

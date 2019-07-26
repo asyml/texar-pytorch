@@ -33,10 +33,9 @@ import texar as tx
 
 # pylint: disable=wildcard-import
 
-from utils.classification import *
-from utils.glue import *
-
-from utils import data_utils, dataset, metrics, model_utils, processor
+from utils.processor import *
+from utils.processor import get_processor_class
+from utils import data_utils, dataset, metrics, model_utils
 
 
 def load_config_into_args(config_path: str, args):
@@ -65,7 +64,7 @@ def parse_args():
         help="Directory to save model checkpoints")
 
     parser.add_argument(
-        "--pretrained_model_name", type=str,
+        "--pretrained-model-name", type=str,
         default="xlnet-large-cased",
         help="The pre-trained model name to load selected in the list of: "
              "`xlnet-base-cased`, `xlnet-large-cased`.")
@@ -125,15 +124,14 @@ def construct_datasets(args, device: Optional[torch.device] = None) \
     sp_model = spm.SentencePieceProcessor()
 
     pretrained_model_dir = tx.modules.load_pretrained_xlnet(
-        pretrained_model_name=args.pretrained_model_name,
-        cache_dir='xlnet_pretrained_models')
+        pretrained_model_name=args.pretrained_model_name)
 
     spm_model_path = os.path.join(pretrained_model_dir, "spiece.model")
     sp_model.Load(spm_model_path)
 
     cache_prefix = f"length{args.max_seq_len}"
     tokenize_fn = data_utils.create_tokenize_fn(sp_model, args.uncased)
-    processor_class = processor.get_processor_class(args.task)
+    processor_class = get_processor_class(args.task)
     data_dir = args.data_dir or f"data/{processor_class.task_name}"
     cache_dir = args.cache_dir or f"processed_data/{processor_class.task_name}"
     task_processor = processor_class(data_dir)
@@ -143,14 +141,10 @@ def construct_datasets(args, device: Optional[torch.device] = None) \
                               tokenize_fn,
                               file_prefix=cache_prefix)
 
-    datasets = dataset.load_datasets(args.task,
-                                     cache_dir,
-                                     args.max_seq_len,
-                                     args.batch_size,
-                                     file_prefix=cache_prefix,
-                                     eval_batch_size=args.eval_batch_size,
-                                     shuffle_buffer=None,
-                                     device=device)
+    datasets = dataset.load_datasets(
+        args.task, cache_dir, args.max_seq_len, args.batch_size,
+        file_prefix=cache_prefix, eval_batch_size=args.eval_batch_size,
+        shuffle_buffer=None, device=device)
     return datasets
 
 
@@ -175,16 +169,14 @@ def main(args):
     iterator = tx.data.DataIterator(datasets)
     print("Dataset constructed")
 
-    processor_class = processor.get_processor_class(args.task)
+    processor_class = get_processor_class(args.task)
     is_regression = processor_class.is_regression
     if is_regression:
         model = tx.modules.XLNetRegressor(
-            pretrained_model_name=args.pretrained_model_name,
-            cache_dir='xlnet_pretrained_models')
+            pretrained_model_name=args.pretrained_model_name)
     else:
         model = tx.modules.XLNetClassifier(
             pretrained_model_name=args.pretrained_model_name,
-            cache_dir='xlnet_pretrained_models',
             hparams={"num_classes": len(processor_class.labels)})
     print("Weights initialized")
 
