@@ -37,6 +37,17 @@ _CHECKPOINT_FILES = [
 
 
 class PretrainedGPT2Mixin(PretrainedMixin, ABC):
+    r"""A mixin class to support loading pre-trained checkpoints for modules
+    that implement the GPT2 model.
+
+    The GPT2 model was proposed in
+    `Language Models are Unsupervised Multitask Learners`_
+    by `Radford et al.` from OpenAI. It is a unidirectional Transformer model
+    pre-trained using the vanilla language modeling objective on a large corpus.
+
+    .. _`Language Models are Unsupervised Multitask Learners`:
+        https://openai.com/blog/better-language-models/
+    """
     _MODEL_NAME = "GPT2"
     _MODEL2URL = {
         '117M': [_GPT2_PATH + f"117M/{file}" for file in _CHECKPOINT_FILES],
@@ -119,6 +130,15 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
 
     def _init_from_checkpoint(self, cache_dir: str,
                               load_output_layer: bool = True, **kwargs):
+        r"""Initialize model parameters from weights stored in the pre-trained
+        checkpoint.
+
+        Args:
+            cache_dir (str): Path to the cache directory.
+            load_output_layer (bool): If `False`, will not load weights of the
+                output layer. Set this argument to `False` when loading weights
+                into a GPT2 encoder. Defaults to `True`.
+        """
         try:
             import numpy as np
             import tensorflow as tf

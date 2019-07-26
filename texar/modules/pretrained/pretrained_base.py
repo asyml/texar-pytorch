@@ -14,10 +14,9 @@
 """
 Base class for Pre-trained Modules.
 """
-import os
-import shutil
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from pathlib import Path
+from typing import Any, Dict, Optional, List
 
 from torch import nn
 
@@ -42,72 +41,8 @@ class PretrainedMixin(ModuleBase, ABC):
     pretrained_model_dir: Optional[str]
 
     @classmethod
-    def _download_checkpoint(cls, pretrained_model_name: str,
-                             cache_dir: Optional[str] = None) -> str:
-        r"""Download the specified pre-trained checkpoint, and return the
-        directory in which the checkpoint is cached.
-
-        Args:
-            pretrained_model_name (str): Name of the model checkpoint.
-            cache_dir (str, optional): Path to the cache directory. If `None`,
-                uses the default directory given by
-                :meth:`~texar.modules.default_download_dir`.
-
-        Returns:
-            Path to the cache directory.
-        """
-        if pretrained_model_name in cls._MODEL2URL:
-            download_path = cls._MODEL2URL[pretrained_model_name]
-        else:
-            raise ValueError(
-                f"Pre-trained model not found: {pretrained_model_name}")
-
-        if cache_dir is None:
-            cache_dir = default_download_dir(cls._MODEL_NAME)
-
-        cache_path = os.path.join(cache_dir, pretrained_model_name)
-        if not os.path.exists(cache_path):
-            if isinstance(download_path, str):
-                maybe_download(download_path, cache_path, extract=True)
-                filename = download_path.split('/')[-1]
-                folder_name = None
-                for ext in ['.zip', '.tar.gz', '.tar.bz', '.tar']:
-                    if filename.endswith(ext):
-                        folder_name = filename[:-len(ext)]
-                assert folder_name is not None
-                folder_name = os.path.join(cache_path, folder_name)
-                os.remove(os.path.join(cache_path, filename))
-                for file in os.listdir(folder_name):
-                    shutil.move(os.path.join(folder_name, file), cache_path)
-                shutil.rmtree(folder_name)
-            else:
-                for path in download_path:
-                    maybe_download(path, cache_path)
-            print(f"Pre-trained {cls._MODEL_NAME} checkpoint "
-                  f"{pretrained_model_name} cached to {cache_path}")
-        else:
-            print(f"Using cached pre-trained {cls._MODEL_NAME} checkpoint "
-                  f"from {cache_path}.")
-
-        return cache_path
-
-    @classmethod
-    @abstractmethod
-    def _transform_config(cls, cache_dir: str) -> Dict[str, Any]:
-        r"""Load the official config file and transform it into Texar-style
-        hyperparameters.
-
-        Args:
-            cache_dir (str): Path to the cache directory.
-
-        Returns:
-            dict: Texar module hyperparameters.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _init_from_checkpoint(self, cache_dir: str, **kwargs):
-        raise NotImplementedError
+    def available_checkpoints(cls) -> List[str]:
+        return list(cls._MODEL2URL.keys())
 
     def _name_to_variable(self, name: str) -> nn.Module:
         r"""Find the corresponding variable given the specified name.
@@ -155,7 +90,7 @@ class PretrainedMixin(ModuleBase, ABC):
         if pretrained_model_name is None:
             pretrained_model_name = self._hparams.pretrained_model_name
         if pretrained_model_name is not None:
-            self.pretrained_model_dir = self._download_checkpoint(
+            self.pretrained_model_dir = self.download_checkpoint(
                 pretrained_model_name, cache_dir)
             pretrained_model_hparams = self._transform_config(
                 self.pretrained_model_dir)
@@ -191,3 +126,79 @@ class PretrainedMixin(ModuleBase, ABC):
             'name': "pretrained_base",
             '@no_typecheck': ['pretrained_model_name']
         }
+
+    @classmethod
+    def download_checkpoint(cls, pretrained_model_name: str,
+                            cache_dir: Optional[str] = None) -> str:
+        r"""Download the specified pre-trained checkpoint, and return the
+        directory in which the checkpoint is cached.
+
+        Args:
+            pretrained_model_name (str): Name of the model checkpoint.
+            cache_dir (str, optional): Path to the cache directory. If `None`,
+                uses the default directory given by
+                :meth:`~texar.modules.default_download_dir`.
+
+        Returns:
+            Path to the cache directory.
+        """
+        if pretrained_model_name in cls._MODEL2URL:
+            download_path = cls._MODEL2URL[pretrained_model_name]
+        else:
+            raise ValueError(
+                f"Pre-trained model not found: {pretrained_model_name}")
+
+        if cache_dir is None:
+            cache_path = default_download_dir(cls._MODEL_NAME)
+        else:
+            cache_path = Path(cache_dir)
+        cache_path = cache_path / pretrained_model_name
+
+        if not cache_path.exists():
+            if isinstance(download_path, str):
+                filename = download_path.split('/')[-1]
+                maybe_download(download_path, cache_path, extract=True)
+                folder = None
+                for file in cache_path.iterdir():
+                    if file.is_dir():
+                        folder = file
+                assert folder is not None
+                (cache_path / filename).unlink()
+                for file in folder.iterdir():
+                    file.rename(file.parents[1] / file.name)
+                folder.rmdir()
+            else:
+                for path in download_path:
+                    maybe_download(path, cache_path)
+            print(f"Pre-trained {cls._MODEL_NAME} checkpoint "
+                  f"{pretrained_model_name} cached to {cache_path}")
+        else:
+            print(f"Using cached pre-trained {cls._MODEL_NAME} checkpoint "
+                  f"from {cache_path}.")
+
+        return str(cache_path)
+
+    @classmethod
+    @abstractmethod
+    def _transform_config(cls, cache_dir: str) -> Dict[str, Any]:
+        r"""Load the official configuration file and transform it into
+        Texar-style hyperparameters.
+
+        Args:
+            cache_dir (str): Path to the cache directory.
+
+        Returns:
+            dict: Texar module hyperparameters.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def _init_from_checkpoint(self, cache_dir: str, **kwargs):
+        r"""Initialize model parameters from weights stored in the pre-trained
+        checkpoint.
+
+        Args:
+            cache_dir (str): Path to the cache directory.
+            **kwargs: Additional arguments for specific models.
+        """
+        raise NotImplementedError

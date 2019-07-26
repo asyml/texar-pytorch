@@ -24,10 +24,9 @@ import zipfile
 from typing import List, Optional, overload, Union, Dict, Tuple
 
 import numpy as np
-import requests
 
 from texar.utils import utils_io
-from texar.utils.types import MaybeList, MaybeTuple
+from texar.utils.types import MaybeList, MaybeTuple, PathLike
 
 __all__ = [
     "maybe_download",
@@ -43,13 +42,13 @@ Py3 = sys.version_info[0] == 3
 # pylint: disable=unused-argument,function-redefined,missing-docstring
 
 @overload
-def maybe_download(urls: List[str], path: str,
+def maybe_download(urls: List[str], path: PathLike,
                    filenames: Optional[List[str]] = None,
                    extract: bool = False) -> List[str]: ...
 
 
 @overload
-def maybe_download(urls: str, path: str, filenames: Optional[str] = None,
+def maybe_download(urls: str, path: PathLike, filenames: Optional[str] = None,
                    extract: bool = False) -> str: ...
 
 
@@ -118,6 +117,7 @@ def maybe_download(urls, path, filenames=None, extract=False):
         return result[0]
     return result
 
+
 # pylint: enable=unused-argument,function-redefined,missing-docstring
 
 
@@ -146,6 +146,13 @@ def _extract_google_drive_file_id(url: str) -> str:
 def _download_from_google_drive(url: str, filename: str, path: str) -> str:
     r"""Adapted from `https://github.com/saurabhshri/gdrive-downloader`
     """
+
+    try:
+        import requests
+    except ImportError:
+        print("The requests library must be installed to download files from "
+              "Google drive. Please see: https://github.com/psf/requests")
+        raise
 
     def _get_confirm_token(response):
         for key, value in response.cookies.items():

@@ -17,34 +17,30 @@ Utils of Pre-trained Modules.
 
 import os
 import sys
-
+from pathlib import Path
 
 __all__ = [
     "default_download_dir",
 ]
 
 
-def default_download_dir(name: str) -> str:
+def default_download_dir(name: str) -> Path:
     r"""Return the directory to which packages will be downloaded by default.
     """
-    package_dir = os.path.dirname(os.path.dirname(
-        os.path.dirname(os.path.dirname(__file__))))
+    package_dir: Path = Path(__file__).parents[3]  # 4 levels up
     if os.access(package_dir, os.W_OK):
-        texar_download_dir = os.path.join(package_dir, 'texar_download')
+        texar_download_dir = package_dir / 'texar_download'
     else:
-        # On Windows, use %APPDATA%
         if sys.platform == 'win32' and 'APPDATA' in os.environ:
-            home_dir = os.environ['APPDATA']
-
-        # Otherwise, install in the user's home directory.
+            # On Windows, use %APPDATA%
+            home_dir = Path(os.environ['APPDATA'])
         else:
-            home_dir = os.path.expanduser('~/')
-            if home_dir == '~/':
-                raise ValueError("Could not find a default download directory")
+            # Otherwise, install in the user's home directory.
+            home_dir = Path.home()
 
-        texar_download_dir = os.path.join(home_dir, 'texar_download')
+        texar_download_dir = home_dir / 'texar_download'
 
-    if not os.path.exists(texar_download_dir):
-        os.mkdir(texar_download_dir)
+    if not texar_download_dir.exists():
+        texar_download_dir.mkdir(parents=True)
 
-    return os.path.join(texar_download_dir, name)
+    return texar_download_dir / name

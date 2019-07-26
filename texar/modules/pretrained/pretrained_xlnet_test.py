@@ -14,7 +14,7 @@ class XLNetUtilsTest(unittest.TestCase):
 
     def test_load_pretrained_xlnet_AND_transform_xlnet_to_texar_config(self):
 
-        pretrained_model_dir = PretrainedXLNetMixin._download_checkpoint(
+        pretrained_model_dir = PretrainedXLNetMixin.download_checkpoint(
             pretrained_model_name="xlnet-base-cased")
 
         info = list(os.walk(pretrained_model_dir))

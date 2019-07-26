@@ -35,6 +35,18 @@ _XLNET_PATH = "https://storage.googleapis.com/xlnet/released_models/"
 
 
 class PretrainedXLNetMixin(PretrainedMixin, ABC):
+    r"""A mixin class to support loading pre-trained checkpoints for modules
+    that implement the XLNet model.
+
+    The XLNet model was proposed in
+    `XLNet: Generalized Autoregressive Pretraining for Language Understanding`_
+    by `Yang et al.` It is based on the Transformer-XL model, pre-trained on a
+    large corpus using a language modeling objective that considers all
+    permutations of the input sentence.
+
+    .. _`XLNet: Generalized Autoregressive Pretraining for Language Understanding`:
+        http://arxiv.org/abs/1906.08237
+    """
     _MODEL_NAME = "XLNet"
     _MODEL2URL = {
         'xlnet-base-cased':

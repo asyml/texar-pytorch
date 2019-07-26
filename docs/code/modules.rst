@@ -258,9 +258,26 @@ Pre-trained
 .. spelling::
     pooler
 
-:hidden:`PretrainedBase`
+:hidden:`PretrainedMixin`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.modules.PretrainedBase
+.. autoclass:: texar.modules.PretrainedMixin
+    :members:
+    :private-members:
+    :exclude-members: _name_to_variable
+
+:hidden:`PretrainedBERTMixin`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.PretrainedBERTMixin
+    :members:
+
+:hidden:`PretrainedGPT2Mixin`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.PretrainedGPT2Mixin
+    :members: _init_from_checkpoint
+
+:hidden:`PretrainedXLNetMixin`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.modules.PretrainedXLNetMixin
     :members:
 
 Regressor

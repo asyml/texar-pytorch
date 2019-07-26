@@ -14,7 +14,7 @@ class BERTUtilsTest(unittest.TestCase):
 
     def test_load_pretrained_bert_AND_transform_bert_to_texar_config(self):
 
-        pretrained_model_dir = PretrainedBERTMixin._download_checkpoint(
+        pretrained_model_dir = PretrainedBERTMixin.download_checkpoint(
             pretrained_model_name="bert-base-uncased")
 
         info = list(os.walk(pretrained_model_dir))

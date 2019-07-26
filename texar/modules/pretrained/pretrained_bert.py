@@ -32,6 +32,18 @@ _BERT_PATH = "https://storage.googleapis.com/bert_models/"
 
 
 class PretrainedBERTMixin(PretrainedMixin, ABC):
+    r"""A mixin class to support loading pre-trained checkpoints for modules
+    that implement the BERT model.
+
+    The BERT model was proposed in
+    `BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`_
+    by `Devlin et al.` It is a bidirectional Transformer model pre-trained
+    on a large corpus.
+
+    .. _`BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`:
+        https://arxiv.org/abs/1810.04805
+    """
+
     _MODEL_NAME = "BERT"
     _MODEL2URL = {
         'bert-base-uncased':

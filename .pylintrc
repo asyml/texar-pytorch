@@ -302,7 +302,8 @@ logging-modules=logging
 max-line-length=80
 
 # Regexp for a line that is allowed to be longer than the limit.
-ignore-long-lines=^\s*(# )?`?<?https?://\S+>?$
+# This regex matches URLs and link anchors.
+ignore-long-lines=^\s*((# )?`?<?https?://\S+>?|\.\. _`.*`:|`.*`_)$
 
 # Allow the body of an if to be on the same line as the test if there is no
 # else.
