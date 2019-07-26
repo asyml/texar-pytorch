@@ -85,7 +85,7 @@ class GPT2Encoder(PretrainedBase, EncoderBase):
             hparams=self._hparams.position_embed)
 
         # The GPT2 encoder (a TransformerDecoder)
-        self.decoder = TransformerDecoder(
+        self.decoder = TransformerDecoder(  # type: ignore
             vocab_size=self._hparams.vocab_size,
             output_layer=layers.identity,
             hparams=self._hparams.decoder)

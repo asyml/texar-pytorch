@@ -22,7 +22,7 @@ from typing import Generic, Optional, Tuple, TypeVar, Union, overload, Callable
 import torch
 from torch import nn
 
-from texar.core.layers import identity
+from texar.core.layers import identity, Identity
 from texar.module_base import ModuleBase
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_helpers import Embedding, Helper
@@ -37,15 +37,10 @@ State = TypeVar('State')
 Output = TypeVar('Output')  # output type can be of any nested structure
 
 
-def _make_output_layer(layer: Optional[Union[nn.Module,
-                                             torch.Tensor,
-                                             Callable[[torch.Tensor],
-                                                      torch.Tensor]]],
+def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
                        vocab_size: Optional[int],
                        output_size: int,
-                       bias: bool) -> \
-        Tuple[Union[nn.Module, Callable[[torch.Tensor], torch.Tensor]],
-              Optional[int]]:
+                       bias: bool) -> Tuple[nn.Module, Optional[int]]:
     r"""Construct the output layer for decoders. Based on the input, multiple
     types of output layers could be constructed:
 
@@ -70,14 +65,13 @@ def _make_output_layer(layer: Optional[Union[nn.Module,
                 "wanted.")
         output_layer = nn.Linear(output_size, vocab_size, bias)
     elif torch.is_tensor(layer):
-        assert isinstance(layer, torch.Tensor)
         vocab_size = layer.size(0)
         output_layer = nn.Linear(layer.size(1), vocab_size, bias)
         if not isinstance(layer, nn.Parameter):
             layer = nn.Parameter(layer, requires_grad=False)
         output_layer.weight = layer
     elif layer is identity:
-        output_layer = identity  # type: ignore
+        output_layer = Identity()
     else:
         raise ValueError(
             f"output_layer should be an instance of `nn.Module`, a tensor,"
