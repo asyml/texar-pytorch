@@ -74,9 +74,9 @@ accumulation with the `--backwards-per-step` flags set to 8. This means the para
 every 8 `loss.backward()` calls.
 
 Fine-tuning takes about 45 minutes on a single NVIDIA GTX 1080 Ti. The expected Pearson's r on the development set is
-0.9168. Result on the test set is NaN because test labels are not provided.
+0.9204. Result on the test set is NaN because test labels are not provided.
 
-Note that we manually specify the random seed for reproducibility. You can override this by setting the `--seed` flag
+Note that we manually specify the random seed for reproducibility. You can override this by setting the `--seed` flag 
 to -1.
 
 An example of training output is as follows:
@@ -97,30 +97,31 @@ Dataset constructed
 Using cached pre-trained XLNet model from: xlnet_pretrained_models/xlnet_cased_L-24_H-1024_A-16.
 WARNING: Certain weights from checkpoint are not loaded: ['model/transformer/mask_emb/mask_emb', 'model/lm_loss/bias']
 Weights initialized
-Model constructedStep: 100, LR = 4.167e-05, loss = 2.4108
-Step: 200, LR = 4.630e-05, loss = 0.9530
-Step: 300, LR = 4.167e-05, loss = 0.5697
-Step: 400, LR = 3.704e-05, loss = 0.4628
-Step: 500, LR = 3.241e-05, loss = 0.3435
-Model at 500 steps saved to saved_models/STS-B_step500_20190703_120310
-Pearsonr: 0.9014549605576836, loss: 0.4714
-Step: 600, LR = 2.778e-05, loss = 0.2814
-Step: 700, LR = 2.315e-05, loss = 0.2319
-Step: 800, LR = 1.852e-05, loss = 0.2023
-Step: 900, LR = 1.389e-05, loss = 0.1897
-Step: 1000, LR = 9.259e-06, loss = 0.1441
-Model at 1000 steps saved to saved_models/STS-B_step1000_20190703_122056
-Pearsonr: 0.9149586649636707, loss: 0.3806
-Step: 1100, LR = 4.630e-06, loss = 0.1279
-Step: 1200, LR = 0.000e+00, loss = 0.1111
-9599it [42:23,  4.14it/s]
-Model at 1200 steps saved to saved_models/STS-B_step1200_20190703_122818
+Model constructed
+Step: 100, LR = 4.167e-05, loss = 2.8632
+Step: 200, LR = 4.630e-05, loss = 0.8797
+Step: 300, LR = 4.167e-05, loss = 0.5159
+Step: 400, LR = 3.704e-05, loss = 0.4399
+Step: 500, LR = 3.241e-05, loss = 0.3327
+Model at 500 steps saved to saved_models/STS-B_step500_20190726_143750
+Pearsonr: 0.908082989116211, loss: 0.3953
+Step: 600, LR = 2.778e-05, loss = 0.2709
+Step: 700, LR = 2.315e-05, loss = 0.2194
+Step: 800, LR = 1.852e-05, loss = 0.1831
+Step: 900, LR = 1.389e-05, loss = 0.1649
+Step: 1000, LR = 9.259e-06, loss = 0.1246
+Model at 1000 steps saved to saved_models/STS-B_step1000_20190726_145354
+Pearsonr: 0.9170010158922637, loss: 0.3788
+Step: 1100, LR = 4.630e-06, loss = 0.1190                                       
+Step: 1200, LR = 0.000e+00, loss = 0.1024
+9599it [38:20,  4.45it/s]
+Model at 1200 steps saved to saved_models/STS-B_step1200_20190726_150033
 Evaluating on dev
-100%|██████████████████████████| 24/24 [00:25<00:00,  1.10it/s, pearsonR=0.9168]
-Pearsonr: 0.9167765866800505, loss: 0.3682
+100%|██████████████████████████| 24/24 [00:22<00:00,  1.24it/s, pearsonR=0.9204]
+Pearsonr: 0.9204028268800634, loss: 0.3528
 Evaluating on test
-22it [00:24,  1.04it/s, pearsonR=nan]
-Pearsonr: nan, loss: 9.1475
+22it [00:20,  1.19it/s, pearsonR=nan]
+Pearsonr: nan, loss: 9.0880
 ```
 
 #### Evaluate saved models
