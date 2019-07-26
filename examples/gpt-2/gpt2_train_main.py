@@ -19,54 +19,47 @@ import argparse
 import importlib
 
 import torch
-
 import texar as tx
 
 from utils import processor
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--checkpoint', type=str, default=None,
     help="Model checkpoint to load model weights from.")
 parser.add_argument(
-    '--config_model', type=str, default="configs.config_model_117M",
-    help="The model configuration file to configure the model.")
+    "--pretrained-model-name", type=str, default="117M",
+    choices=tx.modules.GPT2Decoder.available_checkpoints(),
+    help="Name of the pre-trained checkpoint to load.")
 parser.add_argument(
-    '--config_train', type=str, default="configs.config_train",
+    '--config-train', type=str, default="config_train",
     help="Configurations of GPT-2 training, including data and "
          "optimization hyperparameters.")
 parser.add_argument(
-    "--output_dir", default="output/",
+    "--output-dir", default="output/",
     help="The output directory where the model checkpoints will be written.")
 parser.add_argument(
     '--temperature', type=float, default=0.7,
     help="Softmax temperature for top-k sample decoding. Must be strictly "
          "greater than 0. Defaults to 0.7.")
 parser.add_argument(
-    '--top_k', type=int, default=40,
+    '--top-k', type=int, default=40,
     help="The number of top most likely candidates from a vocab distribution.")
 parser.add_argument(
-    '--top_p', type=float, default=None,
+    '--top-p', type=float, default=None,
     help="Select tokens with cumulative probability of at most 'p' when "
          "arranged in decreasing order. This will use "
          "TopPSampleEmbeddingHelper for decoding.")
 parser.add_argument(
-    "--do_train", action="store_true", help="Whether to run training.")
+    "--do-train", action="store_true", help="Whether to run training.")
 parser.add_argument(
-    "--do_eval", action="store_true",
+    "--do-eval", action="store_true",
     help="Whether to run eval on the dev set.")
 parser.add_argument(
-    "--do_test", action="store_true",
+    "--do-test", action="store_true",
     help="Whether to run test on the test set.")
 
 args = parser.parse_args()
-
-config_model = importlib.import_module(args.config_model)
-config_model = {
-    k: v for k, v in config_model.__dict__.items()
-    if not k.startswith('__')}
-config_model.pop("dim")
 
 config_train = importlib.import_module(args.config_train)
 
@@ -80,59 +73,52 @@ def main():
     tx.utils.maybe_create_dir(args.output_dir)
 
     max_decoding_length = config_train.max_decoding_length
-    if max_decoding_length > config_model["position_size"]:
-        raise ValueError("max_decoding_length should not be greater than "
-                         "position size")
 
     # Build the GPT-2 model
-    model = tx.modules.GPT2Decoder(cache_dir='gpt2_pretrained_models',
-                                   hparams=config_model)
-    model.to(device)
+    model = tx.modules.GPT2Decoder(args.pretrained_model_name)
     if args.checkpoint:
         ckpt = torch.load(args.checkpoint)
         model.load_state_dict(ckpt['model'])
+    model.to(device)
+
+    if max_decoding_length > model.hparams.position_size:
+        raise ValueError(
+            "max_decoding_length should not be greater than position size")
 
     # Creates a data pre-processor for, e.g., BPE encoding
-    proc = processor.get_encoder(os.path.join(
-        'gpt2_pretrained_models', config_model["pretrained_model_name"]))
+    proc = processor.get_encoder(model.pretrained_model_dir)
 
     # Loads data
     datasets = {}
     if args.do_train:
-        train_dataset = tx.data.RecordData(hparams=config_train.train_hparam,
-                                           device=device)
+        train_dataset = tx.data.RecordData(
+            hparams=config_train.train_hparam, device=device)
         datasets['train'] = train_dataset
     if args.do_eval:
-        eval_dataset = tx.data.RecordData(hparams=config_train.eval_hparam,
-                                          device=device)
+        eval_dataset = tx.data.RecordData(
+            hparams=config_train.eval_hparam, device=device)
         datasets['eval'] = eval_dataset
     if args.do_test:
-        test_dataset = tx.data.RecordData(hparams=config_train.test_hparam,
-                                          device=device)
+        test_dataset = tx.data.RecordData(
+            hparams=config_train.test_hparam, device=device)
         datasets['test'] = test_dataset
     iterator = tx.data.DataIterator(datasets)
 
     # For training
-    train_op = tx.core.get_train_op(params=model.parameters(),
-                                    hparams=config_train.opt)
-
-    # For generation: generates continuations of test text
-    _embedding_fn = lambda x, y: (
-            model.word_embedder(x) + model.position_embedder(y))
+    train_op = tx.core.get_train_op(
+        params=model.parameters(), hparams=config_train.opt)
 
     end_token = proc.encoder['<|endoftext|>']
 
     def _get_helper(start_tokens):
         if args.top_p:
             helper = tx.modules.TopPSampleEmbeddingHelper(
-                embedding=_embedding_fn,
                 start_tokens=start_tokens,
                 end_token=end_token,
                 p=args.top_p,
                 softmax_temperature=args.temperature)
         else:
             helper = tx.modules.TopKSampleEmbeddingHelper(
-                embedding=_embedding_fn,
                 start_tokens=start_tokens,
                 end_token=end_token,
                 top_k=args.top_k,

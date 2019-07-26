@@ -103,9 +103,9 @@ class GPT2Classifier(ClassifierBase):
         if self._hparams.initializer:
             initialize = get_initializer(self._hparams.initializer)
             assert initialize is not None
-            if self._logits_layer:
+            if self._logits_layer is not None:
                 initialize(self._logits_layer.weight)
-                if self._logits_layer.bias:
+                if self._logits_layer.bias is not None:
                     initialize(self._logits_layer.bias)
 
         self.is_binary = (self.num_classes == 1) or \

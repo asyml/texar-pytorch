@@ -140,37 +140,41 @@ python xlnet_classification_main.py \
 Since XLNet is in essence a language model, it could be used to autoregressively generate text. We have also provided
 examples to showcase text generation abilities of XLNet:
 
-  - [Interactive mode (to generate samples with context)](#interactive-mode-to-generate-samples-with-context)
-  - [Non-interactive mode (to generate samples from scratch)](#non-interactive-mode-to-generate-samples-from-scratch) 
-  - [IPython mode (to play with different decoding strategies)](#ipython-mode-to-play-with-different-decoding-strategies)
+- [Interactive mode (to generate samples with context)](#interactive-mode-to-generate-samples-with-context)
+- [Non-interactive mode (to generate samples from scratch)](#non-interactive-mode-to-generate-samples-from-scratch) 
+- [IPython mode (to play with different decoding strategies)](#ipython-mode-to-play-with-different-decoding-strategies)
 
 | WARNING: Samples are unfiltered and may contain offensive content. |
 | --- |
 
 #### Interactive mode (to generate samples with context)
 
-This mode will initialize an interactive interface, which allows users to type in the context sentence. The model then generates continuation of the context. The example supports both Top-K and Top-P sample decoding. 
+This mode will initialize an interactive interface, which allows users to type in the context sentence. The model then
+generates continuation of the context. The example supports both Top-K and Top-P sample decoding. 
 
 ```bash
-python xlnet_generation_main.py --is-interactive \
---max-decoding-length=200 \
---temperature=0.7 \
---top-k=40
+python xlnet_generation_main.py --interactive \
+    --max-decoding-length=200 \
+    --temperature=0.7 \
+    --top-k=40
 ```
 
 Here:
 
-- `is-interactive`: Specifies interactive mode.
-- `max-decoding-length`: The maximum number of tokens in the sample. **Note that this includes tokens in the context**. 
-- `nsamples`: Number of samples to generate for each input. 
+- `--interactive`: Specifies interactive mode.
+- `--max-decoding-length`: The maximum number of tokens in the sample. **Note that this includes tokens in the context**. 
+- `--nsamples`: Number of samples to generate for each input. 
 
 For *top-k decoding*: 
 
-- `temperature`: Softmax temperature of top-k sample decoding. Larger values (above 1.0) result in more random samples, while smaller values push the sampling distribution towards the argmax. Must be strictly greater than 0. Defaults to `0.7`.
-- `top-k`: Number of top most likely candidates from a vocab distribution in each decoding step. Defaults to `40`.
+- `--temperature`: Softmax temperature of top-k sample decoding. Larger values (above 1.0) result in more random samples,
+  while smaller values push the sampling distribution towards the argmax. Must be strictly greater than 0.
+  Defaults to `0.7`.
+- `--top-k`: Number of top most likely candidates from a vocab distribution in each decoding step. Defaults to `40`.
 
 For *top-p decoding*:
-- `top-p`: Select tokens with cumulative probability of at most 'top-p' as candidates for sampling. Do not specify it if you want to use top-k decoding. 
+- `--top-p`: Select tokens with cumulative probability of at most 'top-p' as candidates for sampling. Do not specify it
+  if you want to use top-k decoding. 
 
 
 **Example input:**
@@ -201,18 +205,18 @@ services.
 This mode generates a batch of samples from scratch.
 
 ```bash
-python xlnet_generation_main.py
---nsamples=1 \
---batch-size=1 \
---max-decoding-len=100 \
---temperature=0.7 \
---top-k=40
+python xlnet_generation_main.py \
+    --nsamples=1 \
+    --batch-size=1 \
+    --max-decoding-len=100 \
+    --temperature=0.7 \
+    --top-k=40
 ```
 
 Here:
 
-- `nsamples`: Total number of samples to generate, must be dividable by the `batch-size`.
-- `batch-size`: Each iteration generates `batch-size` number of samples.
+- `--nsamples`: Total number of samples to generate, must be dividable by the `--batch-size`.
+- `--batch-size`: Each iteration generates `--batch-size` number of samples.
 
 **Example output:**
 
@@ -227,7 +231,8 @@ in this way".
 
 #### IPython mode (to play with different decoding strategies)
 
-The IPython mode allows you to play with different decoding strategies (top-k, top-p, greedy, etc) and other hyperparameters.
+The IPython mode allows you to play with different decoding strategies (top-k, top-p, greedy, etc) and other
+hyperparameters.
 
 Install IPython, and run the following command to enter an interactive console.
 
@@ -260,8 +265,8 @@ unicate better, including giving them a "little bit of a leg up" on the English 
 many "English-speaking" ("in many respects") settlers became.
 ```
 
-*This text generation example is largely inspired by the works of: https://github.com/rusiaaman/XLNet-gen. Especially, we
-borrowed the trick of [adding random text for padding](https://github.com/rusiaaman/XLNet-gen#methodology), so
+*This text generation example is largely inspired by the works of: https://github.com/rusiaaman/XLNet-gen. Especially,
+we borrowed the trick of [adding random text for padding](https://github.com/rusiaaman/XLNet-gen#methodology), so
 shorter prompts will not suffer from lack of attentional context.*
 
 ## Extend to custom tasks
@@ -272,7 +277,8 @@ module in other tasks.
 #### Use your own dataset by writing a custom data processor
 
 It is easy to adapt the code to fine-tune XLNet on your custom dataset. To do this, you will need to write a custom
-data processor inheriting `utils.processor.DataProcessor`. For concrete examples, please refer to the built-in processors under `utils/processor.py`.
+data processor inheriting `utils.processor.DataProcessor`. For concrete examples, please refer to the built-in
+processors under `utils/processor.py`.
 
 The processor should implement `get_train_examples` and `get_dev_examples` (also `get_test_examples` if test set
 exists). Each method returns a list of `utils.processor.InputExample`s, each representing an example in the data split.

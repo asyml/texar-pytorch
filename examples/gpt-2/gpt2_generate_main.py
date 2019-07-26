@@ -13,66 +13,53 @@
 # limitations under the License.
 """Example of building OpenAI GPT-2 language model for sample generation.
 """
-import os
 import argparse
-import importlib
 import random
 
 import numpy as np
-
 import torch
-
 import texar as tx
 
 from utils import processor
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--checkpoint', type=str, default=None,
     help="Model checkpoint to load model weights from.")
 parser.add_argument(
-    '--config_model', type=str, default="configs.config_model_117M",
-    help="The model configuration file to configure the model.")
+    "--pretrained-model-name", type=str, default="117M",
+    choices=tx.modules.GPT2Decoder.available_checkpoints(),
+    help="Name of the pre-trained checkpoint to load.")
 parser.add_argument(
     '--seed', type=int, default=None, help="Random seed.")
 parser.add_argument(
     '--nsamples', type=int, default=1, help="The number of samples per input.")
 parser.add_argument(
-    '--batch_size', type=int, default=1, help="The batch size of input.")
+    '--batch-size', type=int, default=1, help="The batch size of input.")
 parser.add_argument(
-    '--max_decoding_length', type=int, default=128,
+    '--max-decoding-length', type=int, default=128,
     help="The maximun length of generated text.")
 parser.add_argument(
     '--temperature', type=float, default=0.7,
     help="Softmax temperature for top-k sample decoding. Must be strictly "
          "greater than 0. Defaults to 0.7.")
 parser.add_argument(
-    '--top_k', type=int, default=40,
+    '--top-k', type=int, default=40,
     help="The number of top most likely candidates from a vocab distribution.")
 parser.add_argument(
-    '--top_p', type=float, default=None,
+    '--top-p', type=float, default=None,
     help="Select tokens with cumulative probability of at most 'p' when "
          "arranged in decreasing order. This will use "
          "TopPSampleEmbeddingHelper for decoding.")
 parser.add_argument(
-    '--is_interactive', action='store_true', help="Interactive mode or not.")
+    '--interactive', action='store_true', help="Interactive mode or not.")
 
 args = parser.parse_args()
-
-config_model = importlib.import_module(args.config_model)
-config_model = {
-    k: v for k, v in config_model.__dict__.items()
-    if not k.startswith('__')}
-config_model.pop("dim")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def main():
-    """
-    Builds the model and runs.
-    """
     if args.seed:
         random.seed(args.seed)
         np.random.seed(args.seed)
@@ -84,46 +71,39 @@ def main():
     batch_size = args.batch_size
     max_decoding_length = args.max_decoding_length
 
-    if max_decoding_length > config_model["position_size"]:
-        raise ValueError("max_decoding_length should not be greater than "
-                         "position size")
-
     # Build the GPT-2 model
-    model = tx.modules.GPT2Decoder(cache_dir='gpt2_pretrained_models',
-                                   hparams=config_model)
+    model = tx.modules.GPT2Decoder(args.pretrained_model_name)
     if args.checkpoint:
         ckpt = torch.load(args.checkpoint)
         model.load_state_dict(ckpt['model'])
     model.to(device)
 
+    if max_decoding_length > model.hparams.position_size:
+        raise ValueError(
+            "max_decoding_length should not be greater than position size")
+
     # Create a data pre-processor for, e.g., BPE encoding
-    proc = processor.get_encoder(os.path.join(
-        'gpt2_pretrained_models', config_model["pretrained_model_name"]))
+    proc = processor.get_encoder(model.pretrained_model_dir)
     end_token = proc.encoder['<|endoftext|>']
 
     print("\nFinished loading\n")
 
-    _embedding_fn = lambda x, y: (
-            model.word_embedder(x) + model.position_embedder(y))
-
     def _get_helper(start_tokens):
         if args.top_p:
             helper = tx.modules.TopPSampleEmbeddingHelper(
-                embedding=_embedding_fn,
                 start_tokens=start_tokens,
                 end_token=end_token,
                 p=args.top_p,
                 softmax_temperature=args.temperature)
         else:
             helper = tx.modules.TopKSampleEmbeddingHelper(
-                embedding=_embedding_fn,
                 start_tokens=start_tokens,
                 end_token=end_token,
                 top_k=args.top_k,
                 softmax_temperature=args.temperature)
         return helper
 
-    if args.is_interactive:
+    if args.interactive:
         # Generate continuations of context
         while True:
 

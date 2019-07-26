@@ -25,7 +25,7 @@ from torch import nn
 
 from texar.modules.pretrained.pretrained_base import PretrainedMixin
 from texar.modules.pretrained.xlnet_model_utils import (
-    PositionWiseFF, RelativeMultiheadAttention)
+    PositionWiseFF, RelativeMultiheadAttention, init_weights)
 
 __all__ = [
     "PretrainedXLNetMixin",
@@ -54,6 +54,14 @@ class PretrainedXLNetMixin(PretrainedMixin, ABC):
         'xlnet-large-cased':
             _XLNET_PATH + "cased_L-24_H-1024_A-16.zip",
     }
+
+    def reset_parameters(self):
+        self.apply(init_weights)
+        if not self._hparams.untie_r:
+            nn.init.normal_(self.r_w_bias, 0.0, 0.02)
+            nn.init.normal_(self.r_r_bias, 0.0, 0.02)
+            if self._hparams.use_segments:
+                nn.init.normal_(self.r_s_bias, 0.0, 0.02)
 
     @classmethod
     def _transform_config(cls, cache_dir: str) -> Dict[str, Any]:

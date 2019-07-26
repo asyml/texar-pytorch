@@ -50,7 +50,7 @@ parser.add_argument('--top-p', type=float, default=None,
                     help="Select tokens with cumulative probability of at most "
                          "'top-p' when arranged in decreasing order. This "
                          "will use TopPSampleEmbeddingHelper for decoding.")
-parser.add_argument('--is-interactive', action='store_true',
+parser.add_argument('--interactive', action='store_true',
                     help="Interactive mode or not.")
 
 args = parser.parse_args()
@@ -62,11 +62,6 @@ def main():
     else:
         device = 'cpu'
 
-    pretrained_model_dir = tx.modules.load_pretrained_xlnet(
-        pretrained_model_name=args.pretrained_model_name)
-
-    spm_model_path = os.path.join(pretrained_model_dir, "spiece.model")
-
     model = tx.modules.XLNetDecoder(
         pretrained_model_name=args.pretrained_model_name)
     if args.checkpoint is not None:
@@ -74,6 +69,7 @@ def main():
         print(f"Loaded checkpoint from {args.checkpoint}")
     model = model.to(device)
 
+    spm_model_path = os.path.join(model.pretrained_model_dir, "spiece.model")
     sp_model = spm.SentencePieceProcessor()
     sp_model.Load(spm_model_path)
     tokenize_fn = data_utils.create_tokenize_fn(sp_model, False)
@@ -143,7 +139,7 @@ def main():
     assert nsamples % batch_size == 0, (
         "nsamples must be dividable by batch_size")
 
-    if args.is_interactive:
+    if args.interactive:
         while True:
             try:
                 raw_text = input("Model input >>> ")

@@ -16,7 +16,6 @@ from typing import Optional
 
 import torch
 from torch import nn
-
 import texar as tx
 
 
@@ -50,6 +49,7 @@ class Transformer(nn.Module):
             hparams=self.config_model.encoder
         )
         self.decoder = tx.modules.TransformerDecoder(
+            embedding_fn=self._embedding_fn,
             vocab_size=self.vocab_size,
             output_layer=self.word_embedder.embedding,
             hparams=self.config_model.decoder,
@@ -60,6 +60,12 @@ class Transformer(nn.Module):
             tgt_vocab_size=self.vocab_size,
             ignore_index=0,
         )
+
+    def _embedding_fn(self, x, y):
+        word_embed = self.word_embedder(x)
+        scale = self.config_model.hidden_dim ** 0.5
+        pos_embed = self.pos_embedder(y)
+        return word_embed * scale + pos_embed
 
     def forward(  # type: ignore
         self,
@@ -115,23 +121,11 @@ class Transformer(nn.Module):
         if decoder_input is not None and labels is not None:
             # enter the training logic
 
-            tgt_word_embeds = self.word_embedder(decoder_input)
-            tgt_word_embeds = (
-                tgt_word_embeds * self.config_model.hidden_dim ** 0.5
-            )
-            tgt_seq_len = decoder_input.new_full(
-                (batch_size,), decoder_input.size(1),
-            )
-
-            tgt_pos_embeds = self.pos_embedder(sequence_length=tgt_seq_len)
-
-            tgt_input_embedding = tgt_word_embeds + tgt_pos_embeds
-
             # For training
             outputs = self.decoder(
                 memory=encoder_output,
                 memory_sequence_length=encoder_input_length,
-                inputs=tgt_input_embedding,
+                inputs=decoder_input,
                 decoding_strategy="train_greedy",
             )
             label_lengths = (labels != 0).long().sum(dim=1)
@@ -147,12 +141,6 @@ class Transformer(nn.Module):
                 (batch_size,), self.vocab.bos_token_id,
             )
 
-            def _embedding_fn(x, y):
-                word_embed = self.word_embedder(x)
-                scale = self.config_model.hidden_dim ** 0.5
-                pos_embed = self.pos_embedder(y)
-                return word_embed * scale + pos_embed
-
             predictions = self.decoder(
                 memory=encoder_output,
                 memory_sequence_length=encoder_input_length,
@@ -160,7 +148,6 @@ class Transformer(nn.Module):
                 length_penalty=self.config_model.length_penalty,
                 start_tokens=start_tokens,
                 end_token=self.vocab.eos_token_id,
-                embedding=_embedding_fn,
                 max_decoding_length=self.config_data.max_decoding_length,
                 decoding_strategy="infer_greedy",
             )

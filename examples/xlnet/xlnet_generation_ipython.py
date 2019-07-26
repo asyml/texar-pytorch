@@ -29,14 +29,10 @@ def main():
     else:
         device = 'cpu'
 
-    pretrained_model_dir = tx.modules.load_pretrained_xlnet(
-        pretrained_model_name='xlnet-large-cased')
-
-    spm_model_path = os.path.join(pretrained_model_dir, "spiece.model")
-
-    model = tx.modules.XLNetDecoder(
-        pretrained_model_name='xlnet-large-cased')
+    model = tx.modules.XLNetDecoder(pretrained_model_name='xlnet-large-cased')
     model = model.to(device)
+
+    spm_model_path = os.path.join(model.pretrained_model_dir, "spiece.model")
 
     sp_model = spm.SentencePieceProcessor()
     sp_model.Load(spm_model_path)

@@ -1,8 +1,14 @@
 # GPT-2: Pre-trained Langauge Model
 
-This is a Texar PyTorch implementation of [OpenAI GPT-2 (Generative Pre-Trainning)](https://github.com/openai/gpt-2) language model, which allows to load official pre-trained model parameters, generate samples, and fine-tune the model, etc.
+This is a Texar PyTorch implementation of [OpenAI GPT-2 (Generative Pre-Trainning)](https://github.com/openai/gpt-2)
+language model, which allows to load official pre-trained model parameters, generate samples, fine-tune the model,
+and much more.
 
-Texar provides ready-to-use modules including [`GPT2Decoder`](https://texar-pytorch.readthedocs.io/en/latest/code/modules.html#gpt2decoder), [`GPT2Encoder`](https://texar-pytorch.readthedocs.io/en/latest/code/modules.html#gpt2encoder), [`GPT2Classifier`](https://texar-pytorch.readthedocs.io/en/latest/code/modules.html#gpt2classifier), etc. This example shows the use of `GPT2Decoder` for generation tasks.
+Texar provides ready-to-use modules including
+[`GPT2Decoder`](https://texar-pytorch.readthedocs.io/en/latest/code/modules.html#gpt2decoder),
+[`GPT2Encoder`](https://texar-pytorch.readthedocs.io/en/latest/code/modules.html#gpt2encoder),
+and [`GPT2Classifier`](https://texar-pytorch.readthedocs.io/en/latest/code/modules.html#gpt2classifier). This example
+shows the use of `GPT2Decoder` for generation tasks.
 
 In sum, this example showcases:
 
@@ -33,56 +39,64 @@ pip install -r requirements.txt
 
 #### Interactive mode (to generate samples with context)
 
-This mode will initialize an interactive interface, which allows users to type in the context sentence. The model then generates continuation of the context. The example supports both Top-K and Top-P sample decoding. By default, the GPT-2 `117M` model with Top-K sample decoding is used.
+This mode will initialize an interactive interface, which allows users to type in the context sentence. The model then
+generates continuation of the context. The example supports both Top-K and Top-P sample decoding. By default, the GPT-2
+`117M` model with Top-K sample decoding is used.
 
 ```bash
-python gpt2_generate_main.py --is_interactive \
---max_decoding_length=100 \
---temperature=0.7 \
---top_k=40
+python gpt2_generate_main.py --interactive \
+    --max-decoding_length=100 \
+    --temperature=0.7 \
+    --top-k=40
 ```
 
 Here:
 
-- `is_interactive`: Specifies interactive mode.
-- `max_decoding_length`: The maximum number of tokens in the sample. **Note that this includes tokens in the context**. 
-- `nsamples`: Number of samples to generate for each input. 
+- `--interactive`: Specifies interactive mode.
+- `--max-decoding-length`: The maximum number of tokens in the sample. **Note that this includes tokens in the
+  context**. 
+- `--nsamples`: Number of samples to generate for each input. 
 
 For *top-k decoding*: 
 
-- `temperature`: Softmax temperature of top-k sample decoding. Larger values (above 1.0) result in more random samples, while smaller values push the sampling distribution towards the argmax. Must be strictly greater than 0. Defaults to `0.7`.
-- `top_k`: Number of top most likely candidates from a vocab distribution in each decoding step. Defaults to `40`.
+- `--temperature`: Softmax temperature of top-k sample decoding. Larger values (above 1.0) result in more random
+  samples, while smaller values push the sampling distribution towards the argmax. Must be strictly greater than 0.
+  Defaults to `0.7`.
+- `--top-k`: Number of top most likely candidates from a vocab distribution in each decoding step. Defaults to `40`.
 
 For *top-p decoding*:
-- `top_p`: Select tokens with cumulative probability of at most 'top_p' as candidates for sampling. Do not specify it if you want to use top-k decoding. 
+- `--top-p`: Select tokens with cumulative probability of at most 'top_p' as candidates for sampling. Do not specify it
+  if you want to use top-k decoding. 
 
-To use the GPT-2 `345M` model, specify `--config_model`:
+To use the GPT-2 `345M` model, specify `--pretrained-model-name`:
 
 ```bash
-python gpt2_generate_main.py --is_interactive \
---max_decoding_length=100 \
---temperature=0.7 \
---top_k=40 \
---config_model=configs.config_model_345M 
+python gpt2_generate_main.py --interactive \
+    --max-decoding-length=100 \
+    --temperature=0.7 \
+    --top-k=40 \
+    --pretrained-model-name=345M 
 ```
 
 Here:
 
-- `config_model`: Model configuration file. Default to `configs.config_model_117M`. 
+- `pretrained-model-name`: Name of the pre-trained checkpoint to load. Available options are: `117M` and `345M`.
+  Defaults to `345M`. 
 
-To use Top-P sample decoding, specify `--top_p`:
+To use Top-P sample decoding, specify `--top-p`:
 
 ```bash
-python gpt2_generate_main.py --is_interactive \
---max_decoding_length=100 \
---temperature=0.7 \
---top_p=40 \
---config_model=configs.config_model_345M 
+python gpt2_generate_main.py --interactive \
+    --max-decoding-length=100 \
+    --temperature=0.7 \
+    --top-p=40 \
+    --pretrained-model-name=345M 
 ```
 
 Here:
 
-- `top_p`: Select tokens with cumulative probability of at most `p` when arranged in decreasing order. Default to be `None`. 
+- `top-p`: Select tokens with cumulative probability of at most `p` when arranged in decreasing order.
+  Default to `None`. 
 
 
 **Example input:**
@@ -112,19 +126,19 @@ This mode generates a batch of samples from scratch.
 
 ```bash
 python gpt2_generate_main.py \
---nsamples=1 \
---batch_size=1 \
---max_decoding_len=100 \
---temperature=0.7 \
---top_k=40
+    --nsamples=1 \
+    --batch-size=1 \
+    --max-decoding-len=100 \
+    --temperature=0.7 \
+    --top-k=40
 ```
 
 Here:
 
-- `nsamples`: Total number of samples to generate, must be dividable by the `batch_size`.
-- `batch_size`: Each iteration generates `batch_size` number of samples.
+- `nsamples`: Total number of samples to generate, must be divisible by the `batch-size`.
+- `batch-size`: Each iteration generates `batch-size` number of samples.
 
-To use GPT-2 `345M` model, `--config_model` as above.
+To use GPT-2 `345M` model, `--pretrained-model-name` as above.
 
 **Example output:**
 
@@ -145,57 +159,68 @@ This section shows how we can fine-tune the pre-trained GPT2 model and use the r
 
 We first preprocess data with the GPT-2 BPE encoding. 
 
-A toy dataset is provided under [`data/toy/`](data/toy) which includes `train.txt`, `dev.txt`, and `test.txt`. This example will fit the GPT-2 model on `train.txt`, evaluate perplexity on `dev.txt`, and do continuation generation using `test.txt` as the context.
+A toy dataset is provided under [`data/toy/`](data/toy) which includes `train.txt`, `dev.txt`, and `test.txt`. This
+example will fit the GPT-2 model on `train.txt`, evaluate perplexity on `dev.txt`, and do continuation generation using
+`test.txt` as the context.
 
-Run the following cmd to transform the data into [pickle](https://docs.python.org/3/library/pickle.html) format and perform processing such as truncation, BPE encoding, adding special tokens, etc:
+Run the following cmd to transform the data into [pickle](https://docs.python.org/3/library/pickle.html) format and
+perform processing such as truncation, BPE encoding, adding special tokens, etc:
 
 ```bash
-python prepare_data.py --data_dir data/toy \
---max_seq_length=128 \
---output_dir=data/toy \ 
---pretrained_model_name=117M
+python prepare_data.py --data-dir data/toy \
+    --max-seq-length=128 \
+    --output-dir=data/toy \
+    --pretrained-model-name=117M
 ```
 
-- `data_dir`: The directory of raw data, wherein data files must be named as 'train.txt', 'dev.txt', or 'test.txt'. It is *not* necessary to provide all three files.
-- `max_seq_length`: The maxium length of sequence after BPE encoding. This includes GPT-2 special tokens that will be automatically added. Longer sequence will be trimmed. 
-- `output_dir`: The output path where the resulting pickle files will be put in. Be default, it is set to be the same as `data_dir`. 
-- `pretrained_model_name`: The name of a pre-trained model to load selected in the list of: `117M`, `345M`.
+- `--data-dir`: The directory of raw data, wherein data files must be named as 'train.txt', 'dev.txt', or 'test.txt'. It
+  is *not* necessary to provide all three files.
+- `--max-seq-length`: The maximum length of sequence after BPE encoding. This includes GPT-2 special tokens that will be
+  automatically added. Longer sequence will be trimmed. 
+- `--output-dir`: The output path where the resulting pickle files will be put in. Be default, it is set to be the same
+  as `--data-dir`. 
+- `--pretrained_model_name`: The name of a pre-trained model to load selected in the list of: `117M`, `345M`.
 
-The above cmd will output pickle files in the specified output directory. E.g., if `train.txt` is provided under `data_dir`, the output file `train.pickle` will be produced under `output_dir`.
+The above cmd will output pickle files in the specified output directory. E.g., if `train.txt` is provided under
+`data_dir`, the output file `train.pickle` will be produced under `output_dir`.
 
 ### Train and Evaluate
 
-For **single-GPU** training (and evaluation), run the following cmd. The cmd fine-tunes the pre-trained GPT-2 parameters, and evalautes perplexity on the dev set.
+For **single-GPU** training (and evaluation), run the following cmd. The cmd fine-tunes the pre-trained GPT-2
+parameters, and evaluates perplexity on the dev set.
 
 ```bash
-python gpt2_train_main.py --do_train --do_eval \
---config_train=configs.config_train \
---output_dir=output
+python gpt2_train_main.py --do-train --do-eval \
+    --config-train=config_train \
+    --output-dir=output
 ```
 
 Here:
 
-- `config_train`: Configurations of GPT-2 training, including data and optimization hyperparameters. By default, the config file [`configs/config_train.py`](configs/config_train.py) is used. Remember to specify correct data path if you are using your own data.
-- `output_dir`: The output path where checkpoints are saved.
+- `--config-train`: Configurations of GPT-2 training, including data and optimization hyperparameters. By default, the
+  config file [`configs/config_train.py`](config_train.py) is used. Remember to specify correct data path if you are
+  using your own data.
+- `--output-dir`: The output path where checkpoints are saved.
 
 By default, the GPT-2 `117M` model is used. To use the GPT-2 `345M` model instead, specify relevant arguments as below:
 
 ```bash
-python gpt2_train_main.py --do_train --do_eval \
---config_model=configs.config_model_345M \
---config_train=configs.config_train \
---output_dir=output
+python gpt2_train_main.py --do-train --do-eval \
+    --pretrained-model-name=345M \
+    --config-train=configs.config_train \
+    --output-dir=output
 ```
-where `pretrained_model_name` in `configs.config_model_345M` is necessary only when you want to load the pretrained checkpoint, and is ignored if `--checkpoint` is specified. 
+
+You can also specify `--checkpoint` to load your own previously trained checkpoint. 
 
 Please see the arguments in the code for more options.
 
 ## Other Use Cases
 
-Texar's `GPT2Decoder` (and other RNN-based decoders) easily supports common, advanced, or customized use, such as:
+Texar's `GPT2Decoder` (and other RNN-based decoders) easily supports common, advanced, or customized usages, such as:
 
 * Sample or continuation generation
-* Greedy / (top-k) sample / Gumbel-softmax / beam-search / ... / your-customized decoding
+* Greedy / (top-k) sample / Gumbel-softmax / beam-search / ... / your customized decoding algorithms
 * Training / fine-tuning in (un)conditional settings
 * Perplexity evaluation
 
@@ -203,31 +228,26 @@ Texar's `GPT2Decoder` (and other RNN-based decoders) easily supports common, adv
 
 ```python    
 decoder = GPT2Decoder(hparams=gpt2_hparams)
-    
-def _embedding_fn(ids, times):
-    return decoder.word_embedder(ids) + decoder.position_embedder(times)
 ```
 We can do
 
-**Ex. Use 1): Continuation generation w/ greedy decoding**
+**Use case 1): Continuation generation w/ greedy decoding**
 
 ```python
 output, output_length = decoder(
     context=ctx,
     context_sequence_length=ctx_len,
     decoding_strategy='infer_greedy',
-    end_token=end_token
-    embedding=_embedding_fn)
+    end_token=end_token)
     
 sample_id = output.sample_id
 logits = output.logits
 ```
 
-**Ex. Use 2): Top-k sample decoding**
+**Use case 2): Top-k sample decoding**
 
 ```python    
 topk_helper = tx.modules.TopKSampleEmbeddingHelper(
-    embedding=_embedding_fn,
     start_tokens=ctx[:,0],
     end_token=end_token,
     top_k=20,
@@ -239,7 +259,7 @@ output, output_length = decoder(
     helper=topk_helper)
 ```
 
-**Ex. Use 3): Fine-tuning for conditional generation**
+**Use case 3): Fine-tuning for conditional generation**
 
 ```python
 output = decoder(

@@ -90,9 +90,8 @@ def evaluate(model, iterator, is_regression: bool = False, print_fn=None,
              tqdm_kwargs=None):
     if print_fn is None:
         print_fn = print
-    metric: metrics.StreamingMetric
     if is_regression:
-        metric = metrics.StreamingPearsonR()
+        metric: metrics.StreamingMetric = metrics.StreamingPearsonR()
     else:
         metric = metrics.StreamingAccuracy()
     avg_loss = tx.utils.AverageRecorder()
@@ -123,7 +122,7 @@ def construct_datasets(args, device: Optional[torch.device] = None) \
         -> Dict[str, tx.data.RecordData]:
     sp_model = spm.SentencePieceProcessor()
 
-    pretrained_model_dir = tx.modules.load_pretrained_xlnet(
+    pretrained_model_dir = tx.modules.XLNetEncoder.download_checkpoint(
         pretrained_model_name=args.pretrained_model_name)
 
     spm_model_path = os.path.join(pretrained_model_dir, "spiece.model")
@@ -135,11 +134,9 @@ def construct_datasets(args, device: Optional[torch.device] = None) \
     data_dir = args.data_dir or f"data/{processor_class.task_name}"
     cache_dir = args.cache_dir or f"processed_data/{processor_class.task_name}"
     task_processor = processor_class(data_dir)
-    dataset.construct_dataset(task_processor,
-                              cache_dir,
-                              args.max_seq_len,
-                              tokenize_fn,
-                              file_prefix=cache_prefix)
+    dataset.construct_dataset(
+        task_processor, cache_dir, args.max_seq_len,
+        tokenize_fn, file_prefix=cache_prefix)
 
     datasets = dataset.load_datasets(
         args.task, cache_dir, args.max_seq_len, args.batch_size,
