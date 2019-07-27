@@ -131,32 +131,17 @@ class VAE(nn.Module):
             config_model.latent_dims,
             sum_state_size)
 
-    def forward(self, data_batch: tx.data.Batch, kl_weight: float) -> Dict:
+    def forward(self, data_batch: tx.data.Batch,
+                kl_weight: float, start_tokens: torch.LongTensor,
+                end_token: int) \
+            -> Dict:
         # encoder -> connector -> decoder
         text_ids = data_batch["text_ids"]
         input_embed = self.encoder_w_embedder(text_ids)
-        output_w_embed = self.decoder_w_embedder(text_ids[:, :-1])
         _, encoder_states = self.encoder(
             input_embed,
             sequence_length=data_batch["length"])
 
-        if self._config.decoder_type == "lstm":
-            output_embed = output_w_embed
-
-        elif self._config.decoder_type == 'transformer':
-
-            batch_size = text_ids.size(0)
-            max_seq_len = text_ids.size(1) - 1
-            batch_max_seq_len = text_ids.new_full(
-                (batch_size,), max_seq_len, dtype=torch.long)
-            output_p_embed = self.decoder_p_embedder(
-                sequence_length=batch_max_seq_len)
-            output_w_embed = output_w_embed * \
-                self._config.hidden_size ** 0.5
-            output_embed = output_w_embed + output_p_embed
-
-        else:
-            raise NotImplementedError
         mean_logvar = self.connector_mlp(encoder_states)
         mean, logvar = torch.chunk(mean_logvar, 2, 1)
         kl_loss = kl_divergence(mean, logvar)
@@ -171,15 +156,31 @@ class VAE(nn.Module):
         if self._config.decoder_type == "lstm":
             decoder_states = torch.split(
                 fc_output, self.decoder_initial_state_size, dim=1)
+
+            def _embedding_fn(token):
+                embedding = self.decoder_w_embedder(
+                    token)
+                if len(token.size()) > 1:
+                    _latent_z = torch.unsqueeze(latent_z, 1)
+                    _latent_z = _latent_z.repeat([1, embedding.size(1), 1])
+                    embedding = torch.cat([embedding, _latent_z], 2)
+                else:
+                    embedding = torch.cat([embedding, latent_z], 1)
+                return embedding
+
+            helper = self.decoder.create_helper(
+                decoding_strategy="train_greedy",
+                embedding=_embedding_fn,
+                start_tokens=start_tokens,
+                end_token=end_token,)
         else:
             decoder_states = torch.reshape(
                 fc_output, (-1, ) + self.decoder_initial_state_size)
-
+            helper = None
         seq_lengths = data_batch["length"] - 1
         # decode
         outputs = self.decode(
-            decoder_states, latent_z,
-            output_embed, seq_lengths, is_generate=False)
+            decoder_states, helper, seq_lengths, text_ids=text_ids)
 
         logits = outputs.logits
 
@@ -201,67 +202,40 @@ class VAE(nn.Module):
         return ret
 
     def decode(self,
-               decoder_states: Tensor,
-               latent_z: Tensor,
-               output_embed: Optional[Tensor] = None,
+               decoder_states: Union[Tensor, Tuple],
+               helper,
                seq_lengths: Optional[Tensor] = None,
-               is_generate: bool = False) \
+               max_decoding_length: int = None,
+               text_ids: torch.LongTensor = None) \
             -> Union[BasicRNNDecoderOutput, TransformerDecoderOutput]:
-        if not is_generate:
-            if self._config.decoder_type == "lstm":
-                # concat latent variable to input at every time step
-                latent_z = torch.unsqueeze(latent_z, 1)
 
-                latent_z = latent_z.repeat([1, output_embed.size(1), 1])
-                output_embed = torch.cat([output_embed, latent_z], 2)
-
-                outputs, _, _ = self.decoder(
-                    initial_state=decoder_states,
-                    inputs=output_embed,
-                    sequence_length=seq_lengths)
-            else:
-                outputs = self.decoder(
-                    inputs=output_embed,
-                    memory=decoder_states,
-                    memory_sequence_length=torch.ones(decoder_states.size(0)))
+        if self._config.decoder_type == "lstm":
+            outputs, _, _ = self.decoder(
+                initial_state=decoder_states,
+                inputs=text_ids,
+                helper=helper,
+                sequence_length=seq_lengths,
+                max_decoding_length=max_decoding_length)
         else:
-            start_tokens = torch.full(
-                (self._config.batch_size,),
-                self._bos_token_id,
-                dtype=torch.long, device=decoder_states.device)
-            end_token = self._eos_token_id
-            if self._config.decoder_type == "lstm":
-                def _cat_embedder(ids):
-                    """Concatenates latent variable to input word embeddings
-                    """
-                    embedding = self.decoder_w_embedder(
-                        ids.to(decoder_states.device))
-                    return torch.cat([embedding, latent_z], 1)
-
-                infer_helper = self.decoder.create_helper(
-                    embedding=_cat_embedder,
-                    decoding_strategy='infer_sample',
-                    start_tokens=start_tokens,
-                    end_token=end_token)
-
-                outputs, _, _ = self.decoder(
-                    initial_state=decoder_states,
-                    helper=infer_helper,
-                    max_decoding_length=100)
+            if text_ids is not None:
+                batch_size = text_ids.size(0)
+                max_seq_len = text_ids.size(1) - 1
+                batch_max_seq_len = text_ids.new_full(
+                    (batch_size,), max_seq_len, dtype=torch.long)
+                output_p_embed = self.decoder_p_embedder(
+                    sequence_length=batch_max_seq_len)
+                output_w_embed = self.decoder_w_embedder(text_ids[:, :-1])
+                output_w_embed = output_w_embed * \
+                    self._config.hidden_size ** 0.5
+                output_embed = output_w_embed + output_p_embed
             else:
-                def _embedding_fn(ids, times):
-                    w_embed = self.decoder_w_embedder(ids)
-                    p_embed = self.decoder_p_embedder(times)
-                    return w_embed * self._config.hidden_size ** 0.5 + p_embed
-
-                outputs, _ = self.decoder(
-                    memory=decoder_states,
-                    memory_sequence_length=torch.ones(decoder_states.size(0)),
-                    max_decoding_length=100,
-                    decoding_strategy='infer_sample',
-                    embedding=_embedding_fn,
-                    start_tokens=start_tokens,
-                    end_token=end_token)
+                output_embed = None
+            outputs = self.decoder(
+                inputs=output_embed,
+                memory=decoder_states,
+                memory_sequence_length=torch.ones(decoder_states.size(0)),
+                helper=helper,
+                max_decoding_length=max_decoding_length)
         return outputs
 
 
@@ -335,7 +309,11 @@ def main():
         vocab.bos_token_id,
         vocab.eos_token_id, config)
     model.to(device)
-
+    start_tokens = torch.full(
+            (config.batch_size,),
+            vocab.bos_token_id,
+            dtype=torch.long).to(device)
+    end_token = vocab.eos_token_id
     optimizer = tx.core.get_optimizer(
         params=model.parameters(),
         hparams=config.opt_hparams)
@@ -362,7 +340,7 @@ def main():
         avg_rec = tx.utils.AverageRecorder()
         for batch in iterator:
 
-            ret = model(batch, kl_weight)
+            ret = model(batch, kl_weight, start_tokens, end_token)
             if mode == "train":
                 opt_vars["kl_weight"] = min(
                     1.0, opt_vars["kl_weight"] + anneal_r)
@@ -405,7 +383,9 @@ def main():
         return nll, ppl
 
     @torch.no_grad()
-    def _generate(filename: Optional[str] = None):
+    def _generate(start_tokens: torch.LongTensor,
+                  end_token: int,
+                  filename: Optional[str] = None):
         ckpt = torch.load(args.model)
         model.load_state_dict(ckpt['model'])
         model.eval()
@@ -426,9 +406,37 @@ def main():
             decoder_states = torch.reshape(
                 fc_output, (-1, ) + model.decoder_initial_state_size)
 
-        outputs = model.decode(
-            decoder_states, latent_z, output_embed=None,
-            seq_lengths=None, is_generate=True)
+        if config.decoder_type == "lstm":
+            def _cat_embedder(ids):
+                """Concatenates latent variable to input word embeddings
+                """
+                embedding = model.decoder_w_embedder(
+                    ids.to(device))
+                return torch.cat([embedding, latent_z], 1)
+
+            helper = model.decoder.create_helper(
+                    embedding=_cat_embedder,
+                    decoding_strategy='infer_sample',
+                    start_tokens=start_tokens,
+                    end_token=end_token)
+            outputs, _, _ = model.decoder(
+                    initial_state=decoder_states,
+                    helper=helper,
+                    max_decoding_length=100)
+        else:
+            def _embedding_fn(ids, times):
+                w_embed = model.decoder_w_embedder(ids)
+                p_embed = model.decoder_p_embedder(times)
+                return w_embed * config.hidden_size ** 0.5 + p_embed
+            helper = model.decoder.create_helper(
+                embedding=_embedding_fn,
+                decoding_strategy='infer_sample',
+                start_tokens=start_tokens,
+                end_token=end_token)
+            outputs, _ = model.decode(
+                decoder_states, helper,
+                max_decoding_length=100,
+                seq_lengths=None)
 
         sample_tokens = vocab.map_ids_to_tokens_py(outputs.sample_id.cpu())
 
@@ -448,7 +456,7 @@ def main():
         fh.close()
 
     if args.mode == "predict":
-        _generate(args.out)
+        _generate(start_tokens, end_token, args.out)
         return
     # Counts trainable parameters
     total_parameters = 0
