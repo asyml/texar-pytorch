@@ -24,8 +24,8 @@ from texar.core import layers
 from texar.core.cell_wrappers import RNNCellBase
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
+from texar.modules.decoders.decoder_base import TokenEmbedder, TokenPosEmbedder
 from texar.modules.decoders.decoder_helpers import Helper
-from texar.modules.embedders.embedder_base import EmbedderBase
 from texar.utils import utils
 
 __all__ = [
@@ -46,17 +46,18 @@ class RNNDecoderBase(DecoderBase[State, Output]):
     def __init__(self,
                  input_size: int,
                  vocab_size: int,
-                 embedder: EmbedderBase,
+                 token_embedder: Optional[TokenEmbedder] = None,
+                 token_pos_embedder: Optional[TokenPosEmbedder] = None,
                  cell: Optional[RNNCellBase] = None,
                  output_layer: Optional[nn.Module] = None,
                  input_time_major: bool = False,
                  output_time_major: bool = False,
                  hparams=None):
-        super().__init__(input_time_major, output_time_major, hparams=hparams)
+        super().__init__(token_embedder, token_pos_embedder,
+                         input_time_major, output_time_major, hparams=hparams)
 
         self._input_size = input_size
         self._vocab_size = vocab_size
-        self._embedder = embedder
 
         # Make RNN cell
         self._cell = cell or layers.get_rnn_cell(

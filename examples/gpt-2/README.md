@@ -12,7 +12,7 @@ shows the use of `GPT2Decoder` for generation tasks.
 
 In sum, this example showcases:
 
-* Contructing and using pre-trained GPT-2 models in Texar
+* Building and using pre-trained GPT-2 models in Texar
 * Using GPT-2 to generate text samples with or without context
 * **Train or fine-tune** the model
 * Examples of other use cases
@@ -65,7 +65,7 @@ For *top-k decoding*:
 - `--top-k`: Number of top most likely candidates from a vocab distribution in each decoding step. Defaults to `40`.
 
 For *top-p decoding*:
-- `--top-p`: Select tokens with cumulative probability of at most 'top_p' as candidates for sampling. Do not specify it
+- `--top-p`: Select tokens with cumulative probability of at most `p` as candidates for sampling. Do not specify it
   if you want to use top-k decoding. 
 
 To use the GPT-2 `345M` model, specify `--pretrained-model-name`:
@@ -95,7 +95,7 @@ python gpt2_generate_main.py --interactive \
 
 Here:
 
-- `top-p`: Select tokens with cumulative probability of at most `p` when arranged in decreasing order.
+- `--top-p`: Select tokens with cumulative probability of at most `p` when arranged in decreasing order.
   Default to `None`. 
 
 
@@ -135,8 +135,8 @@ python gpt2_generate_main.py \
 
 Here:
 
-- `nsamples`: Total number of samples to generate, must be divisible by the `batch-size`.
-- `batch-size`: Each iteration generates `batch-size` number of samples.
+- `--nsamples`: Total number of samples to generate, must be divisible by the batch size.
+- `--batch-size`: The batch size. Each iteration generates this many samples.
 
 To use GPT-2 `345M` model, `--pretrained-model-name` as above.
 
@@ -163,7 +163,7 @@ A toy dataset is provided under [`data/toy/`](data/toy) which includes `train.tx
 example will fit the GPT-2 model on `train.txt`, evaluate perplexity on `dev.txt`, and do continuation generation using
 `test.txt` as the context.
 
-Run the following cmd to transform the data into [pickle](https://docs.python.org/3/library/pickle.html) format and
+Run the following command to transform the data into [pickle](https://docs.python.org/3/library/pickle.html) format and
 perform processing such as truncation, BPE encoding, adding special tokens, etc:
 
 ```bash
@@ -177,17 +177,17 @@ python prepare_data.py --data-dir data/toy \
   is *not* necessary to provide all three files.
 - `--max-seq-length`: The maximum length of sequence after BPE encoding. This includes GPT-2 special tokens that will be
   automatically added. Longer sequence will be trimmed. 
-- `--output-dir`: The output path where the resulting pickle files will be put in. Be default, it is set to be the same
+- `--output-dir`: The output path where the resulting pickled files will be put in. Be default, it is set to be the same
   as `--data-dir`. 
-- `--pretrained_model_name`: The name of a pre-trained model to load selected in the list of: `117M`, `345M`.
+- `--pretrained-model-name`: The name of a pre-trained model to load selected in the list of: `117M`, `345M`.
 
-The above cmd will output pickle files in the specified output directory. E.g., if `train.txt` is provided under
-`data_dir`, the output file `train.pickle` will be produced under `output_dir`.
+The above command will output pickled files in the specified output directory. E.g., if `train.txt` is provided under
+`data_dir`, the output file `train.pkl` will be produced under `output_dir`.
 
 ### Train and Evaluate
 
-For **single-GPU** training (and evaluation), run the following cmd. The cmd fine-tunes the pre-trained GPT-2
-parameters, and evaluates perplexity on the dev set.
+For **single-GPU** training (and evaluation), run the following command to fine-tune the pre-trained GPT-2
+parameters and evaluate perplexity on the dev set.
 
 ```bash
 python gpt2_train_main.py --do-train --do-eval \

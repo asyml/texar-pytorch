@@ -110,14 +110,14 @@ def prepare_pickle_data(data_dir: str,
         data_dir: The input data directory.
         max_seq_length: Max sequence length.
         encoder: The data pre-processor.
-        output_dir: The directory to save the `pickle` files in.
+        output_dir: The directory to save the pickled files in.
         feature_original_types: The original type of the feature.
     """
     train_fn = os.path.join(data_dir, "train.txt")
     if os.path.isfile(train_fn):
         print("Processing %s" % train_fn)
         train_examples = read_raw_data(train_fn)
-        train_file = os.path.join(output_dir, "train.pickle")
+        train_file = os.path.join(output_dir, "train.pkl")
         file_based_convert_examples_to_features(
             train_examples, max_seq_length, encoder, train_file,
             feature_original_types)
@@ -126,7 +126,7 @@ def prepare_pickle_data(data_dir: str,
     if os.path.isfile(dev_fn):
         print("Processing %s" % dev_fn)
         eval_examples = read_raw_data(dev_fn)
-        eval_file = os.path.join(output_dir, "dev.pickle")
+        eval_file = os.path.join(output_dir, "dev.pkl")
         file_based_convert_examples_to_features(
             eval_examples, max_seq_length, encoder, eval_file,
             feature_original_types)
@@ -135,7 +135,7 @@ def prepare_pickle_data(data_dir: str,
     if os.path.isfile(test_fn):
         print("Processing %s" % test_fn)
         test_examples = read_raw_data(test_fn)
-        test_file = os.path.join(output_dir, "test.pickle")
+        test_file = os.path.join(output_dir, "test.pkl")
         file_based_convert_examples_to_features(
             test_examples, max_seq_length, encoder, test_file,
             feature_original_types, EOS_token=None)

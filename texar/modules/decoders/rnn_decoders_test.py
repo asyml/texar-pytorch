@@ -53,7 +53,7 @@ class BasicRNNDecoderTest(unittest.TestCase):
         r"""Tests decoding in training mode.
         """
         decoder = BasicRNNDecoder(
-            embedder=self._embedder, input_size=self._emb_dim,
+            token_embedder=self._embedder, input_size=self._emb_dim,
             vocab_size=self._vocab_size, hparams=self._hparams)
         sequence_length = torch.tensor([self._max_time] * self._batch_size)
 
@@ -98,7 +98,7 @@ class BasicRNNDecoderTest(unittest.TestCase):
         r"""Compares decoding results with PyTorch built-in decoder.
         """
         decoder = BasicRNNDecoder(
-            embedder=self._embedder, input_size=self._emb_dim,
+            token_embedder=self._embedder, input_size=self._emb_dim,
             vocab_size=self._vocab_size, hparams=self._hparams)
 
         input_size = self._emb_dim
@@ -143,7 +143,7 @@ class BasicRNNDecoderTest(unittest.TestCase):
     def test_decode_infer(self):
         r"""Tests decoding in inference mode."""
         decoder = BasicRNNDecoder(
-            embedder=self._embedder, input_size=self._emb_dim,
+            token_embedder=self._embedder, input_size=self._emb_dim,
             vocab_size=self._vocab_size, hparams=self._hparams)
 
         decoder.eval()
@@ -266,7 +266,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
         for (cell_type, is_multi), hparams in self._test_hparams.items():
             decoder = AttentionRNNDecoder(
                 encoder_output_size=64,
-                embedder=self._embedder,
+                token_embedder=self._embedder,
                 vocab_size=self._vocab_size,
                 input_size=self._emb_dim,
                 hparams=hparams)
@@ -294,7 +294,7 @@ class AttentionRNNDecoderTest(unittest.TestCase):
         for (cell_type, is_multi), hparams in self._test_hparams.items():
             decoder = AttentionRNNDecoder(
                 encoder_output_size=64,
-                embedder=self._embedder,
+                token_embedder=self._embedder,
                 vocab_size=self._vocab_size,
                 input_size=self._emb_dim,
                 hparams=hparams)

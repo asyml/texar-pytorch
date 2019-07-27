@@ -6,12 +6,14 @@ import os
 import unittest
 
 from texar.modules.pretrained.pretrained_xlnet import *
+from texar.utils.test import pretrained_test
 
 
 class XLNetUtilsTest(unittest.TestCase):
     r"""Tests XLNet utils.
     """
 
+    @pretrained_test
     def test_load_pretrained_xlnet_AND_transform_xlnet_to_texar_config(self):
 
         pretrained_model_dir = PretrainedXLNetMixin.download_checkpoint(

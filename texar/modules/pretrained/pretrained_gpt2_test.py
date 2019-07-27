@@ -6,12 +6,14 @@ import os
 import unittest
 
 from texar.modules.pretrained.pretrained_gpt2 import *
+from texar.utils.test import pretrained_test
 
 
 class GPT2UtilsTest(unittest.TestCase):
     r"""Tests GPT2 utils.
     """
 
+    @pretrained_test
     def test_load_pretrained_gpt2_AND_transform_gpt2_to_texar_config(self):
         pretrained_model_dir = PretrainedGPT2Mixin.download_checkpoint(
             pretrained_model_name="117M")

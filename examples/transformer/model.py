@@ -49,7 +49,7 @@ class Transformer(nn.Module):
             hparams=self.config_model.encoder
         )
         self.decoder = tx.modules.TransformerDecoder(
-            embedding_fn=self._embedding_fn,
+            token_pos_embedder=self._embedding_fn,
             vocab_size=self.vocab_size,
             output_layer=self.word_embedder.embedding,
             hparams=self.config_model.decoder,
@@ -61,10 +61,11 @@ class Transformer(nn.Module):
             ignore_index=0,
         )
 
-    def _embedding_fn(self, x, y):
-        word_embed = self.word_embedder(x)
+    def _embedding_fn(self, tokens: torch.LongTensor,
+                      positions: torch.LongTensor) -> torch.Tensor:
+        word_embed = self.word_embedder(tokens)
         scale = self.config_model.hidden_dim ** 0.5
-        pos_embed = self.pos_embedder(y)
+        pos_embed = self.pos_embedder(positions)
         return word_embed * scale + pos_embed
 
     def forward(  # type: ignore

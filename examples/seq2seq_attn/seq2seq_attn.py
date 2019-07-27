@@ -61,7 +61,7 @@ class Seq2SeqAttn(nn.Module):
             hparams=config_model.encoder)
 
         self.decoder = tx.modules.AttentionRNNDecoder(
-            embedder=self.target_embedder,
+            token_embedder=self.target_embedder,
             encoder_output_size=(self.encoder.cell_fw.hidden_size +
                                  self.encoder.cell_bw.hidden_size),
             input_size=self.target_embedder.dim,

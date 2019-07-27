@@ -70,8 +70,7 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
             hparams=self._hparams.position_embed)
 
         # The GPT2 decoder (a TransformerDecoder)
-        super().__init__(embedding_fn=None,
-                         vocab_size=self._hparams.vocab_size,
+        super().__init__(vocab_size=self._hparams.vocab_size,
                          output_layer=word_embedder.embedding,
                          hparams=None)
 

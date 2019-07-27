@@ -22,6 +22,7 @@ from torch import nn
 
 from texar.core import layers
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
+from texar.modules.decoders.decoder_base import TokenEmbedder, TokenPosEmbedder
 from texar.modules.decoders.decoder_helpers import EmbeddingHelper, Helper
 from texar.modules.encoders.multihead_attention import (
     Cache, MultiheadAttentionEncoder)
@@ -60,11 +61,20 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
     :class:`~texar.modules.FeedForwardNetwork`, and residual connections.
 
     Args:
-        embedding_fn (optional): The function to convert input tokens and
-            positions to embeddings, i.e. the implementation of
-            :meth:`TransformerDecoder.embed_tokens`. Users should either provide
-            this argument, or subclass `TransformerDecoder` and override
-            :meth:`TransformerDecoder.embed_tokens`.
+        token_embedder: An instance of :torch_nn:`Module`, or a function taking
+            a :tensor:`LongTensor` ``tokens`` as argument. This is the embedder
+            called in :meth:`embed_tokens` to convert input tokens to
+            embeddings.
+        token_pos_embedder: An instance of :torch_nn:`Module`, or a function
+            taking two :tensor:`LongTensor`\ s ``tokens`` and ``positions`` as
+            argument. This is the embedder called in :meth:`embed_tokens` to
+            convert input tokens with positions to embeddings.
+
+            .. note::
+                Only one among :attr:`token_embedder` and
+                :attr:`token_pos_embedder` should be specified. If neither is
+                specified, you must subclass :class:`BasicRNNDecoder` and
+                override :meth:`embed_tokens`.
         vocab_size (int, optional): Vocabulary size. Required if
             :attr:`output_layer` is `None`.
         output_layer (optional): An output layer that transforms cell output
@@ -96,28 +106,21 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
     _state_cache: Cache
 
     def __init__(self,
-                 embedding_fn: Optional[EmbeddingFn] = None,
+                 token_embedder: Optional[TokenEmbedder] = None,
+                 token_pos_embedder: Optional[TokenPosEmbedder] = None,
                  vocab_size: Optional[int] = None,
                  output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
                  hparams=None):
         super().__init__(
+            token_embedder, token_pos_embedder,
             input_time_major=False, output_time_major=False, hparams=hparams)
-        self._input_size = self._hparams.dim
 
-        if embedding_fn is None:
-            if (self.embed_tokens.__func__ is  # type: ignore
-                    TransformerDecoder.embed_tokens):
-                raise ValueError(
-                    "`embedding_fn` cannot be `None` if "
-                    "`TransformerDecoder.embed_tokens` is not overridden.")
-        else:
-            if (self.embed_tokens.__func__ is not  # type: ignore
-                    TransformerDecoder.embed_tokens):
-                warnings.warn(
-                    "`embedding_fn` is specified, but `embed_tokens` is also "
-                    "overridden. The overridden `embed_tokens` method will be "
-                    "replaced by `embedding_fn`.")
-            self.embed_tokens = embedding_fn  # type: ignore
+        if token_pos_embedder is None and token_embedder is not None:
+            warnings.warn(
+                "Transformer models cannot capture positional information if "
+                "no positional embedding is provided.")
+
+        self._input_size = self._hparams.dim
         self._output_layer, self._vocab_size = _make_output_layer(
             output_layer, vocab_size, self._input_size,
             self._hparams.output_layer_bias)
@@ -286,13 +289,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             'initializer': None,
             'name': "transformer_decoder",
         }
-
-    def embed_tokens(self, tokens: torch.LongTensor,  # pylint: disable=method-hidden
-                     positions: torch.LongTensor) -> torch.Tensor:
-        # The `NotImplementError` is intended. The user should either override
-        # this method, or specify `embedding_fn` in the constructor, in which
-        # case this method will be overwritten with the provided function.
-        raise NotImplementedError
 
     def _inputs_to_outputs(self, inputs: torch.Tensor,
                            cache: Cache) -> Tuple[torch.Tensor, Cache]:

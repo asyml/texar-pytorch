@@ -2,7 +2,7 @@
 
 This is a Texar implementation of Google's BERT model, which allows to load pre-trained model parameters downloaded
 from the [official release](https://github.com/google-research/bert) and build/fine-tune arbitrary downstream
-applications with **distributed training** (This example showcases BERT for sentence classification).
+applications (This example showcases BERT for sentence classification).
 
 Texar provides ready-to-use modules including
 [`BERTEncoder`](https://texar-pytorch.readthedocs.io/en/latest/code/modules.html#bertencoder),
@@ -56,14 +56,14 @@ python prepare_data.py --task=MRPC \
     --output-dir=data/MRPC
 ```
 
-- `task`: Specifies the dataset name to preprocess. BERT provides default support for
+- `--task`: Specifies the dataset name to preprocess. BERT provides default support for
   `{'CoLA', 'MNLI', 'MRPC', 'XNLI', 'SST'}` data.
-- `max_seq_length`: The maxium length of sequence. This includes BERT special tokens that will be automatically added.
+- `--max-seq-length`: The maxium length of sequence. This includes BERT special tokens that will be automatically added.
   Longer sequences will be trimmed. 
-- `pretrained_model_name`: The name of a pre-trained model to load selected in the list of: `bert-base-uncased`,
+- `--pretrained-model-name`: The name of a pre-trained model to load selected in the list of: `bert-base-uncased`,
   `bert-large-uncased`, `bert-base-cased`, `bert-large-cased`, `bert-base-multilingual-uncased`,
   `bert-base-multilingual-cased`, and `bert-base-chinese`.
-- `output_dir`: The output path where the resulting pickled files will be put in. Be default, it is set to `data/{task}`
+- `--output-dir`: The output path where the resulting pickled files will be put in. Be default, it is set to `data/{task}`
   where `{task}` is the (upper-cased) dataset name specified in `--task` above. So in the above command, the pickled
   files are written to `data/MRPC`.
 
@@ -109,7 +109,7 @@ Here:
   to specify `num_classes`, `num_train_data`, `max_seq_length`, and `pickle_data_dir` as used or output in the above
   [data preparation](#prepare-data) step.
 - `--output-dir`: The output path where checkpoints are saved.
-- `pretrained_model_name`: The name of a pre-trained model to load selected in the list of: `bert-base-uncased`,
+- `--pretrained-model-name`: The name of a pre-trained model to load selected in the list of: `bert-base-uncased`,
   `bert-large-uncased`, `bert-base-cased`, `bert-large-cased`, `bert-base-multilingual-uncased`,
   `bert-base-multilingual-cased`, and `bert-base-chinese`. 
 

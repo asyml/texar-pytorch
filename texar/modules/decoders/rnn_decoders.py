@@ -25,9 +25,9 @@ from texar.core.attention_mechanism import (
     AttentionMechanism, AttentionWrapperState)
 from texar.core.cell_wrappers import AttentionWrapper, HiddenState, RNNCellBase
 from texar.modules.decoders import decoder_helpers
+from texar.modules.decoders.decoder_base import TokenEmbedder, TokenPosEmbedder
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.modules.decoders.rnn_decoder_base import RNNDecoderBase
-from texar.modules.embedders.embedder_base import EmbedderBase
 from texar.utils import utils
 from texar.utils.beam_search import beam_search
 from texar.utils.types import MaybeList, MaybeTuple
@@ -103,9 +103,20 @@ class BasicRNNDecoder(RNNDecoderBase[HiddenState, BasicRNNDecoderOutput]):
         input_size (int): Dimension of input embeddings.
         vocab_size (int, optional): Vocabulary size. Required if
             :attr:`output_layer` is `None`.
-        embedder (EmbedderBase): An instance of
-            :class:`~texar.modules.EmbedderBase`, used to convert input tokens
-            to embeddings.
+        token_embedder: An instance of :torch_nn:`Module`, or a function taking
+            a :tensor:`LongTensor` ``tokens`` as argument. This is the embedder
+            called in :meth:`embed_tokens` to convert input tokens to
+            embeddings.
+        token_pos_embedder: An instance of :torch_nn:`Module`, or a function
+            taking two :tensor:`LongTensor`\ s ``tokens`` and ``positions`` as
+            argument. This is the embedder called in :meth:`embed_tokens` to
+            convert input tokens with positions to embeddings.
+
+            .. note::
+                Only one among :attr:`token_embedder` and
+                :attr:`token_pos_embedder` should be specified. If neither is
+                specified, you must subclass :class:`BasicRNNDecoder` and
+                override :meth:`embed_tokens`.
         cell (RNNCellBase, optional): An instance of
             :class:`~texar.core.RNNCellBase`. If `None` (default), a cell is
             created as specified in :attr:`hparams`.
@@ -247,11 +258,25 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
     Args:
         input_size (int): Dimension of input embeddings.
         encoder_output_size (int): The output size of the encoder cell.
+        vocab_size (int): Vocabulary size. Required if
+            :attr:`output_layer` is `None`.
+        token_embedder: An instance of :torch_nn:`Module`, or a function taking
+            a :tensor:`LongTensor` ``tokens`` as argument. This is the embedder
+            called in :meth:`embed_tokens` to convert input tokens to
+            embeddings.
+        token_pos_embedder: An instance of :torch_nn:`Module`, or a function
+            taking two :tensor:`LongTensor`\ s ``tokens`` and ``positions`` as
+            argument. This is the embedder called in :meth:`embed_tokens` to
+            convert input tokens with positions to embeddings.
+
+            .. note::
+                Only one among :attr:`token_embedder` and
+                :attr:`token_pos_embedder` should be specified. If neither is
+                specified, you must subclass :class:`BasicRNNDecoder` and
+                override :meth:`embed_tokens`.
         cell (RNNCellBase, optional): An instance of
             :class:`~texar.core.RNNCellBase`. If `None`, a cell
             is created as specified in :attr:`hparams`.
-        vocab_size (int, optional): Vocabulary size. Required if
-            :attr:`output_layer` is `None`.
         output_layer (optional): An output layer that transforms cell output
             to logits. This can be:
 
@@ -308,16 +333,17 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                  input_size: int,
                  encoder_output_size: int,
                  vocab_size: int,
-                 embedder: EmbedderBase,
+                 token_embedder: Optional[TokenEmbedder] = None,
+                 token_pos_embedder: Optional[TokenPosEmbedder] = None,
                  cell: Optional[RNNCellBase] = None,
                  output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
                  cell_input_fn: Optional[Callable[[torch.Tensor, torch.Tensor],
                                                   torch.Tensor]] = None,
                  hparams=None):
 
-        super().__init__(cell=cell, input_size=input_size,
-                         vocab_size=vocab_size, embedder=embedder,
-                         output_layer=output_layer, hparams=hparams)
+        super().__init__(
+            input_size, vocab_size, token_embedder, token_pos_embedder,
+            cell=cell, output_layer=output_layer, hparams=hparams)
 
         attn_hparams = self._hparams['attention']
         attn_kwargs = attn_hparams['kwargs'].todict()

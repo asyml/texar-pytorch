@@ -26,7 +26,6 @@ from texar.core.layers import identity, Identity
 from texar.module_base import ModuleBase
 from texar.modules.decoders import decoder_helpers as helpers
 from texar.modules.decoders.decoder_helpers import Helper
-from texar.modules.embedders.embedder_base import EmbedderBase
 from texar.utils import utils
 
 __all__ = [
@@ -81,6 +80,11 @@ def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
     return output_layer, vocab_size
 
 
+TokenEmbedder = Union[nn.Module, Callable[[torch.LongTensor], torch.Tensor]]
+TokenPosEmbedder = Union[
+    nn.Module, Callable[[torch.LongTensor, torch.LongTensor], torch.Tensor]]
+
+
 class DecoderBase(ModuleBase, Generic[State, Output], ABC):
     r"""Base class inherited by all RNN decoder classes.
     See :class:`~texar.modules.BasicRNNDecoder` for the arguments.
@@ -88,9 +92,9 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
     See :meth:`forward` for the inputs and outputs of RNN decoders in general.
     """
 
-    _embedder: EmbedderBase
-
     def __init__(self,
+                 token_embedder: Optional[TokenEmbedder] = None,
+                 token_pos_embedder: Optional[TokenPosEmbedder] = None,
                  input_time_major: bool = False,
                  output_time_major: bool = False,
                  hparams=None):
@@ -101,11 +105,20 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         self._input_time_major = input_time_major
         self._output_time_major = output_time_major
 
-    @property
-    def embedder(self) -> EmbedderBase:
-        r"""The embedder used in the decoder.
-        """
-        return self._embedder
+        if (token_embedder is not None and
+                token_pos_embedder is not None):
+            raise ValueError("At most one among `token_embedder` and "
+                             "`token_pos_embedder` should be specified")
+        if token_embedder is None and token_pos_embedder is None:
+            embed_token_func = self.embed_tokens.__func__  # type: ignore
+            if embed_token_func is DecoderBase.embed_tokens:
+                raise ValueError(
+                    "Either `token_embedder` or `token_pos_embedder` must not "
+                    "be `None` if `DecoderBase.embed_tokens` is not "
+                    "overridden.")
+
+        self._token_embedder = token_embedder
+        self._token_pos_embedder = token_pos_embedder
 
     def embed_tokens(self, tokens: torch.LongTensor,
                      positions: torch.LongTensor) -> torch.Tensor:  # pylint: disable=unused-argument
@@ -122,7 +135,10 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             A :tensor:`Tensor` of size ``tokens.size() + (embed_dim,)``,
             denoting the converted embeddings.
         """
-        return self._embedder(tokens)
+        if self._token_embedder is not None:
+            return self._token_embedder(tokens)
+        assert self._token_pos_embedder is not None
+        return self._token_pos_embedder(tokens, positions)
 
     def create_helper(self, *,
                       decoding_strategy: Optional[str] = None,

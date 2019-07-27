@@ -6,12 +6,14 @@ import os
 import unittest
 
 from texar.modules.pretrained.pretrained_bert import *
+from texar.utils.test import pretrained_test
 
 
 class BERTUtilsTest(unittest.TestCase):
     r"""Tests BERT utils.
     """
 
+    @pretrained_test
     def test_load_pretrained_bert_AND_transform_bert_to_texar_config(self):
 
         pretrained_model_dir = PretrainedBERTMixin.download_checkpoint(
