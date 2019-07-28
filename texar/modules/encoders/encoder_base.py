@@ -14,7 +14,7 @@
 """
 Base class for encoders.
 """
-
+from abc import ABC
 from typing import Any, Dict
 
 import torch
@@ -26,7 +26,7 @@ __all__ = [
 ]
 
 
-class EncoderBase(ModuleBase):
+class EncoderBase(ModuleBase, ABC):
     r"""Base class inherited by all encoder classes.
     """
 

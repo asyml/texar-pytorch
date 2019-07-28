@@ -6,15 +6,22 @@ import unittest
 import torch
 
 from texar.modules.decoders.xlnet_decoder import *
+from texar.utils.test import pretrained_test
 
 
 class XLNetDecoderTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.XLNetDecoder`
     """
 
-    @unittest.skip("Manual test only")
+    def setUp(self) -> None:
+        self.batch_size = 2
+        self.max_length = 3
+        self.start_tokens = torch.zeros(
+            self.batch_size, self.max_length, dtype=torch.long)
+
+    @pretrained_test
     def test_hparams(self):
-        r"""Tests the priority of the decoer arch parameter.
+        r"""Tests the priority of the decoder arch parameters.
         """
         # case 1: set "pretrained_mode_name" by constructor argument
         hparams = {
@@ -22,69 +29,61 @@ class XLNetDecoderTest(unittest.TestCase):
         }
         decoder = XLNetDecoder(pretrained_model_name="xlnet-base-cased",
                                hparams=hparams)
-
-        _, _ = decoder(start_tokens=torch.zeros(16, 8, dtype=torch.int64),
-                       end_token=1,
-                       max_decoding_length=8)
-
         self.assertEqual(decoder.hparams.num_layers, 12)
+
+        _, _ = decoder(start_tokens=self.start_tokens,
+                       end_token=1, max_decoding_length=self.max_length)
 
         # case 2: set "pretrained_mode_name" by hparams
         hparams = {
             "pretrained_model_name": "xlnet-large-cased",
-            "num_layers": 6
+            "num_layers": 6,
         }
         decoder = XLNetDecoder(hparams=hparams)
-
-        _, _ = decoder(start_tokens=torch.zeros(16, 8, dtype=torch.int64),
-                       end_token=1,
-                       max_decoding_length=8)
-
         self.assertEqual(decoder.hparams.num_layers, 24)
+
+        _, _ = decoder(start_tokens=self.start_tokens,
+                       end_token=1, max_decoding_length=self.max_length)
 
         # case 3: set to None in both hparams and constructor argument
         hparams = {
             "pretrained_model_name": None,
-            "num_layers": 6
+            "num_layers": 6,
         }
         decoder = XLNetDecoder(hparams=hparams)
-
-        _, _ = decoder(start_tokens=torch.zeros(16, 8, dtype=torch.int64),
-                       end_token=1,
-                       max_decoding_length=8)
         self.assertEqual(decoder.hparams.num_layers, 6)
+
+        _, _ = decoder(start_tokens=self.start_tokens,
+                       end_token=1, max_decoding_length=self.max_length)
 
         # case 4: using default hparams
         decoder = XLNetDecoder()
-
-        _, _ = decoder(start_tokens=torch.zeros(16, 8, dtype=torch.int64),
-                       end_token=1,
-                       max_decoding_length=8)
         self.assertEqual(decoder.hparams.num_layers, 12)
 
-    @unittest.skip("Manual test only")
+        _, _ = decoder(start_tokens=self.start_tokens,
+                       end_token=1, max_decoding_length=self.max_length)
+
+    @pretrained_test
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
         variables.
         """
         # case 1
         decoder = XLNetDecoder()
-
-        _, _ = decoder(start_tokens=torch.zeros(16, 8, dtype=torch.int64),
-                       end_token=1,
-                       max_decoding_length=8)
         self.assertEqual(len(decoder.trainable_variables), 182 + 1)
+
+        _, _ = decoder(start_tokens=self.start_tokens,
+                       end_token=1, max_decoding_length=self.max_length)
 
         # case 2
         hparams = {
             "pretrained_model_name": "xlnet-large-cased",
         }
         decoder = XLNetDecoder(hparams=hparams)
-
-        _, _ = decoder(start_tokens=torch.zeros(16, 8, dtype=torch.int64),
-                       end_token=1,
-                       max_decoding_length=8)
         self.assertEqual(len(decoder.trainable_variables), 362 + 1)
+
+        _, _ = decoder(start_tokens=self.start_tokens,
+                       end_token=1, max_decoding_length=self.max_length)
 
         # case 3
         hparams = {
@@ -92,25 +91,23 @@ class XLNetDecoderTest(unittest.TestCase):
             "num_layers": 6
         }
         decoder = XLNetDecoder(hparams=hparams)
-
-        _, _ = decoder(start_tokens=torch.zeros(16, 8, dtype=torch.int64),
-                       end_token=1,
-                       max_decoding_length=8)
         self.assertEqual(len(decoder.trainable_variables), 92 + 1)
 
-    @unittest.skip("Manual test only")
+        _, _ = decoder(start_tokens=self.start_tokens,
+                       end_token=1, max_decoding_length=self.max_length)
+
+    @pretrained_test
     def test_decode_infer_sample(self):
         r"""Tests train_greedy."""
         hparams = {
-            "pretrained_model_name": None
+            "pretrained_model_name": None,
         }
         decoder = XLNetDecoder(hparams=hparams)
         decoder.train()
 
-        max_time = 8
-        batch_size = 16
-        inputs = torch.randint(32000, (batch_size, max_time), dtype=torch.int64)
-        outputs, _ = decoder(inputs, max_decoding_length=10, end_token=2)
+        inputs = torch.randint(32000, (self.batch_size, self.max_length))
+        outputs, _ = decoder(
+            inputs, max_decoding_length=self.max_length, end_token=2)
 
         self.assertIsInstance(outputs, XLNetDecoderOutput)
 

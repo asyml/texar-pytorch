@@ -15,6 +15,7 @@
 """
 
 import argparse
+import importlib
 import logging
 import os
 
@@ -28,85 +29,29 @@ parser.add_argument(
     choices=['COLA', 'MNLI', 'MRPC', 'XNLI', 'SST'],
     help="The task to run experiment on.")
 parser.add_argument(
-    '--pretrained_model_name', type=str, default='bert-base-uncased',
+    '--pretrained-model-name', type=str, default='bert-base-uncased',
     help="The name of a pre-trained model to load selected in the "
          "list of: `bert-base-uncased`, `bert-large-uncased`, "
          "`bert-base-cased`, `bert-large-cased`, "
          "`bert-base-multilingual-uncased`, `bert-base-multilingual-cased`, "
          "and `bert-base-chinese`.")
 parser.add_argument(
-    "--max_seq_length", type=int, default=128,
+    "--max-seq-length", type=int, default=128,
     help="The maxium length of sequence, longer sequence will be trimmed.")
 parser.add_argument(
-    "--output_dir", type=str, default=None,
-    help="The output directory where the pickle files will be generated. "
+    "--output-dir", type=str, default=None,
+    help="The output directory where the pickled files will be generated. "
          "By default it will be set to 'data/{task}'. E.g.: if "
          "task is 'MRPC', it will be set as 'data/MRPC'")
 parser.add_argument(
-    "--do_lower_case", type=bool, default=True,
+    "--lower-case", type=bool, default=True,
     help="Whether to lower case the input text. Should be True for uncased "
          "models and False for cased models.")
+parser.add_argument(
+    "--config-data", default="config_data", help="The dataset config.")
 args = parser.parse_args()
 
 logging.root.setLevel(logging.INFO)
-
-
-def prepare_data():
-    """
-    Builds the model and runs.
-    """
-    # Loads data
-    logging.info("Loading data")
-
-    task_datasets_rename = {
-        "COLA": "CoLA",
-        "SST": "SST-2",
-    }
-
-    data_dir = f'data/{args.task}'
-    if args.task.upper() in task_datasets_rename:
-        data_dir = f'data/{task_datasets_rename[args.task]}'
-
-    if args.output_dir is None:
-        pickle_output_dir = data_dir
-    else:
-        pickle_output_dir = args.output_dir
-    tx.utils.maybe_create_dir(pickle_output_dir)
-
-    processors = {
-        "COLA": data_utils.ColaProcessor,
-        "MNLI": data_utils.MnliProcessor,
-        "MRPC": data_utils.MrpcProcessor,
-        "XNLI": data_utils.XnliProcessor,
-        'SST': data_utils.SSTProcessor
-    }
-    processor = processors[args.task]()
-
-    from config_data import feature_original_types
-
-    pretrained_model_dir = tx.modules.load_pretrained_bert(
-        pretrained_model_name=args.pretrained_model_name,
-        cache_dir='bert_pretrained_models')
-
-    vocab_file = os.path.join(pretrained_model_dir, "vocab.txt")
-
-    num_classes = len(processor.get_labels())
-    num_train_data = len(processor.get_train_examples(data_dir))
-    logging.info("num_classes: %d; num_train_data: %d",
-                 num_classes, num_train_data)
-    tokenizer = tokenization.FullTokenizer(
-        vocab_file=vocab_file,
-        do_lower_case=args.do_lower_case)
-
-    # Produces pickle files
-    data_utils.prepare_record_data(
-        processor=processor,
-        tokenizer=tokenizer,
-        data_dir=data_dir,
-        max_seq_length=args.max_seq_length,
-        output_dir=pickle_output_dir,
-        feature_original_types=feature_original_types)
-    modify_config_data(args.max_seq_length, num_train_data, num_classes)
 
 
 def modify_config_data(max_seq_length, num_train_data, num_classes):
@@ -151,7 +96,57 @@ def modify_config_data(max_seq_length, num_train_data, num_classes):
 def main():
     """ Starts the data preparation
     """
-    prepare_data()
+    # Loads data
+    logging.info("Loading data")
+
+    task_datasets_rename = {
+        "COLA": "CoLA",
+        "SST": "SST-2",
+    }
+
+    data_dir = f'data/{args.task}'
+    if args.task.upper() in task_datasets_rename:
+        data_dir = f'data/{task_datasets_rename[args.task]}'
+
+    if args.output_dir is None:
+        output_dir = data_dir
+    else:
+        output_dir = args.output_dir
+    tx.utils.maybe_create_dir(output_dir)
+
+    processors = {
+        "COLA": data_utils.ColaProcessor,
+        "MNLI": data_utils.MnliProcessor,
+        "MRPC": data_utils.MrpcProcessor,
+        "XNLI": data_utils.XnliProcessor,
+        'SST': data_utils.SSTProcessor
+    }
+    processor = processors[args.task]()
+
+    config_data = importlib.import_module(args.config_data)
+
+    pretrained_model_dir = tx.modules.BERTEncoder.download_checkpoint(
+        pretrained_model_name=args.pretrained_model_name)
+
+    vocab_file = os.path.join(pretrained_model_dir, "vocab.txt")
+
+    num_classes = len(processor.get_labels())
+    num_train_data = len(processor.get_train_examples(data_dir))
+    logging.info("num_classes: %d; num_train_data: %d",
+                 num_classes, num_train_data)
+    tokenizer = tokenization.FullTokenizer(
+        vocab_file=vocab_file,
+        do_lower_case=args.lower_case)
+
+    # Produces pickled files
+    data_utils.prepare_record_data(
+        processor=processor,
+        tokenizer=tokenizer,
+        data_dir=data_dir,
+        max_seq_length=args.max_seq_length,
+        output_dir=output_dir,
+        feature_original_types=config_data.feature_original_types)
+    modify_config_data(args.max_seq_length, num_train_data, num_classes)
 
 
 if __name__ == "__main__":

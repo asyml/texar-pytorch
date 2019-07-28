@@ -18,14 +18,15 @@ XLNet Regressors.
 from typing import Any, Dict, Optional
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
+from torch.nn import functional as F
 
 from texar.core.layers import get_initializer
 from texar.hyperparams import HParams
-from texar.modules.regressors.regressor_base import RegressorBase
 from texar.modules.encoders.xlnet_encoder import XLNetEncoder
-from texar.modules.pretrained.xlnet_utils import params_except_in, init_weights
+from texar.modules.regressors.regressor_base import RegressorBase
+from texar.modules.pretrained.xlnet_model_utils import (
+    init_weights, params_except_in)
 from texar.utils.utils import dict_fetch
 
 
@@ -259,3 +260,7 @@ class XLNetRegressor(RegressorBase):
         preds = self.hidden_to_logits(summary).squeeze(-1)
 
         return preds
+
+    @property
+    def output_size(self) -> int:
+        return 1

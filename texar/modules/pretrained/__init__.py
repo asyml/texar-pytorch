@@ -15,7 +15,7 @@
 Pre-trained modules of Texar library.
 """
 
-from texar.modules.pretrained.bert_utils import *
-from texar.modules.pretrained.gpt2_utils import *
 from texar.modules.pretrained.pretrained_base import *
-from texar.modules.pretrained.xlnet_utils import *
+from texar.modules.pretrained.pretrained_bert import *
+from texar.modules.pretrained.pretrained_gpt2 import *
+from texar.modules.pretrained.pretrained_xlnet import *

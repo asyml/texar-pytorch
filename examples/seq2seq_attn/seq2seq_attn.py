@@ -23,14 +23,12 @@ import torch.nn as nn
 import texar as tx
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--config_model',
-                    type=str,
-                    default="config_model",
-                    help="The model config.")
-parser.add_argument('--config_data',
-                    type=str,
-                    default="config_iwslt14",
-                    help="The dataset config.")
+parser.add_argument(
+    '--config-model', type=str, default="config_model",
+    help="The model config.")
+parser.add_argument(
+    '--config-data', type=str, default="config_iwslt14",
+    help="The dataset config.")
 args = parser.parse_args()
 
 config_model = importlib.import_module(args.config_model)
@@ -42,7 +40,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class Seq2SeqAttn(nn.Module):
 
     def __init__(self, train_data):
-
         super().__init__()
 
         self.source_vocab_size = train_data.source_vocab.size
@@ -64,6 +61,7 @@ class Seq2SeqAttn(nn.Module):
             hparams=config_model.encoder)
 
         self.decoder = tx.modules.AttentionRNNDecoder(
+            token_embedder=self.target_embedder,
             encoder_output_size=(self.encoder.cell_fw.hidden_size +
                                  self.encoder.cell_bw.hidden_size),
             input_size=self.target_embedder.dim,
@@ -71,7 +69,6 @@ class Seq2SeqAttn(nn.Module):
             hparams=config_model.decoder)
 
     def forward(self, batch, mode):
-
         enc_outputs, _ = self.encoder(
             inputs=self.source_embedder(batch['source_text_ids']),
             sequence_length=batch['source_length'])
@@ -86,7 +83,7 @@ class Seq2SeqAttn(nn.Module):
                 memory=memory,
                 memory_sequence_length=batch['source_length'],
                 helper=helper_train,
-                inputs=self.target_embedder(batch['target_text_ids'][:, :-1]),
+                inputs=batch['target_text_ids'][:, :-1],
                 sequence_length=batch['target_length'] - 1)
 
             mle_loss = tx.losses.sequence_sparse_softmax_cross_entropy(
@@ -96,14 +93,13 @@ class Seq2SeqAttn(nn.Module):
 
             return mle_loss
         else:
-            start_tokens = memory.new_full(batch['target_length'].size(),
-                                           self.bos_token_id,
-                                           dtype=torch.int64)
+            start_tokens = memory.new_full(
+                batch['target_length'].size(), self.bos_token_id,
+                dtype=torch.int64)
 
             infer_outputs = self.decoder(
                 start_tokens=start_tokens,
                 end_token=self.eos_token_id.item(),
-                embedding=self.target_embedder,
                 memory=memory,
                 memory_sequence_length=batch['source_length'],
                 beam_width=config_model.beam_width)
@@ -112,21 +108,19 @@ class Seq2SeqAttn(nn.Module):
 
 
 def main():
-    """Entrypoint.
-    """
-    train_data = tx.data.PairedTextData(hparams=config_data.train,
-                                        device=device)
-    val_data = tx.data.PairedTextData(hparams=config_data.val,
-                                      device=device)
-    test_data = tx.data.PairedTextData(hparams=config_data.test,
-                                       device=device)
+    train_data = tx.data.PairedTextData(
+        hparams=config_data.train, device=device)
+    val_data = tx.data.PairedTextData(
+        hparams=config_data.val, device=device)
+    test_data = tx.data.PairedTextData(
+        hparams=config_data.test, device=device)
     data_iterator = tx.data.TrainTestDataIterator(
         train=train_data, val=val_data, test=test_data)
 
     model = Seq2SeqAttn(train_data)
     model.to(device)
-    train_op = tx.core.get_train_op(params=model.parameters(),
-                                    hparams=config_model.opt)
+    train_op = tx.core.get_train_op(
+        params=model.parameters(), hparams=config_model.opt)
 
     def _train_epoch():
         data_iterator.switch_to_train_data()
@@ -163,8 +157,8 @@ def main():
                 hypos.append(hypo)
                 refs.append([ref])
 
-        return tx.evals.corpus_bleu_moses(list_of_references=refs,
-                                          hypotheses=hypos)
+        return tx.evals.corpus_bleu_moses(
+            list_of_references=refs, hypotheses=hypos)
 
     best_val_bleu = -1.
     for i in range(config_data.num_epochs):

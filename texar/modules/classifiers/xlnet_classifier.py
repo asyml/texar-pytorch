@@ -18,16 +18,16 @@ XLNet Classifier.
 from typing import Any, Dict, Optional, Tuple
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
+from torch.nn import functional as F
 
 from texar.core.layers import get_initializer
 from texar.hyperparams import HParams
 from texar.modules.classifiers.classifier_base import ClassifierBase
 from texar.modules.encoders.xlnet_encoder import XLNetEncoder
-from texar.modules.pretrained.xlnet_utils import params_except_in, init_weights
+from texar.modules.pretrained.xlnet_model_utils import (
+    init_weights, params_except_in)
 from texar.utils.utils import dict_fetch
-
 
 __all__ = [
     "XLNetClassifier",
@@ -121,9 +121,9 @@ class XLNetClassifier(ClassifierBase):
             if self.hidden_to_logits:
                 self.hidden_to_logits.apply(init_weights)
 
-        self.is_binary = (self.num_classes == 1) or \
-                         (self.num_classes <= 0 and
-                          self._hparams.hidden_dim == 1)
+        self.is_binary = ((self.num_classes == 1) or
+                          (self.num_classes <= 0 and
+                           self._hparams.hidden_dim == 1))
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
@@ -307,3 +307,18 @@ class XLNetClassifier(ClassifierBase):
             preds = torch.flatten(preds)
 
         return logits, preds
+
+    @property
+    def output_size(self) -> int:
+        r"""The final dimension(s) of :meth:`forward` output tensor(s).
+
+        Here output is :attr:`logits`. The final dimension equals to ``1``
+        when output final dimension is only determined by input.
+        """
+        if self._hparams.num_classes > 1:
+            logit_dim = self._hparams.num_classes
+        elif self._hparams.num_classes == 1:
+            logit_dim = 1
+        else:
+            logit_dim = self._hparams.hidden_dim
+        return logit_dim

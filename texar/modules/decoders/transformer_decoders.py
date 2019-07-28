@@ -14,7 +14,7 @@
 """
 Transformer decoder.
 """
-
+import warnings
 from typing import Callable, Dict, NamedTuple, Optional, Tuple, Union
 
 import torch
@@ -22,6 +22,7 @@ from torch import nn
 
 from texar.core import layers
 from texar.modules.decoders.decoder_base import DecoderBase, _make_output_layer
+from texar.modules.decoders.decoder_base import TokenEmbedder, TokenPosEmbedder
 from texar.modules.decoders.decoder_helpers import EmbeddingHelper, Helper
 from texar.modules.encoders.multihead_attention import (
     Cache, MultiheadAttentionEncoder)
@@ -37,6 +38,8 @@ __all__ = [
     'TransformerDecoderOutput',
     'TransformerDecoder',
 ]
+
+EmbeddingFn = Callable[[torch.LongTensor, torch.LongTensor], torch.Tensor]
 
 
 class TransformerDecoderOutput(NamedTuple):
@@ -58,6 +61,20 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
     :class:`~texar.modules.FeedForwardNetwork`, and residual connections.
 
     Args:
+        token_embedder: An instance of :torch_nn:`Module`, or a function taking
+            a :tensor:`LongTensor` ``tokens`` as argument. This is the embedder
+            called in :meth:`embed_tokens` to convert input tokens to
+            embeddings.
+        token_pos_embedder: An instance of :torch_nn:`Module`, or a function
+            taking two :tensor:`LongTensor`\ s ``tokens`` and ``positions`` as
+            argument. This is the embedder called in :meth:`embed_tokens` to
+            convert input tokens with positions to embeddings.
+
+            .. note::
+                Only one among :attr:`token_embedder` and
+                :attr:`token_pos_embedder` should be specified. If neither is
+                specified, you must subclass :class:`TransformerDecoder` and
+                override :meth:`embed_tokens`.
         vocab_size (int, optional): Vocabulary size. Required if
             :attr:`output_layer` is `None`.
         output_layer (optional): An output layer that transforms cell output
@@ -89,14 +106,21 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
     _state_cache: Cache
 
     def __init__(self,
+                 token_embedder: Optional[TokenEmbedder] = None,
+                 token_pos_embedder: Optional[TokenPosEmbedder] = None,
                  vocab_size: Optional[int] = None,
                  output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
                  hparams=None):
-        super().__init__(vocab_size,
-                         input_time_major=False,
-                         output_time_major=False, hparams=hparams)
-        self._input_size = self._hparams.dim
+        super().__init__(
+            token_embedder, token_pos_embedder,
+            input_time_major=False, output_time_major=False, hparams=hparams)
 
+        if token_pos_embedder is None and token_embedder is not None:
+            warnings.warn(
+                "Transformer models cannot capture positional information if "
+                "no positional embedding is provided.")
+
+        self._input_size = self._hparams.dim
         self._output_layer, self._vocab_size = _make_output_layer(
             output_layer, vocab_size, self._input_size,
             self._hparams.output_layer_bias)
@@ -178,7 +202,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                     'output_dim': 512,
                     'num_heads': 8,
                     'dropout_rate': 0.1,
-                    'output_dim': 512,
                     'use_bias': False,
                 },
                 "initializer": None,
@@ -351,11 +374,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
            Arguments :attr:`(start_tokens, end_token)` are required,
            and argument :attr:`max_decoding_length` is optional.
 
-           .. warning::
-               Beam search is not yet implemented. Setting :attr:`beam_width`
-               to any value greater than 1 would raise a
-               :exc:`NotImplementedError`
-
         Args:
             memory (optional): The memory to attend, e.g., the output of an RNN
                 encoder. A :tensor:`Tensor` of shape
@@ -371,10 +389,17 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 position to a large negative value for masking. If not given,
                 :attr:`memory_sequence_length` is used to automatically
                 create an attention bias.
-            inputs (optional): Input tensor for teacher forcing decoding, of
-                shape ``[batch_size, target_max_time, emb_dim]`` containing the
-                target sequence word embeddings. Used when
-                :attr:`decoding_strategy` is set to ``"train_greedy"``.
+            inputs (optional): Input tensors for teacher forcing decoding.
+                Used when :attr:`decoding_strategy` is set to
+                ``"train_greedy"``, or when `hparams`-configured helper is used.
+
+                The attr:`inputs` is a :tensor:`LongTensor` used as index to
+                look up embeddings and feed in the decoder. For example, if
+                :attr:`embedder` is an instance of
+                :class:`~texar.modules.WordEmbedder`, then :attr:`inputs`
+                is usually a 2D int Tensor `[batch_size, max_time]` (or
+                `[max_time, batch_size]` if `input_time_major` == `True`)
+                containing the token indexes.
             sequence_length (optional): A :tensor:`LongTensor` of shape
                 ``[batch_size]``, containing the sequence length of
                 :attr:`inputs`. Tokens beyond the respective sequence length are
@@ -474,6 +499,10 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             if inputs is None:
                 raise ValueError("'input' must not be none "
                                  "when using 'train_greedy' decoding strategy.")
+            times = torch.arange(
+                inputs.size(1), dtype=torch.long, device=inputs.device)
+            times = times.unsqueeze(0).expand(inputs.size(0), -1)
+            inputs = self.embed_tokens(inputs, times)
             if sequence_length is not None:
                 inputs = mask_sequences(inputs, sequence_length)
 
@@ -560,10 +589,10 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             end_token: int = kwargs.get('end_token')  # type: ignore
 
             # The output format is different when running beam search.
-            sample_id, log_prob = self._beam_decode(
+            sample_id, log_prob = self.beam_decode(
                 start_tokens,
                 end_token,
-                embedding_fn=kwargs['embedding'],
+                embedding_fn=self.embed_tokens,
                 beam_width=beam_width,
                 length_penalty=length_penalty,
                 decode_length=max_decoding_length)
@@ -651,11 +680,11 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
         return cache
 
-    def _beam_decode(self, start_tokens: torch.LongTensor, end_token: int,
-                     embedding_fn: Callable[
-                         [torch.LongTensor, torch.LongTensor], torch.Tensor],
-                     decode_length: int = 256, beam_width: int = 5,
-                     length_penalty: float = 0.6) \
+    def beam_decode(self, start_tokens: torch.LongTensor, end_token: int,
+                    embedding_fn: Callable[
+                        [torch.LongTensor, torch.LongTensor], torch.Tensor],
+                    decode_length: int = 256, beam_width: int = 5,
+                    length_penalty: float = 0.6) \
             -> Tuple[torch.Tensor, torch.Tensor]:
 
         def _symbols_to_logits_fn(ids, cache):
@@ -694,7 +723,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                    initial_state: Optional[Cache]) \
             -> Tuple[torch.ByteTensor, torch.Tensor, Cache]:
         initial_finished, initial_inputs = helper.initialize(
-            inputs, sequence_length)
+            self.embed_tokens, inputs, sequence_length)
         state = initial_state or self._state_cache
         return initial_finished, initial_inputs, state
 
@@ -721,7 +750,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             next_inputs = torch.empty(0)
         else:
             finished, next_inputs = helper.next_inputs(
-                time=time, outputs=outputs, sample_ids=sample_ids)
+                self.embed_tokens, time, outputs, sample_ids)
         next_state = state
         outputs = TransformerDecoderOutput(
             logits=outputs,

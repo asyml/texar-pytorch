@@ -57,7 +57,7 @@ class Conv1DClassifier(ClassifierBase):
 
     def __init__(self, in_channels: int, in_features: Optional[int] = None,
                  hparams: Optional[Union[HParams, Dict[str, Any]]] = None):
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
 
         encoder_hparams = utils.dict_fetch(hparams,
                                            Conv1DEncoder.default_hparams())

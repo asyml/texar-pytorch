@@ -61,7 +61,7 @@ class MultiheadAttentionEncoder(EncoderBase):
     """
 
     def __init__(self, input_size: int, hparams=None):
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
         use_bias = self._hparams.use_bias
 
         self.Q_dense = nn.Linear(input_size, self._hparams.num_units,

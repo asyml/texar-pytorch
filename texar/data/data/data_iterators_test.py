@@ -35,7 +35,7 @@ class SamplerTest(unittest.TestCase):
                 'lazy_strategy': lazy_strategy,
                 'cache_strategy': cache_strategy,
             }
-            super().__init__(source, hparams)
+            super().__init__(source, hparams=hparams)
 
         def process(self, raw_example):
             return raw_example

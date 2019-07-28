@@ -25,6 +25,7 @@ from texar.core.attention_mechanism import (
     AttentionMechanism, AttentionWrapperState)
 from texar.core.cell_wrappers import AttentionWrapper, HiddenState, RNNCellBase
 from texar.modules.decoders import decoder_helpers
+from texar.modules.decoders.decoder_base import TokenEmbedder, TokenPosEmbedder
 from texar.modules.decoders.decoder_helpers import Helper
 from texar.modules.decoders.rnn_decoder_base import RNNDecoderBase
 from texar.utils import utils
@@ -100,11 +101,25 @@ class BasicRNNDecoder(RNNDecoderBase[HiddenState, BasicRNNDecoderOutput]):
 
     Args:
         input_size (int): Dimension of input embeddings.
+        vocab_size (int, optional): Vocabulary size. Required if
+            :attr:`output_layer` is `None`.
+        token_embedder: An instance of :torch_nn:`Module`, or a function taking
+            a :tensor:`LongTensor` ``tokens`` as argument. This is the embedder
+            called in :meth:`embed_tokens` to convert input tokens to
+            embeddings.
+        token_pos_embedder: An instance of :torch_nn:`Module`, or a function
+            taking two :tensor:`LongTensor`\ s ``tokens`` and ``positions`` as
+            argument. This is the embedder called in :meth:`embed_tokens` to
+            convert input tokens with positions to embeddings.
+
+            .. note::
+                Only one among :attr:`token_embedder` and
+                :attr:`token_pos_embedder` should be specified. If neither is
+                specified, you must subclass :class:`BasicRNNDecoder` and
+                override :meth:`embed_tokens`.
         cell (RNNCellBase, optional): An instance of
             :class:`~texar.core.RNNCellBase`. If `None` (default), a cell is
             created as specified in :attr:`hparams`.
-        vocab_size (int, optional): Vocabulary size. Required if
-            :attr:`output_layer` is `None`.
         output_layer (optional): An instance of :torch_nn:`Module`. Apply to
             the RNN cell output to get logits. If `None`, a :torch_nn:`Linear`
             layer is used with output dimension set to :attr:`vocab_size`.
@@ -224,9 +239,7 @@ class BasicRNNDecoder(RNNDecoderBase[HiddenState, BasicRNNDecoderOutput]):
         logits = self._output_layer(cell_outputs)
         sample_ids = helper.sample(time=time, outputs=logits)
         (finished, next_inputs) = helper.next_inputs(
-            time=time,
-            outputs=logits,
-            sample_ids=sample_ids)
+            self.embed_tokens, time, logits, sample_ids)
         next_state = cell_state
         outputs = BasicRNNDecoderOutput(logits, sample_ids, cell_outputs)
         return outputs, next_state, next_inputs, finished
@@ -245,11 +258,25 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
     Args:
         input_size (int): Dimension of input embeddings.
         encoder_output_size (int): The output size of the encoder cell.
+        vocab_size (int): Vocabulary size. Required if
+            :attr:`output_layer` is `None`.
+        token_embedder: An instance of :torch_nn:`Module`, or a function taking
+            a :tensor:`LongTensor` ``tokens`` as argument. This is the embedder
+            called in :meth:`embed_tokens` to convert input tokens to
+            embeddings.
+        token_pos_embedder: An instance of :torch_nn:`Module`, or a function
+            taking two :tensor:`LongTensor`\ s ``tokens`` and ``positions`` as
+            argument. This is the embedder called in :meth:`embed_tokens` to
+            convert input tokens with positions to embeddings.
+
+            .. note::
+                Only one among :attr:`token_embedder` and
+                :attr:`token_pos_embedder` should be specified. If neither is
+                specified, you must subclass :class:`AttentionRNNDecoder` and
+                override :meth:`embed_tokens`.
         cell (RNNCellBase, optional): An instance of
             :class:`~texar.core.RNNCellBase`. If `None`, a cell
             is created as specified in :attr:`hparams`.
-        vocab_size (int, optional): Vocabulary size. Required if
-            :attr:`output_layer` is `None`.
         output_layer (optional): An output layer that transforms cell output
             to logits. This can be:
 
@@ -306,17 +333,17 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                  input_size: int,
                  encoder_output_size: int,
                  vocab_size: int,
+                 token_embedder: Optional[TokenEmbedder] = None,
+                 token_pos_embedder: Optional[TokenPosEmbedder] = None,
                  cell: Optional[RNNCellBase] = None,
                  output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
                  cell_input_fn: Optional[Callable[[torch.Tensor, torch.Tensor],
                                                   torch.Tensor]] = None,
                  hparams=None):
 
-        super().__init__(cell=cell,
-                         input_size=input_size,
-                         vocab_size=vocab_size,
-                         output_layer=output_layer,
-                         hparams=hparams)
+        super().__init__(
+            input_size, vocab_size, token_embedder, token_pos_embedder,
+            cell=cell, output_layer=output_layer, hparams=hparams)
 
         attn_hparams = self._hparams['attention']
         attn_kwargs = attn_hparams['kwargs'].todict()
@@ -518,21 +545,15 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             initial_state: Optional[MaybeList[MaybeTuple[torch.Tensor]]]) -> \
             Tuple[torch.ByteTensor, torch.Tensor,
                   Optional[AttentionWrapperState]]:
-        initial_finished, initial_inputs = helper.initialize(inputs,
-                                                             sequence_length)
+        initial_finished, initial_inputs = helper.initialize(
+            self.embed_tokens, inputs, sequence_length)
         if initial_state is None:
             state = None
         else:
-            batch_size = None
-
-            def _get_batch_size_fn(x):
-                nonlocal batch_size
-                if isinstance(x, torch.Tensor):
-                    batch_size = x.size(0)
-
-            utils.map_structure(_get_batch_size_fn, initial_state)
-            state = self._cell.zero_state(  # type: ignore
-                batch_size=batch_size)
+            tensor = utils.get_first_in_structure(initial_state)
+            assert tensor is not None
+            tensor: torch.Tensor
+            state = self._cell.zero_state(batch_size=tensor.size(0))
             state = state._replace(cell_state=initial_state)
 
         return initial_finished, initial_inputs, state
@@ -548,9 +569,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         logits = self._output_layer(wrapper_outputs)
         sample_ids = helper.sample(time=time, outputs=logits)
         finished, next_inputs = helper.next_inputs(
-            time=time,
-            outputs=logits,
-            sample_ids=sample_ids)
+            self.embed_tokens, time, logits, sample_ids)
 
         attention_scores = wrapper_state.alignments
         attention_context = wrapper_state.attention
@@ -575,7 +594,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             beam_width: Optional[int] = None,
             length_penalty: float = 0., **kwargs) \
             -> Union[Tuple[AttentionRNNDecoderOutput,
-                     Optional[AttentionWrapperState], torch.LongTensor],
+                           Optional[AttentionWrapperState], torch.LongTensor],
                      Dict[str, torch.Tensor]]:
         r"""Performs decoding.
 
@@ -596,19 +615,13 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                 Used when :attr:`decoding_strategy` is set to
                 ``"train_greedy"``, or when `hparams`-configured helper is used.
 
-                - If :attr:`embedding` is `None`, :attr:`inputs` is directly
-                  fed to the decoder. E.g., in ``"train_greedy"`` strategy,
-                  :attr:`inputs` must be a 3D Tensor of shape
-                  ``[batch_size, max_time, emb_dim]`` (or
-                  ``[max_time, batch_size, emb_dim]`` if
-                  ``"input_time_major"`` is `True`).
-                - If :attr:`embedding` is given, :attr:`inputs` is used as
-                  index to look up embeddings and feed in the decoder. E.g.,
-                  if `embedding` is an instance of
-                  :class:`~texar.modules.WordEmbedder`, then :attr:`inputs`
-                  is usually a 2D int Tensor `[batch_size, max_time]` (or
-                  `[max_time, batch_size]` if `input_time_major` == True)
-                  containing the token indexes.
+                The attr:`inputs` is a :tensor:`LongTensor` used as index to
+                look up embeddings and feed in the decoder. For example, if
+                :attr:`embedder` is an instance of
+                :class:`~texar.modules.WordEmbedder`, then :attr:`inputs`
+                is usually a 2D int Tensor `[batch_size, max_time]` (or
+                `[max_time, batch_size]` if `input_time_major` == `True`)
+                containing the token indexes.
             sequence_length (optional): A 1D int Tensor containing the
                 sequence length of :attr:`inputs`.
                 Used when `decoding_strategy="train_greedy"` or
@@ -700,7 +713,6 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             sample_id, log_prob = self.beam_decode(  # type: ignore
                 start_tokens=start_tokens,
                 end_token=kwargs.get('end_token'),
-                embedding_fn=kwargs.get('embedding'),
                 initial_state=state,
                 beam_width=beam_width,
                 length_penalty=length_penalty,
@@ -711,7 +723,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             self.memory_sequence_length = None
 
             # Release the cached memory in AttentionMechanism
-            for attention_mechanism in self._cell._attention_mechanisms:  # pylint: disable=protected-access
+            for attention_mechanism in self._cell.attention_mechanisms:
                 attention_mechanism.clear_cache()
 
             return {"sample_id": sample_id,
@@ -739,7 +751,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         self.memory_sequence_length = None
 
         # Release the cached memory in AttentionMechanism
-        for attention_mechanism in self._cell._attention_mechanisms:  # pylint: disable=protected-access
+        for attention_mechanism in self._cell.attention_mechanisms:
             attention_mechanism.clear_cache()
 
         return outputs, final_state, sequence_lengths
@@ -747,11 +759,11 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
     def beam_decode(self,
                     start_tokens: torch.LongTensor,
                     end_token: int,
-                    embedding_fn: Callable[[torch.LongTensor], torch.Tensor],
                     initial_state: AttentionWrapperState,
                     decode_length: int = 256,
                     beam_width: int = 5,
-                    length_penalty: float = 0.6):
+                    length_penalty: float = 0.6) \
+            -> Tuple[torch.LongTensor, torch.Tensor]:
 
         def _prepare_beam_search(x):
             x = x.unsqueeze(1).repeat(1, beam_width, *([1] * (x.dim() - 1)))
@@ -763,8 +775,10 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             self.memory_sequence_length)
 
         def _symbols_to_logits_fn(ids, state):
-            ids = ids[:, -1]
-            inputs = embedding_fn(ids)
+            batch_size = ids.size(0)
+            step = ids.size(-1) - 1
+            times = ids.new_full((batch_size,), step)
+            inputs = self.embed_tokens(ids[:, -1], times)
             wrapper_outputs, wrapper_state = self._cell(
                 inputs, state, memory_beam_search,
                 memory_sequence_length_beam_search)

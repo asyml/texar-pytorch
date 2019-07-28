@@ -16,16 +16,16 @@ Base class for decoders.
 """
 
 import copy
-from abc import ABC
-from typing import Generic, Optional, Tuple, TypeVar, Union, overload, Callable
+from abc import ABC, abstractmethod
+from typing import Callable, Generic, Optional, Tuple, TypeVar, Union, overload
 
 import torch
 from torch import nn
 
 from texar.core.layers import identity, Identity
 from texar.module_base import ModuleBase
-from texar.modules.decoders import decoder_helpers
-from texar.modules.decoders.decoder_helpers import Embedding, Helper
+from texar.modules.decoders import decoder_helpers as helpers
+from texar.modules.decoders.decoder_helpers import Helper
 from texar.utils import utils
 
 __all__ = [
@@ -80,6 +80,11 @@ def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
     return output_layer, vocab_size
 
 
+TokenEmbedder = Union[nn.Module, Callable[[torch.LongTensor], torch.Tensor]]
+TokenPosEmbedder = Union[
+    nn.Module, Callable[[torch.LongTensor, torch.LongTensor], torch.Tensor]]
+
+
 class DecoderBase(ModuleBase, Generic[State, Output], ABC):
     r"""Base class inherited by all RNN decoder classes.
     See :class:`~texar.modules.BasicRNNDecoder` for the arguments.
@@ -88,22 +93,55 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
     """
 
     def __init__(self,
-                 vocab_size: Optional[int] = None,
+                 token_embedder: Optional[TokenEmbedder] = None,
+                 token_pos_embedder: Optional[TokenPosEmbedder] = None,
                  input_time_major: bool = False,
                  output_time_major: bool = False,
                  hparams=None):
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
 
         self._train_helper: Optional[Helper] = None
         self._infer_helper: Optional[Helper] = None
         self._input_time_major = input_time_major
         self._output_time_major = output_time_major
 
-        self._vocab_size = vocab_size
+        if (token_embedder is not None and
+                token_pos_embedder is not None):
+            raise ValueError("At most one among `token_embedder` and "
+                             "`token_pos_embedder` should be specified")
+        if token_embedder is None and token_pos_embedder is None:
+            embed_token_func = self.embed_tokens.__func__  # type: ignore
+            if embed_token_func is DecoderBase.embed_tokens:
+                raise ValueError(
+                    "Either `token_embedder` or `token_pos_embedder` must not "
+                    "be `None` if `DecoderBase.embed_tokens` is not "
+                    "overridden.")
+
+        self._token_embedder = token_embedder
+        self._token_pos_embedder = token_pos_embedder
+
+    def embed_tokens(self, tokens: torch.LongTensor,
+                     positions: torch.LongTensor) -> torch.Tensor:  # pylint: disable=unused-argument
+        r"""Convert tokens along with positions to embeddings.
+
+        Args:
+            tokens: A :tensor:`LongTensor` denoting the token indices to convert
+                to embeddings.
+            positions: A :tensor:`LongTensor` with the same size as
+                :attr:`tokens`, denoting the positions of the tokens. This is
+                useful if the decoder uses positional embeddings.
+
+        Returns:
+            A :tensor:`Tensor` of size ``tokens.size() + (embed_dim,)``,
+            denoting the converted embeddings.
+        """
+        if self._token_embedder is not None:
+            return self._token_embedder(tokens)
+        assert self._token_pos_embedder is not None
+        return self._token_pos_embedder(tokens, positions)
 
     def create_helper(self, *,
                       decoding_strategy: Optional[str] = None,
-                      embedding: Optional[Embedding] = None,
                       start_tokens: Optional[torch.LongTensor] = None,
                       end_token: Optional[int] = None,
                       softmax_temperature: Optional[float] = None,
@@ -237,16 +275,6 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                 strategy. Different arguments are required based on the
                 strategy.
                 Ignored if :attr:`helper` is given.
-            embedding (optional): A callable that returns embedding vectors
-                of `inputs` (e.g., an instance of subclass of
-                :class:`~texar.modules.EmbedderBase`), or the `params`
-                argument of
-                :tf_main:`tf.nn.embedding_lookup <nn/embedding_lookup>`.
-                If provided, `inputs` (if used) will be passed to
-                `embedding` to fetch the embedding vectors of the inputs.
-                Required when :attr:`decoding_strategy` is ``"infer_greedy"``
-                or ``"infer_sample"``; optional when
-                ``decoding_strategy="train_greedy"``.
             start_tokens (optional): A :tensor:`LongTensor` of shape
                 ``[batch_size]``, the start tokens.
                 Used when :attr:`decoding_strategy` is ``"infer_greedy"`` or
@@ -275,22 +303,20 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         """
         if decoding_strategy is not None:
             if decoding_strategy == 'train_greedy':
-                helper: Helper = decoder_helpers.TrainingHelper(
-                    embedding, self._input_time_major)
+                helper: Helper = helpers.TrainingHelper(
+                    self._input_time_major)
             elif decoding_strategy in ['infer_greedy', 'infer_sample']:
-                if (embedding is None or
-                        start_tokens is None or
-                        end_token is None):
+                if start_tokens is None or end_token is None:
                     raise ValueError(
                         f"When using '{decoding_strategy}' decoding strategy, "
                         f"'embedding', 'start_tokens', and 'end_token' must "
                         f"not be `None`.")
                 if decoding_strategy == 'infer_greedy':
-                    helper = decoder_helpers.GreedyEmbeddingHelper(
-                        embedding, start_tokens, end_token)
+                    helper = helpers.GreedyEmbeddingHelper(
+                        start_tokens, end_token)
                 else:
-                    helper = decoder_helpers.SampleEmbeddingHelper(
-                        embedding, start_tokens, end_token, softmax_temperature)
+                    helper = helpers.SampleEmbeddingHelper(
+                        start_tokens, end_token, softmax_temperature)
             else:
                 raise ValueError(
                     f"Unknown decoding strategy: {decoding_strategy}")
@@ -305,12 +331,11 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                 helper_type = self._hparams.helper_infer.type
             kwargs_.update({
                 'time_major': self._input_time_major,
-                'embedding': embedding,
                 'start_tokens': start_tokens,
                 'end_token': end_token,
                 'softmax_temperature': softmax_temperature})
             kwargs_.update(kwargs)
-            helper = decoder_helpers.get_helper(helper_type, **kwargs_)
+            helper = helpers.get_helper(helper_type, **kwargs_)
         return helper
 
     def _create_or_get_helper(self, infer_mode: Optional[bool] = None,
@@ -431,12 +456,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
 
         return final_outputs, final_state, final_sequence_lengths
 
-    @property
-    def output_size(self):
-        r"""Output size of one step.
-        """
-        raise NotImplementedError
-
+    @abstractmethod
     def initialize(self, helper: Helper, inputs: Optional[torch.Tensor],
                    sequence_length: Optional[torch.LongTensor],
                    initial_state: Optional[State]) \
@@ -459,6 +479,7 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def step(self, helper: Helper, time: int,
              inputs: torch.Tensor, state: Optional[State]) \
             -> Tuple[Output, State, torch.Tensor, torch.ByteTensor]:

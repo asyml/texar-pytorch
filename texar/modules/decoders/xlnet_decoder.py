@@ -15,15 +15,12 @@
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, Union
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
+from torch.nn import functional as F
 
-from texar.core import layers
 from texar.modules.decoders.decoder_base import DecoderBase
 from texar.modules.decoders.decoder_helpers import Helper, SampleEmbeddingHelper
 from texar.modules.encoders.xlnet_encoder import XLNetEncoder
-from texar.modules.pretrained.xlnet_utils import (init_xlnet_checkpoint,
-                                                  init_weights)
 from texar.utils import get_instance
 
 __all__ = [
@@ -67,6 +64,12 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
             and default values.
     """
 
+    # Variables persistent during decoding.
+    _state_cache_len: int
+    _state_recompute_memory: bool
+    # required for recomputing memory
+    _state_previous_inputs: List[torch.Tensor]
+
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
@@ -79,32 +82,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
 
         self.lm_bias = nn.Parameter(torch.zeros(self._hparams.vocab_size))
 
-        if self.pretrained_model_dir:
-            init_xlnet_checkpoint(self, self.pretrained_model_dir)
-        elif self._hparams.initializer:
-            initialize = layers.get_initializer(self._hparams.initializer)
-            assert initialize is not None
-            # Do not re-initialize LayerNorm modules.
-            for name, param in self.named_parameters():
-                if name.split('.')[-1] == 'weight' \
-                        and 'layer_norm' not in name:
-                    initialize(param)
-        else:
-            self.reset_parameters()
-
-    def reset_parameters(self):
-        self.apply(init_weights)
-        if not self._hparams.untie_r:
-            nn.init.normal_(self.r_w_bias, 0.0, 0.02)
-            nn.init.normal_(self.r_r_bias, 0.0, 0.02)
-            if self._hparams.use_segments:
-                nn.init.normal_(self.r_s_bias, 0.0, 0.02)
-
-    # Variables persistent during decoding.
-    _state_cache_len: int
-    _state_recompute_memory: bool
-    # required for recomputing memory
-    _state_previous_inputs: List[torch.Tensor]
+        self.init_pretrained_weights()
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
@@ -265,6 +243,10 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
 
         return return_dict
 
+    def embed_tokens(self, tokens: torch.LongTensor,
+                     positions: torch.LongTensor) -> torch.Tensor:  # pylint: disable=unused-argument
+        return self.word_embed(tokens)
+
     def initialize(self,  # pylint: disable=no-self-use
                    helper: Helper,
                    inputs: Optional[torch.Tensor],
@@ -272,7 +254,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
                    initial_state: Optional[State]) \
             -> Tuple[torch.ByteTensor, torch.Tensor, Optional[State]]:
         initial_finished, initial_inputs = helper.initialize(
-            inputs, sequence_length)
+            self.embed_tokens, inputs, sequence_length)
         return initial_finished, initial_inputs, initial_state
 
     def step(self,
@@ -300,9 +282,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
         logits = logits[:, -1]
         sample_ids = helper.sample(time=time, outputs=logits)
         (finished, next_inputs) = helper.next_inputs(
-            time=time,
-            outputs=logits,
-            sample_ids=sample_ids)
+            self.embed_tokens, time, logits, sample_ids)
         outputs = XLNetDecoderOutput(logits=logits, sample_id=sample_ids)
         return outputs, memory, next_inputs, finished
 
@@ -364,8 +344,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
                     self._state_previous_inputs, initial=True))
         start_tokens = start_tokens[-1]
 
-        helper_kwargs.update(
-            embedding=self.word_embed.weight, start_tokens=start_tokens)
+        helper_kwargs.update(start_tokens=start_tokens)
 
         if helper_kwargs.get("end_token") is None:
             raise ValueError("'end_token' must be specified.")

@@ -40,6 +40,7 @@ __all__ = [
     'no_map',
     'map_structure',
     'map_structure_zip',
+    'get_first_in_structure',
     'sequence_mask',
     'get_args',
     'get_default_arg_values',
@@ -84,6 +85,7 @@ Type_lambda_map = {
     nn.EmbeddingBag: lambda x: x.embedding_dim,
     nn.RNNCellBase: lambda x: x.hidden_size,
 }
+
 
 # NestedCollection = Union[T, Collection['NestedCollection']]
 
@@ -191,11 +193,33 @@ def map_structure_zip(fn: Callable[..., R],
     return fn(*objs)
 
 
+def get_first_in_structure(obj: Collection[T]) -> Optional[T]:
+    r"""Return the first not-`None` element within a (possibly nested)
+    collection.
+
+    Args:
+        obj: The collection to pick the element from.
+
+    Returns:
+        The first non-`None` element from the collection, or `None` if the
+        collection is empty or contains only `None` elements.
+    """
+    item = None
+
+    def _get_first(x):
+        nonlocal item
+        if item is None:
+            item = x
+
+    map_structure(_get_first, obj)
+    return item
+
+
 def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
                   max_len: Optional[int] = None,
                   dtype: Optional[torch.dtype] = None,
                   device: Optional[torch.device] = None) -> torch.ByteTensor:
-    r"""Returns a mask tensor representing the first N positions of each cell.
+    r"""Return a mask tensor representing the first N positions of each cell.
 
     If ``lengths`` has shape ``[d_1, d_2, ..., d_n]`` the resulting tensor
     ``mask`` has dtype ``dtype`` and shape ``[d_1, d_2, ..., d_n, maxlen]``,

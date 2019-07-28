@@ -22,38 +22,33 @@ import os
 
 import torch
 import torch.nn.functional as F
-
 import texar as tx
 
 from utils import model_utils
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--config_downstream", default="config_classifier",
+    "--config-downstream", default="config_classifier",
     help="Configuration of the downstream part of the model")
 parser.add_argument(
-    '--pretrained_model_name', type=str, default='bert-base-uncased',
-    help="The name of a pre-trained model to load selected in the "
-         "list of: `bert-base-uncased`, `bert-large-uncased`, "
-         "`bert-base-cased`, `bert-large-cased`, "
-         "`bert-base-multilingual-uncased`, `bert-base-multilingual-cased`, "
-         "and `bert-base-chinese`.")
+    '--pretrained-model-name', type=str, default='bert-base-uncased',
+    choices=tx.modules.BERTEncoder.available_checkpoints(),
+    help="Name of the pre-trained checkpoint to load.")
 parser.add_argument(
-    "--config_data", default="config_data", help="The dataset config.")
+    "--config-data", default="config_data", help="The dataset config.")
 parser.add_argument(
-    "--output_dir", default="output/",
+    "--output-dir", default="output/",
     help="The output directory where the model checkpoints will be written.")
 parser.add_argument(
     "--checkpoint", type=str, default=None,
     help="Path to a model checkpoint (including bert modules) to restore from.")
 parser.add_argument(
-    "--do_train", action="store_true", help="Whether to run training.")
+    "--do-train", action="store_true", help="Whether to run training.")
 parser.add_argument(
-    "--do_eval", action="store_true",
+    "--do-eval", action="store_true",
     help="Whether to run eval on the dev set.")
 parser.add_argument(
-    "--do_test", action="store_true",
+    "--do-test", action="store_true",
     help="Whether to run test on the test set.")
 args = parser.parse_args()
 
@@ -80,7 +75,6 @@ def main():
     # Builds BERT
     model = tx.modules.BERTClassifier(
         pretrained_model_name=args.pretrained_model_name,
-        cache_dir='bert_pretrained_models',
         hparams=config_downstream)
     model.to(device)
 
@@ -99,19 +93,15 @@ def main():
         else:
             vars_with_decay.append(param)
 
-    opt_params = [
-        {
-            'params': vars_with_decay,
-            'weight_decay': 0.01,
-        },
-        {
-            'params': vars_without_decay,
-            'weight_decay': 0.0,
-        }]
-    optim = tx.core.BertAdam(opt_params,
-                             betas=(0.9, 0.999),
-                             eps=1e-6,
-                             lr=static_lr)
+    opt_params = [{
+        'params': vars_with_decay,
+        'weight_decay': 0.01,
+    }, {
+        'params': vars_without_decay,
+        'weight_decay': 0.0,
+    }]
+    optim = tx.core.BertAdam(
+        opt_params, betas=(0.9, 0.999), eps=1e-6, lr=static_lr)
 
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optim, functools.partial(model_utils.get_lr_multiplier,
@@ -133,13 +123,12 @@ def main():
         r"""Compute loss.
         """
         if model.is_binary:
-            loss = F.binary_cross_entropy(logits.view(-1),
-                                          labels.view(-1),
-                                          reduction='mean')
+            loss = F.binary_cross_entropy(
+                logits.view(-1), labels.view(-1), reduction='mean')
         else:
-            loss = F.cross_entropy(logits.view(-1, model.num_classes),
-                                   labels.view(-1),
-                                   reduction='mean')
+            loss = F.cross_entropy(
+                logits.view(-1, model.num_classes),
+                labels.view(-1), reduction='mean')
         return loss
 
     def _train_epoch():

@@ -68,6 +68,7 @@ confidence=
 disable=invalid-name,too-many-branches,too-many-statements,too-many-arguments,  # Unnecessarily strict checks
         too-many-instance-attributes,too-few-public-methods,too-many-locals,
         too-many-lines,too-many-return-statements,too-many-boolean-expressions,
+        too-many-ancestors,
         fixme,
         no-else-return,no-else-raise,len-as-condition,unnecessary-pass,         # Not exactly good conventions
         bad-continuation,inconsistent-return-statements,stop-iteration-return,
@@ -301,7 +302,8 @@ logging-modules=logging
 max-line-length=80
 
 # Regexp for a line that is allowed to be longer than the limit.
-ignore-long-lines=^\s*(# )?`?<?https?://\S+>?$
+# This regex matches URLs and link anchors.
+ignore-long-lines=^\s*((# )?`?<?https?://\S+>?|\.\. _`.*`:|`.*`_)$
 
 # Allow the body of an if to be on the same line as the test if there is no
 # else.

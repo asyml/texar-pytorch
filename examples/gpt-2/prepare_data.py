@@ -15,35 +15,38 @@
 """
 
 import argparse
+import importlib
 
 import texar as tx
 
 from utils import data_utils, processor
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    '--data_dir', type=str, default='data/toy',
+    '--data-dir', type=str, default='data/toy',
     help="The directory of raw data, wherein data files must be named as "
          "'train.txt', 'dev.txt', or 'test.txt'.")
 parser.add_argument(
-    '--max_seq_length', type=int, default=128,
+    '--max-seq-length', type=int, default=128,
     help="The maxium length of sequence, longer sequence will be trimmed.")
 parser.add_argument(
-    '--output_dir', type=str, default=None,
+    '--output-dir', type=str, default=None,
     help="The output directory where the pickle files will be generated. "
-         "By default it is set to be the same as `--data_dir`.")
+         "By default it is set to be the same as `--data-dir`.")
 parser.add_argument(
-    '--pretrained_model_name', type=str, default='117M',
-    help="The name of a pre-trained model to load selected in the "
-         "list of: `117M`, `345M`.")
+    "--pretrained-model-name", type=str, default="117M",
+    choices=tx.modules.GPT2Decoder.available_checkpoints(),
+    help="Name of the pre-trained checkpoint to load.")
+parser.add_argument(
+    '--config-train', type=str, default="configs.config_train",
+    help="Configurations of GPT-2 training, including data and "
+         "optimization hyperparameters.")
 
 args = parser.parse_args()
 
 
-def prepare_data():
-    r"""Preprocesses raw data and produces pickle files.
-    """
+def main():
+    """Preprocess raw data and produces pickled files."""
     data_dir = args.data_dir
     if args.output_dir is None:
         pickle_output_dir = data_dir
@@ -52,14 +55,14 @@ def prepare_data():
 
     tx.utils.maybe_create_dir(pickle_output_dir)
 
-    pretrained_model_dir = tx.modules.load_pretrained_gpt2(
-        pretrained_model_name=args.pretrained_model_name,
-        cache_dir='gpt2_pretrained_models')
+    pretrained_model_dir = \
+        tx.modules.PretrainedGPT2Mixin.download_checkpoint(
+            pretrained_model_name=args.pretrained_model_name)
 
     # Creates a data pre-processor for, e.g., BPE encoding
     proc = processor.get_encoder(pretrained_model_dir)
 
-    from configs.config_train import feature_original_types
+    config_train = importlib.import_module(args.config_train)
 
     # Produces pickle files
     data_utils.prepare_pickle_data(
@@ -67,13 +70,7 @@ def prepare_data():
         max_seq_length=args.max_seq_length,
         encoder=proc,
         output_dir=pickle_output_dir,
-        feature_original_types=feature_original_types)
-
-
-def main():
-    """Data preparation.
-    """
-    prepare_data()
+        feature_original_types=config_train.feature_original_types)
 
 
 if __name__ == "__main__":

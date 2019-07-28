@@ -17,29 +17,23 @@ XLNet encoder.
 
 from typing import Any, Dict, List, Optional, Tuple
 
-
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
+from torch.nn import functional as F
 
-from texar.core import layers
-from texar.hyperparams import HParams
 from texar.modules.encoders.encoder_base import EncoderBase
-from texar.modules.pretrained.pretrained_base import PretrainedBase
-from texar.modules.pretrained.xlnet_utils import (init_xlnet_checkpoint,
-                                                  params_except_in,
-                                                  init_weights)
+from texar.modules.pretrained.pretrained_xlnet import PretrainedXLNetMixin
 from texar.modules.pretrained.xlnet_model_utils import (
-    PositionWiseFF, RelativePositionalEncoding, RelativeMultiheadAttention)
+    PositionWiseFF, RelativeMultiheadAttention, RelativePositionalEncoding,
+    params_except_in)
 from texar.utils.utils import dict_fetch, sum_tensors
-
 
 __all__ = [
     "XLNetEncoder",
 ]
 
 
-class XLNetEncoder(PretrainedBase, EncoderBase):
+class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
     r"""Raw XLNet module for encoding sequences.
 
     This module supports the architecture first proposed
@@ -60,21 +54,13 @@ class XLNetEncoder(PretrainedBase, EncoderBase):
         init (optional): whether to initialize `XLNetEncoder`.
     """
 
-    model_name = "XLNet"
-
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None,
                  init=True):
-
-        super().__init__(pretrained_model_name=pretrained_model_name,
-                         cache_dir=cache_dir,
-                         hparams=hparams)
-
-        if self.pretrained_model_dir:
-            self._hparams = HParams(self.pretrained_model_hparams,
-                                    self._hparams.todict())
+        super().__init__(hparams=hparams)
+        self.load_pretrained_config(pretrained_model_name, cache_dir)
 
         num_layers = self._hparams.num_layers
         num_heads = self._hparams.num_heads
@@ -115,26 +101,7 @@ class XLNetEncoder(PretrainedBase, EncoderBase):
             torch.Tensor(1, 1, self._hparams.hidden_dim))
 
         if init:
-            if self.pretrained_model_dir:
-                init_xlnet_checkpoint(self, self.pretrained_model_dir)
-            elif self._hparams.initializer:
-                initialize = layers.get_initializer(self._hparams.initializer)
-                assert initialize is not None
-                # Do not re-initialize LayerNorm modules.
-                for name, param in self.named_parameters():
-                    if name.split('.')[-1] == 'weight' \
-                            and 'layer_norm' not in name:
-                        initialize(param)
-            else:
-                self.reset_parameters()
-
-    def reset_parameters(self):
-        self.apply(init_weights)
-        if not self._hparams.untie_r:
-            nn.init.normal_(self.r_w_bias, 0.0, 0.02)
-            nn.init.normal_(self.r_r_bias, 0.0, 0.02)
-            if self._hparams.use_segments:
-                nn.init.normal_(self.r_s_bias, 0.0, 0.02)
+            self.init_pretrained_weights()
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:

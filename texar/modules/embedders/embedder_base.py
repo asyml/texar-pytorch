@@ -45,7 +45,7 @@ class EmbedderBase(ModuleBase):
 
     def __init__(self, num_embeds: Optional[int] = None,
                  init_value: Optional[torch.Tensor] = None, hparams=None):
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
 
         if num_embeds is not None or init_value is not None:
             self._embedding = nn.Parameter(embedder_utils.get_embedding(
@@ -117,7 +117,7 @@ class EmbeddingDropout(ModuleBase):
     """
 
     def __init__(self, rate: float, hparams=None):
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
         self._rate = rate
 
     def forward(self,  # type: ignore

@@ -19,10 +19,9 @@ import argparse
 import texar as tx
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--data',
-                    type=str,
-                    default="iwslt14",
-                    help="Data to download [iwslt14|toy_copy]")
+parser.add_argument(
+    '--data', type=str, default="iwslt14",
+    help="Data to download [iwslt14|toy_copy]")
 args = parser.parse_args()
 
 
@@ -44,7 +43,7 @@ def prepare_data():
             filenames='toy_copy.zip',
             extract=True)
     else:
-        raise ValueError('Unknown data: {}'.format(args.data))
+        raise ValueError(f'Unknown dataset: {args.data}')
 
 
 def main():

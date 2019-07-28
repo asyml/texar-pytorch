@@ -18,24 +18,21 @@ BERT encoders.
 from typing import Optional
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from texar.core import layers
-from texar.hyperparams import HParams
-from texar.modules.pretrained.bert_utils import init_bert_checkpoint
-from texar.modules.pretrained.pretrained_base import PretrainedBase
 from texar.modules.embedders.embedders import WordEmbedder
 from texar.modules.embedders.position_embedders import PositionEmbedder
 from texar.modules.encoders.encoder_base import EncoderBase
 from texar.modules.encoders.transformer_encoder import TransformerEncoder
-
+from texar.modules.pretrained.pretrained_bert import PretrainedBERTMixin
 
 __all__ = [
     "BERTEncoder",
 ]
 
 
-class BERTEncoder(PretrainedBase, EncoderBase):
+class BERTEncoder(EncoderBase, PretrainedBERTMixin):
     r"""Raw BERT Transformer for encoding sequences.
 
     This module basically stacks
@@ -62,20 +59,13 @@ class BERTEncoder(PretrainedBase, EncoderBase):
             and default values.
     """
 
-    model_name = "BERT"
-
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None):
+        super().__init__(hparams=hparams)
 
-        super().__init__(pretrained_model_name=pretrained_model_name,
-                         cache_dir=cache_dir,
-                         hparams=hparams)
-
-        if self.pretrained_model_dir:
-            self._hparams = HParams(self.pretrained_model_hparams,
-                                    self._hparams.todict())
+        self.load_pretrained_config(pretrained_model_name, cache_dir)
 
         # Word embedding
         self.word_embedder = WordEmbedder(
@@ -99,11 +89,11 @@ class BERTEncoder(PretrainedBase, EncoderBase):
             nn.Linear(self._hparams.hidden_size, self._hparams.hidden_size),
             nn.Tanh())
 
-        if self.pretrained_model_dir:
-            init_bert_checkpoint(self, self.pretrained_model_dir)
-        elif self._hparams.initializer:
-            initialize = layers.get_initializer(self._hparams.initializer)
-            assert initialize is not None
+        self.init_pretrained_weights()
+
+    def reset_parameters(self):
+        initialize = layers.get_initializer(self._hparams.initializer)
+        if initialize is not None:
             # Do not re-initialize LayerNorm modules.
             for name, param in self.named_parameters():
                 if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:
@@ -325,21 +315,21 @@ class BERTEncoder(PretrainedBase, EncoderBase):
 
         segment_embeds = self.segment_embedder(segment_ids)
 
-        batch_size = inputs.shape[0]
-        pos_length = inputs.new_full((batch_size,), inputs.shape[1],
+        batch_size = inputs.size(0)
+        pos_length = inputs.new_full((batch_size,), inputs.size(1),
                                      dtype=torch.int64)
         pos_embeds = self.position_embedder(sequence_length=pos_length)
 
         inputs_embeds = word_embeds + segment_embeds + pos_embeds
 
         if sequence_length is None:
-            sequence_length = inputs.new_full((batch_size,), inputs.shape[1],
+            sequence_length = inputs.new_full((batch_size,), inputs.size(1),
                                               dtype=torch.int64)
 
         output = self.encoder(inputs_embeds, sequence_length)
 
         # taking the hidden state corresponding to the first token.
-        first_token_tensor = torch.squeeze(output[:, 0:1, :], dim=1)
+        first_token_tensor = output[:, 0, :]
 
         pooled_output = self.pooler(first_token_tensor)
 

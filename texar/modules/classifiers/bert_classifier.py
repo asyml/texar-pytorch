@@ -17,8 +17,8 @@ BERT classifiers.
 from typing import Optional, Tuple
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
+from torch.nn import functional as F
 
 from texar.core.layers import get_initializer
 from texar.hyperparams import HParams
@@ -277,20 +277,10 @@ class BERTClassifier(ClassifierBase):
         Here output is :attr:`logits`. The final dimension equals to ``1``
         when output final dimension is only determined by input.
         """
-        clas_strategy = self._hparams.clas_strategy
-
-        if self._hparams.num_classes < 1:
-            raise NameError("logit_dim cannot be defined "
-                            "if self._hparams.num_classes < 1")
-
-        if clas_strategy in ("cls_time", "all_time"):
-            if self._hparams.num_classes > 1:
-                logit_dim = self._hparams.num_classes
-            elif self._hparams.num_classes == 1:
-                logit_dim = 1
-        elif clas_strategy == "time_wise":
-            if self._hparams.num_classes > 1:
-                logit_dim = self._hparams.num_classes
-            elif self._hparams.num_classes == 1:
-                logit_dim = 1
+        if self._hparams.num_classes > 1:
+            logit_dim = self._hparams.num_classes
+        elif self._hparams.num_classes == 1:
+            logit_dim = 1
+        else:
+            logit_dim = self._hparams.encoder.dim
         return logit_dim

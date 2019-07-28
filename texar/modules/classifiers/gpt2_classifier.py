@@ -17,8 +17,8 @@ GPT2 classifiers.
 from typing import Optional, Tuple
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
+from torch.nn import functional as F
 
 from texar.core.layers import get_initializer
 from texar.hyperparams import HParams
@@ -103,14 +103,14 @@ class GPT2Classifier(ClassifierBase):
         if self._hparams.initializer:
             initialize = get_initializer(self._hparams.initializer)
             assert initialize is not None
-            if self._logits_layer:
+            if self._logits_layer is not None:
                 initialize(self._logits_layer.weight)
-                if self._logits_layer.bias:
+                if self._logits_layer.bias is not None:
                     initialize(self._logits_layer.bias)
 
         self.is_binary = (self.num_classes == 1) or \
                          (self.num_classes <= 0 and
-                          self._hparams.decoder.dim == 1)
+                          self._hparams.dim == 1)
 
     @staticmethod
     def default_hparams():
@@ -265,3 +265,18 @@ class GPT2Classifier(ClassifierBase):
             preds = torch.flatten(preds)
 
         return logits, preds
+
+    @property
+    def output_size(self) -> int:
+        r"""The final dimension(s) of :meth:`forward` output tensor(s).
+
+        Here output is :attr:`logits`. The final dimension equals to ``1``
+        when output final dimension is only determined by input.
+        """
+        if self._hparams.num_classes > 1:
+            logit_dim = self._hparams.num_classes
+        elif self._hparams.num_classes == 1:
+            logit_dim = 1
+        else:
+            logit_dim = self._hparams.dim
+        return logit_dim

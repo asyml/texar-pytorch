@@ -9,13 +9,13 @@ from texar.modules.encoders import TransformerEncoder
 
 
 class TransformerEncoderTest(unittest.TestCase):
-    r"""Tests :class:`~texar.modules.TransformerEecoder`
+    r"""Tests :class:`~texar.modules.TransformerEncoder`
     """
 
     def setUp(self):
-        self._batch_size = 6
+        self._batch_size = 2
         self._emb_dim = 512
-        self._max_time = 100
+        self._max_time = 7
 
     def test_trainable_variables(self):
         r"""Tests train_greedy

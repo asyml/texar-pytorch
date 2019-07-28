@@ -50,7 +50,7 @@ class ConnectorBase(ModuleBase, Generic[OutputSize], ABC):
     """
 
     def __init__(self, output_size: OutputSize, hparams: HParamsType = None):
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
         self._output_size = output_size
 
     @staticmethod

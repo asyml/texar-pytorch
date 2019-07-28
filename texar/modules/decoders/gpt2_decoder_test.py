@@ -8,84 +8,86 @@ import torch
 from texar.modules.decoders import decoder_helpers
 from texar.modules.decoders.gpt2_decoder import GPT2Decoder
 from texar.modules.decoders.transformer_decoders import TransformerDecoderOutput
+from texar.utils.test import pretrained_test
 
 
 class GPT2DecoderTest(unittest.TestCase):
     r"""Tests :class:`~texar.modules.GPT2Decoder`
     """
 
-    @unittest.skip("Manual test only")
-    def test_hparams(self):
-        r"""Tests the priority of the decoer arch parameter.
-        """
-        inputs = torch.zeros(32, 16, dtype=torch.int64)
+    def setUp(self) -> None:
+        # Use small prime numbers to speedup tests.
+        self.batch_size = 2
+        self.max_length = 3
+        self.beam_width = 5
+        self.inputs = torch.zeros(
+            self.batch_size, self.max_length, dtype=torch.long)
 
+    @pretrained_test
+    def test_hparams(self):
+        r"""Tests the priority of the decoder arch parameters.
+        """
         # case 1: set "pretrained_mode_name" by constructor argument
         hparams = {
             "pretrained_model_name": "345M",
         }
         decoder = GPT2Decoder(pretrained_model_name="117M",
                               hparams=hparams)
-        _ = decoder(inputs)
-        self.assertEqual(decoder.hparams.decoder.num_blocks, 12)
+        self.assertEqual(decoder.hparams.num_blocks, 12)
+        _ = decoder(self.inputs)
 
         # case 2: set "pretrained_mode_name" by hparams
         hparams = {
             "pretrained_model_name": "117M",
-            "decoder": {
-                "num_blocks": 6
-            }
+            "num_blocks": 6,
         }
         decoder = GPT2Decoder(hparams=hparams)
-        _ = decoder(inputs)
-        self.assertEqual(decoder.hparams.decoder.num_blocks, 12)
+        self.assertEqual(decoder.hparams.num_blocks, 12)
+        _ = decoder(self.inputs)
 
         # case 3: set to None in both hparams and constructor argument
         hparams = {
             "pretrained_model_name": None,
-            "decoder": {
-                "num_blocks": 6
-            },
+            "num_blocks": 6,
         }
         decoder = GPT2Decoder(hparams=hparams)
-        _ = decoder(inputs)
-        self.assertEqual(decoder.hparams.decoder.num_blocks, 6)
+        self.assertEqual(decoder.hparams.num_blocks, 6)
+        _ = decoder(self.inputs)
 
         # case 4: using default hparams
         decoder = GPT2Decoder()
-        _ = decoder(inputs)
-        self.assertEqual(decoder.hparams.decoder.num_blocks, 12)
+        self.assertEqual(decoder.hparams.num_blocks, 12)
+        _ = decoder(self.inputs)
 
-    @unittest.skip("Manual test only")
+    @pretrained_test
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
         variables.
         """
-        inputs = torch.zeros(32, 16, dtype=torch.int64)
+        def get_variable_num(n_layers: int) -> int:
+            return 1 + 1 + n_layers * 26 + 2
 
         # case 1: GPT2 117M
         decoder = GPT2Decoder()
-        _ = decoder(inputs)
-        self.assertEqual(len(decoder.trainable_variables), 1 + 1 + 12 * 26 + 2)
+        self.assertEqual(len(decoder.trainable_variables), get_variable_num(12))
+        _ = decoder(self.inputs)
 
         # case 2: GPT2 345M
         hparams = {
-            "pretrained_model_name": "345M"
+            "pretrained_model_name": "345M",
         }
         decoder = GPT2Decoder(hparams=hparams)
-        _ = decoder(inputs)
-        self.assertEqual(len(decoder.trainable_variables), 1 + 1 + 24 * 26 + 2)
+        self.assertEqual(len(decoder.trainable_variables), get_variable_num(24))
+        _ = decoder(self.inputs)
 
         # case 3: self-designed GPT2
         hparams = {
-            "decoder": {
-                "num_blocks": 6,
-            },
-            "pretrained_model_name": None
+            "pretrained_model_name": None,
+            "num_blocks": 6,
         }
         decoder = GPT2Decoder(hparams=hparams)
-        _ = decoder(inputs)
-        self.assertEqual(len(decoder.trainable_variables), 1 + 1 + 6 * 26 + 2)
+        self.assertEqual(len(decoder.trainable_variables), get_variable_num(6))
+        _ = decoder(self.inputs)
 
     def test_decode_train(self):
         r"""Tests train_greedy.
@@ -96,39 +98,30 @@ class GPT2DecoderTest(unittest.TestCase):
         decoder = GPT2Decoder(hparams=hparams)
         decoder.train()
 
-        max_time = 8
-        batch_size = 16
-        inputs = torch.randint(50257, (batch_size, max_time), dtype=torch.int64)
+        inputs = torch.randint(50257, (self.batch_size, self.max_length))
         outputs = decoder(inputs)
 
-        self.assertEqual(outputs.logits.shape, torch.Size([batch_size,
-                                                           max_time,
-                                                           50257]))
-        self.assertEqual(outputs.sample_id.shape, torch.Size([batch_size,
-                                                             max_time]))
+        self.assertEqual(outputs.logits.shape,
+                         torch.Size([self.batch_size, self.max_length, 50257]))
+        self.assertEqual(outputs.sample_id.shape,
+                         torch.Size([self.batch_size, self.max_length]))
 
     def test_decode_infer_greedy(self):
         r"""Tests train_greedy
         """
         hparams = {
-            "pretrained_model_name": None
+            "pretrained_model_name": None,
         }
         decoder = GPT2Decoder(hparams=hparams)
         decoder.eval()
 
-        start_tokens = torch.full((16,), 1, dtype=torch.int64)
+        start_tokens = torch.full((self.batch_size,), 1, dtype=torch.int64)
         end_token = 2
-        max_decoding_length = 16
 
-        embedding_fn = lambda x, y: (
-                decoder.word_embedder(x) + decoder.position_embedder(y))
-
-        helper = decoder_helpers.GreedyEmbeddingHelper(
-            embedding_fn, start_tokens, end_token)
+        helper = decoder_helpers.GreedyEmbeddingHelper(start_tokens, end_token)
 
         outputs, length = decoder(
-            helper=helper,
-            max_decoding_length=max_decoding_length)
+            helper=helper, max_decoding_length=self.max_length)
 
         self.assertIsInstance(outputs, TransformerDecoderOutput)
 
@@ -136,24 +129,18 @@ class GPT2DecoderTest(unittest.TestCase):
         r"""Tests infer_sample
         """
         hparams = {
-            "pretrained_model_name": None
+            "pretrained_model_name": None,
         }
         decoder = GPT2Decoder(hparams=hparams)
         decoder.eval()
 
-        start_tokens = torch.full((16,), 1, dtype=torch.int64)
+        start_tokens = torch.full((self.batch_size,), 1, dtype=torch.int64)
         end_token = 2
-        max_decoding_length = 16
 
-        embedding_fn = lambda x, y: (
-                decoder.word_embedder(x) + decoder.position_embedder(y))
-
-        helper = decoder_helpers.SampleEmbeddingHelper(
-            embedding_fn, start_tokens, end_token)
+        helper = decoder_helpers.SampleEmbeddingHelper(start_tokens, end_token)
 
         outputs, length = decoder(
-            helper=helper,
-            max_decoding_length=max_decoding_length)
+            helper=helper, max_decoding_length=self.max_length)
 
         self.assertIsInstance(outputs, TransformerDecoderOutput)
 
@@ -161,52 +148,41 @@ class GPT2DecoderTest(unittest.TestCase):
         r"""Tests beam_search
         """
         hparams = {
-            "pretrained_model_name": None
+            "pretrained_model_name": None,
         }
         decoder = GPT2Decoder(hparams=hparams)
         decoder.eval()
 
-        start_tokens = torch.full((16,), 1, dtype=torch.int64)
+        start_tokens = torch.full((self.batch_size,), 1, dtype=torch.int64)
         end_token = 2
-        max_decoding_length = 16
-
-        embedding_fn = lambda x, y: (
-                decoder.word_embedder(x) + decoder.position_embedder(y))
 
         outputs = decoder(
-            embedding=embedding_fn,
-            start_tokens=start_tokens,
-            beam_width=5,
-            end_token=end_token,
-            max_decoding_length=max_decoding_length)
+            start_tokens=start_tokens, beam_width=self.beam_width,
+            end_token=end_token, max_decoding_length=self.max_length)
 
-        self.assertEqual(outputs['log_prob'].shape,
-                         torch.Size([16, 5]))
-        self.assertEqual(outputs['sample_id'].shape,
-                         torch.Size([16, 16, 5]))
+        self.assertEqual(
+            outputs['log_prob'].shape,
+            torch.Size([self.batch_size, self.beam_width]))
+        self.assertEqual(
+            outputs['sample_id'].shape,
+            torch.Size([self.batch_size, self.max_length, self.beam_width]))
 
     def test_greedy_embedding_helper(self):
         r"""Tests with tf.contrib.seq2seq.GreedyEmbeddingHelper
         """
         hparams = {
-            "pretrained_model_name": None
+            "pretrained_model_name": None,
         }
         decoder = GPT2Decoder(hparams=hparams)
         decoder.eval()
 
-        start_tokens = torch.full((16,), 1, dtype=torch.int64)
+        start_tokens = torch.full((self.batch_size,), 1, dtype=torch.int64)
         end_token = 2
-        max_decoding_length = 16
 
-        embedding_fn = lambda x, y: (
-                decoder.word_embedder(x) + decoder.position_embedder(y))
-
-        helper = decoder_helpers.GreedyEmbeddingHelper(
-            embedding_fn, start_tokens, end_token)
+        helper = decoder_helpers.GreedyEmbeddingHelper(start_tokens, end_token)
 
         outputs, length = decoder(
-            helper=helper,
-            max_decoding_length=max_decoding_length)
+            helper=helper, max_decoding_length=self.max_length)
 
         self.assertIsInstance(outputs, TransformerDecoderOutput)
 
@@ -214,28 +190,20 @@ class GPT2DecoderTest(unittest.TestCase):
         r"""Tests TopKSampleEmbeddingHelper
         """
         hparams = {
-            "pretrained_model_name": None
+            "pretrained_model_name": None,
         }
         decoder = GPT2Decoder(hparams=hparams)
         decoder.eval()
 
-        start_tokens = torch.full((16,), 1, dtype=torch.int64)
+        start_tokens = torch.full((self.batch_size,), 1, dtype=torch.int64)
         end_token = 2
-        max_decoding_length = 16
-
-        embedding_fn = lambda x, y: (
-                decoder.word_embedder(x) + decoder.position_embedder(y))
 
         helper = decoder_helpers.TopKSampleEmbeddingHelper(
-            embedding=embedding_fn,
-            start_tokens=start_tokens,
-            end_token=end_token,
-            top_k=40,
-            softmax_temperature=0.7)
+            start_tokens=start_tokens, end_token=end_token,
+            top_k=40, softmax_temperature=0.7)
 
         outputs, length = decoder(
-            max_decoding_length=max_decoding_length,
-            helper=helper)
+            helper=helper, max_decoding_length=self.max_length)
 
         self.assertIsInstance(outputs, TransformerDecoderOutput)
 

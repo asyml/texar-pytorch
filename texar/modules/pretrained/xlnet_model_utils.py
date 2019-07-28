@@ -17,12 +17,12 @@ Model Utils of XLNet Modules.
 Adapted from
 https://github.com/zihangdai/xlnet/blob/master/modeling.py
 """
-
-from typing import Any, Dict, Optional, Tuple
+import itertools
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
+from torch.nn import functional as F
 
 from texar.core import get_layer
 from texar.module_base import ModuleBase
@@ -31,13 +31,15 @@ __all__ = [
     "PositionWiseFF",
     "RelativeMultiheadAttention",
     "RelativePositionalEncoding",
+    "params_except_in",
+    "init_weights",
 ]
 
 
 class PositionWiseFF(ModuleBase):
 
     def __init__(self, hparams=None):
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
 
         hidden_dim = self._hparams.hidden_dim
         ffn_inner_dim = self._hparams.ffn_inner_dim
@@ -62,6 +64,10 @@ class PositionWiseFF(ModuleBase):
             "dropout": 0.1,
             "activation": 'relu',
         }
+
+    @property
+    def output_size(self):
+        return self._hparams.hidden_dim
 
     def forward(self,  # type: ignore
                 input: torch.Tensor) -> torch.Tensor:
@@ -95,7 +101,12 @@ class PositionalEmbedding(nn.Module):
 class RelativePositionalEncoding(ModuleBase):
 
     def __init__(self, hparams=None):
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
+        # self.sinusoid_embed = tx.modules.SinusoidsPositionEmbedder(
+        #     None, hparams={
+        #         "dim": self._hparams.dim,
+        #         "cache_embeddings": False,
+        #     })
         self.sinusoid_embed = PositionalEmbedding(self._hparams.dim)
 
     @staticmethod
@@ -104,6 +115,10 @@ class RelativePositionalEncoding(ModuleBase):
             "dim": 768,
             "max_seq_len": 512,
         }
+
+    @property
+    def output_size(self):
+        return self._hparams.dim
 
     def _create_positional_embedding(self,
                                      start: int,
@@ -157,7 +172,7 @@ class RelativeMultiheadAttention(ModuleBase):
                  r_w_bias: Optional[nn.Parameter] = None,
                  r_s_bias: Optional[nn.Parameter] = None,
                  hparams=None):
-        super().__init__(hparams)
+        super().__init__(hparams=hparams)
 
         self.num_heads = self._hparams.num_heads
         self.head_dim = self._hparams.head_dim
@@ -210,6 +225,10 @@ class RelativeMultiheadAttention(ModuleBase):
             "attention_dropout": 0.1,
             "use_segments": True,
         }
+
+    @property
+    def output_size(self):
+        return self._hparams.hidden_dim
 
     @staticmethod
     def _rel_shift(x: torch.Tensor, klen: int) -> torch.Tensor:
@@ -340,3 +359,21 @@ class RelativeMultiheadAttention(ModuleBase):
             output_g = None
 
         return output_h, output_g
+
+
+def params_except_in(module: nn.Module,
+                     except_names: List[str]) \
+        -> Iterable[nn.Parameter]:
+    return itertools.chain.from_iterable(
+        child.parameters() for name, child in
+        module.named_children()
+        if name not in except_names)
+
+
+def init_weights(module: nn.Module):
+    if isinstance(module, nn.Linear):
+        nn.init.normal_(module.weight, 0.0, 0.02)
+        if module.bias is not None:
+            nn.init.zeros_(module.bias)
+    elif isinstance(module, nn.Embedding):
+        nn.init.normal_(module.weight, 0.0, 0.02)

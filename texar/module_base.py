@@ -45,7 +45,16 @@ class ModuleBase(nn.Module, ABC):
     def __init__(self, hparams: Optional[Union[HParams,
                                                Dict[str, Any]]] = None):
         super().__init__()
-        self._hparams = HParams(hparams, self.default_hparams())
+        if not hasattr(self, '_hparams'):
+            self._hparams = HParams(hparams, self.default_hparams())
+        else:
+            # Probably already parsed by subclasses. We rely on subclass
+            # implementations to get this right.
+            # As a sanity check, we require `hparams` to be `None` in this case.
+            if hparams is not None:
+                raise ValueError(
+                    "`self._hparams` is already assigned, but `hparams` "
+                    "argument is not None.")
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
