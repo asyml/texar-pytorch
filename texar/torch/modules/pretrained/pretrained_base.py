@@ -14,6 +14,8 @@
 """
 Base class for Pre-trained Modules.
 """
+import os
+import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, Optional, List
@@ -23,12 +25,34 @@ from torch import nn
 from texar.torch.data.data_utils import maybe_download
 from texar.torch.hyperparams import HParams
 from texar.torch.module_base import ModuleBase
-from texar.torch.modules.pretrained.pretrained_utils import default_download_dir
 from texar.torch.utils.types import MaybeList
 
 __all__ = [
+    "default_download_dir",
     "PretrainedMixin",
 ]
+
+
+def default_download_dir(name: str) -> Path:
+    r"""Return the directory to which packages will be downloaded by default.
+    """
+    package_dir: Path = Path(__file__).parents[3]  # 4 levels up
+    if os.access(package_dir, os.W_OK):
+        texar_download_dir = package_dir / 'texar_download'
+    else:
+        if sys.platform == 'win32' and 'APPDATA' in os.environ:
+            # On Windows, use %APPDATA%
+            home_dir = Path(os.environ['APPDATA'])
+        else:
+            # Otherwise, install in the user's home directory.
+            home_dir = Path.home()
+
+        texar_download_dir = home_dir / 'texar_download'
+
+    if not texar_download_dir.exists():
+        texar_download_dir.mkdir(parents=True)
+
+    return texar_download_dir / name
 
 
 class PretrainedMixin(ModuleBase, ABC):
@@ -137,7 +161,7 @@ class PretrainedMixin(ModuleBase, ABC):
             pretrained_model_name (str): Name of the model checkpoint.
             cache_dir (str, optional): Path to the cache directory. If `None`,
                 uses the default directory given by
-                :meth:`~texar.torch.modules.default_download_dir`.
+                :meth:`~default_download_dir`.
 
         Returns:
             Path to the cache directory.

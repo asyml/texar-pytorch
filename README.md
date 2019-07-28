@@ -41,14 +41,17 @@ Users can construct their own models at a high conceptual level just like assemb
 ### Library API Example
 A code portion that builds a (self-)attentional sequence encoder-decoder model:
 ```python
-import texar as tx
+import texar.torch as tx
 
 class Seq2Seq(tx.ModuleBase):
   def __init__(self, data):
-    self.embedder = tx.modules.WordEmbedder(data.target_vocab.size, hparams=hparams_emb)
-    self.encoder = tx.modules.TransformerEncoder(hparams=hparams_encoder) # config through `hparams`
+    self.embedder = tx.modules.WordEmbedder(
+        data.target_vocab.size, hparams=hparams_emb)
+    self.encoder = tx.modules.TransformerEncoder(
+        hparams=hparams_encoder)  # config through `hparams`
     self.decoder = tx.modules.AttentionRNNDecoder(
-        input_size=self.embedder.dim
+        token_embedder=self.embedder,
+        input_size=self.embedder.dim,
       	encoder_output_size=self.encoder.output_size,
       	vocab_size=data.target_vocab.size,
         hparams=hparams_decoder)
@@ -59,17 +62,17 @@ class Seq2Seq(tx.ModuleBase):
         sequence_length=batch['source_length'])
      
     outputs, _, _ = self.decoder(
-        memory=output_enc, 
+        memory=outputs_enc, 
         memory_sequence_length=batch['source_length'],
         helper=self.decoder.get_helper(decoding_strategy='train_greedy'), 
-        inputs=self.embedder(batch['target_text_ids']),
+        inputs=batch['target_text_ids'],
         sequence_length=batch['target_length']-1)
 
     # Loss for maximum likelihood learning
     loss = tx.losses.sequence_sparse_softmax_cross_entropy(
         labels=batch['target_text_ids'][:, 1:],
         logits=outputs.logits,
-        sequence_length=batch['target_length']-1) # Automatic masking
+        sequence_length=batch['target_length']-1)  # Automatic masking
 
     return loss
 

@@ -7,5 +7,5 @@
 HParams
 *******
 
-.. autoclass:: texar.HParams
+.. autoclass:: texar.torch.HParams
     :members:
