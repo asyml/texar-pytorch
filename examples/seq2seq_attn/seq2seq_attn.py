@@ -20,7 +20,7 @@ import importlib
 import torch
 import torch.nn as nn
 
-import texar as tx
+import texar.torch as tx
 
 parser = argparse.ArgumentParser()
 parser.add_argument(

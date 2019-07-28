@@ -20,7 +20,7 @@ import csv
 import logging
 import os
 
-import texar as tx
+import texar.torch as tx
 from utils import tokenization
 
 

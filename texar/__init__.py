@@ -11,19 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Modules of texar library.
-"""
-
-# pylint: disable=wildcard-import
-
-from texar.version import VERSION as __version__
-
-from texar import core
-from texar import data
-from texar import evals
-from texar import losses
-from texar import modules
-from texar import utils
-from texar.hyperparams import *
-from texar.module_base import *

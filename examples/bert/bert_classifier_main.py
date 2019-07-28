@@ -22,7 +22,7 @@ import os
 
 import torch
 import torch.nn.functional as F
-import texar as tx
+import texar.torch as tx
 
 from utils import model_utils
 

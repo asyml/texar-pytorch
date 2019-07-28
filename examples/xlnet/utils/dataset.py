@@ -24,7 +24,7 @@ from typing import Any, Dict, Optional
 
 import torch
 import tqdm
-import texar as tx
+import texar.torch as tx
 
 from utils import data_utils
 from utils.processor import DataProcessor, get_processor_class

@@ -18,7 +18,7 @@ import os
 import torch
 import sentencepiece as spm
 
-import texar as tx
+import texar.torch as tx
 
 from utils import data_utils
 

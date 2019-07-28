@@ -23,8 +23,7 @@ from typing import Any
 
 import torch
 import tqdm
-import texar as tx
-from texar.data import Vocab
+import texar.torch as tx
 
 from model import Transformer
 import utils.data_utils as data_utils
@@ -66,7 +65,7 @@ def main():
         device = None
 
     # Load data
-    vocab = Vocab(config_data.vocab_file)
+    vocab = tx.data.Vocab(config_data.vocab_file)
     data_hparams = {
         # "batch_size" is ignored for train since we use dynamic batching
         "batch_size": config_data.test_batch_size,

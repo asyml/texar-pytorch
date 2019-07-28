@@ -16,7 +16,7 @@ from typing import Optional
 
 import torch
 from torch import nn
-import texar as tx
+import texar.torch as tx
 
 
 class Transformer(nn.Module):

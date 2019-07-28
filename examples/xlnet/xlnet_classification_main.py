@@ -29,7 +29,7 @@ import torch.nn.functional as F
 import tqdm
 import sentencepiece as spm
 
-import texar as tx
+import texar.torch as tx
 
 # pylint: disable=wildcard-import
 

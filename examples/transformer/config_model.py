@@ -2,7 +2,7 @@
 """
 import copy
 
-import texar as tx
+import texar.torch as tx
 
 random_seed = 1234
 

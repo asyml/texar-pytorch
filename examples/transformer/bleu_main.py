@@ -29,7 +29,7 @@ Usage: python bleu_main.py --translation=my-wmt13.de --reference=wmt13_deen.de
 
 from argparse import ArgumentParser
 
-from texar.evals.bleu_transformer import file_bleu
+import texar.torch as tx
 
 
 def main():
@@ -42,10 +42,12 @@ def main():
     parser.add_argument("--reference", type=str)
     args = parser.parse_args()
 
-    bleu = file_bleu(args.reference, args.translation, case_sensitive=False)
-    print("BLEU_uncased = %6.2f" % bleu)
-    bleu = file_bleu(args.reference, args.translation, case_sensitive=True)
-    print("BLEU_cased = %6.2f" % bleu)
+    bleu = tx.evals.file_bleu(
+        args.reference, args.translation, case_sensitive=False)
+    print(f"BLEU_uncased = {bleu:6.2f}")
+    bleu = tx.evals.file_bleu(
+        args.reference, args.translation, case_sensitive=True)
+    print(f"BLEU_cased = {bleu:6.2f}")
 
 
 if __name__ == "__main__":
