@@ -40,6 +40,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 import texar as tx
 from texar.modules import BasicRNNDecoderOutput, TransformerDecoderOutput
 from texar.custom import MultivariateNormalDiag
+from texar.modules.decoders.decoder_helpers import Helper
 
 BLANK_ID = 3
 
@@ -203,7 +204,7 @@ class VAE(nn.Module):
 
     def decode(self,
                decoder_states: Union[Tensor, Tuple],
-               helper,
+               helper: Optional[Helper],
                seq_lengths: Optional[Tensor] = None,
                max_decoding_length: int = None,
                text_ids: torch.LongTensor = None) \
