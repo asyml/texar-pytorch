@@ -272,7 +272,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             .. note::
                 Only one among :attr:`token_embedder` and
                 :attr:`token_pos_embedder` should be specified. If neither is
-                specified, you must subclass :class:`BasicRNNDecoder` and
+                specified, you must subclass :class:`AttentionRNNDecoder` and
                 override :meth:`embed_tokens`.
         cell (RNNCellBase, optional): An instance of
             :class:`~texar.core.RNNCellBase`. If `None`, a cell

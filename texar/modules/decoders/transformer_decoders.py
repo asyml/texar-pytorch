@@ -73,7 +73,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             .. note::
                 Only one among :attr:`token_embedder` and
                 :attr:`token_pos_embedder` should be specified. If neither is
-                specified, you must subclass :class:`BasicRNNDecoder` and
+                specified, you must subclass :class:`TransformerDecoder` and
                 override :meth:`embed_tokens`.
         vocab_size (int, optional): Vocabulary size. Required if
             :attr:`output_layer` is `None`.
