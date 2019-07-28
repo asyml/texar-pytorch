@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 
 import os
 
-import texar as tx
+import texar.torch as tx
 
 from utils import processor
 

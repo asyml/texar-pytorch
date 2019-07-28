@@ -1,6 +1,5 @@
 """Config file for GPT2 training.
 """
-# pylint: disable=invalid-name
 
 pickle_data_dir = "data/toy"
 max_seq_length = 128

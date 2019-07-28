@@ -18,7 +18,7 @@ import random
 
 import numpy as np
 import torch
-import texar as tx
+import texar.torch as tx
 
 from utils import processor
 

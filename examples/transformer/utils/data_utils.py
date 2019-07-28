@@ -19,7 +19,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 import torch
 
-import texar as tx
+import texar.torch as tx
 
 Example = Tuple[np.ndarray, np.ndarray]
 

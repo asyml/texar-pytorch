@@ -19,7 +19,7 @@ import importlib
 import logging
 import os
 
-import texar as tx
+import texar.torch as tx
 from utils import data_utils
 from utils import tokenization
 

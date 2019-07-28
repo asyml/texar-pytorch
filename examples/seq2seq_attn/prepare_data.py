@@ -16,7 +16,7 @@
 
 import argparse
 
-import texar as tx
+import texar.torch as tx
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
