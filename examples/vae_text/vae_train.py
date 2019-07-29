@@ -102,13 +102,9 @@ class VAE(nn.Module):
                 vocab_size=vocab_size,
                 token_embedder=self._embed_fn_rnn,
                 hparams={"rnn_cell": config_model.dec_cell_hparams})
-            decoder_initial_state_size = (self.decoder.cell.hidden_size,) * 2
             sum_state_size = self.decoder.cell.hidden_size * 2
 
         elif config_model.decoder_type == 'transformer':
-            decoder_initial_state_size = torch.Size(
-                [1, config_model.dec_emb_hparams["dim"]])
-            sum_state_size = config_model.dec_emb_hparams["dim"]
             # position embedding
             self.decoder_p_embedder = tx.modules.SinusoidsPositionEmbedder(
                 position_size=config_model.max_pos,
@@ -119,10 +115,9 @@ class VAE(nn.Module):
                 output_layer=self.decoder_w_embedder.embedding,
                 token_pos_embedder=self._embed_fn_transformer,
                 hparams=config_model.trans_hparams)
+            sum_state_size = self._config.dec_emb_hparams["dim"]
         else:
             raise ValueError("Decoder type must be 'lstm' or 'transformer'")
-
-        self.decoder_initial_state_size = decoder_initial_state_size
 
         self.connector_mlp = tx.modules.MLPTransformConnector(
             config_model.latent_dims * 2,
@@ -153,32 +148,22 @@ class VAE(nn.Module):
 
         latent_z = dst.rsample()
 
-        fc_output = self.mlp_linear_layer(latent_z)
         labels = text_ids[:, 1:]
         if self._config.decoder_type == "lstm":
-            decoder_states = torch.split(
-                fc_output, self.decoder_initial_state_size, dim=1)
-
             helper = self.decoder.create_helper(
                 decoding_strategy="train_greedy",
                 start_tokens=start_tokens,
                 end_token=end_token,)
-            latent_z = torch.unsqueeze(latent_z, 0)
-            latent_z = latent_z.repeat([text_ids.size(1), 1, 1])
         else:
-            decoder_states = torch.reshape(
-                fc_output, (-1, ) + self.decoder_initial_state_size)
             helper = None
-            text_ids = text_ids[:, :-1]
 
         seq_lengths = data_batch["length"] - 1
         # decode
         outputs = self.decode(
-            decoder_states=decoder_states,
             helper=helper,
             latent_z=latent_z,
             seq_lengths=seq_lengths,
-            text_ids=text_ids,
+            text_ids=text_ids[:, :-1],
             )
 
         logits = outputs.logits
@@ -206,6 +191,9 @@ class VAE(nn.Module):
         embedding = self.decoder_w_embedder(
             tokens)
         latent_z = self._latent_z
+        if len(embedding.size()) > 2:
+            latent_z = torch.unsqueeze(latent_z, 0)
+            latent_z = latent_z.repeat([tokens.size(0), 1, 1])
         return torch.cat([embedding, latent_z], dim=-1)
 
     def _embed_fn_transformer(self,
@@ -221,16 +209,20 @@ class VAE(nn.Module):
         return output_embed
 
     def decode(self,
-               decoder_states: Union[Tensor, Tuple],
                helper: Optional[Helper],
+               text_ids: Optional[torch.LongTensor]=None,
                latent_z: Optional[Tensor] = None,
                seq_lengths: Optional[Tensor] = None,
-               max_decoding_length: int = None,
-               text_ids: torch.LongTensor = None) \
+               max_decoding_length: Optional[int] = None) \
             -> Union[BasicRNNDecoderOutput, TransformerDecoderOutput]:
 
         self._latent_z = latent_z
+        fc_output = self.mlp_linear_layer(latent_z)
+
         if self._config.decoder_type == "lstm":
+            decoder_initial_state_size = (self.decoder.cell.hidden_size,) * 2
+            decoder_states = torch.split(
+                fc_output, decoder_initial_state_size, dim=1)
             outputs, _, _ = self.decoder(
                 initial_state=decoder_states,
                 inputs=text_ids,
@@ -238,6 +230,10 @@ class VAE(nn.Module):
                 sequence_length=seq_lengths,
                 max_decoding_length=max_decoding_length)
         else:
+            decoder_initial_state_size = torch.Size(
+                [1, self._config.dec_emb_hparams["dim"]])
+            decoder_states = torch.reshape(
+                fc_output, (-1, ) + self.decoder_initial_state_size)
             outputs = self.decoder(
                 inputs=text_ids,
                 memory=decoder_states,
@@ -252,9 +248,7 @@ class VAEData(tx.data.MonoTextData):
     """
     def process(self, raw_example: List[str]) -> List[str]:
         # Truncates sentences and appends BOS/EOS tokens.
-        raw_example = super().process(raw_example)
-        words = " ".join(raw_example[1:-1]).strip().split(self._delimiter)
-        words = [raw_example[0]] + words + [raw_example[-1]]
+        words = super().process(raw_example[1:-1])
         return words
 
 
@@ -392,36 +386,23 @@ def main():
 
         latent_z = dst.rsample().to(device)
 
-        fc_output = model.mlp_linear_layer(latent_z)
-        if not isinstance(model.decoder_initial_state_size, torch.Size):
-            decoder_states = torch.split(
-                fc_output, model.decoder_initial_state_size, dim=1)
-        else:
-            decoder_states = torch.reshape(
-                fc_output, (-1, ) + model.decoder_initial_state_size)
-
         if config.decoder_type == "lstm":
-
             helper = model.decoder.create_helper(
                 decoding_strategy='infer_sample',
                 start_tokens=start_tokens,
                 end_token=end_token)
             outputs = model.decode(
-                decoder_states=decoder_states,
                 helper=helper,
                 latent_z=latent_z,
                 max_decoding_length=100)
         else:
-
             helper = model.decoder.create_helper(
                 decoding_strategy='infer_sample',
                 start_tokens=start_tokens,
                 end_token=end_token)
             outputs, _ = model.decode(
-                decoder_states=decoder_states,
                 helper=helper,
-                max_decoding_length=100,
-                seq_lengths=None)
+                max_decoding_length=100)
 
         sample_tokens = vocab.map_ids_to_tokens_py(outputs.sample_id.cpu())
 
