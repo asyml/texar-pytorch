@@ -210,7 +210,7 @@ class VAE(nn.Module):
 
     def decode(self,
                helper: Optional[Helper],
-               text_ids: Optional[torch.LongTensor]=None,
+               text_ids: Optional[torch.LongTensor] = None,
                latent_z: Optional[Tensor] = None,
                seq_lengths: Optional[Tensor] = None,
                max_decoding_length: Optional[int] = None) \

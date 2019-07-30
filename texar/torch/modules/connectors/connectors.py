@@ -152,7 +152,7 @@ def _mlp_transform(inputs: TensorStruct,
     if isinstance(flat_output_size[0], torch.Size):
         for (i, shape) in enumerate(flat_output_size):
             flat_output[i] = torch.reshape(
-                flat_output[i], (-1, ) + shape)
+                flat_output[i], (-1,) + shape)
 
     output = nest.pack_sequence_as(structure=output_size,
                                    flat_sequence=flat_output)
