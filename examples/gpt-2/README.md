@@ -45,7 +45,7 @@ generates continuation of the context. The example supports both Top-K and Top-P
 
 ```bash
 python gpt2_generate_main.py --interactive \
-    --max-decoding_length=100 \
+    --max-decoding-length=100 \
     --temperature=0.7 \
     --top-k=40
 ```

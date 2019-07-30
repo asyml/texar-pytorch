@@ -42,8 +42,8 @@ setuptools.setup(
         'extras': ['Pillow>=3.0'],
     },
     package_data={
-        "texar": [
-            "../bin/utils/multi-bleu.perl",
+        "texar.torch": [
+            "../../bin/utils/multi-bleu.perl",
         ]
     },
     classifiers=[
