@@ -146,8 +146,7 @@ def _mlp_transform(inputs: TensorStruct,
         fc_output = activation_fn(fc_output)
     elif linear_layer is None and activation_fn is None:
         fc_output = concat_input
-    flat_output = split(fc_output, size_list, dim=1)    # type: ignore
-
+    flat_output = split(fc_output, size_list, dim=1)
     flat_output = list(flat_output)
     if isinstance(flat_output_size[0], torch.Size):
         for (i, shape) in enumerate(flat_output_size):
