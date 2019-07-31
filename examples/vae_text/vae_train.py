@@ -29,7 +29,7 @@ import sys
 import time
 import argparse
 import importlib
-from typing import Optional, List, Any, Union, Dict, Tuple
+from typing import Optional, Any, Union, Dict, Tuple
 
 import numpy as np
 import torch
@@ -201,7 +201,7 @@ class VAE(nn.Module):
                latent_z: Optional[Tensor] = None,
                seq_lengths: Optional[Tensor] = None,
                max_decoding_length: Optional[int] = None) \
-            -> Union[tx.modules.BasicRNNDecoderOutput, 
+            -> Union[tx.modules.BasicRNNDecoderOutput,
                      tx.modules.TransformerDecoderOutput]:
 
         self._latent_z = latent_z
@@ -450,7 +450,8 @@ def main():
                 if decay_cnt == max_decay:
                     break
 
-    print(f'\nbest testing nll: {best_nll:.4f}, best testing ppl {best_ppl:.4f}\n')
+    print(f"\nbest testing nll: {best_nll:.4f},"
+          f"best testing ppl {best_ppl:.4f}\n")
 
 
 if __name__ == '__main__':
