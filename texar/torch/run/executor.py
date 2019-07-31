@@ -73,7 +73,7 @@ class Executor:
                  train_data: Optional[DataBase] = None,
                  *,
                  valid_data: Optional[DataBase] = None,
-                 test_data: OptionalList[DataBase] = None,
+                 test_data: OptionalDict[DataBase] = None,
                  batching_strategy: Optional[BatchingStrategy] = None,
                  device: Optional[torch.device] = None,
                  # Checkpoint
@@ -116,7 +116,7 @@ class Executor:
         self.model = model
         self.train_data = train_data
         self.valid_data = valid_data
-        self.test_data = utils.to_list(test_data)
+        self.test_data = utils.to_dict(test_data, prefix="test")
         self.batching_strategy = batching_strategy
 
         # Device placement
@@ -675,6 +675,7 @@ class Executor:
         if not self._moved_model:
             self.model.to(self.device)
         self.model.train()
+        self.status["split"] = "train"
 
         # Main training loop.
         try:
@@ -712,18 +713,21 @@ class Executor:
         except utils.TerminateExecution:
             self.write_log("Training terminated", mode='info')
 
-    def test(self, dataset: OptionalList[DataBase] = None):
+    def test(self, dataset: OptionalDict[DataBase] = None):
         if dataset is None and self.test_data is None:
             raise ValueError("No testing dataset is specified")
-        datasets = self.test_data if dataset is None else utils.to_list(dataset)
+        datasets = (self.test_data if dataset is None
+                    else utils.to_dict(dataset, prefix="test"))
 
         if self.test_mode == 'train':
             self.model.train()
         else:
             self.model.eval()
         with torch.no_grad():
-            for data in datasets:
+            for name, data in datasets.items():
                 try:
+                    self.status["split"] = name
+
                     # Initialize metrics.
                     for metric in self.test_metrics.values():
                         metric.reset()

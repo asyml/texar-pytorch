@@ -3,7 +3,7 @@ import time
 from collections import Counter, OrderedDict
 from typing import (
     Any, Counter as CounterType, Dict, List, NamedTuple, Optional, Tuple, Type,
-    TypeVar, Union)
+    TypeVar, Union, Callable)
 
 from mypy_extensions import TypedDict
 import torch
@@ -44,44 +44,69 @@ def to_list(xs: OptionalList[T]) -> List[T]:
     return [xs]
 
 
-def to_metric_dict(metrics: OptionalDict[Metric]) \
-        -> 'OrderedDict[str, Metric]':
-    if metrics is None:
+def _to_dict(ds: OptionalDict[T],
+             unambiguous_name_fn: Callable[[str, T, int], str],
+             default_name_fn: Callable[[int, T], str]) -> 'OrderedDict[str, T]':
+    if ds is None:
         return OrderedDict()
-    if isinstance(metrics, dict):
-        if isinstance(metrics, OrderedDict):
-            return metrics
-        raise ValueError("Metrics must be provided as OrderedDict")
-    if isinstance(metrics, list):
-        xs = metrics
+    if isinstance(ds, dict):
+        return OrderedDict(ds)
+    if isinstance(ds, list):
+        xs = ds
     else:
-        xs = [metrics]
-    metric_dict: 'OrderedDict[str, Metric]' = OrderedDict()
+        xs = [ds]
+    ret_dict: 'OrderedDict[str, T]' = OrderedDict()
     counter: CounterType[str] = Counter()
-    for x in xs:
-        if isinstance(x, tuple):
-            name, x = x
+    for idx, item in enumerate(xs):
+        if isinstance(item, tuple):
+            name, item = item
         else:
-            name = x.__class__.__name__
-        if not isinstance(x, Metric):
-            raise ValueError(f"All metrics must be of class Metric, but found "
-                             f"{type(x)}")
+            name = default_name_fn(idx, item)
         if name not in counter:
-            metric_dict[name] = x
+            ret_dict[name] = item
         else:
             cnt = counter[name]
             if cnt == 1:
-                prev_metric = metric_dict[name]
-                new_name = f"{name}_{prev_metric.pred_name}"
-                if prev_metric.label_name is not None:
-                    new_name = f"{new_name}_{prev_metric.label_name}"
-                metric_dict[new_name] = prev_metric
-                del metric_dict[name]
-            new_name = f"{name}_{x.pred_name}"
-            if x.label_name is not None:
-                new_name = f"{new_name}_{x.label_name}"
-            metric_dict[new_name] = x
+                prev_item = ret_dict[name]
+                ret_dict[unambiguous_name_fn(name, prev_item, 1)] = prev_item
+                del ret_dict[name]
+            ret_dict[unambiguous_name_fn(name, item, cnt + 1)] = item
         counter.update([name])
+    return ret_dict
+
+
+def to_dict(xs: OptionalDict[T], prefix: Optional[str] = None) -> Dict[str, T]:
+    def unambiguous_name_fn(name: str, unused_item: T, cnt: int) -> str:
+        return f"{name}.{cnt}"
+
+    def default_name_fn(idx: int, unused_item: T) -> str:
+        if prefix is not None and len(xs) > 1:
+            return f"{prefix}.{idx}"
+        elif prefix is not None and len(xs) == 1:
+            return prefix
+        return str(idx)
+
+    return _to_dict(xs, unambiguous_name_fn, default_name_fn)
+
+
+def to_metric_dict(metrics: OptionalDict[Metric]) -> 'OrderedDict[str, Metric]':
+    def unambiguous_name_fn(name: str, metric: Metric, unused_cnt: int) -> str:
+        new_name = f"{name}_{metric.pred_name}"
+        if metric.label_name is not None:
+            new_name = f"{new_name}_{metric.label_name}"
+        return new_name
+
+    def default_name_fn(unused_idx: int, metric: Metric) -> str:
+        return metric.__class__.__name__
+
+    if isinstance(metrics, dict) and not isinstance(metrics, OrderedDict):
+        raise ValueError("Metrics dictionary must be of type OrderedDict")
+    metric_dict = _to_dict(metrics, unambiguous_name_fn, default_name_fn)
+
+    for metric in metric_dict.values():
+        if not isinstance(metric, Metric):
+            raise ValueError(f"All metrics must be of class Metric, but found "
+                             f"{type(metric)}")
     return metric_dict
 
 

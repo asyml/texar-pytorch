@@ -11,7 +11,7 @@ import texar.torch as tx
 from texar.torch.run import *
 
 
-class TestModel(nn.Module):
+class DummyClassifier(nn.Module):
     def __init__(self, vocab_size: int, n_classes: int):
         super().__init__()
         self.embedder = tx.modules.WordEmbedder(
@@ -22,15 +22,24 @@ class TestModel(nn.Module):
             })
         self.linear = nn.Linear(sum(self.encoder.output_size), n_classes)
 
-    def forward(self,  # type: ignore
-                batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
-        embeds = self.embedder(batch.tokens)
+    def _compute_logits(self, tokens: torch.LongTensor) -> torch.Tensor:
+        embeds = self.embedder(tokens)
         fw_state, bw_state = self.encoder(embeds)[1]
         state = torch.cat([fw_state[0], bw_state[0]], dim=1)
         logits = self.linear(state)
+        return logits
+
+    def forward(self,  # type: ignore
+                batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
+        logits = self._compute_logits(batch.tokens)
         loss = F.cross_entropy(logits, batch.label)
         preds = torch.argmax(logits, dim=1)
         return {"loss": loss, "preds": preds}
+
+    def predict(self, batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
+        logits = self._compute_logits(batch.tokens)
+        preds = torch.argmax(logits, dim=1)
+        return {"preds": preds}
 
 
 Example = Tuple[torch.LongTensor, int]
@@ -55,13 +64,14 @@ class ExecutorTest(unittest.TestCase):
         return dataset
 
     def setUp(self) -> None:
+        make_deterministic()
         self.vocab_size = 100
         self.n_classes = 5
-        self.model = TestModel(self.vocab_size, self.n_classes)
+        self.model = DummyClassifier(self.vocab_size, self.n_classes)
         self.datasets = {
             split: self._create_dataset(n_examples)
             for split, n_examples in [
-                ("train", 1000), ("valid", 100), ("test", 100)]}
+                ("train", 200), ("valid", 50), ("test1", 50), ("test2", 20)]}
 
         self.checkpoint_dir = tempfile.mkdtemp()
 
@@ -69,24 +79,24 @@ class ExecutorTest(unittest.TestCase):
         shutil.rmtree(self.checkpoint_dir)
 
     def test_train_loop(self):
-        make_deterministic()
-
         executor = Executor(
             model=self.model,
             train_data=self.datasets["train"],
             valid_data=self.datasets["valid"],
-            test_data=self.datasets["test"],
+            test_data=[self.datasets["test1"], ("t2", self.datasets["test2"])],
+            test_mode='eval',
             checkpoint_dir=self.checkpoint_dir,
             max_to_keep=3,
-            save_every=[cond.time(seconds=50), cond.validation(better=True)],
+            save_every=[cond.time(seconds=10), cond.validation(better=True)],
             train_metrics=[("loss", metric.RunningAverage(20)),
                            metric.F1(pred_name="preds"),
                            metric.Accuracy(pred_name="preds")],
             optimizer={"type": torch.optim.Adam, "kwargs": {}},
-            max_epochs=20,
+            max_epochs=10,
             valid_metrics=[metric.F1(pred_name="preds"),
                            ("loss", metric.Average())],
             validate_every=[cond.epoch()],
+            test_metrics=[metric.F1(pred_name="preds")],
             plateau_condition=[
                 cond.consecutive(cond.validation(better=False), 2)],
             action_on_plateau=[action.early_stop(patience=2),
@@ -96,6 +106,7 @@ class ExecutorTest(unittest.TestCase):
         )
 
         executor.train()
+        executor.test()
 
 
 if __name__ == "__main__":
