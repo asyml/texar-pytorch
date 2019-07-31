@@ -75,15 +75,13 @@ def _to_dict(ds: OptionalDict[T],
     return ret_dict
 
 
-def to_dict(xs: OptionalDict[T], prefix: Optional[str] = None) -> Dict[str, T]:
+def to_dict(xs: OptionalDict[T], default_name: Optional[str] = None) -> Dict[str, T]:
     def unambiguous_name_fn(name: str, unused_item: T, cnt: int) -> str:
         return f"{name}.{cnt}"
 
     def default_name_fn(idx: int, unused_item: T) -> str:
-        if prefix is not None and len(xs) > 1:
-            return f"{prefix}.{idx}"
-        elif prefix is not None and len(xs) == 1:
-            return prefix
+        if default_name is not None:
+            return default_name
         return str(idx)
 
     return _to_dict(xs, unambiguous_name_fn, default_name_fn)

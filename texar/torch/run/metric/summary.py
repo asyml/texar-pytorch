@@ -4,7 +4,6 @@ from typing import List, Deque
 import numpy as np
 
 from texar.torch.run.metric.base_metric import StreamingMetric
-from texar.torch.utils.types import MaybeList
 
 
 class Average(StreamingMetric[float, float]):

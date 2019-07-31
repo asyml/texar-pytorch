@@ -14,7 +14,7 @@ from torch import nn
 from torch.optim.lr_scheduler import _LRScheduler as LRScheduler
 from torch.optim.optimizer import Optimizer
 
-import texar.torch.run.executor_utils as utils
+from texar.torch.run import executor_utils as utils
 from texar.torch.data.data.data_base import DataBase
 from texar.torch.data.data.data_iterators import BatchingStrategy, DataIterator
 from texar.torch.data.data.dataset_utils import Batch
@@ -116,7 +116,7 @@ class Executor:
         self.model = model
         self.train_data = train_data
         self.valid_data = valid_data
-        self.test_data = utils.to_dict(test_data, prefix="test")
+        self.test_data = utils.to_dict(test_data, default_name="test")
         self.batching_strategy = batching_strategy
 
         # Device placement
@@ -717,7 +717,7 @@ class Executor:
         if dataset is None and self.test_data is None:
             raise ValueError("No testing dataset is specified")
         datasets = (self.test_data if dataset is None
-                    else utils.to_dict(dataset, prefix="test"))
+                    else utils.to_dict(dataset, default_name="test"))
 
         if self.test_mode == 'train':
             self.model.train()
