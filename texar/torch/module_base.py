@@ -15,7 +15,7 @@
 Base class for modules.
 """
 from abc import ABC
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, NamedTuple
 
 from torch import nn
 
@@ -97,3 +97,66 @@ class ModuleBase(nn.Module, ABC):
         tensor size.
         """
         raise NotImplementedError
+
+    def __repr__(self):
+        r"""Create a compressed representation by combining identical modules in
+        `nn.ModuleList`s and `nn.ParameterList`s.
+        """
+
+        def _get_indent(s: str) -> int:
+            return len(s) - len(s.lstrip(' '))
+
+        class ModuleRepr(NamedTuple):
+            indent: int
+            repr_str: str
+            names: List[str]
+
+        def _convert_repr(module: ModuleRepr) -> List[str]:
+            prefix = (f"{' ' * module.indent}(id" +
+                      (f"s {module.names[0]}-{module.names[-1]}"
+                       if len(module.names) > 1 else f" {module.names[0]}") +
+                      "): ")
+            lines = module.repr_str.split('\n')
+            lines[0] = prefix + lines[0]
+            return lines
+
+        repr_str = super().__repr__().split('\n')
+        nested = True
+        while nested:
+            nested = False
+            output_str = []
+            prev_module: Optional[ModuleRepr] = None
+            for idx, line in enumerate(repr_str):
+                line = repr_str[idx]
+                indent = _get_indent(line)
+                if prev_module is not None and prev_module.indent > indent:
+                    output_str.extend(_convert_repr(prev_module))
+                    prev_module = None
+                name = line[(indent + 1):line.find(')')]
+                if line[indent] != '(' or not name.isnumeric():
+                    if prev_module is None:
+                        output_str.append(line)
+                    continue
+
+                end_idx = next(
+                    end_idx for end_idx in range(idx + 1, len(repr_str))
+                    if _get_indent(repr_str[end_idx]) <= indent)
+                end_indent = _get_indent(repr_str[end_idx])
+                if end_indent < indent or repr_str[end_idx][end_indent] != ')':
+                    # not a module; a parameter in ParameterList
+                    end_idx -= 1
+                    indent -= 2  # parameters are somehow indented further
+                module_repr = '\n'.join(
+                    [line[(indent + len(name) + 4):]] +  # "(): "
+                    repr_str[(idx + 1):(end_idx + 1)])
+                if prev_module is None:
+                    prev_module = ModuleRepr(indent, module_repr, [name])
+                elif prev_module.indent < indent:
+                    nested = True
+                elif prev_module.repr_str == module_repr:
+                    prev_module.names.append(name)
+                else:
+                    output_str.extend(_convert_repr(prev_module))
+                    prev_module = ModuleRepr(indent, module_repr, [name])
+            repr_str = output_str
+        return '\n'.join(repr_str)

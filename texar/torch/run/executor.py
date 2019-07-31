@@ -1,15 +1,16 @@
-import functools
-import os
+from datetime import datetime
+import pickle
 import random
 import re
+import sys
 import time
-import warnings
-from collections import defaultdict, Counter
-from typing import (Any, Callable, Counter as CounterType, Dict, IO, List,
-                    NamedTuple, Optional, Type, TypeVar, Union, overload, Set)
+from collections import defaultdict
+from pathlib import Path
+from typing import (
+    Callable, Dict, IO, List, Optional,
+    Set, Union, overload)
 
 import numpy as np
-from mypy_extensions import TypedDict
 import torch
 from torch import nn
 from torch.optim.lr_scheduler import _LRScheduler as LRScheduler
@@ -18,22 +19,17 @@ from torch.optim.optimizer import Optimizer
 from texar.torch.data.data.data_base import DataBase
 from texar.torch.data.data.data_iterators import BatchingStrategy, DataIterator
 from texar.torch.data.data.dataset_utils import Batch
-from texar.torch.run.action import Action
 from texar.torch.run.condition import Condition, Event, HookPoint
 from texar.torch.run.metric import Metric
-from texar.torch.utils.types import MaybeList
-from texar.torch.utils.utils import get_instance
+import texar.torch.run.executor_utils as utils
+from texar.torch.run.executor_utils import OptionalList, OptionalDict, Instance
 
 __all__ = [
     "make_deterministic",
     "Executor",
 ]
 
-T = TypeVar('T')
-OptionalList = Optional[MaybeList[T]]
-OptionalDict = Optional[Union[T, List[T], Dict[str, T]]]
-Instance = Union[T, Dict[str, Any]]
-HookFn = Callable[..., None]
+HookFn = Callable[['Executor'], None]
 
 
 def make_deterministic(seed: int = 19260817,
@@ -58,79 +54,24 @@ def make_deterministic(seed: int = 19260817,
         torch.backends.cudnn.benchmark = False
 
 
-def _to_list(xs: OptionalList[T]) -> List[T]:
-    if xs is None:
-        return []
-    if isinstance(xs, list):
-        return xs
-    return [xs]
-
-
-def _to_metric_dict(d: OptionalDict[Metric]) -> Dict[str, Metric]:
-    if d is None:
-        return {}
-    if isinstance(d, dict):
-        return d
-    xs = d
-    if not isinstance(d, list):
-        xs = [d]
-    ret = {}
-    counter: CounterType[str] = Counter()
-    for x in xs:
-        name = f"{x.__class__.__name__}.{x.pred_name}"
-        if name not in counter:
-            ret[name] = x
-        else:
-            cnt = counter[name]
-            if cnt == 1:
-                ret[f"{name}.1"] = ret[name]
-                del ret[name]
-            ret[f"{name}.{cnt + 1}"] = x
-        counter.update([name])
-    return d
-
-
-def _to_instance(typ: Type[T], instance: Instance[T],
-                 modules: List[str]) -> Optional[T]:
-    if instance is None:
-        return None
-    if isinstance(instance, dict):
-        instance = get_instance(instance['type'], instance['kwargs'], modules)
-    if not isinstance(instance, typ):
-        raise ValueError(
-            f"The instance {instance} is not of type {typ.__name__}")
-    return instance
-
-
-class SavedTrainingState(NamedTuple):
-    r"""The entire training state to save to or load from checkpoints."""
-    model: Dict[str, torch.Tensor]
-    optimizer: Dict[str, torch.Tensor]
-    scheduler: Dict[str, Any]
-    system_rng: Any
-    numpy_rng: Any
-    torch_rng: Any
-
-
-class TrainingStatus(TypedDict):
-    epoch: int
-    iteration: int
-    progress: float
-    split: str
-    metric: Dict[str, Metric]
-
-
 class Executor:
+    _CHECKPOINT_METAINFO_FILE = "checkpoint.meta-info"
+    _CHECKPOINT_EXTENSION = ".pt"
     _defaults = {
         "log_format": "{time} : Epoch {epoch} @ {iteration}it "
-                      "({progress}%), loss = {loss:.3f}",
+                      "({progress}%, {speed}), {{{metric:.3f}}}",
         "eval_log_format": "{time} : Epoch {epoch}, "
-                           "{split} result = {{{metrics:.3f}}}",
+                           "{split} result = {{{metric:.3f}}}",
+        "log_destination": [sys.stdout],
     }
+
+    _train_tracker: utils.ProgressTracker
+    _eval_tracker: utils.ProgressTracker
+    _hooks: Dict[HookPoint, Dict[Optional[Condition], List[HookFn]]]
 
     # TODO: Add a unified `state` that is readonly and keeps track of
     #   everything. We'll only have to pass it to hooks.
-    status: TrainingStatus
+    status: utils.TrainingStatus
 
     def __init__(self, model: nn.Module,
                  train_data: Optional[DataBase] = None,
@@ -154,9 +95,8 @@ class Executor:
                  # Validation
                  valid_metrics: OptionalDict[Metric] = None,
                  validate_every: OptionalList[Condition] = None,
-                 early_stop_patience: Optional[int] = None,
                  plateau_condition: OptionalList[Condition] = None,
-                 action_on_plateau: OptionalList[Action] = None,
+                 action_on_plateau: OptionalList[HookFn] = None,
                  validate_mode: str = 'eval',
                  # Testing
                  test_metrics: OptionalDict[Metric] = None,
@@ -166,6 +106,7 @@ class Executor:
                  log_every: OptionalList[Condition] = None,
                  log_format: Optional[str] = None,
                  log_destination: OptionalList[Union[str, IO[str]]] = None,
+                 print_configs_to_log: bool = True,
                  eval_log_format: Optional[str] = None,
                  # Tensorboard
                  tensorboard_log_dir: Optional[str] = None,
@@ -173,7 +114,7 @@ class Executor:
         self.model = model
         self.train_data = train_data
         self.valid_data = valid_data
-        self.test_data = _to_list(test_data)
+        self.test_data = utils.to_list(test_data)
         self.batching_strategy = batching_strategy
 
         # Device placement
@@ -185,41 +126,11 @@ class Executor:
                 device = torch.device('cpu')
         self.device = device
 
-        # Checkpoint management
-        self.checkpoint_dir = checkpoint_dir
-        self.max_to_keep = max_to_keep
-        self._save_conditions = _to_list(save_every)
-        self._save_training_state = save_training_state
-
-        # Training loop
-        self.train_metrics = _to_metric_dict(train_metrics)
-        self.optimizer = _to_instance(
-            Optimizer, optimizer, ["torch.optim", "texar.core"])
-        self.lr_scheduler = _to_instance(
-            LRScheduler, lr_scheduler,
-            ["torch.optim.lr_scheduler", "texar.core"])
-        self.max_epochs = max_epochs
-        self.num_backwards_per_update = num_backwards_per_update
-        self.grad_clip = grad_clip
-        self._should_terminate = False
-
-        # Validation
-        self.valid_metrics = _to_metric_dict(valid_metrics)
-        self._valid_conditions = _to_list(validate_every)
-        self.valid_mode = validate_mode
-        self.early_stop_patience = early_stop_patience
-        self._plateau_conditions = _to_list(plateau_condition)
-        self._actions_on_plateau = _to_list(action_on_plateau)
-
-        # Testing
-        self.test_metrics = _to_metric_dict(test_metrics)
-        self._test_conditions = _to_list(test_every)
-        self.test_mode = test_mode
-
         # Logging
-        self._log_conditions = _to_list(log_every)
+        self._log_conditions = utils.to_list(log_every)
         self.log_format: str
-        self.log_destination: List[Union[str, IO[str]]]
+        self.log_destination: List[IO[str]]
+        self.print_configs_to_log = print_configs_to_log
         self.eval_log_format: str
 
         for attr, default in self._defaults.items():
@@ -228,24 +139,81 @@ class Executor:
                 value = default
             setattr(self, attr, value)
 
+        # TODO: Close files somewhere? Maybe `atexit.register`?
+        self.log_destination = [
+            open(dest, "w+") if isinstance(dest, str) else dest
+            for dest in utils.to_list(self.log_destination)]
+
+        # Checkpoint management
+        self.checkpoint_dir = Path(checkpoint_dir)
+        self.max_to_keep = max_to_keep
+        self._save_conditions = utils.to_list(save_every)
+        self._save_training_state = save_training_state
+
+        if not self.checkpoint_dir.exists():
+            self.checkpoint_dir.mkdir(parents=True)
+        else:
+            self.write_log(
+                f"Specified checkpoint directory '{checkpoint_dir}' "
+                f"exists, previous checkpoints might be erased", mode="warning")
+
+        # Training loop
+        self.train_metrics = utils.to_metric_dict(train_metrics)
+        self.optimizer = utils.to_instance(
+            Optimizer, optimizer, ["torch.optim", "texar.core"],
+            extra_kwargs={"params": self.model.parameters()})
+        self.lr_scheduler = utils.to_instance(
+            LRScheduler, lr_scheduler,
+            ["torch.optim.lr_scheduler", "texar.core"],
+            extra_kwargs={"optimizer": self.optimizer})
+        self.max_epochs = max_epochs
+        self.num_backwards_per_update = num_backwards_per_update
+        self.grad_clip = grad_clip
+        self._should_terminate = False
+
+        # Validation
+        self.valid_metrics = utils.to_metric_dict(valid_metrics)
+        self._valid_conditions = utils.to_list(validate_every)
+        self.valid_mode = validate_mode
+        self._plateau_conditions = utils.to_list(plateau_condition)
+        self._actions_on_plateau = utils.to_list(action_on_plateau)
+
+        # Testing
+        self.test_metrics = utils.to_metric_dict(test_metrics)
+        self._test_conditions = utils.to_list(test_every)
+        self.test_mode = test_mode
+
         # Initialize hooks.
-        self._hooks: Dict[HookPoint,
-                          Dict[Optional[Condition], List[Action]]] = {
+        self._hooks = {
             (event, point): defaultdict(list)
             for event in Event for point in (False, True)}
 
+        self.status = {
+            "epoch": 0,
+            "iteration": 0,
+            "progress": 0.0,
+            "split": "train",
+            "metric": self.train_metrics,
+            "eval_metric": self.valid_metrics,
+        }
+
         # Register events & actions.
         for cond in self._valid_conditions:
-            self.register_action(cond, self._validate)
+            self.register_action(cond, self._validate.__func__)
         for cond in self._test_conditions:
-            self.register_action(cond, self.test)
+            self.register_action(cond, self.test.__func__)
+
+        train_logging_hook = self._create_logging_hook(
+            self.log_format, eval_mode=False)
         for cond in self._log_conditions:
-            self.register_action(cond, self._log(log_format))
+            self.register_action(cond, train_logging_hook)
+        eval_logging_hook = self._create_logging_hook(
+            self.eval_log_format, eval_mode=True)
+
         for event in (Event.Validation, Event.Testing):
-            self._register_hook(
-                (event, True), self._log(eval_log_format))
+            self._register_hook((event, True), eval_logging_hook)
         for cond in self._save_conditions:
-            self.register_action(cond, self._save)
+            self.register_action(cond, self._save.__func__)
         for cond in self._plateau_conditions:
             for action in self._actions_on_plateau:
                 self.register_action(cond, action)
@@ -255,7 +223,25 @@ class Executor:
 
         # Validate arguments.
 
-    def _log(self, format_str: str) -> HookFn:
+    def write_log(self, log_str: str, *, mode: str = "info"):
+        if mode == "log":
+            pass
+        elif mode == "info":
+            time_str = time.strftime("%Y-%m-%d %H:%M:%S")
+            log_str = utils.color(f"INFO {time_str} : ", "green") + log_str
+        elif mode == "warning":
+            time_str = time.strftime("%Y-%m-%d %H:%M:%S")
+            log_str = f"WARNING {time_str} : {log_str}"
+            log_str = utils.color(log_str, "red")
+        else:
+            raise ValueError(f"Invalid logging mode {mode}")
+        for dest in self.log_destination:
+            dest.write(log_str)
+            dest.write("\n")
+            dest.flush()
+
+    # TODO: Determine train/eval
+    def _create_logging_hook(self, format_str: str, eval_mode: bool) -> HookFn:
         r"""Create a hook function given a logging format string.
 
         The format string follows the syntax of Python format strings. The
@@ -278,9 +264,9 @@ class Executor:
           please refer to documentation for Python built-in function
           :meth:`date.strftime`.
         - ``metric``: An aggregated representation of all metrics, in the
-          format of ``<name1>: <value1>, <name2>: <value2>, ...``, sorted in
-          alphabetical order of metric names. The format spec for ``metric``
-          will be applied to all metrics whose value supports such format spec.
+          format of ``<name1>: <value1>, <name2>: <value2>, ...``. The format
+          spec for ``metric`` will be applied to all metrics whose value
+          supports such format spec.
           For more fine grained control over metric formatting, use the
           following methods.
         - ``metric.<name>``: Value of the metric under the specified name
@@ -293,6 +279,9 @@ class Executor:
 
         Args:
             format_str (str): The logging format string.
+            eval_mode (bool): If `True`, returned hook function will be for
+                logging during evaluation; if `False`, hook function will be for
+                during training.
 
         Returns:
             A hook function to print logs given the format string.
@@ -306,48 +295,79 @@ class Executor:
         # Set default time format.
         if "time" in format_vars and format_vars["time"] is None:
             format_vars["time"] = "%Y-%m-%d %H:%M:%S"
-            format_str = re.sub(r"{time(:([^{}]+))?}", format_str, "{time}")
+            format_str = re.sub(r"{time(:([^{}]+))?}", "{time}", format_str)
 
         # Set metric print formats for aggregated format variable.
+        metrics = self.status["eval_metric" if eval_mode else "metric"]
         if "metric" in format_vars and format_vars["metric"] is not None:
             # Check which metrics can be printed with specified format.
-            supported_metrics: Set[str] = set()
+            fmt_metrics: Set[str] = set()
             metric_format = format_vars["metric"]
-            for name, metric in self.status.metric.items():
+            for name, metric in metrics.items():
                 try:
                     metric_format.format(metric.value())
-                    supported_metrics.add(name)
+                    fmt_metrics.add(name)
                 except ValueError:
                     pass
             metric_format_parts = []
-            for name in sorted(self.status.metric):
+            for name in metrics:
                 metric_format_parts.append(
                     f"{name}: {{{name}"
-                    f"{metric_format if name in supported_metrics else ''}}}")
+                    f"{':' + metric_format if name in fmt_metrics else ''}}}")
             metric_format_str = ', '.join(metric_format_parts)
             format_vars["metric"] = metric_format_str
-            format_str = re.sub(r"{metric(:([^{}]+))?}", format_str, "{metric}")
+            format_str = re.sub(r"{metric(:([^{}]+))?}", "{metric}", format_str)
 
         # Gather metrics represented as "name" or "metric.name".
+        metrics_to_print: Set[str] = set()
+        for name in format_vars:
+            if name in self.status or name in ["time", "progress", "speed"]:
+                # built-in name
+                pass
+            elif name in metrics:
+                metrics_to_print.add(name)
+            else:
+                raise ValueError(
+                    f"Invalid status variable name '{name}' in format string")
 
         def log_fn(self):
+            metrics = self.status["eval_metric" if eval_mode else "metric"]
             format_args = self.status.copy()
             if "time" in format_vars:
                 format_args["time"] = time.strftime(format_vars["time"])
             if "metric" in format_vars:
                 metric_vals = {name: metric.value()
-                               for name, metric in self.status.metric.items()}
-                format_args["metric"] = format_vars["metric"].format(**metric_vals)
+                               for name, metric in metrics.items()}
+                metric_str = format_vars["metric"].format(**metric_vals)
+                format_args["metric"] = metric_str
+            if "speed" in format_vars:
+                format_args["speed"] = self._train_tracker.speed()
+            if "progress" in format_vars:
+                progress = self._train_tracker.progress()
+                if progress is not None:
+                    format_args["progress"] = "{:.1f}".format(progress)
+                else:
+                    format_args["progress"] = "unknown"
+            format_args.update({name: metrics[name].value()
+                                for name in metrics_to_print})
+            log_str = format_str.format(**format_args)
+
+            self.write_log(log_str, mode="log")
 
         return log_fn
 
-    def register_action(self, cond: Condition, action: Action):
+    def register_action(self, cond: Condition, action: HookFn):
         for hook_point in cond._hooks:
             self._register_hook(hook_point, action, cond)
+        return self
 
-    def _register_hook(self, hook_point: HookPoint, action: Action,
+    def _register_hook(self, hook_point: HookPoint, action: HookFn,
                        cond: Optional[Condition] = None):
-        self._hooks[hook_point][cond].append(action)
+        try:
+            self._hooks[hook_point][cond].append(action)
+        except KeyError:
+            raise ValueError(
+                f"Specified hook point {hook_point} is invalid") from None
 
     @overload
     def on(self, event: Event, point: str = 'end') \
@@ -366,8 +386,11 @@ class Executor:
             executor = Executor(...)
 
             @executor.on(Event.Epoch, 'end')
-            def log_at_end_of_epoch(status):
-                logging.info("Epoch %d done", status.epoch)
+            def log_at_end_of_epoch(executor):
+                logging.info("Epoch %d done", executor.status.epoch)
+
+        The hook function takes exactly one argument: the executor instance
+        itself.
 
         Args:
             event: The event to hook on. Must be an enum value from
@@ -375,7 +398,7 @@ class Executor:
             point (str): The point of event to hook on. Supported values are
                 ``"begin"`` and ``"end"``.
             func (optional): The function to register. If not `None`, the
-                function will be registered; if `None`, a decorate will be
+                function will be registered; if `None`, a decorator will be
                 returned.
 
         :returns:
@@ -401,9 +424,12 @@ class Executor:
         for cond, actions in self._hooks[(event, end)].items():
             # If condition is `None` (raw function hooks), action always
             # triggers.
-            if cond is None or cond._hooks[(event, end)]():
+            if cond is None or cond._hooks[(event, end)](self):
                 for action in actions:
-                    action(*args, **kwargs)
+                    action(self, *args, **kwargs)
+        if self._should_terminate:
+            self._should_terminate = False
+            raise utils.TerminateExecution
 
     def _validate_step(self, batch: Batch):
         if self.valid_mode == 'predict':
@@ -419,7 +445,7 @@ class Executor:
             return_dict = self.model(batch)
         return return_dict
 
-    def _train_step(self, batch: Batch, epoch: int, iteration: int):
+    def _train_step(self, batch: Batch):
         return_dict = self.model(batch)
         try:
             loss = return_dict['loss']
@@ -428,7 +454,7 @@ class Executor:
                              "contain 'loss' entry")
         loss /= self.num_backwards_per_update
         loss.backward()
-        if iteration % self.num_backwards_per_update == 0:
+        if self.status["iteration"] % self.num_backwards_per_update == 0:
             self._fire_event(Event.ParameterUpdate, False)
             if self.grad_clip is not None:
                 torch.nn.utils.clip_grad_norm_(
@@ -441,10 +467,30 @@ class Executor:
         return return_dict
 
     def _save(self):
-        # TODO: Save a meta file?
+        # Load the checkpoint meta-info file.
+        meta_path = self.checkpoint_dir / self._CHECKPOINT_METAINFO_FILE
+        if meta_path.exists():
+            with meta_path.open("rb") as f:
+                meta_dict = pickle.load(f)
+        else:
+            meta_path.touch()
+            meta_dict = {}
 
+        # Remove earliest checkpoints if exceeds `max_to_keep`.
+        while len(meta_dict) >= self.max_to_keep:
+            checkpoint_name = min(
+                meta_dict, key=lambda name: meta_dict[name]["timestamp"])
+            (self.checkpoint_dir / checkpoint_name).unlink()
+            del meta_dict[checkpoint_name]
+            self.write_log(
+                f"Previous checkpoint {checkpoint_name} removed "
+                f"due to `max_to_keep`(={self.max_to_keep}) limit", mode="info")
+
+        timestamp = time.time()
+        checkpoint_name = str(timestamp) + self._CHECKPOINT_EXTENSION
+        path = str(self.checkpoint_dir / checkpoint_name)
         if self._save_training_state and self.optimizer is not None:
-            train_state = SavedTrainingState(
+            train_state = utils.SavedTrainingState(
                 model=self.model.state_dict(),
                 optimizer=self.optimizer.state_dict(),
                 scheduler=(self.lr_scheduler.state_dict()
@@ -456,6 +502,14 @@ class Executor:
             torch.save(train_state, path)
         else:
             torch.save(self.model.state_dict(), path)
+        meta_dict[checkpoint_name] = {
+            "status": self.status,
+            "timestamp": timestamp,
+        }
+        with meta_path.open("wb") as f:
+            pickle.dump(meta_dict, f)
+
+        self.write_log(f"Current checkpoint saved to {path}", mode="info")
 
     def load(self, path: Optional[str] = None,
              load_training_state: bool = True):
@@ -471,15 +525,47 @@ class Executor:
                 state). Otherwise, just load model weights. Defaults to `True`.
         """
         if path is None and self.checkpoint_dir is None:
-            raise ValueError("Path must be specified when `checkpoint_dir` is")
-        path = self.checkpoint_dir if path is None else path
-        if os.path.isdir(path):
-            files = [os.path.join(path, name) for name in os.listdir(path)
-                     if name.endswith('.pt')]
-            path = max(files, key=os.path.getmtime)
+            raise ValueError(
+                "`path` must be specified when `checkpoint_dir` is `None`")
+        path = self.checkpoint_dir if path is None else Path(path)
+        if path.is_dir():
+            meta_path = self.checkpoint_dir / self._CHECKPOINT_METAINFO_FILE
+            if meta_path.exists():
+                with meta_path.open("rb") as f:
+                    meta_dict = pickle.load(f)
+                # TODO: Somehow compare these metrics. And use OrderedDict.
+                best_metric, best_ckpt_name = max(
+                    (utils.MetricList(info["status"]["eval_metric"]), name)
+                    for name, info in meta_dict.items())
+                status = meta_dict[best_ckpt_name]["status"]
+                path = self.checkpoint_dir / best_ckpt_name
+                metric_vals = [(name, best_metric.values[name])
+                               for name in best_metric.metrics]
+                metric_str = ", ".join(
+                    f"{name}: " + (f"{value:.3f}" if isinstance(value, float)
+                                   else f"{value}")
+                    for name, value in metric_vals)
+                load_info_str = (f"Meta-info: epoch={status['epoch']}, "
+                                 f"iteration={status['iteration']}, "
+                                 f"metrics={{{metric_str}}}")
+            else:
+                self.write_log(
+                    "Checkpoint meta-info not found. Will load the most recent "
+                    "checkpoint in directory", mode="warning")
+                m_time, path = max(
+                    (name.stat().st_mtime, name) for name in path.iterdir()
+                    if name.suffix == self._CHECKPOINT_EXTENSION)
+                time_str = datetime.fromtimestamp(m_time).strftime("%Y-%m-%d %H:%M:%S")
+                load_info_str = f"Modification time: {time_str}"
+        else:
+            load_info_str = ""
 
-        checkpoint = torch.load(path, map_location='cpu')
-        if isinstance(checkpoint, SavedTrainingState):
+        if self._moved_model:
+            map_location = self.device
+        else:
+            map_location = 'cpu'
+        checkpoint = torch.load(path, map_location=map_location)
+        if isinstance(checkpoint, utils.SavedTrainingState):
             self.model.load_state_dict(checkpoint.model)
             if load_training_state:
                 self.optimizer.load_state_dict(checkpoint.optimizer)
@@ -491,6 +577,12 @@ class Executor:
         else:
             self.model.load_state_dict(checkpoint)
 
+        if load_info_str != "":
+            self.write_log(f"Checkpoint ({load_info_str}) loaded from {path}.",
+                           mode="info")
+        else:
+            self.write_log(f"Checkpoint loaded from {path}.", mode="info")
+
     def _validate(self) -> None:
         self._fire_event(Event.Validation, False)
 
@@ -500,10 +592,19 @@ class Executor:
 
         iterator = DataIterator(self.valid_data, self.batching_strategy)
 
+        try:
+            data_size = len(self.valid_data)
+        except TypeError:
+            data_size = None
+        self._eval_tracker = utils.ProgressTracker(data_size)
+
         if self.valid_mode == 'train':
             self.model.train()
         else:
             self.model.eval()
+
+        prev_split = self.status["split"]
+        self.status["split"] = "valid"
 
         with torch.no_grad():
             for batch in iterator:
@@ -511,13 +612,13 @@ class Executor:
                 return_dict = self._validate_step(batch)
 
                 # Update metrics.
-                for metric in self.valid_metrics.values():
-                    metric.add(return_dict[metric.pred_name],
-                               batch[metric.label_name])
+                utils.update_metrics(return_dict, batch, self.valid_metrics)
 
                 self._fire_event(Event.ValidationIteration, True)
 
         self._fire_event(Event.Validation, True)
+
+        self.status["split"] = prev_split
 
     def terminate(self) -> None:
         r"""Terminate training. This method is intended to be called within
@@ -530,11 +631,11 @@ class Executor:
         self._should_terminate = True
 
     def train(self):
-        if self.max_epochs is None and self.early_stop_patience is None:
-            warnings.warn(
-                "Neither `max_epochs` nor early stopping is configured. Unless "
-                "a custom event action calls `Executor.terminate()`, training "
-                "will run indefinitely.")
+        if self.max_epochs is None:
+            self.write_log(
+                "`max_epochs` is not configured. Unless an event action calls "
+                "`executor.terminate()`, training will run indefinitely.",
+                mode='warning')
 
         # Initialize optimizer.
         if self.optimizer is None:
@@ -552,42 +653,51 @@ class Executor:
                                  "validation dataset is specified.")
             self.valid_data.to(self.device)
 
-        # Move model to appropriate device
+        # Move model to appropriate device.
         if not self._moved_model:
             self.model.to(self.device)
         self.model.train()
 
-        # Initialize metrics.
-        for metric in self.train_metrics.values():
-            metric.reset()
+        # Main training loop.
+        try:
+            epoch = 0
+            iteration = 0
+            self._fire_event(Event.Training, False)
+            while self.max_epochs is None or epoch < self.max_epochs:
+                try:
+                    data_size = len(self.train_data)
+                except TypeError:
+                    data_size = None
+                self._train_tracker = utils.ProgressTracker(data_size)
 
-        # Main training
-        self._should_terminate = False
-        epoch = 0
-        iteration = 0
-        self._fire_event(Event.Training, False)
-        while self.max_epochs is None or epoch < self.max_epochs:
-            epoch += 1
-            self._fire_event(Event.Epoch, False)
-
-            for batch in iterator:
-                self._fire_event(Event.Iteration, False)
-                iteration += 1
-                return_dict = self._train_step(batch, epoch, iteration)
-
-                # Update metrics.
+                epoch += 1
+                self.status["epoch"] = epoch
+                # Initialize metrics.
                 for metric in self.train_metrics.values():
-                    metric.add(return_dict[metric.pred_name],
-                               batch[metric.label_name])
+                    metric.reset()
 
-                self._fire_event(Event.Iteration, True, iteration)
-            self._fire_event(Event.Epoch, True, epoch)
-        self._fire_event(Event.Training, True)
+                self._fire_event(Event.Epoch, False)
+
+                for batch in iterator:
+                    self._fire_event(Event.Iteration, False)
+                    iteration += 1
+                    self.status["iteration"] = iteration
+
+                    return_dict = self._train_step(batch)
+
+                    self._train_tracker.add(len(batch))
+                    utils.update_metrics(return_dict, batch, self.train_metrics)
+
+                    self._fire_event(Event.Iteration, True)
+                self._fire_event(Event.Epoch, True)
+            self._fire_event(Event.Training, True)
+        except utils.TerminateExecution:
+            self.write_log("Training terminated", mode='info')
 
     def test(self, dataset: OptionalList[DataBase] = None):
         if dataset is None and self.test_data is None:
             raise ValueError("No testing dataset is specified")
-        datasets = self.test_data if dataset is None else _to_list(dataset)
+        datasets = self.test_data if dataset is None else utils.to_list(dataset)
 
         if self.test_mode == 'train':
             self.model.train()
@@ -595,22 +705,31 @@ class Executor:
             self.model.eval()
         with torch.no_grad():
             for dataset in datasets:
-                # Initialize metrics.
-                for metric in self.test_metrics.values():
-                    metric.reset()
+                try:
+                    # Initialize metrics.
+                    for metric in self.test_metrics.values():
+                        metric.reset()
 
-                self._fire_event(Event.Testing, False)
-                dataset.to(self.device)
-                iterator = DataIterator(dataset, self.batching_strategy)
+                    self._fire_event(Event.Testing, False)
+                    dataset.to(self.device)
+                    iterator = DataIterator(dataset, self.batching_strategy)
+                    try:
+                        data_size = len(dataset)
+                    except TypeError:
+                        data_size = None
+                    self._eval_tracker = utils.ProgressTracker(data_size)
 
-                for batch in iterator:
-                    self._fire_event(Event.TestingIteration, False)
-                    return_dict = self._test_step(batch)
+                    for batch in iterator:
+                        self._fire_event(Event.TestingIteration, False)
+                        return_dict = self._test_step(batch)
 
-                    # Update metrics.
-                    for metric in self.test_.values():
-                        metric.add(return_dict[metric.pred_name],
-                                   batch[metric.label_name])
+                        self._eval_tracker.add(len(batch))
+                        utils.update_metrics(
+                            return_dict, batch, self.test_metrics)
 
-                    self._fire_event(Event.TestingIteration, True)
-                self._fire_event(Event.Testing, True)
+                        self._fire_event(Event.TestingIteration, True)
+                    self._fire_event(Event.Testing, True)
+                except utils.TerminateExecution:
+                    self.write_log(
+                        "Testing terminated. This is likely unintended. Please "
+                        "check your custom actions.", mode='warning')

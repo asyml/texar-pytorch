@@ -6,7 +6,7 @@ import numpy as np
 from texar.torch.run.metric.base_metric import StreamingMetric
 
 __all__ = [
-    "Average",
+    "Accuracy",
     "ConfusionMatrix",
     "Precision",
     "Recall",
@@ -17,7 +17,7 @@ Input = TypeVar('Input')
 Value = TypeVar('Value')
 
 
-class Average(StreamingMetric[Input, float]):
+class Accuracy(StreamingMetric[Input, float]):
     correct: int
 
     def reset(self) -> None:
@@ -121,6 +121,8 @@ class _MicroMacro(_ConfusionMatrix[Input, float], ABC):
 
 class Precision(_MicroMacro[Input]):
     def value(self) -> float:
+        if self.count == 0:
+            return 0.0
         return self._wrap_micro_macro(
             self._true_positive() /
             (self._true_positive() + self._false_positive()))
@@ -128,6 +130,8 @@ class Precision(_MicroMacro[Input]):
 
 class Recall(_MicroMacro[Input]):
     def value(self) -> float:
+        if self.count == 0:
+            return 0.0
         return self._wrap_micro_macro(
             self._true_positive() /
             (self._true_positive() + self._false_negative()))
@@ -135,6 +139,8 @@ class Recall(_MicroMacro[Input]):
 
 class F1(Precision[Input], Recall[Input]):
     def value(self) -> float:
+        if self.count == 0:
+            return 0.0
         precision = Precision.value(self)
         recall = Recall.value(self)
         return 2 * precision * recall / (precision + recall)

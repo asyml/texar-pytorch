@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic, List, TypeVar
+from typing import Generic, List, TypeVar, Optional
 
 __all__ = [
     "Metric",
@@ -13,9 +13,18 @@ Value = TypeVar('Value')
 
 class Metric(Generic[Input, Value], ABC):
     higher_is_better: bool = True
+    requires_label: bool = True
 
-    def __init__(self, *, pred_name: str = "loss", label_name: str = "label"):
+    def __init__(self, *, pred_name: str, label_name: Optional[str] = "label",
+                 higher_is_better: Optional[bool] = None):
         self.reset()
+        if self.requires_label and label_name is None:
+            raise ValueError(f"Metric {self.__class__.__name__} requires a "
+                             f"label name, but None is provided")
+        if higher_is_better is not None:
+            self.higher_is_better = higher_is_better
+        if not self.requires_label:
+            label_name = None
         self._pred_name = pred_name
         self._label_name = label_name
 
@@ -39,10 +48,11 @@ class Metric(Generic[Input, Value], ABC):
     def value(self) -> Value:
         raise NotImplementedError
 
-    def better(self, a: Value, b: Value) -> bool:
-        if self.higher_is_better:
-            return a > b
-        return a < b
+    def better(self, cur: Value, prev: Value) -> Optional[bool]:
+        result = True if cur > prev else False if cur < prev else None
+        if not self.higher_is_better and result is not None:
+            result = not result
+        return result
 
 
 class SimpleMetric(Metric[Input, Value], ABC):

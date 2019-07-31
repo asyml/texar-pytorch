@@ -1,12 +1,12 @@
 import functools
-import re
 import types
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from time import time as time_now
 from typing import Any, Dict, Optional, Tuple
 
-from texar.utils.types import MaybeTuple
+from texar.torch.run.executor_utils import MetricList
+from texar.torch.utils.types import MaybeTuple
 
 __all__ = [
     "Event",
@@ -28,7 +28,7 @@ __all__ = [
 #         return name.lower()
 
 
-class Event(Enum):  # use primitive as underlying type for fast dict lookup
+class Event(Enum):  # use primitive as underlying type for fast? dict lookup
     Iteration = auto()
     Epoch = auto()
     Training = auto()
@@ -45,8 +45,8 @@ HookPoint = Tuple[Event, bool]
 class Condition(ABC):
     _hooks: Dict[HookPoint, Any]
 
-    @abstractmethod
     @property
+    @abstractmethod
     def _hash_attributes(self) -> MaybeTuple[Any]:
         raise NotImplementedError
 
@@ -58,18 +58,26 @@ class Condition(ABC):
 
     def __init__(self):
         self._hooks = {}
-        for name in self.__dict__:
-            if not name.startswith("check_"):
+        for hook_name in dir(self):
+            if not hook_name.startswith("check_"):
                 continue
-            parts = name.split("_")
-            if len(parts) != 3:
-                continue
-            event = Event(parts[1])
-            point = parts[2]
-            if point not in ['begin', 'end']:
+            name = hook_name
+            if name.endswith("_begin"):
+                name = name[6:-6]
+                point = False
+            elif name.endswith("_end"):
+                name = name[6:-4]
+                point = True
+            else:
                 raise ValueError(
                     "Final part of hook name must be 'begin' or 'end'")
-            self._hooks[(event, point)] = self.__dict__[name]
+            if name not in Event.__members__:
+                name = ''.join(x.capitalize() for x in name.split("_"))
+                if name not in Event.__members__:
+                    raise ValueError(
+                        f"Hook name '{hook_name}' is not a valid event")
+            event = Event.__members__[name]
+            self._hooks[(event, point)] = getattr(self, hook_name)
 
 
 class epoch(Condition):
@@ -82,14 +90,17 @@ class epoch(Condition):
     """
 
     def __init__(self, num_epochs: int = 1):
+        if not isinstance(num_epochs, int) or num_epochs <= 0:
+            raise ValueError("`num_epochs` must be a positive integer")
         super().__init__()
         self.num_epochs = num_epochs
         self.count = 0
 
+    @property
     def _hash_attributes(self):
         return self.num_epochs
 
-    def check_epoch_end(self) -> bool:
+    def check_epoch_end(self, executor) -> bool:
         self.count += 1
         if self.count == self.num_epochs:
             self.count = 0
@@ -107,14 +118,17 @@ class iteration(Condition):
     """
 
     def __init__(self, num_iters: int = 1):
+        if not isinstance(num_iters, int) or num_iters <= 0:
+            raise ValueError("`num_iters` must be a positive integer")
         super().__init__()
         self.num_iters = num_iters
         self.count = 0
 
+    @property
     def _hash_attributes(self):
         return self.num_iters
 
-    def check_iteration_end(self) -> bool:
+    def check_iteration_end(self, executor) -> bool:
         self.count += 1
         if self.count == self.num_iters:
             self.count = 0
@@ -127,21 +141,44 @@ class validation(Condition):
     results improve or worsen.
 
     Args:
+        num_validations (int): The number of validations to wait before
+            triggering the event. In other words, the event is triggered every
+            :attr:`num_validations` validations.
         better (bool, optional): If `True`, this event only triggers when
             validation results improve; if `False`, only triggers when results
             worsen. Defaults to `None`, in which case the event triggers
             regardless of results.
     """
 
-    def __init__(self, better: Optional[bool] = None):
+    def __init__(self, num_validations: int = 1, better: Optional[bool] = None):
+        if not isinstance(num_validations, int) or num_validations <= 0:
+            raise ValueError("`num_validations` must be a positive integer")
         super().__init__()
+        self.num_valids = num_validations
+        self.count = 0
         self.better = better
+        self.prev_result: Optional[MetricList] = None
 
+    @property
     def _hash_attributes(self):
-        return self.better
+        return self.num_valids, self.better
 
-    def check_validation_end(self, metrics) -> bool:
-        pass
+    def check_validation_end(self, executor) -> bool:
+        self.count += 1
+        if self.count < self.num_valids:
+            return False
+        self.count = 0
+        if self.better is None:
+            return True
+        metrics = executor.status["eval_metric"]
+        cur_result = MetricList(metrics)
+        if self.prev_result is not None:
+            better = cur_result > self.prev_result
+        else:
+            better = True
+        if better:
+            self.prev_result = cur_result
+        return better == self.better
 
 
 class consecutive(Condition):
@@ -155,6 +192,7 @@ class consecutive(Condition):
 
         This method might not work as you would expect.
         # TODO: Think about whether this is a good design.
+        # TODO: Think about why I thought this might not work as I expected.
 
     Args:
         cond: The base condition to check.
@@ -164,7 +202,7 @@ class consecutive(Condition):
             the event is triggered. If :attr:`clear_after_trigger` is set to
             `False`, once this event is triggered, it will trigger every time
             :attr:`cond` is triggered, until :attr:`cond` fails to trigger at
-            some point. Defalts to `True`.
+            some point. Defaults to `True`.
     """
 
     def __init__(self, cond: Condition, times: int,
@@ -178,6 +216,7 @@ class consecutive(Condition):
         for hook_point, method in self.cond._hooks.items():
             self._hooks[hook_point] = self._create_check_method(method)
 
+    @property
     def _hash_attributes(self):
         return self.cond, self.times, self.clear_after_trigger
 
@@ -214,6 +253,7 @@ class time(Condition):
         self.start_time: Optional[float] = None
         self.accumulated_time = 0.0
 
+    @property
     def _hash_attributes(self):
         return self.seconds, self.only_training
 
@@ -232,38 +272,38 @@ class time(Condition):
             self.accumulated_time = total_time
             return False
 
-    def check_training_begin(self) -> bool:
+    def check_training_begin(self, executor) -> bool:
         self.start_time = time_now()
         return False
 
-    def check_training_end(self) -> bool:
+    def check_training_end(self, executor) -> bool:
         return self._should_trigger()
 
-    def check_validation_begin(self) -> bool:
+    def check_validation_begin(self, executor) -> bool:
         if self.only_training:
             self.accumulated_time += time_now() - self.start_time
             self.start_time = None
         return self._should_trigger()
 
-    def check_validation_end(self) -> bool:
+    def check_validation_end(self, executor) -> bool:
         if self.only_training:
             self.start_time = time_now()
             return False
         else:
             return self._should_trigger()
 
-    def check_testing_begin(self) -> bool:
+    def check_testing_begin(self, executor) -> bool:
         if self.only_training:
             self.accumulated_time += time_now() - self.start_time
             self.start_time = None
         return self._should_trigger()
 
-    def check_testing_end(self) -> bool:
+    def check_testing_end(self, executor) -> bool:
         if self.only_training:
             self.start_time = time_now()
             return False
         else:
             return self._should_trigger()
 
-    def check_iteration_end(self) -> bool:
+    def check_iteration_end(self, executor) -> bool:
         return self._should_trigger()
