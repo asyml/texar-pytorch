@@ -15,8 +15,6 @@
 """VAE config.
 """
 
-# pylint: disable=invalid-name, too-few-public-methods, missing-docstring
-
 dataset = "ptb"
 num_epochs = 100
 hidden_size = 256

@@ -38,27 +38,16 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import ExponentialLR
 
 import texar.torch as tx
-from texar.torch.modules import BasicRNNDecoderOutput, TransformerDecoderOutput
-from texar.torch.custom import MultivariateNormalDiag
-from texar.torch.modules.decoders.decoder_helpers import Helper
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--config',
-                    type=str,
-                    default=None,
-                    help="The config to use.")
-parser.add_argument('--mode',
-                    type=str,
-                    default='train',
+parser.add_argument('--config', type=str, default=None,
+                     help="The config to use.")
+parser.add_argument('--mode', type=str, default='train',
                     help="Train or predict.")
-parser.add_argument('--model',
-                    type=str,
-                    default=None,
+parser.add_argument('--model', type=str, default=None,
                     help="Model path for generating sentences.")
-parser.add_argument('--out',
-                    type=str,
-                    default=None,
+parser.add_argument('--out', type=str, default=None,
                     help="Generation output path.")
 
 args = parser.parse_args()
@@ -129,8 +118,7 @@ class VAE(nn.Module):
 
     def forward(self, data_batch: tx.data.Batch,
                 kl_weight: float, start_tokens: torch.LongTensor,
-                end_token: int) \
-            -> Dict:
+                end_token: int) -> Dict[str, Tensor]:
         # encoder -> connector -> decoder
         text_ids = data_batch["text_ids"]
         input_embed = self.encoder_w_embedder(text_ids)
@@ -141,8 +129,7 @@ class VAE(nn.Module):
         mean_logvar = self.connector_mlp(encoder_states)
         mean, logvar = torch.chunk(mean_logvar, 2, 1)
         kl_loss = kl_divergence(mean, logvar)
-
-        dst = MultivariateNormalDiag(
+        dst = tx.custom.MultivariateNormalDiag(
             loc=mean,
             scale_diag=torch.exp(0.5 * logvar))
 
@@ -209,12 +196,13 @@ class VAE(nn.Module):
         return output_embed
 
     def decode(self,
-               helper: Optional[Helper],
+               helper: Optional[tx.modules.Helper],
                text_ids: Optional[torch.LongTensor] = None,
                latent_z: Optional[Tensor] = None,
                seq_lengths: Optional[Tensor] = None,
                max_decoding_length: Optional[int] = None) \
-            -> Union[BasicRNNDecoderOutput, TransformerDecoderOutput]:
+            -> Union[tx.modules.BasicRNNDecoderOutput, 
+                     tx.modules.TransformerDecoderOutput]:
 
         self._latent_z = latent_z
         fc_output = self.mlp_linear_layer(latent_z)
@@ -243,27 +231,21 @@ class VAE(nn.Module):
         return outputs
 
 
-class VAEData(tx.data.MonoTextData):
-    r""" Wrap `tx.data.MonoTextData` to implement data preprocessing.
-    """
-    def process(self, raw_example: List[str]) -> List[str]:
-        # Truncates sentences and appends BOS/EOS tokens.
-        words = super().process(raw_example[1:-1])
-        return words
-
-
 def main():
     """Entrypoint.
     """
     config: Any = importlib.import_module(args.config)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    train_data = VAEData(config.train_data_hparams,
-                                      device=device)
-    val_data = VAEData(config.val_data_hparams,
-                                    device=device)
-    test_data = VAEData(config.test_data_hparams,
-                                     device=device)
+    train_data = tx.data.MonoTextData(
+        config.train_data_hparams,
+        device=device)
+    val_data = tx.data.MonoTextData(
+        config.val_data_hparams,
+        device=device)
+    test_data = tx.data.MonoTextData(
+        config.test_data_hparams,
+        device=device)
 
     iterator = tx.data.DataIterator(
         {"train": train_data, "valid": val_data, "test": test_data})
@@ -327,7 +309,6 @@ def main():
 
         avg_rec = tx.utils.AverageRecorder()
         for batch in iterator:
-
             ret = model(batch, kl_weight, start_tokens, end_token)
             if mode == "train":
                 opt_vars["kl_weight"] = min(
@@ -380,7 +361,7 @@ def main():
 
         batch_size = train_data.batch_size
 
-        dst = MultivariateNormalDiag(
+        dst = tx.custom.MultivariateNormalDiag(
             loc=torch.zeros([batch_size, config.latent_dims]),
             scale_diag=torch.ones([batch_size, config.latent_dims]))
 
@@ -426,7 +407,7 @@ def main():
         return
     # Counts trainable parameters
     total_parameters = 0
-    for _, variable in model.named_parameters():
+    for variable in model.parameters():
         size = variable.size()
         total_parameters += np.prod(size)
     print(f"{total_parameters} total parameters")
@@ -469,8 +450,7 @@ def main():
                 if decay_cnt == max_decay:
                     break
 
-    print('\nbest testing nll: %.4f, best testing ppl %.4f\n' %
-        (best_nll, best_ppl))
+    print(f'\nbest testing nll: {best_nll:.4f}, best testing ppl {best_ppl:.4f}\n')
 
 
 if __name__ == '__main__':

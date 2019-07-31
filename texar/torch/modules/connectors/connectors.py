@@ -140,13 +140,13 @@ def _mlp_transform(inputs: TensorStruct,
     else:
         size_list = flat_output_size
 
+    fc_output = concat_input
     if linear_layer is not None:
-        fc_output = linear_layer(concat_input)
+        fc_output = linear_layer(fc_output)
     if activation_fn is not None:
         fc_output = activation_fn(fc_output)
-    elif linear_layer is None and activation_fn is None:
-        fc_output = concat_input
-    flat_output = split(fc_output, size_list, dim=1)
+
+    flat_output = torch.split(fc_output, size_list, dim=1)
     flat_output = list(flat_output)
     if isinstance(flat_output_size[0], torch.Size):
         for (i, shape) in enumerate(flat_output_size):

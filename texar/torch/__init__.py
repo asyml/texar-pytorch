@@ -27,3 +27,4 @@ from texar.torch import modules
 from texar.torch import utils
 from texar.torch.hyperparams import *
 from texar.torch.module_base import *
+from texar.torch.custom import *

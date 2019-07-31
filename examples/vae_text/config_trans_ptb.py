@@ -14,8 +14,6 @@
 """Config file of VAE with Trasnformer decoder, on PTB data.
 """
 
-# pylint: disable=invalid-name, too-few-public-methods, missing-docstring
-
 dataset = 'ptb'
 num_epochs = 100
 hidden_size = 256
