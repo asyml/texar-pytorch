@@ -22,7 +22,8 @@ class TestModel(nn.Module):
             })
         self.linear = nn.Linear(sum(self.encoder.output_size), n_classes)
 
-    def forward(self, batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
+    def forward(self,  # type: ignore
+                batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
         embeds = self.embedder(batch.tokens)
         fw_state, bw_state = self.encoder(embeds)[1]
         state = torch.cat([fw_state[0], bw_state[0]], dim=1)
@@ -48,7 +49,7 @@ class DummyData(tx.data.DataBase[Example, Example]):
 class ExecutorTest(unittest.TestCase):
     def _create_dataset(self, n_examples: int):
         data = torch.randint(self.vocab_size, size=(n_examples, 20))
-        labels = torch.randint(self.n_classes, size=(n_examples,))
+        labels = torch.randint(self.n_classes, size=(n_examples,)).tolist()
         source = tx.data.SequenceDataSource(list(zip(data, labels)))
         dataset = DummyData(source, hparams={"batch_size": 10})
         return dataset

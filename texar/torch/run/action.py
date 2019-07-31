@@ -31,7 +31,8 @@ class scale_lr(Action):
 
     def __call__(self, executor: Executor):
         new_lr = []
-        for group in executor.optimizer.param_groups:
+        assert executor.optimizer is not None
+        for group in executor.optimizer.param_groups:  # type: ignore
             lr = group['lr'] * self.scale
             group['lr'] = lr
             new_lr.append(lr)

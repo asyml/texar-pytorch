@@ -4,7 +4,7 @@ from typing import List, Deque
 import numpy as np
 
 from texar.torch.run.metric.base_metric import StreamingMetric
-from utils.types import MaybeList
+from texar.torch.utils.types import MaybeList
 
 
 class Average(StreamingMetric[float, float]):
@@ -18,7 +18,7 @@ class Average(StreamingMetric[float, float]):
         super().__init__(pred_name=pred_name, **kwargs)
 
     def reset(self) -> None:
-        self.count = 0
+        super().reset()
         self.sum = 0.0
 
     def add(self, predicted: List[float], _) -> None:
@@ -51,11 +51,11 @@ class RunningAverage(StreamingMetric[float, float]):
         self.queue_size = queue_size
 
     def reset(self) -> None:
-        self.count = 0
+        super().reset()
         self.sum = 0.0
         self.history = deque()
 
-    def add(self, predicted: MaybeList[float], _) -> None:
+    def add(self, predicted: List[float], _) -> None:
         if len(predicted) >= self.queue_size:
             self.history = deque(predicted[:-self.queue_size])
             self.sum = sum(self.history)

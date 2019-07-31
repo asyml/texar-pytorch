@@ -26,6 +26,12 @@ __all__ = [
 ]
 
 
+class ModuleRepr(NamedTuple):
+    indent: int
+    repr_str: str
+    names: List[str]
+
+
 class ModuleBase(nn.Module, ABC):
     r"""Base class inherited by modules that are configurable through
     hyperparameters.
@@ -105,11 +111,6 @@ class ModuleBase(nn.Module, ABC):
 
         def _get_indent(s: str) -> int:
             return len(s) - len(s.lstrip(' '))
-
-        class ModuleRepr(NamedTuple):
-            indent: int
-            repr_str: str
-            names: List[str]
 
         def _convert_repr(module: ModuleRepr) -> List[str]:
             prefix = (f"{' ' * module.indent}(id" +

@@ -100,10 +100,12 @@ class _MicroMacro(_ConfusionMatrix[Input, float], ABC):
         return value.item()
 
     def _true_positive(self) -> np.ndarray:
+        assert self.matrix is not None
         value = self.matrix.diagonal()
         return value.sum() if self.mode == 'micro' else value
 
     def _true_negative(self) -> np.ndarray:
+        assert self.matrix is not None
         value = (self.count
                  - np.asarray(self.pred_count)
                  - np.asarray(self.label_count)
@@ -111,10 +113,12 @@ class _MicroMacro(_ConfusionMatrix[Input, float], ABC):
         return value.sum() if self.mode == 'micro' else value
 
     def _false_positive(self) -> int:
+        assert self.matrix is not None
         value = np.asarray(self.pred_count) - self.matrix.diagonal()
         return value.sum() if self.mode == 'micro' else value
 
     def _false_negative(self) -> int:
+        assert self.matrix is not None
         value = np.asarray(self.label_count) - self.matrix.diagonal()
         return value.sum() if self.mode == 'micro' else value
 

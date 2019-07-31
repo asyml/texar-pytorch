@@ -8,6 +8,8 @@ from typing import Any, Dict, Optional, Tuple
 from texar.torch.run.executor_utils import MetricList
 from texar.torch.utils.types import MaybeTuple
 
+# pylint: disable=unused-argument
+
 __all__ = [
     "Event",
     "HookPoint",
@@ -20,15 +22,7 @@ __all__ = [
 ]
 
 
-# class StrEnum(Enum):
-#     def _generate_next_value_(name: str, start, count, last_values):
-#         name = re.sub(r"([A-Z]+)([A-Z][a-z])", r'\1_\2', name)
-#         name = re.sub(r"([a-z\d])([A-Z])", r'\1_\2', name)
-#         name = name.replace("-", "_")
-#         return name.lower()
-
-
-class Event(Enum):  # use primitive as underlying type for fast? dict lookup
+class Event(Enum):
     Iteration = auto()
     Epoch = auto()
     Training = auto()
@@ -50,11 +44,17 @@ class Condition(ABC):
     def _hash_attributes(self) -> MaybeTuple[Any]:
         raise NotImplementedError
 
-    def __eq__(self, other: 'Condition'):
-        return self._hash_attributes == other._hash_attributes
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Condition):
+            raise ValueError("Cannot compare to object not of type Condition")
+        return self._hash_attributes == other._hash_attributes  # pylint: disable=protected-access
 
     def __hash__(self):
         return hash(self._hash_attributes)
+
+    @property
+    def hooks(self) -> Dict[HookPoint, Any]:
+        return self._hooks
 
     def __init__(self):
         self._hooks = {}
@@ -213,7 +213,7 @@ class consecutive(Condition):
         self.count = 0
         self.clear_after_trigger = clear_after_trigger
 
-        for hook_point, method in self.cond._hooks.items():
+        for hook_point, method in self.cond.hooks.items():
             self._hooks[hook_point] = self._create_check_method(method)
 
     @property
@@ -259,11 +259,11 @@ class time(Condition):
 
     def _should_trigger(self) -> bool:
         total_time = self.accumulated_time
-        if self.start_time is not None:
+        if self.start_time is None:
+            cur_time = None
+        else:
             cur_time = time_now()
             total_time += cur_time - self.start_time
-        else:
-            cur_time = None
         self.start_time = cur_time
         if total_time >= self.seconds:
             self.accumulated_time = 0.0
@@ -280,7 +280,7 @@ class time(Condition):
         return self._should_trigger()
 
     def check_validation_begin(self, executor) -> bool:
-        if self.only_training:
+        if self.only_training and self.start_time is not None:
             self.accumulated_time += time_now() - self.start_time
             self.start_time = None
         return self._should_trigger()
@@ -293,7 +293,7 @@ class time(Condition):
             return self._should_trigger()
 
     def check_testing_begin(self, executor) -> bool:
-        if self.only_training:
+        if self.only_training and self.start_time is not None:
             self.accumulated_time += time_now() - self.start_time
             self.start_time = None
         return self._should_trigger()

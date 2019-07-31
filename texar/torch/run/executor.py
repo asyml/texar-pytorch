@@ -1,14 +1,12 @@
-from datetime import datetime
 import pickle
 import random
 import re
 import sys
 import time
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
-from typing import (
-    Callable, Dict, IO, List, Optional,
-    Set, Union, overload)
+from typing import Any, Callable, Dict, IO, List, Optional, Set, Union, overload
 
 import numpy as np
 import torch
@@ -16,13 +14,13 @@ from torch import nn
 from torch.optim.lr_scheduler import _LRScheduler as LRScheduler
 from torch.optim.optimizer import Optimizer
 
+import texar.torch.run.executor_utils as utils
 from texar.torch.data.data.data_base import DataBase
 from texar.torch.data.data.data_iterators import BatchingStrategy, DataIterator
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.run.condition import Condition, Event, HookPoint
+from texar.torch.run.executor_utils import Instance, OptionalDict, OptionalList
 from texar.torch.run.metric import Metric
-import texar.torch.run.executor_utils as utils
-from texar.torch.run.executor_utils import OptionalList, OptionalDict, Instance
 
 __all__ = [
     "make_deterministic",
@@ -57,7 +55,7 @@ def make_deterministic(seed: int = 19260817,
 class Executor:
     _CHECKPOINT_METAINFO_FILE = "checkpoint.meta-info"
     _CHECKPOINT_EXTENSION = ".pt"
-    _defaults = {
+    _defaults: Dict[str, Any] = {
         "log_format": "{time} : Epoch {epoch} @ {iteration}it "
                       "({progress}%, {speed}), {{{metric:.3f}}}",
         "eval_log_format": "{time} : Epoch {epoch}, "
@@ -69,8 +67,6 @@ class Executor:
     _eval_tracker: utils.ProgressTracker
     _hooks: Dict[HookPoint, Dict[Optional[Condition], List[HookFn]]]
 
-    # TODO: Add a unified `state` that is readonly and keeps track of
-    #   everything. We'll only have to pass it to hooks.
     status: utils.TrainingStatus
 
     def __init__(self, model: nn.Module,
@@ -84,7 +80,7 @@ class Executor:
                  checkpoint_dir: Optional[str] = None,
                  max_to_keep: Optional[int] = None,
                  save_every: OptionalList[Condition] = None,
-                 save_training_state: bool = True,  # whether to save optimizer, scheduler, RNG state
+                 save_training_state: bool = True,
                  # Training
                  train_metrics: OptionalDict[Metric] = None,
                  optimizer: Optional[Instance[Optimizer]] = None,
@@ -109,8 +105,14 @@ class Executor:
                  print_configs_to_log: bool = True,
                  eval_log_format: Optional[str] = None,
                  # Tensorboard
+                 # pylint: disable=unused-argument
                  tensorboard_log_dir: Optional[str] = None,
-                 write_summary_every: OptionalList[Condition] = None):
+                 write_summary_every: OptionalList[Condition] = None
+                 # pylint: enable=unused-argument
+                 ):
+
+        # TODO: Add support for Tensorboard.
+
         self.model = model
         self.train_data = train_data
         self.valid_data = valid_data
@@ -128,31 +130,34 @@ class Executor:
 
         # Logging
         self._log_conditions = utils.to_list(log_every)
-        self.log_format: str
-        self.log_destination: List[IO[str]]
         self.print_configs_to_log = print_configs_to_log
-        self.eval_log_format: str
 
-        for attr, default in self._defaults.items():
-            value = locals()[attr]
-            if value is None:
-                value = default
-            setattr(self, attr, value)
-
-        # TODO: Close files somewhere? Maybe `atexit.register`?
-        self.log_destination = [
-            open(dest, "w+") if isinstance(dest, str) else dest
-            for dest in utils.to_list(self.log_destination)]
+        self.log_format: str = log_format or self._defaults["log_format"]
+        self.eval_log_format: str = (
+                eval_log_format or self._defaults["eval_log_format"])
 
         # Checkpoint management
-        self.checkpoint_dir = Path(checkpoint_dir)
+        self.checkpoint_dir = (Path(checkpoint_dir)
+                               if checkpoint_dir is not None else None)
         self.max_to_keep = max_to_keep
         self._save_conditions = utils.to_list(save_every)
         self._save_training_state = save_training_state
 
-        if not self.checkpoint_dir.exists():
-            self.checkpoint_dir.mkdir(parents=True)
-        else:
+        directory_exists = False
+        if self.checkpoint_dir is not None:
+            if not self.checkpoint_dir.exists():
+                self.checkpoint_dir.mkdir(parents=True)
+            else:
+                directory_exists = False
+
+        # TODO: Close files somewhere? Maybe `atexit.register`?
+        # Create logging files after checkpoint directory is created.
+        self.log_destination: List[IO[str]] = [
+            open(dest, "w+") if isinstance(dest, str) else dest  # type: ignore
+            for dest in utils.to_list(  # type: ignore
+                log_destination or self._defaults["log_destination"])]
+
+        if directory_exists:
             self.write_log(
                 f"Specified checkpoint directory '{checkpoint_dir}' "
                 f"exists, previous checkpoints might be erased", mode="warning")
@@ -191,7 +196,6 @@ class Executor:
         self.status = {
             "epoch": 0,
             "iteration": 0,
-            "progress": 0.0,
             "split": "train",
             "metric": self.train_metrics,
             "eval_metric": self.valid_metrics,
@@ -199,9 +203,9 @@ class Executor:
 
         # Register events & actions.
         for cond in self._valid_conditions:
-            self.register_action(cond, self._validate.__func__)
+            self.register_action(cond, self._validate.__func__)  # type: ignore
         for cond in self._test_conditions:
-            self.register_action(cond, self.test.__func__)
+            self.register_action(cond, self.test.__func__)  # type: ignore
 
         train_logging_hook = self._create_logging_hook(
             self.log_format, eval_mode=False)
@@ -213,7 +217,7 @@ class Executor:
         for event in (Event.Validation, Event.Testing):
             self._register_hook((event, True), eval_logging_hook)
         for cond in self._save_conditions:
-            self.register_action(cond, self._save.__func__)
+            self.register_action(cond, self._save.__func__)  # type: ignore
         for cond in self._plateau_conditions:
             for action in self._actions_on_plateau:
                 self.register_action(cond, action)
@@ -298,7 +302,8 @@ class Executor:
             format_str = re.sub(r"{time(:([^{}]+))?}", "{time}", format_str)
 
         # Set metric print formats for aggregated format variable.
-        metrics = self.status["eval_metric" if eval_mode else "metric"]
+        metrics = (self.status["eval_metric"]
+                   if eval_mode else self.status["metric"])
         if "metric" in format_vars and format_vars["metric"] is not None:
             # Check which metrics can be printed with specified format.
             fmt_metrics: Set[str] = set()
@@ -331,7 +336,8 @@ class Executor:
                     f"Invalid status variable name '{name}' in format string")
 
         def log_fn(self):
-            metrics = self.status["eval_metric" if eval_mode else "metric"]
+            metrics = (self.status["eval_metric"]
+                       if eval_mode else self.status["metric"])
             format_args = self.status.copy()
             if "time" in format_vars:
                 format_args["time"] = time.strftime(format_vars["time"])
@@ -357,7 +363,7 @@ class Executor:
         return log_fn
 
     def register_action(self, cond: Condition, action: HookFn):
-        for hook_point in cond._hooks:
+        for hook_point in cond.hooks:
             self._register_hook(hook_point, action, cond)
         return self
 
@@ -368,6 +374,8 @@ class Executor:
         except KeyError:
             raise ValueError(
                 f"Specified hook point {hook_point} is invalid") from None
+
+    # pylint: disable=unused-argument,no-self-use,function-redefined
 
     @overload
     def on(self, event: Event, point: str = 'end') \
@@ -420,13 +428,15 @@ class Executor:
 
         return wrapper
 
-    def _fire_event(self, event: Event, end: bool, *args, **kwargs):
+    # pylint: enable=unused-argument,no-self-use,function-redefined
+
+    def _fire_event(self, event: Event, end: bool):
         for cond, actions in self._hooks[(event, end)].items():
             # If condition is `None` (raw function hooks), action always
             # triggers.
-            if cond is None or cond._hooks[(event, end)](self):
+            if cond is None or cond.hooks[(event, end)](self):
                 for action in actions:
-                    action(self, *args, **kwargs)
+                    action(self)
         if self._should_terminate:
             self._should_terminate = False
             raise utils.TerminateExecution
@@ -459,10 +469,10 @@ class Executor:
             if self.grad_clip is not None:
                 torch.nn.utils.clip_grad_norm_(
                     self.model.parameters(), self.grad_clip)
-            self.optimizer.step()
+            self.optimizer.step()  # type: ignore
             if self.lr_scheduler is not None:
-                self.lr_scheduler.step()
-            self.optimizer.zero_grad()
+                self.lr_scheduler.step()  # type: ignore
+            self.optimizer.zero_grad()  # type: ignore
             self._fire_event(Event.ParameterUpdate, True)
         return return_dict
 
@@ -524,12 +534,15 @@ class Executor:
                 state from checkpoint (if the checkpoint contains training
                 state). Otherwise, just load model weights. Defaults to `True`.
         """
-        if path is None and self.checkpoint_dir is None:
+        if path is not None:
+            ckpt_path = Path(path)
+        elif self.checkpoint_dir is not None:
+            ckpt_path = self.checkpoint_dir
+        else:
             raise ValueError(
                 "`path` must be specified when `checkpoint_dir` is `None`")
-        path = self.checkpoint_dir if path is None else Path(path)
-        if path.is_dir():
-            meta_path = self.checkpoint_dir / self._CHECKPOINT_METAINFO_FILE
+        if ckpt_path.is_dir():
+            meta_path = ckpt_path / self._CHECKPOINT_METAINFO_FILE
             if meta_path.exists():
                 with meta_path.open("rb") as f:
                     meta_dict = pickle.load(f)
@@ -538,7 +551,7 @@ class Executor:
                     (utils.MetricList(info["status"]["eval_metric"]), name)
                     for name, info in meta_dict.items())
                 status = meta_dict[best_ckpt_name]["status"]
-                path = self.checkpoint_dir / best_ckpt_name
+                ckpt_path = self.checkpoint_dir / best_ckpt_name
                 metric_vals = [(name, best_metric.values[name])
                                for name in best_metric.metrics]
                 metric_str = ", ".join(
@@ -552,10 +565,11 @@ class Executor:
                 self.write_log(
                     "Checkpoint meta-info not found. Will load the most recent "
                     "checkpoint in directory", mode="warning")
-                m_time, path = max(
-                    (name.stat().st_mtime, name) for name in path.iterdir()
+                m_time, ckpt_path = max(
+                    (name.stat().st_mtime, name) for name in ckpt_path.iterdir()
                     if name.suffix == self._CHECKPOINT_EXTENSION)
-                time_str = datetime.fromtimestamp(m_time).strftime("%Y-%m-%d %H:%M:%S")
+                time_str = datetime.fromtimestamp(m_time).strftime(
+                    "%Y-%m-%d %H:%M:%S")
                 load_info_str = f"Modification time: {time_str}"
         else:
             load_info_str = ""
@@ -563,12 +577,13 @@ class Executor:
         if self._moved_model:
             map_location = self.device
         else:
-            map_location = 'cpu'
-        checkpoint = torch.load(path, map_location=map_location)
+            map_location = torch.device('cpu')
+        checkpoint = torch.load(str(ckpt_path), map_location=map_location)
         if isinstance(checkpoint, utils.SavedTrainingState):
             self.model.load_state_dict(checkpoint.model)
             if load_training_state:
-                self.optimizer.load_state_dict(checkpoint.optimizer)
+                if self.optimizer is not None:
+                    self.optimizer.load_state_dict(checkpoint.optimizer)
                 if self.lr_scheduler is not None:
                     self.lr_scheduler.load_state_dict(checkpoint.scheduler)
                 random.setstate(checkpoint.system_rng)
@@ -578,12 +593,15 @@ class Executor:
             self.model.load_state_dict(checkpoint)
 
         if load_info_str != "":
-            self.write_log(f"Checkpoint ({load_info_str}) loaded from {path}.",
-                           mode="info")
+            self.write_log(f"Checkpoint ({load_info_str}) "
+                           f"loaded from {ckpt_path}.", mode="info")
         else:
-            self.write_log(f"Checkpoint loaded from {path}.", mode="info")
+            self.write_log(f"Checkpoint loaded from {ckpt_path}.", mode="info")
 
     def _validate(self) -> None:
+        if self.valid_data is None:
+            raise ValueError("Validation data not specified.")
+
         self._fire_event(Event.Validation, False)
 
         # Initialize metrics.
@@ -593,7 +611,7 @@ class Executor:
         iterator = DataIterator(self.valid_data, self.batching_strategy)
 
         try:
-            data_size = len(self.valid_data)
+            data_size: Optional[int] = len(self.valid_data)
         except TypeError:
             data_size = None
         self._eval_tracker = utils.ProgressTracker(data_size)
@@ -665,7 +683,7 @@ class Executor:
             self._fire_event(Event.Training, False)
             while self.max_epochs is None or epoch < self.max_epochs:
                 try:
-                    data_size = len(self.train_data)
+                    data_size: Optional[int] = len(self.train_data)
                 except TypeError:
                     data_size = None
                 self._train_tracker = utils.ProgressTracker(data_size)
@@ -704,17 +722,17 @@ class Executor:
         else:
             self.model.eval()
         with torch.no_grad():
-            for dataset in datasets:
+            for data in datasets:
                 try:
                     # Initialize metrics.
                     for metric in self.test_metrics.values():
                         metric.reset()
 
                     self._fire_event(Event.Testing, False)
-                    dataset.to(self.device)
-                    iterator = DataIterator(dataset, self.batching_strategy)
+                    data.to(self.device)
+                    iterator = DataIterator(data, self.batching_strategy)
                     try:
-                        data_size = len(dataset)
+                        data_size: Optional[int] = len(data)
                     except TypeError:
                         data_size = None
                     self._eval_tracker = utils.ProgressTracker(data_size)

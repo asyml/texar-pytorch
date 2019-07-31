@@ -2,8 +2,8 @@ import functools
 import time
 from collections import Counter, OrderedDict
 from typing import (
-    Any, Counter as CounterType, Dict, Generic, List, NamedTuple, Optional,
-    Tuple, Type, TypeVar, Union)
+    Any, Counter as CounterType, Dict, List, NamedTuple, Optional, Tuple, Type,
+    TypeVar, Union)
 
 from mypy_extensions import TypedDict
 import torch
@@ -32,7 +32,7 @@ __all__ = [
 
 T = TypeVar('T')
 OptionalList = Optional[MaybeList[T]]
-OptionalDict = Optional[Union[T, List[T], List[Tuple[str, T]], Dict[str, T]]]
+OptionalDict = Optional[Union[T, List[Union[T, Tuple[str, T]]], Dict[str, T]]]
 Instance = Union[T, Dict[str, Any]]
 
 
@@ -52,8 +52,9 @@ def to_metric_dict(metrics: OptionalDict[Metric]) \
         if isinstance(metrics, OrderedDict):
             return metrics
         raise ValueError("Metrics must be provided as OrderedDict")
-    xs = metrics
-    if not isinstance(metrics, list):
+    if isinstance(metrics, list):
+        xs = metrics
+    else:
         xs = [metrics]
     metric_dict: 'OrderedDict[str, Metric]' = OrderedDict()
     counter: CounterType[str] = Counter()
@@ -71,11 +72,14 @@ def to_metric_dict(metrics: OptionalDict[Metric]) \
             cnt = counter[name]
             if cnt == 1:
                 prev_metric = metric_dict[name]
-                new_name = "_".join(
-                    [name, prev_metric.pred_name, prev_metric.label_name])
+                new_name = f"{name}_{prev_metric.pred_name}"
+                if prev_metric.label_name is not None:
+                    new_name = f"{new_name}_{prev_metric.label_name}"
                 metric_dict[new_name] = prev_metric
                 del metric_dict[name]
-            new_name = "_".join([name, x.pred_name, x.label_name])
+            new_name = f"{name}_{x.pred_name}"
+            if x.label_name is not None:
+                new_name = f"{new_name}_{x.label_name}"
             metric_dict[new_name] = x
         counter.update([name])
     return metric_dict
@@ -93,6 +97,7 @@ def to_instance(typ: Type[T], instance: Instance[T], modules: List[str],
     return instance
 
 
+# TODO: Also save training progress?
 class SavedTrainingState(NamedTuple):
     r"""The entire training state to save to or load from checkpoints."""
     model: Dict[str, torch.Tensor]
@@ -143,11 +148,8 @@ class TerminateExecution(Exception):
     pass
 
 
-Input = TypeVar('Input')
-
-
 @functools.total_ordering
-class MetricList(Generic[T]):
+class MetricList:
     r"""A class representing list of metrics along with their values at a
     certain point. Used for metric comparisons.
 
@@ -157,8 +159,8 @@ class MetricList(Generic[T]):
             the current values of the provided metrics are used.
     """
 
-    def __init__(self, metrics: 'OrderedDict[str, Metric[Input, T]]',
-                 values: Optional[Dict[str, T]] = None):
+    def __init__(self, metrics: 'OrderedDict[str, Metric]',
+                 values: Optional[Dict[str, Any]] = None):
         self.metrics = metrics
         if values is None:
             self.values = {name: metric.value()
@@ -166,19 +168,22 @@ class MetricList(Generic[T]):
         else:
             self.values = values
 
-    def _compare_metrics(self, other: 'MetricList[T]'):
+    def _compare_metrics(self, other: Any):
+        if not isinstance(other, MetricList):
+            raise ValueError(
+                "Cannot compare to an object not of type MetricList")
         for (name, metric), (other_name, other_metric) in zip(
                 self.metrics.items(), other.metrics.items()):
             if name != other_name or type(metric) is not type(other_metric):
                 raise ValueError("Cannot compare two metric lists with "
                                  "different base metrics")
 
-    def __eq__(self, other: 'MetricList[T]') -> bool:
+    def __eq__(self, other: Any) -> bool:
         self._compare_metrics(other)
         return all(self.values[name] == other.values[name]
                    for name in self.metrics)
 
-    def __gt__(self, other: 'MetricList[T]') -> bool:
+    def __gt__(self, other: 'MetricList') -> bool:
         r"""Compare this metric list to another, and return whether the current
         list is better.
         """

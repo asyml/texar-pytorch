@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic, List, TypeVar, Optional
+from typing import Generic, List, Optional, TypeVar
 
 __all__ = [
     "Metric",
@@ -33,7 +33,7 @@ class Metric(Generic[Input, Value], ABC):
         return self._pred_name
 
     @property
-    def label_name(self) -> str:
+    def label_name(self) -> Optional[str]:
         return self._label_name
 
     @abstractmethod
@@ -49,7 +49,8 @@ class Metric(Generic[Input, Value], ABC):
         raise NotImplementedError
 
     def better(self, cur: Value, prev: Value) -> Optional[bool]:
-        result = True if cur > prev else False if cur < prev else None
+        result = (True if cur > prev else  # type: ignore
+                  False if cur < prev else None)  # type: ignore
         if not self.higher_is_better and result is not None:
             result = not result
         return result
