@@ -19,7 +19,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
-from torch import nn, split
+from torch import nn
 from torch.distributions.distribution import Distribution
 
 from texar.torch.core import get_activation_fn
