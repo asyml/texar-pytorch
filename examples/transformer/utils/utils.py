@@ -15,20 +15,7 @@
 Helper functions for model training.
 """
 
-import logging
 import math
-import random
-
-import numpy as np
-import torch
-
-
-def set_random_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
 
 
 def get_lr_multiplier(step: int, warmup_steps: int) -> float:
@@ -39,29 +26,3 @@ def get_lr_multiplier(step: int, warmup_steps: int) -> float:
     multiplier = (min(1.0, step / warmup_steps) *
                   (1 / math.sqrt(max(step, warmup_steps))))
     return multiplier
-
-
-def get_logger(log_path):
-    """Returns a logger.
-
-    Args:
-        log_path (str): Path to the log file.
-    """
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    fh = logging.FileHandler(log_path)
-    fh.setLevel(logging.DEBUG)
-    fh.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(message)s'))
-    logger.addHandler(fh)
-    return logger
-
-
-def list_strip_eos(list_, eos_token):
-    """Strips EOS token from a list of lists of tokens.
-    """
-    list_strip = []
-    for elem in list_:
-        if eos_token in elem:
-            elem = elem[:elem.index(eos_token)]
-        list_strip.append(elem)
-    return list_strip

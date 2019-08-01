@@ -95,7 +95,7 @@ def to_metric_dict(metrics: OptionalDict[Metric]) -> 'OrderedDict[str, Metric]':
         return new_name
 
     def default_name_fn(unused_idx: int, metric: Metric) -> str:
-        return metric.__class__.__name__
+        return metric.metric_name
 
     if isinstance(metrics, dict) and not isinstance(metrics, OrderedDict):
         raise ValueError("Metrics dictionary must be of type OrderedDict")

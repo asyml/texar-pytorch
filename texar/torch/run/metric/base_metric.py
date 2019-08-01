@@ -19,7 +19,7 @@ class Metric(Generic[Input, Value], ABC):
                  higher_is_better: Optional[bool] = None):
         self.reset()
         if self.requires_label and label_name is None:
-            raise ValueError(f"Metric {self.__class__.__name__} requires a "
+            raise ValueError(f"Metric {self.metric_name} requires a "
                              f"label name, but None is provided")
         if higher_is_better is not None:
             self.higher_is_better = higher_is_better
@@ -27,6 +27,10 @@ class Metric(Generic[Input, Value], ABC):
             label_name = None
         self._pred_name = pred_name
         self._label_name = label_name
+
+    @property
+    def metric_name(self) -> str:
+        return self.__class__.__name__
 
     @property
     def pred_name(self) -> str:

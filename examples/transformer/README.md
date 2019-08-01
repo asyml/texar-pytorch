@@ -49,7 +49,7 @@ is used instead. The encoded data is by default in `./temp/run_en_de_bpe`.
 
 ### Train and evaluate the model ###
 
-Train the model with the cmd:
+Train the model with the command:
 
 ```bash
 python transformer_main.py \
@@ -61,6 +61,7 @@ python transformer_main.py \
   By default it is set to `./outputs`. 
 * Specifying `--output-dir` will also restore the latest model checkpoint under the directory, if any checkpoint exists.
 * Specify `--config-data=config_wmt14` to train on the WMT'14 data.
+* Additionally, you can also specify `--load-checkpoint` to load a previously trained checkpoint from `output_dir`.
 
 ### Test a trained model ###
 
@@ -164,7 +165,7 @@ where
     large. So you may want to try smaller `vocab_size` if it happens. 
 * `max_seq_length` is optional. The default is 70.
 
-In the `iwslt15_en_vi` example, the cmd is `sh preprocess_data.sh spm en vi`.
+In the `iwslt15_en_vi` example, the command is `sh preprocess_data.sh spm en vi`.
 
 By default, the preprocessed data are dumped under `temp/run_${src}_${tgt}_${encoder}`. In the `iwslt15_en_vi` example,
 the directory is `temp/run_en_vi_spm`.
@@ -186,7 +187,7 @@ data configuration.
 
 ### 4. Train the model
 
-Train the model with the following cmd:
+Train the model with the following command:
 
 ```bash
 python transformer_main.py \
@@ -200,7 +201,7 @@ Outputs such as model checkpoints are by default under `outputs/`.
 
 ### 5. Test the model
 
-Test with the following cmd:
+Test with the following command:
 
 ```bash
 python transformer_main.py \

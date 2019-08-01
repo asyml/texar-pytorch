@@ -124,13 +124,13 @@ class Executor:
         self.batching_strategy = batching_strategy
 
         # Device placement
-        self._moved_model = False
         if device is None:
             if torch.cuda.is_available():
                 device = torch.device(torch.cuda.current_device())
             else:
                 device = torch.device('cpu')
         self.device = device
+        self.model.to(device)
 
         # Logging
         self._log_conditions = utils.to_list(log_every)
@@ -158,7 +158,9 @@ class Executor:
         # TODO: Close files somewhere? Maybe `atexit.register`?
         # Create logging files after checkpoint directory is created.
         self.log_destination: List[IO[str]] = [
-            open(dest, "w+") if isinstance(dest, (str, Path)) else dest  # type: ignore
+            # We append to the logs to prevent accidentally overwriting previous
+            # logs. To force overwrite, pass IO objects instead of file paths.
+            open(dest, "a") if isinstance(dest, (str, Path)) else dest  # type: ignore
             for dest in utils.to_list(  # type: ignore
                 log_destination or self._defaults["log_destination"])]
 
@@ -603,9 +605,6 @@ class Executor:
                                      f"iteration={status['iteration']}, "
                                      f"metrics={{{metric_str}}}")
                 else:
-                    self.write_log(
-                        "Checkpoint meta-info not found. Will load the most "
-                        "recent checkpoint in directory", mode="warning")
                     m_time, ckpt_path = max(
                         (name.stat().st_mtime, name)
                         for name in ckpt_path.iterdir()
@@ -613,6 +612,9 @@ class Executor:
                     time_str = datetime.fromtimestamp(m_time).strftime(
                         "%Y-%m-%d %H:%M:%S")
                     load_info_str = f"saved at: {time_str}"
+                    self.write_log(
+                        "Checkpoint meta-info not found. Will load the most "
+                        "recent checkpoint in directory", mode="warning")
             except (EOFError, IOError, ValueError):
                 # EOFError, IOError: pickle.load
                 # ValueError: max() arg is an empty sequence
@@ -622,21 +624,18 @@ class Executor:
         else:
             load_info_str = ""
 
-        if self._moved_model:
-            map_location = self.device
-        else:
-            map_location = torch.device('cpu')
-        checkpoint = torch.load(str(ckpt_path), map_location=map_location)
+        checkpoint = torch.load(str(ckpt_path), map_location=self.device)
         if isinstance(checkpoint, utils.SavedTrainingState):
             self.model.load_state_dict(checkpoint.model)
             if load_training_state:
+                # TODO: Also somehow save/load data iterator state?
                 if self.optimizer is not None:
                     self.optimizer.load_state_dict(checkpoint.optimizer)
                 if self.lr_scheduler is not None:
                     self.lr_scheduler.load_state_dict(checkpoint.scheduler)
                 random.setstate(checkpoint.system_rng)
                 np.random.set_state(checkpoint.numpy_rng)
-                torch.random.set_rng_state(checkpoint.torch_rng)
+                torch.random.set_rng_state(checkpoint.torch_rng.cpu())
         else:
             self.model.load_state_dict(checkpoint)
 
@@ -731,8 +730,6 @@ class Executor:
             self.valid_data.to(self.device)
 
         # Move model to appropriate device.
-        if not self._moved_model:
-            self.model.to(self.device)
         self.model.train()
         self.status["split"] = "train"
 
@@ -783,9 +780,6 @@ class Executor:
                 "used due to different modes for validation and test")
         datasets = (self.test_data if dataset is None
                     else utils.to_dict(dataset, default_name="test"))
-
-        if not self._moved_model:
-            self.model.to(self.device)
 
         if self.test_mode == 'train':
             self.model.train()
