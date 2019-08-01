@@ -20,22 +20,17 @@ import argparse
 import importlib
 import logging
 import os
-import random
-import time
 
-import numpy as np
 import torch
 import torch.nn.functional as F
-import tqdm
 import sentencepiece as spm
-
 import texar.torch as tx
+from texar.torch.run import *
 
 # pylint: disable=wildcard-import
 
-from utils.processor import *
 from utils.processor import get_processor_class
-from utils import data_utils, dataset, metrics, model_utils
+from utils import data_utils, dataset, model_utils
 
 
 def load_config_into_args(config_path: str, args):
@@ -85,41 +80,7 @@ def parse_args():
     return args
 
 
-@torch.no_grad()
-def evaluate(model, iterator, is_regression: bool = False, print_fn=None,
-             tqdm_kwargs=None):
-    if print_fn is None:
-        print_fn = print
-    if is_regression:
-        metric: metrics.StreamingMetric = metrics.StreamingPearsonR()
-    else:
-        metric = metrics.StreamingAccuracy()
-    avg_loss = tx.utils.AverageRecorder()
-    progress = tqdm.tqdm(iterator, ncols=80, **(tqdm_kwargs or {}))
-    for batch in progress:
-        labels = batch.label_ids
-        if is_regression:
-            preds = model(token_ids=batch.input_ids,
-                          segment_ids=batch.segment_ids,
-                          input_mask=batch.input_mask)
-            loss = (preds - labels.view(-1)) ** 2
-        else:
-            logits, preds = model(token_ids=batch.input_ids,
-                                  segment_ids=batch.segment_ids,
-                                  input_mask=batch.input_mask)
-            loss = F.cross_entropy(logits, labels.view(-1), reduction='none')
-
-        gold_labels = labels.view(-1).tolist()
-        pred_labels = preds.tolist()
-        metric.add(gold_labels, pred_labels)
-        avg_loss.add(loss.mean().item())
-        progress.set_postfix({metric.name: f"{metric.value():.4f}"})
-    print_fn(f"{metric.name.capitalize()}: {metric.value()}, "
-             f"loss: {avg_loss.avg():.4f}")
-
-
-def construct_datasets(args, device: Optional[torch.device] = None) \
-        -> Dict[str, tx.data.RecordData]:
+def construct_datasets(args) -> Dict[str, tx.data.RecordData]:
     sp_model = spm.SentencePieceProcessor()
 
     pretrained_model_dir = tx.modules.XLNetEncoder.download_checkpoint(
@@ -128,7 +89,7 @@ def construct_datasets(args, device: Optional[torch.device] = None) \
     spm_model_path = os.path.join(pretrained_model_dir, "spiece.model")
     sp_model.Load(spm_model_path)
 
-    cache_prefix = f"length{args.max_seq_len}"
+    cache_prefix = f"{args.pretrained_model_name}.length{args.max_seq_len}"
     tokenize_fn = data_utils.create_tokenize_fn(sp_model, args.uncased)
     processor_class = get_processor_class(args.task)
     data_dir = args.data_dir or f"data/{processor_class.task_name}"
@@ -141,68 +102,50 @@ def construct_datasets(args, device: Optional[torch.device] = None) \
     datasets = dataset.load_datasets(
         args.task, cache_dir, args.max_seq_len, args.batch_size,
         file_prefix=cache_prefix, eval_batch_size=args.eval_batch_size,
-        shuffle_buffer=None, device=device)
+        shuffle_buffer=None)
     return datasets
+
+
+class RegressorWrapper(tx.modules.XLNetRegressor):
+    def forward(self,  # type: ignore
+                batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
+        preds = super().forward(token_ids=batch.input_ids,
+                                segment_ids=batch.segment_ids,
+                                input_mask=batch.input_mask)
+        loss = (preds - batch.label_ids) ** 2
+        loss = loss.sum() / len(batch)
+        return {"loss": loss, "preds": preds}
+
+
+class ClassifierWrapper(tx.modules.XLNetClassifier):
+    def forward(self,  # type: ignore
+                batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
+        logits, preds = super().forward(token_ids=batch.input_ids,
+                                        segment_ids=batch.segment_ids,
+                                        input_mask=batch.input_mask)
+        loss = F.cross_entropy(logits, batch.label_ids, reduction='none')
+        loss = loss.sum() / len(batch)
+        return {"loss": loss, "preds": preds}
 
 
 def main(args):
     if args.seed != -1:
-        random.seed(args.seed)
-        np.random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed(args.seed)
+        make_deterministic(args.seed)
         print(f"Random seed set to {args.seed}")
 
-    if torch.cuda.is_available():
-        device = torch.cuda.current_device()
-        print(f"Using CUDA device {device}")
-    else:
-        device = 'cpu'
-        print("Using CPU")
-    device = torch.device(device)
-
-    datasets = construct_datasets(args, device)
-    iterator = tx.data.DataIterator(datasets)
+    datasets = construct_datasets(args)
     print("Dataset constructed")
 
     processor_class = get_processor_class(args.task)
     is_regression = processor_class.is_regression
     if is_regression:
-        model = tx.modules.XLNetRegressor(
+        model = RegressorWrapper(
             pretrained_model_name=args.pretrained_model_name)
     else:
-        model = tx.modules.XLNetClassifier(
+        model = ClassifierWrapper(
             pretrained_model_name=args.pretrained_model_name,
             hparams={"num_classes": len(processor_class.labels)})
-    print("Weights initialized")
-
-    if args.checkpoint is not None:
-        model.load_state_dict(torch.load(args.checkpoint, map_location=device))
-        print(f"Loaded checkpoint from {args.checkpoint}")
-
-    model = model.to(device)
     print("Model constructed")
-
-    def eval_all_splits():
-        model.eval()
-        for split in datasets:
-            if split != 'train':
-                print(f"Evaluating on {split}")
-                evaluate(model, iterator.get_iterator(split), is_regression)
-
-    def save_model(step: int, model):
-        if not os.path.exists(args.save_dir):
-            os.makedirs(args.save_dir)
-        save_name = (f"{args.task}_step{step}_"
-                     f"{time.strftime('%Y%m%d_%H%M%S')}")
-        save_path = os.path.join(args.save_dir, save_name)
-        torch.save(model.state_dict(), save_path)
-        progress.write(f"Model at {step} steps saved to {save_path}")
-
-    if args.mode == 'eval':
-        eval_all_splits()
-        return
 
     optim = torch.optim.Adam(
         model.param_groups(args.lr, args.lr_layer_decay_rate), lr=args.lr,
@@ -211,61 +154,51 @@ def main(args):
         args.train_steps, args.warmup_steps, args.min_lr_ratio)
     scheduler = torch.optim.lr_scheduler.LambdaLR(optim, lambda_lr)
 
-    avg_loss = tx.utils.AverageRecorder()
-    train_steps = 0
-    grad_steps = 0
-    total_batch_size = args.batch_size * args.backwards_per_step
-    progress = tqdm.tqdm(data_utils.repeat(
-        lambda: iterator.get_iterator('train')), ncols=80)
-    for batch in progress:
-        model.train()
-        labels = batch.label_ids
-        if is_regression:
-            preds = model(token_ids=batch.input_ids,
-                          segment_ids=batch.segment_ids,
-                          input_mask=batch.input_mask)
-            loss = (preds - labels.view(-1)) ** 2
-        else:
-            logits, _ = model(token_ids=batch.input_ids,
-                              segment_ids=batch.segment_ids,
-                              input_mask=batch.input_mask)
-            loss = F.cross_entropy(logits, labels.view(-1), reduction='none')
-        loss = loss.sum() / total_batch_size
-        avg_loss.add(loss.item() * args.backwards_per_step)
-        loss.backward()
-        grad_steps += 1
-        if grad_steps == args.backwards_per_step:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
-            optim.step()
-            optim.zero_grad()
-            train_steps += 1
-            grad_steps = 0
+    bps = args.backwards_per_step
 
-            if train_steps % args.display_steps == 0:
-                progress.write(
-                    f"Step: {train_steps}, "
-                    f"LR = {optim.param_groups[0]['lr']:.3e}, "
-                    f"loss = {avg_loss.avg():.4f}")
-                avg_loss.reset()
+    def get_condition(steps: int) -> Optional[cond.Condition]:
+        if steps == -1:
+            return None
+        return cond.iteration(steps * bps)
 
-            scheduler.step()
+    if is_regression:
+        valid_metric = metric.PearsonR(
+            pred_name="preds", label_name="label_ids")
+    else:
+        valid_metric = metric.Accuracy(
+            pred_name="preds", label_name="label_ids")
+    executor = Executor(
+        model=model,
+        train_data=datasets["train"],
+        valid_data=datasets["dev"],
+        test_data=datasets["test"],
+        checkpoint_dir=args.save_dir,
+        save_every=get_condition(args.save_steps),
+        train_metrics=("loss", metric.RunningAverage(args.display_steps * bps)),
+        optimizer=optim,
+        lr_scheduler=scheduler,
+        grad_clip=args.grad_clip,
+        num_iters_per_update=args.backwards_per_step,
+        log_every=cond.iteration(args.display_steps * bps),
+        validate_every=get_condition(args.eval_steps),
+        valid_metrics=[valid_metric, ("loss", metric.Average())],
+        stop_training_on=cond.iteration(args.train_steps * bps),
+        log_format="{time} : Epoch {epoch} @ {iteration:5d}it "
+                   "({speed}), loss = {loss:.3f}",
+        test_mode='eval',
+    )
 
-            if train_steps >= args.train_steps:
-                # Break before save & eval since we're doing them anyway.
-                break
+    if args.checkpoint is not None:
+        executor.load(args.checkpoint)
 
-            if args.save_steps != -1 and train_steps % args.save_steps == 0:
-                save_model(train_steps, model)
-
-            if args.eval_steps != -1 and train_steps % args.eval_steps == 0:
-                model.eval()
-                evaluate(
-                    model, iterator.get_iterator('dev'), is_regression,
-                    print_fn=progress.write, tqdm_kwargs={"leave": False})
-    progress.close()
-
-    save_model(args.train_steps, model)
-    eval_all_splits()
+    if args.mode == 'train':
+        executor.train()
+        executor.save()
+        executor.test()
+    else:
+        if args.checkpoint is None:
+            executor.load(load_training_state=False)  # load previous best model
+        executor.test(tx.utils.dict_fetch(datasets, ["dev", "test"]))
 
 
 if __name__ == '__main__':

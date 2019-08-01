@@ -19,23 +19,17 @@ https://github.com/zihangdai/xlnet/blob/master/prepro_utils.py
 """
 
 import unicodedata
-from typing import Callable, Iterator, List, TypeVar, Union
+from typing import Callable, List, TypeVar, Union
 
 import sentencepiece as spm
 
 __all__ = [
-    "repeat",
     "TokenizeFn",
     "create_tokenize_fn",
     "convert_single_example",
 ]
 
 T = TypeVar('T')
-
-
-def repeat(fn: Callable[[], Iterator[T]]) -> Iterator[T]:
-    while True:
-        yield from fn()
 
 
 def preprocess_text(inputs: Union[str, bytes], lower: bool = False,
