@@ -38,6 +38,7 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import ExponentialLR
 
 import texar.torch as tx
+import texar.torch.custom as custom
 
 
 parser = argparse.ArgumentParser()
@@ -110,10 +111,10 @@ class VAE(nn.Module):
 
         self.connector_mlp = tx.modules.MLPTransformConnector(
             config_model.latent_dims * 2,
-            linear_layer_dim=self.encoder.cell.hidden_size * 2)
+            linear_layer_dim=self.encoder.cell.hidden_size)
 
         self.mlp_linear_layer = nn.Linear(
-            config_model.latent_dims,
+            config_model.latent_dims * 2,
             sum_state_size)
 
     def forward(self, data_batch: tx.data.Batch,
@@ -129,7 +130,7 @@ class VAE(nn.Module):
         mean_logvar = self.connector_mlp(encoder_states)
         mean, logvar = torch.chunk(mean_logvar, 2, 1)
         kl_loss = kl_divergence(mean, logvar)
-        dst = tx.custom.MultivariateNormalDiag(
+        dst = custom.MultivariateNormalDiag(
             loc=mean,
             scale_diag=torch.exp(0.5 * logvar))
 
@@ -237,15 +238,9 @@ def main():
     config: Any = importlib.import_module(args.config)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    train_data = tx.data.MonoTextData(
-        config.train_data_hparams,
-        device=device)
-    val_data = tx.data.MonoTextData(
-        config.val_data_hparams,
-        device=device)
-    test_data = tx.data.MonoTextData(
-        config.test_data_hparams,
-        device=device)
+    train_data = tx.data.MonoTextData(config.train_data_hparams, device=device)
+    val_data = tx.data.MonoTextData(config.val_data_hparams, device=device)
+    test_data = tx.data.MonoTextData(config.test_data_hparams, device=device)
 
     iterator = tx.data.DataIterator(
         {"train": train_data, "valid": val_data, "test": test_data})
@@ -361,7 +356,7 @@ def main():
 
         batch_size = train_data.batch_size
 
-        dst = tx.custom.MultivariateNormalDiag(
+        dst = custom.MultivariateNormalDiag(
             loc=torch.zeros([batch_size, config.latent_dims]),
             scale_diag=torch.ones([batch_size, config.latent_dims]))
 

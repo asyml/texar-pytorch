@@ -105,7 +105,6 @@ def _mlp_transform(inputs: TensorStruct,
                    ) -> Any:
     r"""Transforms inputs through a fully-connected layer that creates
     the output with specified size.
-
     Args:
         inputs: A ``Tensor`` of shape ``[batch_size, ..., finale_state]``
             (i.e., batch-major), or a (nested) tuple of such elements.
@@ -117,7 +116,6 @@ def _mlp_transform(inputs: TensorStruct,
         output_size: Can be an ``Integer``, a ``torch.Size``, or a (nested)
             ``tuple`` of ``Integers`` or ``torch.Size``.
         activation_fn: Activation function applied to the output.
-
     :returns:
         If :attr:`output_size` is an ``Integer`` or a ``torch.Size``,
         returns a ``Tensor`` of shape ``[batch_size, *, output_size]``.
@@ -128,8 +126,12 @@ def _mlp_transform(inputs: TensorStruct,
     """
     # Flatten inputs
     flat_input = nest.flatten(inputs)
-    flat_input = [x.view(-1, np.prod(list(x.size())[1:])) for x in flat_input]
-    concat_input = torch.cat(flat_input, 1)
+    if len(flat_input[0].size()) == 1:
+        batch_size = 1
+    else:
+        batch_size = flat_input[0].size(0)
+    flat_input = [x.view(-1, x.size(-1)) for x in flat_input]
+    concat_input = torch.cat(flat_input, 0)
     # Get output dimension
     flat_output_size = nest.flatten(output_size)
 
@@ -148,6 +150,11 @@ def _mlp_transform(inputs: TensorStruct,
 
     flat_output = torch.split(fc_output, size_list, dim=1)
     flat_output = list(flat_output)
+    for i, _ in enumerate(flat_output):
+        final_state = flat_output[i].size(-1)
+        flat_output[i] = flat_output[i].view(batch_size, -1, final_state)
+        flat_output[i] = torch.squeeze(flat_output[i], 1)
+
     if isinstance(flat_output_size[0], torch.Size):
         for (i, shape) in enumerate(flat_output_size):
             flat_output[i] = torch.reshape(
