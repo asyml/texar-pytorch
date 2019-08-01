@@ -63,6 +63,9 @@ class Executor:
         "log_destination": [sys.stdout],
     }
 
+    # TODO: Add loss as a special default metric? Otherwise would have to use
+    #   RunningAverage with display steps
+
     _train_tracker: utils.ProgressTracker
     _eval_tracker: utils.ProgressTracker
     _hooks: Dict[HookPoint, Dict[Optional[Condition], List[HookFn]]]
@@ -85,8 +88,8 @@ class Executor:
                  train_metrics: OptionalDict[Metric] = None,
                  optimizer: Optional[Instance[Optimizer]] = None,
                  lr_scheduler: Optional[Instance[LRScheduler]] = None,
-                 max_epochs: Optional[int] = None,
-                 num_backwards_per_update: int = 1,
+                 stop_training_on: OptionalList[Metric] = None,
+                 num_iters_per_update: int = 1,
                  grad_clip: Optional[float] = None,
                  # Validation
                  valid_metrics: OptionalDict[Metric] = None,
@@ -104,6 +107,7 @@ class Executor:
                  log_destination: OptionalList[Union[str, IO[str]]] = None,
                  print_configs_to_log: bool = True,
                  eval_log_format: Optional[str] = None,
+                 show_progress_bar: bool = False,
                  # Tensorboard
                  # pylint: disable=unused-argument
                  tensorboard_log_dir: Optional[str] = None,
@@ -130,7 +134,8 @@ class Executor:
 
         # Logging
         self._log_conditions = utils.to_list(log_every)
-        self.print_configs_to_log = print_configs_to_log
+        self._print_configs_to_log = print_configs_to_log
+        self._show_progress_bar = show_progress_bar
 
         self.log_format: str = log_format or self._defaults["log_format"]
         self.eval_log_format: str = (
@@ -143,24 +148,19 @@ class Executor:
         self._save_conditions = utils.to_list(save_every)
         self._save_training_state = save_training_state
 
-        directory_exists = False
+        self._directory_exists = False
         if self.checkpoint_dir is not None:
             if not self.checkpoint_dir.exists():
                 self.checkpoint_dir.mkdir(parents=True)
             else:
-                directory_exists = False
+                self._directory_exists = True
 
         # TODO: Close files somewhere? Maybe `atexit.register`?
         # Create logging files after checkpoint directory is created.
         self.log_destination: List[IO[str]] = [
-            open(dest, "w+") if isinstance(dest, str) else dest  # type: ignore
+            open(dest, "w+") if isinstance(dest, (str, Path)) else dest  # type: ignore
             for dest in utils.to_list(  # type: ignore
                 log_destination or self._defaults["log_destination"])]
-
-        if directory_exists:
-            self.write_log(
-                f"Specified checkpoint directory '{checkpoint_dir}' "
-                f"exists, previous checkpoints might be erased", mode="warning")
 
         # Training loop
         self.train_metrics = utils.to_metric_dict(train_metrics)
@@ -171,8 +171,8 @@ class Executor:
             LRScheduler, lr_scheduler,
             ["torch.optim.lr_scheduler", "texar.core"],
             extra_kwargs={"optimizer": self.optimizer})
-        self.max_epochs = max_epochs
-        self.num_backwards_per_update = num_backwards_per_update
+        self._stop_training_conditions = utils.to_list(stop_training_on)
+        self.num_iters_per_update = num_iters_per_update
         self.grad_clip = grad_clip
         self._should_terminate = False
 
@@ -184,7 +184,11 @@ class Executor:
         self._actions_on_plateau = utils.to_list(action_on_plateau)
 
         # Testing
-        self.test_metrics = utils.to_metric_dict(test_metrics)
+        if (test_metrics is None and valid_metrics is not None and
+                validate_mode == test_mode):
+            self.test_metrics = self.valid_metrics
+        else:
+            self.test_metrics = utils.to_metric_dict(test_metrics)
         self._test_conditions = utils.to_list(test_every)
         self.test_mode = test_mode
 
@@ -202,25 +206,28 @@ class Executor:
         }
 
         # Register events & actions.
-        for cond in self._valid_conditions:
-            self.register_action(cond, self._validate.__func__)  # type: ignore
-        for cond in self._test_conditions:
-            self.register_action(cond, self.test.__func__)  # type: ignore
-
         train_logging_hook = self._create_logging_hook(
             self.log_format, eval_mode=False)
         for cond in self._log_conditions:
             self.register_action(cond, train_logging_hook)
         eval_logging_hook = self._create_logging_hook(
             self.eval_log_format, eval_mode=True)
-
         for event in (Event.Validation, Event.Testing):
             self._register_hook((event, True), eval_logging_hook)
+
+        for cond in self._valid_conditions:
+            self.register_action(cond, self._validate.__func__)  # type: ignore
+        for cond in self._test_conditions:
+            self.register_action(cond, self.test.__func__)  # type: ignore
         for cond in self._save_conditions:
-            self.register_action(cond, self._save.__func__)  # type: ignore
+            self.register_action(cond, self.save.__func__)  # type: ignore
+
         for cond in self._plateau_conditions:
             for action in self._actions_on_plateau:
                 self.register_action(cond, action)
+
+        for cond in self._stop_training_conditions:
+            self.register_action(cond, self.terminate.__func__)  # type: ignore
 
         # Detect event-action cycles.
         # TODO: Maybe don't do this.
@@ -240,6 +247,7 @@ class Executor:
         else:
             raise ValueError(f"Invalid logging mode {mode}")
         for dest in self.log_destination:
+            # TODO: Strip color codes for non-terminals?
             dest.write(log_str)
             dest.write("\n")
             dest.flush()
@@ -335,10 +343,14 @@ class Executor:
                 raise ValueError(
                     f"Invalid status variable name '{name}' in format string")
 
+        format_str_wo_progress = re.sub(
+            r"{progress(:([^{}]+))?}", "{progress}", format_str)
+
         def log_fn(self):
             metrics = (self.status["eval_metric"]
                        if eval_mode else self.status["metric"])
             format_args = self.status.copy()
+            cur_format_str = format_str
             if "time" in format_vars:
                 format_args["time"] = time.strftime(format_vars["time"])
             if "metric" in format_vars:
@@ -351,12 +363,15 @@ class Executor:
             if "progress" in format_vars:
                 progress = self._train_tracker.progress()
                 if progress is not None:
-                    format_args["progress"] = "{:.1f}".format(progress)
+                    if format_vars["progress"] is None:
+                        progress = round(progress, 1)
+                    format_args["progress"] = progress
                 else:
+                    cur_format_str = format_str_wo_progress
                     format_args["progress"] = "unknown"
             format_args.update({name: metrics[name].value()
                                 for name in metrics_to_print})
-            log_str = format_str.format(**format_args)
+            log_str = cur_format_str.format(**format_args)
 
             self.write_log(log_str, mode="log")
 
@@ -462,9 +477,9 @@ class Executor:
         except KeyError:
             raise ValueError("Return dictionary from model does not "
                              "contain 'loss' entry")
-        loss /= self.num_backwards_per_update
+        loss /= self.num_iters_per_update
         loss.backward()
-        if self.status["iteration"] % self.num_backwards_per_update == 0:
+        if self.status["iteration"] % self.num_iters_per_update == 0:
             self._fire_event(Event.ParameterUpdate, False)
             if self.grad_clip is not None:
                 torch.nn.utils.clip_grad_norm_(
@@ -476,29 +491,41 @@ class Executor:
             self._fire_event(Event.ParameterUpdate, True)
         return return_dict
 
-    def _save(self):
+    def save(self):
         # Load the checkpoint meta-info file.
         meta_path = self.checkpoint_dir / self._CHECKPOINT_METAINFO_FILE
         if meta_path.exists():
-            with meta_path.open("rb") as f:
-                meta_dict = pickle.load(f)
+            try:
+                with meta_path.open("rb") as f:
+                    meta_dict = pickle.load(f)
+            except (EOFError, IOError):
+                meta_dict = {}
         else:
             meta_path.touch()
             meta_dict = {}
 
         # Remove earliest checkpoints if exceeds `max_to_keep`.
-        while len(meta_dict) >= self.max_to_keep:
-            checkpoint_name = min(
-                meta_dict, key=lambda name: meta_dict[name]["timestamp"])
-            (self.checkpoint_dir / checkpoint_name).unlink()
-            del meta_dict[checkpoint_name]
-            self.write_log(
-                f"Previous checkpoint {checkpoint_name} removed "
-                f"due to `max_to_keep`(={self.max_to_keep}) limit", mode="info")
+        if self.max_to_keep is not None:
+            while len(meta_dict) >= self.max_to_keep:
+                checkpoint_name = min(
+                    meta_dict, key=lambda name: meta_dict[name]["timestamp"])
+                (self.checkpoint_dir / checkpoint_name).unlink()
+                del meta_dict[checkpoint_name]
+                self.write_log(f"Previous checkpoint {checkpoint_name} removed "
+                               f"due to `max_to_keep`(={self.max_to_keep}) "
+                               f"limit", mode="info")
 
         timestamp = time.time()
         checkpoint_name = str(timestamp) + self._CHECKPOINT_EXTENSION
-        path = str(self.checkpoint_dir / checkpoint_name)
+        path = self.checkpoint_dir / checkpoint_name
+        if path.exists():
+            idx = 0
+            while True:
+                checkpoint_name = (
+                        str(timestamp) + f".{idx}" + self._CHECKPOINT_EXTENSION)
+                path = self.checkpoint_dir / checkpoint_name
+                if not path.exists():
+                    break
         if self._save_training_state and self.optimizer is not None:
             train_state = utils.SavedTrainingState(
                 model=self.model.state_dict(),
@@ -509,9 +536,9 @@ class Executor:
                 numpy_rng=np.random.get_state(),
                 torch_rng=torch.random.get_rng_state(),
             )
-            torch.save(train_state, path)
+            torch.save(train_state, str(path))
         else:
-            torch.save(self.model.state_dict(), path)
+            torch.save(self.model.state_dict(), str(path))
         meta_dict[checkpoint_name] = {
             "status": self.status,
             "timestamp": timestamp,
@@ -522,7 +549,8 @@ class Executor:
         self.write_log(f"Current checkpoint saved to {path}", mode="info")
 
     def load(self, path: Optional[str] = None,
-             load_training_state: bool = True):
+             load_training_state: bool = True,
+             allow_failure: bool = False) -> Optional[Path]:
         r"""Load a previous model checkpoint from file.
 
         Args:
@@ -533,6 +561,13 @@ class Executor:
             load_training_state (bool): If `True`, will load entire training
                 state from checkpoint (if the checkpoint contains training
                 state). Otherwise, just load model weights. Defaults to `True`.
+            allow_failure (bool): If `True`, no exceptions will be raised if
+                no checkpoints were found. Defaults to `False`. Note that
+                exceptions are still raised if the provided :attr:`path` points
+                to a file, or the selected checkpoint is corrupted.
+
+        Returns:
+            Path of the loaded checkpoint, or `None` if load failed.
         """
         if path is not None:
             ckpt_path = Path(path)
@@ -542,35 +577,48 @@ class Executor:
             raise ValueError(
                 "`path` must be specified when `checkpoint_dir` is `None`")
         if ckpt_path.is_dir():
-            meta_path = ckpt_path / self._CHECKPOINT_METAINFO_FILE
-            if meta_path.exists():
-                with meta_path.open("rb") as f:
-                    meta_dict = pickle.load(f)
-                # TODO: Somehow compare these metrics. And use OrderedDict.
-                best_metric, best_ckpt_name = max(
-                    (utils.MetricList(info["status"]["eval_metric"]), name)
-                    for name, info in meta_dict.items())
-                status = meta_dict[best_ckpt_name]["status"]
-                ckpt_path = self.checkpoint_dir / best_ckpt_name
-                metric_vals = [(name, best_metric.values[name])
-                               for name in best_metric.metrics]
-                metric_str = ", ".join(
-                    f"{name}: " + (f"{value:.3f}" if isinstance(value, float)
-                                   else f"{value}")
-                    for name, value in metric_vals)
-                load_info_str = (f"Meta-info: epoch={status['epoch']}, "
-                                 f"iteration={status['iteration']}, "
-                                 f"metrics={{{metric_str}}}")
-            else:
-                self.write_log(
-                    "Checkpoint meta-info not found. Will load the most recent "
-                    "checkpoint in directory", mode="warning")
-                m_time, ckpt_path = max(
-                    (name.stat().st_mtime, name) for name in ckpt_path.iterdir()
-                    if name.suffix == self._CHECKPOINT_EXTENSION)
-                time_str = datetime.fromtimestamp(m_time).strftime(
-                    "%Y-%m-%d %H:%M:%S")
-                load_info_str = f"Modification time: {time_str}"
+            try:
+                meta_path = ckpt_path / self._CHECKPOINT_METAINFO_FILE
+                if meta_path.exists():
+                    with meta_path.open("rb") as f:
+                        meta_dict = pickle.load(f)
+                    # TODO: Metric values may be stale. Also include timestamp?
+                    best_metric, best_m_time, best_ckpt_name = max(
+                        (utils.MetricList(info["status"]["eval_metric"]),
+                         info["timestamp"], name)
+                        for name, info in meta_dict.items())
+                    status = meta_dict[best_ckpt_name]["status"]
+                    ckpt_path = self.checkpoint_dir / best_ckpt_name
+                    metric_vals = [(name, best_metric.values[name])
+                                   for name in best_metric.metrics]
+                    metric_str = ", ".join(
+                        f"{name}: " + (
+                            f"{value:.3f}" if isinstance(value, float)
+                            else f"{value}")
+                        for name, value in metric_vals)
+                    time_str = datetime.fromtimestamp(best_m_time).strftime(
+                        "%Y-%m-%d %H:%M:%S")
+                    load_info_str = (f"saved at: {time_str}, "
+                                     f"meta-info: epoch={status['epoch']}, "
+                                     f"iteration={status['iteration']}, "
+                                     f"metrics={{{metric_str}}}")
+                else:
+                    self.write_log(
+                        "Checkpoint meta-info not found. Will load the most "
+                        "recent checkpoint in directory", mode="warning")
+                    m_time, ckpt_path = max(
+                        (name.stat().st_mtime, name)
+                        for name in ckpt_path.iterdir()
+                        if name.suffix == self._CHECKPOINT_EXTENSION)
+                    time_str = datetime.fromtimestamp(m_time).strftime(
+                        "%Y-%m-%d %H:%M:%S")
+                    load_info_str = f"saved at: {time_str}"
+            except (EOFError, IOError, ValueError):
+                # EOFError, IOError: pickle.load
+                # ValueError: max() arg is an empty sequence
+                if allow_failure:
+                    return None
+                raise
         else:
             load_info_str = ""
 
@@ -597,6 +645,7 @@ class Executor:
                            f"loaded from {ckpt_path}.", mode="info")
         else:
             self.write_log(f"Checkpoint loaded from {ckpt_path}.", mode="info")
+        return ckpt_path
 
     def _validate(self) -> None:
         if self.valid_data is None:
@@ -608,7 +657,10 @@ class Executor:
         for metric in self.valid_metrics.values():
             metric.reset()
 
-        iterator = DataIterator(self.valid_data, self.batching_strategy)
+        if self.valid_mode == "eval":
+            iterator = DataIterator(self.valid_data, self.batching_strategy)
+        else:
+            iterator = DataIterator(self.valid_data)
 
         try:
             data_size: Optional[int] = len(self.valid_data)
@@ -616,7 +668,7 @@ class Executor:
             data_size = None
         self._eval_tracker = utils.ProgressTracker(data_size)
 
-        if self.valid_mode == 'train':
+        if self.valid_mode == "train":
             self.model.train()
         else:
             self.model.eval()
@@ -649,10 +701,17 @@ class Executor:
         self._should_terminate = True
 
     def train(self):
-        if self.max_epochs is None:
+        # TODO: Print the model architecture somewhere?
+
+        if self._directory_exists:
             self.write_log(
-                "`max_epochs` is not configured. Unless an event action calls "
-                "`executor.terminate()`, training will run indefinitely.",
+                f"Specified checkpoint directory '{self.checkpoint_dir}' "
+                f"exists, previous checkpoints might be erased", mode="warning")
+
+        if len(self._stop_training_conditions) == 0:
+            self.write_log(
+                "`stop_training_on` is not configured. Unless an event action "
+                "calls `executor.terminate()`, training will run indefinitely.",
                 mode='warning')
 
         # Initialize optimizer.
@@ -677,12 +736,14 @@ class Executor:
         self.model.train()
         self.status["split"] = "train"
 
+        epoch = 0
+        iteration = 0
+        self._fire_event(Event.Training, False)
+        self.write_log("Training started", mode="info")
+
         # Main training loop.
         try:
-            epoch = 0
-            iteration = 0
-            self._fire_event(Event.Training, False)
-            while self.max_epochs is None or epoch < self.max_epochs:
+            while True:
                 try:
                     data_size: Optional[int] = len(self.train_data)
                 except TypeError:
@@ -709,15 +770,22 @@ class Executor:
 
                     self._fire_event(Event.Iteration, True)
                 self._fire_event(Event.Epoch, True)
-            self._fire_event(Event.Training, True)
         except utils.TerminateExecution:
             self.write_log("Training terminated", mode='info')
+        self._fire_event(Event.Training, True)
 
     def test(self, dataset: OptionalDict[DataBase] = None):
         if dataset is None and self.test_data is None:
             raise ValueError("No testing dataset is specified")
+        if len(self.test_metrics) == 0:
+            raise ValueError(
+                "No testing metric is specified. Validation metrics are not "
+                "used due to different modes for validation and test")
         datasets = (self.test_data if dataset is None
                     else utils.to_dict(dataset, default_name="test"))
+
+        if not self._moved_model:
+            self.model.to(self.device)
 
         if self.test_mode == 'train':
             self.model.train()
@@ -734,7 +802,10 @@ class Executor:
 
                     self._fire_event(Event.Testing, False)
                     data.to(self.device)
-                    iterator = DataIterator(data, self.batching_strategy)
+                    if self.test_mode == "eval":
+                        iterator = DataIterator(data, self.batching_strategy)
+                    else:
+                        iterator = DataIterator(data)
                     try:
                         data_size: Optional[int] = len(data)
                     except TypeError:
@@ -750,8 +821,8 @@ class Executor:
                             return_dict, batch, self.test_metrics)
 
                         self._fire_event(Event.TestingIteration, True)
-                    self._fire_event(Event.Testing, True)
                 except utils.TerminateExecution:
                     self.write_log(
                         "Testing terminated. This is likely unintended. Please "
                         "check your custom actions.", mode='warning')
+                self._fire_event(Event.Testing, True)

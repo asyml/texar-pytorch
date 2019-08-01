@@ -92,7 +92,7 @@ class ExecutorTest(unittest.TestCase):
                            metric.F1(pred_name="preds"),
                            metric.Accuracy(pred_name="preds")],
             optimizer={"type": torch.optim.Adam, "kwargs": {}},
-            max_epochs=10,
+            stop_training_on=cond.epoch(10),
             valid_metrics=[metric.F1(pred_name="preds"),
                            ("loss", metric.Average())],
             validate_every=[cond.epoch()],

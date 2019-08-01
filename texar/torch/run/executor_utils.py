@@ -182,6 +182,8 @@ class MetricList:
             the current values of the provided metrics are used.
     """
 
+    # TODO: Ignore non-streaming metrics here? Or in
+
     def __init__(self, metrics: 'OrderedDict[str, Metric]',
                  values: Optional[Dict[str, Any]] = None):
         self.metrics = metrics

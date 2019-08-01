@@ -31,6 +31,8 @@ class Average(StreamingMetric[float, float]):
 
 
 class AveragePerplexity(Average):
+    # TODO: Create a `WeightedAverage` class that takes `(value, weight)`
+    #   and subclass that instead.
     higher_is_better = False
 
     def add(self, predicted: List[float], _) -> None:
@@ -38,6 +40,8 @@ class AveragePerplexity(Average):
 
 
 class RunningAverage(StreamingMetric[float, float]):
+    requires_label = False
+
     history: Deque[float]
     sum: float
 
