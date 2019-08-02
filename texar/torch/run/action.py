@@ -21,6 +21,7 @@ class reset_params(Action):
         self.load_training_state = training_state
 
     def __call__(self, executor: Executor):
+        # TODO: Only optimizer?
         executor.load(load_training_state=self.load_training_state)
 
 

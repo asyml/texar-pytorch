@@ -146,8 +146,13 @@ class CheckpointMetaInfo(TypedDict):
 
 class ProgressTracker:
     start_time: float
+    size: Optional[int]
+    n_examples: int
 
-    def __init__(self, size: Optional[int]):
+    def __init__(self, size: Optional[int] = None):
+        self.reset(size)
+
+    def reset(self, size: Optional[int]):
         self.size = size
         self.n_examples = 0
         self.start_time = time.time()
@@ -223,17 +228,20 @@ class MetricList:
 def update_metrics(return_dict: Dict[str, Any], batch: Batch,
                    metrics: 'OrderedDict[str, Metric]') -> None:
     for metric_name, metric in metrics.items():
-        try:
-            pred_val = return_dict[metric.pred_name]
-        except KeyError:
-            raise ValueError(
-                f"Return dictionary from model does not contain "
-                f"'{metric.pred_name}' entry, which was required for "
-                f"metric '{metric_name}'")
-        if isinstance(pred_val, torch.Tensor):
-            pred_val = pred_val.tolist()
-        pred_val = to_list(pred_val)
-        if metric.label_name is not None:
+        if metric.requires_pred:
+            try:
+                pred_val = return_dict[metric.pred_name]
+            except KeyError:
+                raise ValueError(
+                    f"Return dictionary from model does not contain "
+                    f"'{metric.pred_name}' entry, which was required for "
+                    f"metric '{metric_name}'")
+            if isinstance(pred_val, torch.Tensor):
+                pred_val = pred_val.tolist()
+            pred_val = to_list(pred_val)
+        else:
+            pred_val = None
+        if metric.requires_label:
             try:
                 label_val = batch[metric.label_name]
             except KeyError:

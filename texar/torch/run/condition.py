@@ -12,7 +12,7 @@ from texar.torch.utils.types import MaybeTuple
 
 __all__ = [
     "Event",
-    "HookPoint",
+    "EventPoint",
     "Condition",
     "epoch",
     "iteration",
@@ -33,11 +33,11 @@ class Event(Enum):
     ParameterUpdate = auto()
 
 
-HookPoint = Tuple[Event, bool]
+EventPoint = Tuple[Event, bool]
 
 
 class Condition(ABC):
-    _hooks: Dict[HookPoint, Any]
+    _hooks: Dict[EventPoint, Any]
 
     @property
     @abstractmethod
@@ -53,7 +53,7 @@ class Condition(ABC):
         return hash(self._hash_attributes)
 
     @property
-    def hooks(self) -> Dict[HookPoint, Any]:
+    def hooks(self) -> Dict[EventPoint, Any]:
         return self._hooks
 
     def __init__(self):
@@ -115,9 +115,21 @@ class iteration(Condition):
         num_iters (int): The number of iterations to wait before triggering the
             event. In other words, the event is triggered every
             :attr:`num_iters` iterations.
+        mode (str): The mode under which iterations are counted. Available
+            choices are ``"train"``, ``"valid"``, and ``"test"``. Defaults to
+            ``"train"``.
     """
 
-    def __init__(self, num_iters: int = 1):
+    def __new__(cls, num_iters: int = 1, mode: str = "train"):
+        if mode == "train":
+            return super().__new__(_training_iter)
+        elif mode == "valid":
+            return super().__new__(_valid_iter)
+        elif mode == "test":
+            return super().__new__(_test_iter)
+        raise ValueError(f"Invalid mode {mode}")
+
+    def __init__(self, num_iters: int = 1, mode: str = "train"):
         if not isinstance(num_iters, int) or num_iters <= 0:
             raise ValueError("`num_iters` must be a positive integer")
         super().__init__()
@@ -128,12 +140,24 @@ class iteration(Condition):
     def _hash_attributes(self):
         return self.num_iters
 
-    def check_iteration_end(self, executor) -> bool:
+    def _check_iteration_end(self, executor) -> bool:
         self.count += 1
         if self.count == self.num_iters:
             self.count = 0
             return True
         return False
+
+
+class _training_iter(iteration):
+    check_iteration_end = iteration._check_iteration_end
+
+
+class _valid_iter(iteration):
+    check_validation_iteration_end = iteration._check_iteration_end
+
+
+class _test_iter(iteration):
+    check_testing_iteration_end = iteration._check_iteration_end
 
 
 class validation(Condition):

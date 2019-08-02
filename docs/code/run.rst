@@ -1,54 +1,117 @@
 .. role:: hidden
     :class: hidden-section
 
-Evaluations
+Executor
 ***********
 
-BLEU
+Executor
 ==========
 
-.. spelling::
-    Vaswani
-    al
-    de
-
-:hidden:`sentence_bleu`
+:hidden:`Executor`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.torch.evals.sentence_bleu
-
-:hidden:`corpus_bleu`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.torch.evals.corpus_bleu
-
-:hidden:`sentence_bleu_moses`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.torch.evals.sentence_bleu_moses
-
-:hidden:`corpus_bleu_moses`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.torch.evals.corpus_bleu_moses
-
-:hidden:`corpus_bleu_transformer`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.torch.evals.corpus_bleu_transformer
-
-:hidden:`bleu_transformer_tokenize`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.torch.evals.bleu_transformer_tokenize
-
-:hidden:`file_bleu`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.torch.evals.file_bleu
+.. autoclass:: texar.torch.run.Executor
+    :members:
+    :private-members:
 
 
-Accuracy
+Conditions
+=============
+
+:hidden:`Event`
+~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.condition.Event
+
+:hidden:`Condition`
+~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.condition.Condition
+
+:hidden:`epoch`
+~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.condition.epoch
+
+:hidden:`iteration`
+~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.condition.iteration
+
+:hidden:`validation`
+~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.condition.validation
+
+:hidden:`consecutive`
+~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.condition.consecutive
+
+:hidden:`time`
+~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.condition.time
+
+
+Metrics
 ========
 
-:hidden:`accuracy`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.torch.evals.accuracy
+:hidden:`Metric`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.Metric
+    :members:
+
+:hidden:`SimpleMetric`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.SimpleMetric
+    :members:
+
+:hidden:`StreamingMetric`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.StreamingMetric
+    :members:
+
+:hidden:`Accuracy`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.Accuracy
+
+:hidden:`ConfusionMatrix`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.ConfusionMatrix
+
+:hidden:`Precision`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.Precision
+
+:hidden:`Recall`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.Recall
+
+:hidden:`F1`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.F1
+
+:hidden:`PearsonR`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.PearsonR
+
+:hidden:`Average`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.Average
+
+:hidden:`AveragePerplexity`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.AveragePerplexity
+
+:hidden:`RunningAverage`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.RunningAverage
 
 
-:hidden:`binary_clas_accurac`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.torch.evals.binary_clas_accuracy
+Actions
+========
+
+:hidden:`reset_params`
+~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.action.reset_params
+
+:hidden:`scale_lr`
+~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.action.scale_lr
+
+:hidden:`early_stop`
+~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.action.early_stop

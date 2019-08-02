@@ -13,9 +13,11 @@ Value = TypeVar('Value')
 
 class Metric(Generic[Input, Value], ABC):
     higher_is_better: bool = True
+    requires_pred: bool = True
     requires_label: bool = True
 
-    def __init__(self, *, pred_name: str, label_name: Optional[str] = "label",
+    def __init__(self, *, pred_name: Optional[str],
+                 label_name: Optional[str] = "label",
                  higher_is_better: Optional[bool] = None):
         self.reset()
         if self.requires_label and label_name is None:
@@ -23,6 +25,8 @@ class Metric(Generic[Input, Value], ABC):
                              f"label name, but None is provided")
         if higher_is_better is not None:
             self.higher_is_better = higher_is_better
+        if not self.requires_pred:
+            pred_name = None
         if not self.requires_label:
             label_name = None
         self._pred_name = pred_name

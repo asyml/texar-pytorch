@@ -31,5 +31,6 @@ API
    code/core.rst
    code/modules.rst
    code/losses.rst
+   code/run.rst
    code/evals.rst
    code/utils.rst

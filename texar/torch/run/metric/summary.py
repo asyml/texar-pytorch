@@ -5,6 +5,12 @@ import numpy as np
 
 from texar.torch.run.metric.base_metric import StreamingMetric
 
+__all__ = [
+    "Average",
+    "AveragePerplexity",
+    "RunningAverage",
+]
+
 
 class Average(StreamingMetric[float, float]):
     requires_label = False
