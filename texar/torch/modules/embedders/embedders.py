@@ -109,12 +109,10 @@ class WordEmbedder(EmbedderBase):
                 f"vocab_size must equal to init_value.shape[0]. "
                 f"Got {self._vocab_size} and {self._num_embeds}")
 
-        self._built = True
         self._dropout_layer = EmbeddingDropout(self._hparams.dropout_rate)
 
     @staticmethod
     def default_hparams():
-        # TODO Shibiao: add regularizer
         r"""Returns a dictionary of hyperparameters with default values.
 
         .. code-block:: python
@@ -171,6 +169,9 @@ class WordEmbedder(EmbedderBase):
         hparams = embedder_utils.default_embedding_hparams()
         hparams["name"] = "word_embedder"
         return hparams
+
+    def extra_repr(self) -> str:
+        return f"vocab_size={self.vocab_size}, embedding_dim={self.dim}"
 
     def forward(self,  # type: ignore
                 ids: Optional[torch.LongTensor] = None,

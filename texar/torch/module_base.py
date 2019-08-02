@@ -15,7 +15,7 @@
 Base class for modules.
 """
 from abc import ABC
-from typing import Any, Dict, List, Optional, Union, NamedTuple
+from typing import Any, Dict, List, Optional, Union
 
 from torch import nn
 
@@ -26,10 +26,16 @@ __all__ = [
 ]
 
 
-class ModuleRepr(NamedTuple):
-    indent: int
-    repr_str: str
-    names: List[str]
+def _add_indent(s_, n_spaces):
+    s = s_.split('\n')
+    # don't do anything for single-line stuff
+    if len(s) == 1:
+        return s_
+    first = s.pop(0)
+    s = [(n_spaces * ' ') + line for line in s]
+    s = '\n'.join(s)
+    s = first + '\n' + s
+    return s
 
 
 class ModuleBase(nn.Module, ABC):
@@ -110,55 +116,63 @@ class ModuleBase(nn.Module, ABC):
         `nn.ModuleList`s and `nn.ParameterList`s.
         """
 
-        def _get_indent(s: str) -> int:
-            return len(s) - len(s.lstrip(' '))
-
-        def _convert_repr(module: ModuleRepr) -> List[str]:
-            prefix = (f"{' ' * module.indent}(id" +
-                      (f"s {module.names[0]}-{module.names[-1]}"
-                       if len(module.names) > 1 else f" {module.names[0]}") +
-                      "): ")
-            lines = module.repr_str.split('\n')
-            lines[0] = prefix + lines[0]
-            return lines
-
-        repr_str = super().__repr__().split('\n')
-        nested = True
-        while nested:
-            nested = False
-            output_str = []
-            prev_module: Optional[ModuleRepr] = None
-            for idx, line in enumerate(repr_str):
-                line = repr_str[idx]
-                indent = _get_indent(line)
-                if prev_module is not None and prev_module.indent > indent:
-                    output_str.extend(_convert_repr(prev_module))
-                    prev_module = None
-                name = line[(indent + 1):line.find(')')]
-                if line[indent] != '(' or not name.isnumeric():
-                    if prev_module is None:
-                        output_str.append(line)
-                    continue
-
-                end_idx = next(
-                    end_idx for end_idx in range(idx + 1, len(repr_str))
-                    if _get_indent(repr_str[end_idx]) <= indent)
-                end_indent = _get_indent(repr_str[end_idx])
-                if end_indent < indent or repr_str[end_idx][end_indent] != ')':
-                    # not a module; a parameter in ParameterList
-                    end_idx -= 1
-                    indent -= 2  # parameters are somehow indented further
-                module_repr = '\n'.join(
-                    [line[(indent + len(name) + 4):]] +  # "(): "
-                    repr_str[(idx + 1):(end_idx + 1)])
-                if prev_module is None:
-                    prev_module = ModuleRepr(indent, module_repr, [name])
-                elif prev_module.indent < indent:
-                    nested = True
-                elif prev_module.repr_str == module_repr:
-                    prev_module.names.append(name)
+        def _convert_id(keys: List[str]) -> List[str]:
+            start = end = None
+            for key in keys:
+                if key.isnumeric() and end == int(key) - 1:
+                    end = int(key)
                 else:
-                    output_str.extend(_convert_repr(prev_module))
-                    prev_module = ModuleRepr(indent, module_repr, [name])
-            repr_str = output_str
-        return '\n'.join(repr_str)
+                    if start is not None:
+                        if start == end:
+                            yield f"id {start}"
+                        else:
+                            yield f"ids {start}-{end}"
+                    if key.isnumeric():
+                        start = end = int(key)
+                    else:
+                        start = end = None
+                        yield key
+            if start is not None:
+                if start == end:
+                    yield f"id {start}"
+                else:
+                    yield f"ids {start}-{end}"
+
+        # We treat the extra repr like the sub-module, one item per line
+        extra_lines = []
+        extra_repr = self.extra_repr()
+        # empty string will be split into list ['']
+        if extra_repr:
+            extra_lines = extra_repr.split('\n')
+        child_lines = []
+        prev_mod_str = None
+        keys = []
+        for key, module in self._modules.items():
+            if isinstance(module, ModuleBase):
+                mod_str = repr(module)
+            else:
+                mod_str = ModuleBase.__repr__(module)
+            mod_str = _add_indent(mod_str, 2)
+            if prev_mod_str is None or prev_mod_str != mod_str:
+                if prev_mod_str is not None:
+                    for name in _convert_id(keys):
+                        child_lines.append(f"({name}): {prev_mod_str}")
+                prev_mod_str = mod_str
+                keys = [key]
+            else:
+                keys.append(key)
+        if len(keys) > 0:
+            for name in _convert_id(keys):
+                child_lines.append(f"({name}): {prev_mod_str}")
+        lines = extra_lines + child_lines
+
+        main_str = self._get_name() + '('
+        if lines:
+            # simple one-liner info, which most builtin Modules will use
+            if len(extra_lines) == 1 and not child_lines:
+                main_str += extra_lines[0]
+            else:
+                main_str += '\n  ' + '\n  '.join(lines) + '\n'
+
+        main_str += ')'
+        return main_str

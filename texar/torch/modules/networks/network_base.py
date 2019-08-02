@@ -66,8 +66,12 @@ class FeedForwardNetworkBase(ModuleBase):
             "name": "NN"
         }
 
-    def forward(self,  # type: ignore
-                input: torch.Tensor) -> torch.Tensor:
+    def __repr__(self) -> str:
+        if len(list(self.modules())) == 1:
+            return ModuleBase.__repr__(self._layers)
+        return super().__repr__()
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:  # type: ignore
         r"""Feeds forward inputs through the network layers and returns outputs.
 
         Args:
