@@ -1,6 +1,6 @@
 
 <div align="center">
-   <img src="https://zhitinghu.github.io/texar_web/images/logo_h_035.png"><br><br>
+   <img src="./docs/_static/img/logo_h_035.png"><br><br>
 </div>
  
 -----------------
@@ -23,7 +23,7 @@ With the design goals of **modularity, versatility, and extensibility** in mind,
 With Texar, cutting-edge complex models can be easily constructed, freely enriched with best modeling/training practices, readily fitted into standard training/evaluation pipelines, and quickly experimented and evolved by, e.g., plugging in and swapping out different modules.
 
 <div align="center">
-   <img src="https://zhitinghu.github.io/texar_web/images/texar_stack.png"><br><br>
+   <img src="./docs/_static/img/texar_stack.png"><br><br>
 </div> 
 
 
