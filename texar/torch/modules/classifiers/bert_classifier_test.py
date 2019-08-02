@@ -53,6 +53,18 @@ class BERTClassifierTest(unittest.TestCase):
         classifier = BERTClassifier(pretrained_model_name="bert-base-chinese")
         _, _ = classifier(self.inputs)
 
+        # case 8
+        classifier = BERTClassifier(pretrained_model_name="roberta-base")
+        _, _ = classifier(self.inputs)
+
+        # case 9
+        classifier = BERTClassifier(pretrained_model_name="roberta-large")
+        _, _ = classifier(self.inputs)
+
+        # case 10
+        classifier = BERTClassifier(pretrained_model_name="roberta-large-mnli")
+        _, _ = classifier(self.inputs)
+
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
         variables.

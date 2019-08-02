@@ -41,15 +41,16 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
     :class:`~texar.torch.modules.encoders.TransformerEncoder` and a dense
     pooler.
 
-    This module supports the architecture first proposed
-    in `(Devlin et al.)` BERT.
+    This module supports the architectures first proposed
+    in `(Devlin et al.)` BERT and `(Liu et al.)` RoBERTa.
 
     Args:
         pretrained_model_name (optional): a str with the name
             of a pre-trained model to load selected in the list of:
             `bert-base-uncased`, `bert-large-uncased`, `bert-base-cased`,
             `bert-large-cased`, `bert-base-multilingual-uncased`,
-            `bert-base-multilingual-cased`, `bert-base-chinese`.
+            `bert-base-multilingual-cased`, `bert-base-chinese`,
+            `roberta-base`, `roberta-large`, `roberta-large-mnli`.
             If `None`, will use the model name in :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
@@ -74,9 +75,11 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
             hparams=self._hparams.embed)
 
         # Segment embedding for each type of tokens
-        self.segment_embedder = WordEmbedder(
-            vocab_size=self._hparams.type_vocab_size,
-            hparams=self._hparams.segment_embed)
+        self.segment_embedder = None
+        if self._hparams.type_vocab_size > 0:
+            self.segment_embedder = WordEmbedder(
+                vocab_size=self._hparams.type_vocab_size,
+                hparams=self._hparams.segment_embed)
 
         # Position embedding
         self.position_embedder = PositionEmbedder(
@@ -307,19 +310,20 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
               pre-trained on top of the hidden state associated to the first
               character of the input (`CLS`), see BERT's paper.
         """
-        if segment_ids is None:
-            segment_ids = torch.zeros_like(inputs)
 
         word_embeds = self.word_embedder(inputs)
-
-        segment_embeds = self.segment_embedder(segment_ids)
-
         batch_size = inputs.size(0)
         pos_length = inputs.new_full((batch_size,), inputs.size(1),
                                      dtype=torch.int64)
         pos_embeds = self.position_embedder(sequence_length=pos_length)
 
-        inputs_embeds = word_embeds + segment_embeds + pos_embeds
+        if self.segment_embedder is not None:
+            if segment_ids is None:
+                segment_ids = torch.zeros_like(inputs)
+            segment_embeds = self.segment_embedder(segment_ids)
+            inputs_embeds = word_embeds + segment_embeds + pos_embeds
+        else:
+            inputs_embeds = word_embeds + pos_embeds
 
         if sequence_length is None:
             sequence_length = inputs.new_full((batch_size,), inputs.size(1),

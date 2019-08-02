@@ -53,6 +53,18 @@ class BERTEncoderTest(unittest.TestCase):
         encoder = BERTEncoder(pretrained_model_name="bert-base-chinese")
         _, _ = encoder(self.inputs)
 
+        # case 8
+        encoder = BERTEncoder(pretrained_model_name="roberta-base")
+        _, _ = encoder(self.inputs)
+
+        # case 9
+        encoder = BERTEncoder(pretrained_model_name="roberta-large")
+        _, _ = encoder(self.inputs)
+
+        # case 10
+        encoder = BERTEncoder(pretrained_model_name="roberta-large-mnli")
+        _, _ = encoder(self.inputs)
+
     @pretrained_test
     def test_hparams(self):
         r"""Tests the priority of the encoder arch parameter.
