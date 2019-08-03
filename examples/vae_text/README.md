@@ -42,7 +42,7 @@ Here `--model` specifies the saved model checkpoint, which is saved in `./models
 
 |Dataset    |Metrics   | VAE-LSTM |VAE-Transformer |
 |---------------|-------------|----------------|------------------------|
-|Yahoo | Test PPL<br>Test NLL | 68.11<br>337.13 |59.95<br>326.93|
+|Yahoo | Test PPL<br>Test NLL | 75.21<br>336.41 |67.81<br>328.34|
 |PTB | Test PPL<br>Test NLL | 107.87<br>102.59 | 102.28<br>101.43 |
 
 ### Generated Examples
@@ -50,8 +50,8 @@ We show the generated examples with transformer as decoder trained  on PTB train
 
 |Examples|
 |:---------|
-|we 've been more quickly accomplished in our old and more than in the past is in these industries said steven <unk> publisher of <unk> <unk> inc. of the workstation market set crazy \<EOS\>|
+|regarded as the result of the market <unk> has three currencies as unusual as <unk> companies \<EOS\>|
 |chung <unk> 's proposal that saved the page in september and the ad pages \$ N from yale city with more than a small fee that tenants had been made by support in the past N years ago \<EOS\>|
 |the university of state commerce was <unk> from cooperation last year when it controls for cleaning up a bipartisan aid to moscow new arms-control <unk> <unk> \<EOS\>|
-|the <unk> maker general electric co. 's electronics and the <unk> for <unk> radar tools that included for space at krasnoyarsk \<EOS\>|
+|his return was the unusual of its operations in reacting to the day \<EOS\>|
 |the company said its travel subsidiary has been operating for \$ N million \<EOS\>|

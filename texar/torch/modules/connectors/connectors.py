@@ -131,7 +131,7 @@ def _mlp_transform(inputs: TensorStruct,
     else:
         batch_size = flat_input[0].size(0)
     flat_input = [x.view(-1, x.size(-1)) for x in flat_input]
-    concat_input = torch.cat(flat_input, 0)
+    concat_input = torch.cat(flat_input, 1)
     # Get output dimension
     flat_output_size = nest.flatten(output_size)
 

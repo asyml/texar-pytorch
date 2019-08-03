@@ -43,7 +43,7 @@ import texar.torch.custom as custom
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, default=None,
-                     help="The config to use.")
+                    help="The config to use.")
 parser.add_argument('--mode', type=str, default='train',
                     help="Train or predict.")
 parser.add_argument('--model', type=str, default=None,
@@ -58,7 +58,7 @@ def kl_divergence(means: Tensor, logvars: Tensor) -> Tensor:
     """Compute the KL divergence between Gaussian distribution
     """
 
-    kl_cost = -0.5 * (logvars - means**2 -
+    kl_cost = -0.5 * (logvars - means ** 2 -
                       torch.exp(logvars) + 1.0)
     kl_cost = torch.mean(kl_cost, 0)
 
@@ -111,10 +111,10 @@ class VAE(nn.Module):
 
         self.connector_mlp = tx.modules.MLPTransformConnector(
             config_model.latent_dims * 2,
-            linear_layer_dim=self.encoder.cell.hidden_size)
+            linear_layer_dim=self.encoder.cell.hidden_size * 2)
 
         self.mlp_linear_layer = nn.Linear(
-            config_model.latent_dims * 2,
+            config_model.latent_dims,
             sum_state_size)
 
     def forward(self, data_batch: tx.data.Batch,
@@ -135,13 +135,11 @@ class VAE(nn.Module):
             scale_diag=torch.exp(0.5 * logvar))
 
         latent_z = dst.rsample()
-
-        labels = text_ids[:, 1:]
         if self._config.decoder_type == "lstm":
             helper = self.decoder.create_helper(
                 decoding_strategy="train_greedy",
                 start_tokens=start_tokens,
-                end_token=end_token,)
+                end_token=end_token)
         else:
             helper = None
 
@@ -158,7 +156,7 @@ class VAE(nn.Module):
 
         # Losses & train ops
         rc_loss = tx.losses.sequence_sparse_softmax_cross_entropy(
-            labels=labels,
+            labels=text_ids[:, 1:],
             logits=logits,
             sequence_length=seq_lengths)
 
@@ -176,8 +174,7 @@ class VAE(nn.Module):
     def _embed_fn_rnn(self, tokens: torch.LongTensor) -> Tensor:
         r"""Generates word embeddings
         """
-        embedding = self.decoder_w_embedder(
-            tokens)
+        embedding = self.decoder_w_embedder(tokens)
         latent_z = self._latent_z
         if len(embedding.size()) > 2:
             latent_z = torch.unsqueeze(latent_z, 0)
@@ -198,13 +195,12 @@ class VAE(nn.Module):
 
     def decode(self,
                helper: Optional[tx.modules.Helper],
+               latent_z: Tensor,
                text_ids: Optional[torch.LongTensor] = None,
-               latent_z: Optional[Tensor] = None,
                seq_lengths: Optional[Tensor] = None,
                max_decoding_length: Optional[int] = None) \
             -> Union[tx.modules.BasicRNNDecoderOutput,
                      tx.modules.TransformerDecoderOutput]:
-
         self._latent_z = latent_z
         fc_output = self.mlp_linear_layer(latent_z)
 
@@ -222,7 +218,7 @@ class VAE(nn.Module):
             decoder_initial_state_size = torch.Size(
                 [1, self._config.dec_emb_hparams["dim"]])
             decoder_states = torch.reshape(
-                fc_output, (-1, ) + decoder_initial_state_size)
+                fc_output, (-1,) + decoder_initial_state_size)
             outputs = self.decoder(
                 inputs=text_ids,
                 memory=decoder_states,
@@ -378,6 +374,7 @@ def main():
                 end_token=end_token)
             outputs, _ = model.decode(
                 helper=helper,
+                latent_z=latent_z,
                 max_decoding_length=100)
 
         sample_tokens = vocab.map_ids_to_tokens_py(outputs.sample_id.cpu())
