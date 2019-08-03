@@ -42,14 +42,18 @@ import texar.torch.custom as custom
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--config', type=str, default=None,
-                    help="The config to use.")
-parser.add_argument('--mode', type=str, default='train',
-                    help="Train or predict.")
-parser.add_argument('--model', type=str, default=None,
-                    help="Model path for generating sentences.")
-parser.add_argument('--out', type=str, default=None,
-                    help="Generation output path.")
+parser.add_argument(
+    '--config', type=str, default=None,
+    help="The config to use.")
+parser.add_argument(
+    '--mode', type=str, default='train',
+    help="Train or predict.")
+parser.add_argument(
+    '--model', type=str, default=None,
+    help="Model path for generating sentences.")
+parser.add_argument(
+    '--out', type=str, default=None,
+    help="Generation output path.")
 
 args = parser.parse_args()
 
@@ -57,11 +61,9 @@ args = parser.parse_args()
 def kl_divergence(means: Tensor, logvars: Tensor) -> Tensor:
     """Compute the KL divergence between Gaussian distribution
     """
-
     kl_cost = -0.5 * (logvars - means ** 2 -
                       torch.exp(logvars) + 1.0)
     kl_cost = torch.mean(kl_cost, 0)
-
     return torch.sum(kl_cost)
 
 
@@ -106,6 +108,7 @@ class VAE(nn.Module):
                 token_pos_embedder=self._embed_fn_transformer,
                 hparams=config_model.trans_hparams)
             sum_state_size = self._config.dec_emb_hparams["dim"]
+
         else:
             raise ValueError("Decoder type must be 'lstm' or 'transformer'")
 
