@@ -14,7 +14,7 @@
 """
 Various convolutional networks.
 """
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict, Any
 
 import torch
 
@@ -30,7 +30,8 @@ __all__ = [
 ]
 
 
-def _to_list(value: Union[List, Tuple, int], name=None, list_length=None):
+def _to_list(value: Union[Dict[str, Any], List, Tuple, int], name=None,
+             list_length=None):
     r"""Converts `hparams` value into a list.
 
     If :attr:`list_length` is given, then the canonicalized :attr:`value`
@@ -107,20 +108,19 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             {
                 # (1) Conv layers
                 "num_conv_layers": 1,
-                "in_channels": 32,
-                "out_channels": 64,
+                "out_channels": 128,
                 "kernel_size": [3, 4, 5],
                 "conv_activation": "ReLU",
                 "conv_activation_kwargs": None,
-                "other_conv_kwargs": None,
+                "other_conv_kwargs": {},
+                "data_format": "channels_first",
                 # (2) Pooling layers
                 "pooling": "MaxPool1d",
                 "pool_size": None,
                 "pool_stride": 1,
-                "other_pool_kwargs": None,
+                "other_pool_kwargs": {},
                 # (3) Dense layers
                 "num_dense_layers": 1,
-                "in_features": 192,
                 "out_features": 256,
                 "dense_activation": None,
                 "dense_activation_kwargs": None,
@@ -144,20 +144,28 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
            `"out_channels"`: int or list
                The number of out_channels in the convolution, i.e., the
-               dimensionality of the output space. If
-               ``"num_conv_layers"`` > 1, ``"out_channels"`` must be a list of
-               ``"num_conv_layers"`` integers.
+               dimensionality of the output space.
+
+               - If ``"num_conv_layers"`` > 1 and ``"out_channels"`` is an int,
+                 all convolution layers will have the same number of output
+                 channels.
+
+               - If ``"num_conv_layers"`` > 1 and ``"out_channels"`` is a list,
+                 the length must equal ``"num_conv_layers"``. The number of
+                 output channels of each convolution layer will be the
+                 corresponding element from this list.
 
            `"kernel_size"`: int or list
                Lengths of 1D convolution windows.
 
-               - If `"num_conv_layers"` = 1, this can be a ``int`` list of
-                 arbitrary length denoting different sized convolution windows.
-                 The number of filters of each size is specified by
-                 ``"filters"``.
-                 For example, the default values will create 3 sets of filters,
-                 each of which has kernel size of 3, 4, and 5, respectively,
-                 and has filter number 128.
+               - If `"num_conv_layers"` = 1, this can also be a ``int`` list of
+                 arbitrary length denoting differently sized convolution
+                 windows. The number of output channels of each size is
+                 specified by ``"out_channels"``.
+                 For example, the default values will create 3 convolution
+                 layers, each of which has kernel size of 3, 4, and 5,
+                 respectively, and has output channel 128.
+
                - If `"num_conv_layers"` > 1, this must be a list of length
                  ``"num_conv_layers"``. Each element can be an ``int`` or a
                  ``int`` list of arbitrary length denoting the kernel size of
@@ -172,9 +180,28 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                Keyword arguments for the activation following the convolutional
                layer. See :func:`~texar.torch.core.get_layer` for more details.
 
-           `"other_conv_kwargs"`: dict, optional
+           `"other_conv_kwargs"`: list or dict, optional
                Other keyword arguments for :torch_nn:`Conv1d` constructor,
                e.g., ``padding``.
+
+               - If a dict, the same dict is applied to all the convolution
+                 layers.
+
+               - If a list, the length must equal ``"num_conv_layers"``. This
+                 list can contain nested lists. If the convolution layer at
+                 index i has multiple kernel sizes, then the corresponding
+                 element of this list can also be a list of length equal to
+                 ``"kernel_size"`` at index i. If the element at index i is
+                 instead a dict, then the same dict gets applied to all the
+                 convolution layers at index i.
+
+           `"data_format"`: str, optional
+               Data format of the input tensor. Defaults to ``channels_first``
+               denoting the first dimension to be the channel dimension. Set it
+               to ``channels_last`` to treat last dimension as the channel
+               dimension. This argument can also be passed in ``forward``
+               function, in which case the value specified here will be
+               ignored.
 
         2. For **pooling** layers:
 
@@ -197,8 +224,14 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                layers will have the same stride. If a list, the list length
                must equal ``"num_conv_layers"``.
 
-           `"other_pool_kwargs"`: dict, optional
+           `"other_pool_kwargs"`: list or dict, optional
                Other keyword arguments for pooling layer class constructor.
+
+               - If a dict, the same dict is applied to all the pooling layers.
+
+               - If a list, the length must equal ``"num_conv_layers"``. The
+                 pooling arguments for layer i will be the element at index i
+                 from this list.
 
         3. For **dense** layers (note that here dense layers always follow
            convolutional and pooling layers):
@@ -269,16 +302,17 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         return {
             # (1) Conv layers
             "num_conv_layers": 1,
-            "out_channels": 64,
+            "out_channels": 128,
             "kernel_size": [3, 4, 5],
             "conv_activation": "ReLU",
             "conv_activation_kwargs": None,
-            "other_conv_kwargs": None,
+            "other_conv_kwargs": {},
+            "data_format": "channels_first",
             # (2) Pooling layers
             "pooling": "MaxPool1d",
             "pool_size": None,
             "pool_stride": 1,
-            "other_pool_kwargs": None,
+            "other_pool_kwargs": {},
             # (3) Dense layers
             "num_dense_layers": 1,
             "out_features": 256,
@@ -294,7 +328,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             # (5) Others
             "name": "conv1d_network",
             "@no_typecheck": ["out_channels", "kernel_size", "conv_activation",
-                              "pool_size", "pool_stride", "out_features",
+                              "other_conv_kwargs", "pool_size", "pool_stride",
+                              "other_pool_kwargs", "out_features",
                               "dense_activation", "dropout_conv",
                               "dropout_dense"]
         }
@@ -310,16 +345,22 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         kernel_size = _to_list(self._hparams.pool_size, "pool_size", npool)
         stride = _to_list(self._hparams.pool_stride, "pool_stride", npool)
 
-        other_kwargs = self._hparams.other_pool_kwargs or {}
+        other_kwargs = self._hparams.other_pool_kwargs
         if isinstance(other_kwargs, HParams):
             other_kwargs = other_kwargs.todict()
-        if not isinstance(other_kwargs, dict):
-            raise ValueError("hparams['other_pool_kwargs'] must be a dict.")
+            other_kwargs = _to_list(other_kwargs, "other_kwargs", npool)
+        elif isinstance(other_kwargs, (list, tuple)):
+            if len(other_kwargs) != npool:
+                raise ValueError("The length of hparams['other_pool_kwargs'] "
+                                 "must equal 'num_conv_layers'")
+        else:
+            raise ValueError("hparams['other_pool_kwargs'] must be either a "
+                             "dict or list/tuple")
 
         pool_hparams = []
         for i in range(npool):
             kwargs_i = {"kernel_size": kernel_size[i], "stride": stride[i]}
-            kwargs_i.update(other_kwargs)
+            kwargs_i.update(other_kwargs[i])
             pool_hparams_ = get_pooling_layer_hparams({"type": pool_type,
                                                        "kwargs": kwargs_i})
             pool_hparams.append(pool_hparams_)
@@ -349,11 +390,17 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                                    'kernel_size', nconv)
             kernel_size = [_to_list(ks) for ks in kernel_size]
 
-        other_kwargs = self._hparams.other_conv_kwargs or {}
+        other_kwargs = self._hparams.other_conv_kwargs
         if isinstance(other_kwargs, HParams):
             other_kwargs = other_kwargs.todict()
-        if not isinstance(other_kwargs, dict):
-            raise ValueError("hparams['other_conv_kwargs'] must be a dict.")
+            other_kwargs = _to_list(other_kwargs, "other_conv_kwargs", nconv)
+        elif isinstance(other_kwargs, (list, tuple)):
+            if len(other_kwargs) != nconv:
+                raise ValueError("The length of hparams['other_conv_kwargs'] "
+                                 "must be equal to 'num_conv_layers'")
+        else:
+            raise ValueError("hparams['other_conv_kwargs'] must be a either "
+                             "a dict or a list.")
 
         def _activation_hparams(name, kwargs=None):
             if kwargs is not None:
@@ -365,7 +412,15 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         for i in range(nconv):
             hparams_i = []
             names = []
-            for ks_ij in kernel_size[i]:
+            if isinstance(other_kwargs[i], dict):
+                other_kwargs[i] = _to_list(other_kwargs[i], "other_kwargs[i]",
+                                           len(kernel_size[i]))
+            elif (isinstance(other_kwargs[i], (list, tuple))
+                  and len(other_kwargs[i]) != kernel_size[i]):
+                raise ValueError("The length of hparams['other_conv_kwargs'][i]"
+                                 " must be equal to the length of "
+                                 "hparams['kernel_size'][i]")
+            for idx, ks_ij in enumerate(kernel_size[i]):
                 name = uniquify_str("conv_%d" % (i + 1), names)
                 names.append(name)
                 conv_kwargs_ij = {
@@ -373,7 +428,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                     "out_channels": out_channels[i],
                     "kernel_size": ks_ij
                 }
-                conv_kwargs_ij.update(other_kwargs)
+                conv_kwargs_ij.update(other_kwargs[i][idx])
                 hparams_i.append(
                     {"type": "Conv1d", "kwargs": conv_kwargs_ij})
             if len(hparams_i) == 1:
@@ -505,7 +560,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
     def forward(self,  # type: ignore
                 input: torch.Tensor,
                 sequence_length: Union[torch.LongTensor, List[int]] = None,
-                dtype: Optional[torch.dtype] = None) -> torch.Tensor:
+                dtype: Optional[torch.dtype] = None,
+                data_format: Optional[str] = None) -> torch.Tensor:
         r"""Feeds forward inputs through the network layers and returns outputs.
 
         Args:
@@ -517,13 +573,51 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 layers.
             dtype (optional): Type of the inputs. If not provided,
                 infers from inputs automatically.
+            data_format (optional): Data type of the input tensor. If
+                ``channels_last``, the last dimension will be treated as channel
+                dimension so the size of the :attr:`input` should be
+                `[batch_size, X, channel]`. If ``channels_first``, first
+                dimension will be treated as channel dimension so the size
+                should be `[batch_size, channel, X]`. Defaults to None.
+                If None, the value will be picked from hyperparameters.
         Returns:
             The output of the final layer.
         """
-        if sequence_length is not None:
-            input = mask_sequences(input, sequence_length,
-                                   dtype=dtype, time_major=False)
-        return super().forward(input)
+        if input.dim() != 3:
+            raise ValueError("'input' should be a 3D tensor.")
+
+        if data_format is None:
+            data_format = self.hparams["data_format"]
+
+        if data_format == "channels_first":
+            # masking requires channels in last dimension
+            input = input.permute(0, 2, 1)
+
+            if sequence_length is not None:
+                input = mask_sequences(input, sequence_length,
+                                       dtype=dtype, time_major=False)
+
+            # network is constructed for channel first tensors
+            input = input.permute(0, 2, 1)
+
+            output = super().forward(input)
+
+        elif data_format == "channels_last":
+            if sequence_length is not None:
+                input = mask_sequences(input, sequence_length,
+                                       dtype=dtype, time_major=False)
+
+            input = input.permute(0, 2, 1)
+
+            output = super().forward(input)
+
+            # transpose only when tensors are 3D
+            if output.dim() == 3:
+                output = output.permute(0, 2, 1)
+        else:
+            raise ValueError("Invalid 'data_format'")
+
+        return output
 
     def _infer_dense_layer_input_size(self, input: torch.Tensor) -> torch.Size:
         # feed forward the input on the conv part of the network to infer
@@ -535,7 +629,19 @@ class Conv1DNetwork(FeedForwardNetworkBase):
     @property
     def output_size(self) -> int:
         if self.hparams.num_dense_layers <= 0:
-            return self._hparams.out_channels * len(self._hparams.kernel_size)
+            out_channels = self._hparams.out_channels
+            if not isinstance(out_channels, (list, tuple)):
+                out_channels = [out_channels]
+            nconv = self._hparams.num_conv_layers
+            if nconv == 1:
+                kernel_size = _to_list(self._hparams.kernel_size)
+                if not isinstance(kernel_size[0], (list, tuple)):
+                    kernel_size = [kernel_size]
+            elif nconv > 1:
+                kernel_size = _to_list(self._hparams.kernel_size,
+                                       'kernel_size', nconv)
+                kernel_size = [_to_list(ks) for ks in kernel_size]
+            return out_channels[-1] * len(kernel_size[-1])
         else:
             out_features = self._hparams.out_features
             if isinstance(out_features, (list, tuple)):
