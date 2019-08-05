@@ -286,9 +286,9 @@ class ImdbProcessor(DataProcessor):
         for label in ["neg", "pos"]:
             cur_dir = data_dir / label
             for filename in cur_dir.iterdir():
-                if filename.suffix != "txt":
+                if filename.suffix != ".txt":
                     continue
-                with (cur_dir / filename).open() as f:
+                with filename.open() as f:
                     text = f.read().strip().replace("<br />", " ")
                 examples.append(InputExample(
                     guid=str(filename), text_a=text, text_b=None, label=label))
