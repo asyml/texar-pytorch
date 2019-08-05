@@ -79,13 +79,12 @@ class Conv1DNetwork(FeedForwardNetworkBase):
     """
 
     def __init__(self, in_channels: int, in_features: Optional[int] = None,
-                 hparams=None, data_format: str = "channels_first"):
+                 hparams=None):
         super().__init__(hparams=hparams)
         if self.hparams.num_dense_layers > 0 and in_features is None:
             raise ValueError("\"in_features\" cannot be None "
                              "if \"num_dense_layers\" > 0")
 
-        self.data_format = data_format
         # construct only non-dense layers first
         layer_hparams = self._build_non_dense_layer_hparams(
             in_channels=in_channels)
@@ -94,12 +93,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             if in_features is None:
                 raise ValueError("\"in_features\" cannot be None "
                                  "if \"num_dense_layers\" > 0")
-            if self.data_format == "channels_first":
-                ones = torch.ones(1, in_channels, in_features)
-                input_size = self._infer_dense_layer_input_size(ones)
-            elif self.data_format == "channels_last":
-                ones = torch.ones(1, in_channels, in_features)
-                input_size = self._infer_dense_layer_input_size(ones)
+            ones = torch.ones(1, in_channels, in_features)
+            input_size = self._infer_dense_layer_input_size(ones)
             layer_hparams = self._build_dense_hparams(
                 in_features=input_size[1], layer_hparams=layer_hparams)
             self._build_layers(layers=None, layer_hparams=layer_hparams)
@@ -113,12 +108,12 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             {
                 # (1) Conv layers
                 "num_conv_layers": 1,
-                "in_channels": 32,
-                "out_channels": 64,
+                "out_channels": 128,
                 "kernel_size": [3, 4, 5],
                 "conv_activation": "ReLU",
                 "conv_activation_kwargs": None,
                 "other_conv_kwargs": {},
+                "data_format": "channels_first",
                 # (2) Pooling layers
                 "pooling": "MaxPool1d",
                 "pool_size": None,
@@ -126,7 +121,6 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 "other_pool_kwargs": {},
                 # (3) Dense layers
                 "num_dense_layers": 1,
-                "in_features": 192,
                 "out_features": 256,
                 "dense_activation": None,
                 "dense_activation_kwargs": None,
@@ -150,20 +144,27 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
            `"out_channels"`: int or list
                The number of out_channels in the convolution, i.e., the
-               dimensionality of the output space. If
-               ``"num_conv_layers"`` > 1, ``"out_channels"`` must be a list of
-               ``"num_conv_layers"`` integers.
+               dimensionality of the output space.
+
+               - If ``"num_conv_layers"`` > 1 and ``"out_channels"`` is an int,
+                 all convolution layers will have the same number of output
+                 channels.
+
+               - If ``"num_conv_layers"`` > 1 and ``"out_channels"`` is a list,
+                 the length must equal ``"num_conv_layers"``. The number of
+                 output channels of each convolution layer will be the
+                 corresponding element from this list.
 
            `"kernel_size"`: int or list
                Lengths of 1D convolution windows.
 
-               - If `"num_conv_layers"` = 1, this can be a ``int`` list of
-                 arbitrary length denoting different sized convolution windows.
-                 The number of filters of each size is specified by
-                 ``"filters"``.
-                 For example, the default values will create 3 sets of filters,
-                 each of which has kernel size of 3, 4, and 5, respectively,
-                 and has filter number 128.
+               - If `"num_conv_layers"` = 1, this can also be a ``int`` list of
+                 arbitrary length denoting differently sized convolution
+                 windows. The number of output channels of each size is
+                 specified by ``"out_channels"``.
+                 For example, the default values will create 3 convolution
+                 layers, each of which has kernel size of 3, 4, and 5,
+                 respectively, and has output channel 128.
                - If `"num_conv_layers"` > 1, this must be a list of length
                  ``"num_conv_layers"``. Each element can be an ``int`` or a
                  ``int`` list of arbitrary length denoting the kernel size of
@@ -178,16 +179,26 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                Keyword arguments for the activation following the convolutional
                layer. See :func:`~texar.torch.core.get_layer` for more details.
 
-           `"other_conv_kwargs"`: dict, optional
+           `"other_conv_kwargs"`: list or dict, optional
                Other keyword arguments for :torch_nn:`Conv1d` constructor,
                e.g., ``padding``.
+
+               - If a dict, the same dict is applied to all the convolution
+                 layers.
+               - If a list, the length must equal ``"num_conv_layers"``. This
+                 list can contain nested lists. If the convolution layer at
+                 index i has multiple kernel sizes, then the corresponding
+                 element of this list can also be a list of length equal to
+                 ``"kernel_size"`` at index i. If the element at index i is
+                 instead a dict, then the same dict gets applied to all the
+                 convolution layers at index i.
 
            `"data_format"`: str, optional
                Data format of the input tensor. Defaults to ``channels_first``
                denoting the first dimension to be the channel dimension. Set it
                to ``channels_last`` to treat last dimension as the channel
                dimension. This argument can also be passed in ``forward``
-               function, in which case, the value specified here will be
+               function, in which case the value specified here will be
                ignored.
 
         2. For **pooling** layers:
@@ -211,8 +222,14 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                layers will have the same stride. If a list, the list length
                must equal ``"num_conv_layers"``.
 
-           `"other_pool_kwargs"`: dict, optional
+           `"other_pool_kwargs"`: list or dict, optional
                Other keyword arguments for pooling layer class constructor.
+
+               - If a dict, the same dict is applied to all the pooling
+                 layers.
+               - If a list, the length must equal ``"num_conv_layers"``. The
+                 pooling arguments for layer i will be the element at index i
+                 from this list.
 
         3. For **dense** layers (note that here dense layers always follow
            convolutional and pooling layers):
@@ -283,7 +300,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         return {
             # (1) Conv layers
             "num_conv_layers": 1,
-            "out_channels": 64,
+            "out_channels": 128,
             "kernel_size": [3, 4, 5],
             "conv_activation": "ReLU",
             "conv_activation_kwargs": None,

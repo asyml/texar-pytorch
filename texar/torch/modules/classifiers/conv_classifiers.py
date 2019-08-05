@@ -70,6 +70,9 @@ class Conv1DClassifier(ClassifierBase):
         if self._num_classes > 0:
             if self._hparams.num_dense_layers <= 0:
                 self._encoder.append_layer({"type": "Flatten"})
+                ones = torch.ones(1, in_channels, in_features)
+                input_size = self._encoder._infer_dense_layer_input_size(ones)
+                self.hparams.logit_layer_kwargs.in_features = input_size[1]
 
             logit_kwargs = self._hparams.logit_layer_kwargs
             if logit_kwargs is None:
@@ -146,7 +149,8 @@ class Conv1DClassifier(ClassifierBase):
     def forward(self,  # type:ignore
                 input: torch.Tensor,
                 sequence_length: Union[torch.LongTensor, List[int]] = None,
-                dtype: Optional[torch.dtype] = None) \
+                dtype: Optional[torch.dtype] = None,
+                data_format: Optional[str] = None) \
             -> Tuple[torch.Tensor, torch.Tensor]:
         r"""Feeds the inputs through the network and makes classification.
 
@@ -166,6 +170,11 @@ class Conv1DClassifier(ClassifierBase):
                 first be masked out before feeding to the layers.
             dtype (optional): Type of the inputs. If not provided, infers
                 from inputs automatically.
+            data_format(optional): Data type of the input tensor. If
+                ``channels_last``, the last dimension will be treated as channel
+                 dimension. If ``channels_first``, first dimension will be
+                 treated as channel dimension. Defaults to None.
+                 If None, the value will be picked from hparams.
 
         Returns:
             A tuple ``(logits, pred)``, where
@@ -180,7 +189,7 @@ class Conv1DClassifier(ClassifierBase):
               ``{0, 1}``.
         """
         logits = self._encoder(input, sequence_length=sequence_length,
-                               dtype=dtype)
+                               dtype=dtype, data_format=data_format)
 
         num_classes = self._hparams.num_classes
         is_binary = num_classes == 1
