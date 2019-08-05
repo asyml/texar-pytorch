@@ -102,6 +102,13 @@ class Conv1DNetworkTest(unittest.TestCase):
                          torch.Size([128, num_of_kernels * out_channels]))
         self.assertEqual(outputs_3.size(-1), network_3.output_size)
 
+        # test for channels last tensors
+        inputs_3 = inputs_3.permute(0, 2, 1)
+        outputs_3 = network_3(inputs_3, data_format="channels_last")
+        self.assertEqual(outputs_3.shape,
+                         torch.Size([128, num_of_kernels * out_channels]))
+        self.assertEqual(outputs_3.size(-1), network_3.output_size)
+
     def test_conv_and_pool_kwargs(self):
 
         inputs = torch.ones([128, 64, 300])

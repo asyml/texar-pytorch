@@ -605,8 +605,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
             output = super().forward(input)
 
-            # transpose only when no dense layers
-            if self._hparams.num_dense_layers <= 0:
+            # transpose only when tensors are 3D
+            if output.dim() == 3:
                 output = output.permute(0, 2, 1)
         else:
             raise ValueError("Invalid 'data_format'")
