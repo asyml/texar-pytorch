@@ -583,6 +583,9 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         Returns:
             The output of the final layer.
         """
+        if input.dim() != 3:
+            raise ValueError("'input' should be a 3D tensor.")
+
         if data_format is None:
             data_format = self.hparams["data_format"]
 
