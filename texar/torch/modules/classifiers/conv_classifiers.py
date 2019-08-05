@@ -175,8 +175,10 @@ class Conv1DClassifier(ClassifierBase):
                 from inputs automatically.
             data_format (optional): Data type of the input tensor. If
                 ``channels_last``, the last dimension will be treated as channel
-                dimension. If ``channels_first``, first dimension will be
-                treated as channel dimension. Defaults to None.
+                dimension so the size of the :attr:`input` should be
+                `[batch_size, X, channel]`. If ``channels_first``, first
+                dimension will be treated as channel dimension so the size
+                should be `[batch_size, channel, X]`. Defaults to None.
                 If None, the value will be picked from hyperparameters.
 
         Returns:

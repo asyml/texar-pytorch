@@ -351,8 +351,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             other_kwargs = _to_list(other_kwargs, "other_kwargs", npool)
         elif isinstance(other_kwargs, (list, tuple)):
             if len(other_kwargs) != npool:
-                raise ValueError("len(hparams['other_pool_kwargs']) must equal "
-                                 "'num_conv_layers'")
+                raise ValueError("The length of hparams['other_pool_kwargs'] "
+                                 "must equal 'num_conv_layers'")
         else:
             raise ValueError("hparams['other_pool_kwargs'] must be either a "
                              "dict or list/tuple")
@@ -396,8 +396,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
             other_kwargs = _to_list(other_kwargs, "other_conv_kwargs", nconv)
         elif isinstance(other_kwargs, (list, tuple)):
             if len(other_kwargs) != nconv:
-                raise ValueError("len(hparams['other_conv_kwargs']) must be "
-                                 "equal to num_conv_layers")
+                raise ValueError("The length of hparams['other_conv_kwargs'] "
+                                 "must be equal to 'num_conv_layers'")
         else:
             raise ValueError("hparams['other_conv_kwargs'] must be a either "
                              "a dict or a list.")
@@ -417,8 +417,9 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                                            len(kernel_size[i]))
             elif (isinstance(other_kwargs[i], (list, tuple))
                   and len(other_kwargs[i]) != kernel_size[i]):
-                raise ValueError("len(hparams['other_conv_kwargs'][i]) must be "
-                                 "equal to len(hparams['kernel_size'][i])")
+                raise ValueError("The length of hparams['other_conv_kwargs'][i]"
+                                 " must be equal to the length of "
+                                 "hparams['kernel_size'][i]")
             for idx, ks_ij in enumerate(kernel_size[i]):
                 name = uniquify_str("conv_%d" % (i + 1), names)
                 names.append(name)
@@ -574,8 +575,10 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 infers from inputs automatically.
             data_format (optional): Data type of the input tensor. If
                 ``channels_last``, the last dimension will be treated as channel
-                dimension. If ``channels_first``, first dimension will be
-                treated as channel dimension. Defaults to None.
+                dimension so the size of the :attr:`input` should be
+                `[batch_size, X, channel]`. If ``channels_first``, first
+                dimension will be treated as channel dimension so the size
+                should be `[batch_size, channel, X]`. Defaults to None.
                 If None, the value will be picked from hyperparameters.
         Returns:
             The output of the final layer.
