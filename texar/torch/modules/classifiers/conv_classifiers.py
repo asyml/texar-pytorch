@@ -69,9 +69,12 @@ class Conv1DClassifier(ClassifierBase):
         self._num_classes = self._hparams.num_classes
         if self._num_classes > 0:
             if self._hparams.num_dense_layers <= 0:
+                if in_features is None:
+                    raise ValueError("'in_features' is required for logits "
+                                     "layer when 'num_dense_layers' <= 0")
                 self._encoder.append_layer({"type": "Flatten"})
                 ones = torch.ones(1, in_channels, in_features)
-                input_size = self._encoder._infer_dense_layer_input_size(ones)
+                input_size = self._encoder._infer_dense_layer_input_size(ones)  # pylint: disable=protected-access
                 self.hparams.logit_layer_kwargs.in_features = input_size[1]
 
             logit_kwargs = self._hparams.logit_layer_kwargs
@@ -170,11 +173,11 @@ class Conv1DClassifier(ClassifierBase):
                 first be masked out before feeding to the layers.
             dtype (optional): Type of the inputs. If not provided, infers
                 from inputs automatically.
-            data_format(optional): Data type of the input tensor. If
+            data_format (optional): Data type of the input tensor. If
                 ``channels_last``, the last dimension will be treated as channel
-                 dimension. If ``channels_first``, first dimension will be
-                 treated as channel dimension. Defaults to None.
-                 If None, the value will be picked from hparams.
+                dimension. If ``channels_first``, first dimension will be
+                treated as channel dimension. Defaults to None.
+                If None, the value will be picked from hyperparameters.
 
         Returns:
             A tuple ``(logits, pred)``, where

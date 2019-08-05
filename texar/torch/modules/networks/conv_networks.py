@@ -165,6 +165,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                  For example, the default values will create 3 convolution
                  layers, each of which has kernel size of 3, 4, and 5,
                  respectively, and has output channel 128.
+
                - If `"num_conv_layers"` > 1, this must be a list of length
                  ``"num_conv_layers"``. Each element can be an ``int`` or a
                  ``int`` list of arbitrary length denoting the kernel size of
@@ -185,6 +186,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
                - If a dict, the same dict is applied to all the convolution
                  layers.
+
                - If a list, the length must equal ``"num_conv_layers"``. This
                  list can contain nested lists. If the convolution layer at
                  index i has multiple kernel sizes, then the corresponding
@@ -225,8 +227,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
            `"other_pool_kwargs"`: list or dict, optional
                Other keyword arguments for pooling layer class constructor.
 
-               - If a dict, the same dict is applied to all the pooling
-                 layers.
+               - If a dict, the same dict is applied to all the pooling layers.
+
                - If a list, the length must equal ``"num_conv_layers"``. The
                  pooling arguments for layer i will be the element at index i
                  from this list.
@@ -570,11 +572,11 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 layers.
             dtype (optional): Type of the inputs. If not provided,
                 infers from inputs automatically.
-            data_format(optional): Data type of the input tensor. If
+            data_format (optional): Data type of the input tensor. If
                 ``channels_last``, the last dimension will be treated as channel
-                 dimension. If ``channels_first``, first dimension will be
-                 treated as channel dimension. Defaults to None.
-                 If None, the value will be picked from hparams.
+                dimension. If ``channels_first``, first dimension will be
+                treated as channel dimension. Defaults to None.
+                If None, the value will be picked from hyperparameters.
         Returns:
             The output of the final layer.
         """
