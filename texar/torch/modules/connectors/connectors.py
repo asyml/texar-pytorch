@@ -105,6 +105,7 @@ def _mlp_transform(inputs: TensorStruct,
                    ) -> Any:
     r"""Transforms inputs through a fully-connected layer that creates
     the output with specified size.
+
     Args:
         inputs: A ``Tensor`` of shape ``[batch_size, ..., finale_state]``
             (i.e., batch-major), or a (nested) tuple of such elements.
