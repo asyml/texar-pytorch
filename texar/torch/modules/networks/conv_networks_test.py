@@ -178,6 +178,51 @@ class Conv1DNetworkTest(unittest.TestCase):
         self.assertEqual(output.shape, torch.Size([128, 10]))
         self.assertEqual(output.size(-1), network.output_size)
 
+    def test_sequence_length(self):
+        batch_size = 4
+        channels = 64
+        max_time = 300
+        sequence_lengths = torch.LongTensor(batch_size).random_(1, max_time)
+        inputs = torch.ones([batch_size, channels, max_time])
+        hparams = {
+            # Conv layers
+            "num_conv_layers": 2,
+            "out_channels": 128,
+            "kernel_size": [[3, 4, 5], 4],
+            "other_conv_kwargs": {"padding": 0},
+            # Pooling layers
+            "pooling": "AvgPool1d",
+            "pool_size": 2,
+            "pool_stride": 1,
+            # Dense layers
+            "num_dense_layers": 0,
+            "dense_activation": "ReLU",
+            "other_dense_kwargs": None,
+            # Dropout
+            "dropout_conv": [0, 1, 2],
+            "dropout_dense": 2
+        }
+
+        network = Conv1DNetwork(in_channels=inputs.shape[1],
+                                in_features=inputs.shape[2],
+                                hparams=hparams)
+        outputs = network(input=inputs, sequence_length=sequence_lengths)
+        self.assertEqual(
+            outputs.shape,
+            torch.Size([batch_size, network.hparams["out_channels"], 884]))
+
+        # channels last
+        inputs = torch.ones([batch_size, max_time, channels])
+        network = Conv1DNetwork(in_channels=inputs.shape[2],
+                                in_features=inputs.shape[1],
+                                hparams=hparams)
+        outputs = network(input=inputs,
+                          sequence_length=sequence_lengths,
+                          data_format="channels_last")
+        self.assertEqual(
+            outputs.shape,
+            torch.Size([batch_size, 884, network.hparams["out_channels"]]))
+
 
 if __name__ == "__main__":
     unittest.main()

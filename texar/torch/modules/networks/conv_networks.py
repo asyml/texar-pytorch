@@ -583,17 +583,33 @@ class Conv1DNetwork(FeedForwardNetworkBase):
         if data_format is None:
             data_format = self.hparams["data_format"]
 
-        if data_format == "channels_last":
+        if data_format == "channels_first":
+            # masking requires channels in last dimension
             input = input.permute(0, 2, 1)
 
-        if sequence_length is not None:
-            input = mask_sequences(input, sequence_length,
-                                   dtype=dtype, time_major=False)
-        output = super().forward(input)
+            if sequence_length is not None:
+                input = mask_sequences(input, sequence_length,
+                                       dtype=dtype, time_major=False)
 
-        if (self._hparams.num_dense_layers <= 0
-                and data_format == "channels_last"):
-            output = output.permute(0, 2, 1)
+            # network is constructed for channel first tensors
+            input = input.permute(0, 2, 1)
+
+            output = super().forward(input)
+
+        elif data_format == "channels_last":
+            if sequence_length is not None:
+                input = mask_sequences(input, sequence_length,
+                                       dtype=dtype, time_major=False)
+
+            input = input.permute(0, 2, 1)
+
+            output = super().forward(input)
+
+            # transpose only when no dense layers
+            if self._hparams.num_dense_layers <= 0:
+                output = output.permute(0, 2, 1)
+        else:
+            raise ValueError("Invalid 'data_format'")
 
         return output
 
