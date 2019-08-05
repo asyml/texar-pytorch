@@ -629,7 +629,19 @@ class Conv1DNetwork(FeedForwardNetworkBase):
     @property
     def output_size(self) -> int:
         if self.hparams.num_dense_layers <= 0:
-            return self._hparams.out_channels * len(self._hparams.kernel_size)
+            out_channels = self._hparams.out_channels
+            if not isinstance(out_channels, (list, tuple)):
+                out_channels = [out_channels]
+            nconv = self._hparams.num_conv_layers
+            if nconv == 1:
+                kernel_size = _to_list(self._hparams.kernel_size)
+                if not isinstance(kernel_size[0], (list, tuple)):
+                    kernel_size = [kernel_size]
+            elif nconv > 1:
+                kernel_size = _to_list(self._hparams.kernel_size,
+                                       'kernel_size', nconv)
+                kernel_size = [_to_list(ks) for ks in kernel_size]
+            return out_channels[-1] * len(kernel_size[-1])
         else:
             out_features = self._hparams.out_features
             if isinstance(out_features, (list, tuple)):

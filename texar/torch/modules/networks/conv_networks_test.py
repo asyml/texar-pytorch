@@ -91,10 +91,10 @@ class Conv1DNetworkTest(unittest.TestCase):
             "dropout_dense": []
         }
 
-        network_3 = Conv1DNetwork(in_channels=inputs_2.shape[1],
-                                  in_features=inputs_2.shape[2],
+        inputs_3 = torch.ones([128, 64, 300])
+        network_3 = Conv1DNetwork(in_channels=inputs_3.shape[1],
+                                  in_features=inputs_3.shape[2],
                                   hparams=hparams)
-        inputs_3 = inputs_2
         outputs_3 = network_3(inputs_3)
         num_of_kernels = len(hparams["kernel_size"])
         out_channels = hparams["out_channels"]
