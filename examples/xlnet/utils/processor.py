@@ -293,3 +293,4 @@ class ImdbProcessor(DataProcessor):
                 examples.append(InputExample(
                     guid=str(filename), text_a=text, text_b=None, label=label))
         return examples
+

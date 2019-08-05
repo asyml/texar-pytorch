@@ -171,10 +171,12 @@ def main(args):
         model=model,
         train_data=datasets["train"],
         valid_data=datasets["dev"],
-        test_data=datasets["test"],
+        test_data=datasets.get("test", None),
         checkpoint_dir=args.save_dir,
         save_every=get_condition(args.save_steps),
-        train_metrics=("loss", metric.RunningAverage(args.display_steps * bps)),
+        train_metrics=[
+            ("loss", metric.RunningAverage(args.display_steps * bps)),
+            metric.LR(optim)],
         optimizer=optim,
         lr_scheduler=scheduler,
         grad_clip=args.grad_clip,
@@ -184,8 +186,9 @@ def main(args):
         valid_metrics=[valid_metric, ("loss", metric.Average())],
         stop_training_on=cond.iteration(args.train_steps * bps),
         log_format="{time} : Epoch {epoch} @ {iteration:5d}it "
-                   "({speed}), loss = {loss:.3f}",
+                   "({speed}), LR = {LR:.3e}, loss = {loss:.3f}",
         test_mode='eval',
+        show_live_progress=True,
     )
 
     if args.checkpoint is not None:
@@ -194,7 +197,7 @@ def main(args):
     if args.mode == 'train':
         executor.train()
         executor.save()
-        executor.test()
+        executor.test(tx.utils.dict_fetch(datasets, ["dev", "test"]))
     else:
         if args.checkpoint is None:
             executor.load(load_training_state=False)  # load previous best model

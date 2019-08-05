@@ -1,7 +1,8 @@
 from collections import deque
-from typing import List, Deque
+from typing import List, Deque, Any
 
 import numpy as np
+from torch.optim.optimizer import Optimizer
 
 from texar.torch.run.metric.base_metric import StreamingMetric
 
@@ -9,6 +10,7 @@ __all__ = [
     "Average",
     "AveragePerplexity",
     "RunningAverage",
+    "LR",
 ]
 
 
@@ -69,13 +71,27 @@ class RunningAverage(StreamingMetric[float, float]):
             self.history = deque(predicted[:-self.queue_size])
             self.sum = sum(self.history)
         else:
-            for val in predicted:
-                self.sum += val
-                if len(self.history) == self.queue_size:
-                    self.sum -= self.history.popleft()
-                self.history.append(val)
+            for _ in range(len(predicted) - (self.queue_size - len(self.history))):
+                self.sum -= self.history.popleft()
+            self.sum += sum(predicted)
+            self.history.extend(predicted)
 
     def value(self) -> float:
         if len(self.history) == 0:
             return 0.0
         return self.sum / len(self.history)
+
+
+class LR(StreamingMetric[Any, float]):
+    requires_pred = False
+    requires_label = False
+
+    def __init__(self, optimizer: Optimizer):
+        super().__init__(pred_name=None)
+        self.optimizer = optimizer
+
+    def add(self, _, __):
+        pass
+
+    def value(self) -> float:
+        return self.optimizer.param_groups[0]['lr']

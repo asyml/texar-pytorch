@@ -781,12 +781,56 @@ class Executor:
         # Register events & actions.
         train_logging_hook = self._create_logging_hook(
             self.log_format, self.train_metrics, self._train_tracker)
-        for cond in self._log_conditions:
-            self._register_action(cond, train_logging_hook)
-        self._register_hook((Event.Validation, True), self._create_logging_hook(
-            self.eval_log_format, self.valid_metrics, self._valid_tracker))
-        self._register_hook((Event.Testing, True), self._create_logging_hook(
-            self.eval_log_format, self.test_metrics, self._test_tracker))
+        valid_logging_hook = self._create_logging_hook(
+            self.eval_log_format, self.valid_metrics, self._valid_tracker)
+        test_logging_hook = self._create_logging_hook(
+            self.eval_log_format, self.test_metrics, self._test_tracker)
+
+        if show_live_progress:
+            # Progress is displayed by writing the log string after every
+            # iteration, and clearing the line. In this case, when a normal log
+            # condition is triggered, a newline character is simply printed.
+            # However, this applies to terminal output only, so we revert to
+            # the original approach for files.
+            progress_log_kwargs = dict(
+                skip_non_tty=True, clear_line=True, newline=False)
+
+            def _flush_log_hook(executor: 'Executor'):
+                executor.write_log("", mode="log", skip_non_tty=True)
+
+            # TODO: Check terminal width and do something to prevent wrapping?
+
+            self._register_hook(
+                (Event.Iteration, True),
+                functools.partial(train_logging_hook, **progress_log_kwargs))
+            for cond in self._log_conditions:
+                self._register_action(cond, _flush_log_hook)
+                self._register_action(
+                    cond, functools.partial(train_logging_hook, skip_tty=True))
+
+            self._register_hook(
+                (Event.ValidationIteration, True),
+                functools.partial(valid_logging_hook, **progress_log_kwargs))
+            self._register_hook((Event.Validation, True), _flush_log_hook)
+            self._register_hook(
+                (Event.Validation, True),
+                functools.partial(valid_logging_hook, skip_tty=True))
+
+            self._register_hook(
+                (Event.TestingIteration, True),
+                functools.partial(test_logging_hook, **progress_log_kwargs))
+            self._register_hook((Event.Testing, True), _flush_log_hook)
+            self._register_hook(
+                (Event.Testing, True),
+                functools.partial(test_logging_hook, skip_tty=True))
+        else:
+            train_logging_hook = self._create_logging_hook(
+                self.log_format, self.train_metrics, self._train_tracker)
+            for cond in self._log_conditions:
+                self._register_action(cond, train_logging_hook)
+
+            self._register_hook((Event.Validation, True), valid_logging_hook)
+            self._register_hook((Event.Testing, True), test_logging_hook)
 
         for cond in self._valid_conditions:
             self._register_action(cond, self._validate.__func__)  # type: ignore
@@ -803,7 +847,31 @@ class Executor:
             self._register_action(cond, self.terminate.__func__)  # type: ignore
 
     def write_log(self, log_str: str, *, mode: str = "info",
-                  skip_tty: bool = False):
+                  skip_tty: bool = False, skip_non_tty: bool = False,
+                  newline: bool = True, clear_line: bool = False) -> None:
+        r"""Write a string to log.
+
+        Args:
+            log_str (str): The string to log.
+            mode (str): The logging mode. Supported values are:
+
+                - ``"log"``: A plain log. Logs created by :attr:`log_every` and
+                  :attr:`eval_log_every` are in this format.
+                - ``"info"``: Indicates a result or notification. Includes a
+                  header with ``"INFO"`` and a timestamp in green color.
+                  This is the default mode.
+                - ``"warning"``: Indicates an unexpected or incorrect situation.
+                  Includes a header with ``"WARNING"`` and a timestamp. The
+                  entire warning is in red color.
+            skip_tty: If `True`, the log string will not be written to terminal
+                log destinations. Defaults to `False`.
+            skip_non_tty: If `True`, the log string will not be written to
+                non-terminal (e.g., files) destinations. Defaults to `False`.
+            newline: If `True`, print a newline character after printing the log
+                string. Defaults to `True`.
+            clear_line: If `True`, clear the line before printing. This only
+                works for terminals. Defaults to `False`.
+        """
         if mode == "log":
             pass
         elif mode == "info":
@@ -821,11 +889,16 @@ class Executor:
             if dest.isatty():
                 if skip_tty:
                     continue
+                if clear_line:
+                    dest.write(utils.CLEAR_LINE)
                 dest.write(log_str)
             else:
+                if skip_non_tty:
+                    continue
                 # Erase color codes if the destination is not a terminal.
                 dest.write(plain_str)
-            dest.write("\n")
+            if newline:
+                dest.write("\n")
             dest.flush()
 
     # pylint: disable=unused-argument,no-self-use,function-redefined
@@ -935,11 +1008,32 @@ class Executor:
 
     # pylint: enable=unused-argument,no-self-use,function-redefined
 
-    def save(self):
-        # TODO: support saving to custom directory.
+    def save(self, path: Optional[str] = None,
+             save_training_state: Optional[bool] = None):
+        r"""Save a snapshot of the current state to a checkpoint file.
+
+        Args:
+            path (str, optional): Path to the checkpoint directory. If `None`,
+                :attr:`checkpoint_dir` in the constructor arguments will be
+                used. Defaults to `None`.
+            save_training_state (bool): If `True`, will save entire training
+                state from checkpoint. If `False`, only save model weights.
+                If `None`, the value from the constructor arguments will be
+                used. Defaults to `None`.
+        """
+        if path is not None:
+            ckpt_dir = Path(path)
+        elif self.checkpoint_dir is not None:
+            ckpt_dir = self.checkpoint_dir
+        else:
+            raise ValueError(
+                "`path` must be specified when `checkpoint_dir` is `None`")
+
+        if save_training_state is None:
+            save_training_state = self._save_training_state
 
         # Load the checkpoint meta-info file.
-        meta_path = self.checkpoint_dir / self._CHECKPOINT_METAINFO_FILE
+        meta_path = ckpt_dir / self._CHECKPOINT_METAINFO_FILE
         if meta_path.exists():
             try:
                 with meta_path.open("rb") as f:
@@ -955,7 +1049,7 @@ class Executor:
             while len(meta_dict) >= self.max_to_keep:
                 checkpoint_name = min(
                     meta_dict, key=lambda name: meta_dict[name]["timestamp"])
-                (self.checkpoint_dir / checkpoint_name).unlink()
+                (ckpt_dir / checkpoint_name).unlink()
                 del meta_dict[checkpoint_name]
                 self.write_log(f"Previous checkpoint {checkpoint_name} removed "
                                f"due to `max_to_keep`(={self.max_to_keep}) "
@@ -963,16 +1057,16 @@ class Executor:
 
         timestamp = time.time()
         checkpoint_name = str(timestamp) + self._CHECKPOINT_EXTENSION
-        path = self.checkpoint_dir / checkpoint_name
-        if path.exists():
+        ckpt_path = ckpt_dir / checkpoint_name
+        if ckpt_path.exists():
             idx = 0
             while True:
                 checkpoint_name = (
                         str(timestamp) + f".{idx}" + self._CHECKPOINT_EXTENSION)
-                path = self.checkpoint_dir / checkpoint_name
-                if not path.exists():
+                ckpt_path = ckpt_dir / checkpoint_name
+                if not ckpt_path.exists():
                     break
-        if self._save_training_state and self.optimizer is not None:
+        if save_training_state and self.optimizer is not None:
             train_state = utils.SavedTrainingState(
                 model=self.model.state_dict(),
                 optimizer=self.optimizer.state_dict(),
@@ -982,9 +1076,9 @@ class Executor:
                 numpy_rng=np.random.get_state(),
                 torch_rng=torch.random.get_rng_state(),
             )
-            torch.save(train_state, str(path))
+            torch.save(train_state, str(ckpt_path))
         else:
-            torch.save(self.model.state_dict(), str(path))
+            torch.save(self.model.state_dict(), str(ckpt_path))
         meta_dict[checkpoint_name] = {
             "status": self.status,
             "timestamp": timestamp,
@@ -992,7 +1086,7 @@ class Executor:
         with meta_path.open("wb") as f:
             pickle.dump(meta_dict, f)
 
-        self.write_log(f"Current checkpoint saved to {path}", mode="info")
+        self.write_log(f"Current checkpoint saved to {ckpt_path}", mode="info")
 
     def load(self, path: Optional[str] = None,
              load_training_state: bool = True,
