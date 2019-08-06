@@ -24,6 +24,7 @@ from texar.torch.core.layers import get_initializer
 from texar.torch.hyperparams import HParams
 from texar.torch.modules.classifiers.classifier_base import ClassifierBase
 from texar.torch.modules.encoders.gpt2_encoder import GPT2Encoder
+from texar.torch.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
 from texar.torch.utils.utils import dict_fetch
 
 __all__ = [
@@ -31,7 +32,7 @@ __all__ = [
 ]
 
 
-class GPT2Classifier(ClassifierBase):
+class GPT2Classifier(ClassifierBase, PretrainedGPT2Mixin):
     r"""Classifier based on GPT2 modules.
 
     This is a combination of the

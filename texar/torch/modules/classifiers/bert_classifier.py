@@ -24,6 +24,7 @@ from texar.torch.core.layers import get_initializer
 from texar.torch.hyperparams import HParams
 from texar.torch.modules.classifiers.classifier_base import ClassifierBase
 from texar.torch.modules.encoders.bert_encoders import BERTEncoder
+from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
 from texar.torch.utils.utils import dict_fetch
 
 __all__ = [
@@ -31,7 +32,7 @@ __all__ = [
 ]
 
 
-class BERTClassifier(ClassifierBase):
+class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
     r"""Classifier based on BERT modules.
 
     This is a combination of the

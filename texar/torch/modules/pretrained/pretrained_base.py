@@ -36,7 +36,7 @@ __all__ = [
 def default_download_dir(name: str) -> Path:
     r"""Return the directory to which packages will be downloaded by default.
     """
-    package_dir: Path = Path(__file__).parents[3]  # 4 levels up
+    package_dir: Path = Path(__file__).parents[4]  # 5 levels up
     if os.access(package_dir, os.W_OK):
         texar_download_dir = package_dir / 'texar_download'
     else:
@@ -110,20 +110,22 @@ class PretrainedMixin(ModuleBase, ABC):
                     "argument is not None.")
 
         self.pretrained_model_dir = None
+        self.pretrained_model_name = pretrained_model_name
 
-        if pretrained_model_name is None:
-            pretrained_model_name = self._hparams.pretrained_model_name
-        if pretrained_model_name is not None:
+        if self.pretrained_model_name is None:
+            self.pretrained_model_name = self._hparams.pretrained_model_name
+        if self.pretrained_model_name is not None:
             self.pretrained_model_dir = self.download_checkpoint(
-                pretrained_model_name, cache_dir)
+                self.pretrained_model_name, cache_dir)
             pretrained_model_hparams = self._transform_config(
-                self.pretrained_model_dir)
+                self.pretrained_model_name, self.pretrained_model_dir)
             self._hparams = HParams(
                 pretrained_model_hparams, self._hparams.todict())
 
     def init_pretrained_weights(self, *args, **kwargs):
         if self.pretrained_model_dir:
             self._init_from_checkpoint(
+                self.pretrained_model_name,
                 self.pretrained_model_dir, *args, **kwargs)
         else:
             self.reset_parameters()
@@ -204,11 +206,13 @@ class PretrainedMixin(ModuleBase, ABC):
 
     @classmethod
     @abstractmethod
-    def _transform_config(cls, cache_dir: str) -> Dict[str, Any]:
+    def _transform_config(cls, pretrained_model_name: str,
+                          cache_dir: str) -> Dict[str, Any]:
         r"""Load the official configuration file and transform it into
         Texar-style hyperparameters.
 
         Args:
+            pretrained_model_name (str): Name of the pre-trained model.
             cache_dir (str): Path to the cache directory.
 
         Returns:
@@ -217,11 +221,13 @@ class PretrainedMixin(ModuleBase, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _init_from_checkpoint(self, cache_dir: str, **kwargs):
+    def _init_from_checkpoint(self, pretrained_model_name: str,
+                              cache_dir: str, **kwargs):
         r"""Initialize model parameters from weights stored in the pre-trained
         checkpoint.
 
         Args:
+            pretrained_model_name (str): Name of the pre-trained model.
             cache_dir (str): Path to the cache directory.
             **kwargs: Additional arguments for specific models.
         """

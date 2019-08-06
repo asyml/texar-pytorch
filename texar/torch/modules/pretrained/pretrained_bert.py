@@ -76,43 +76,47 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
     }
 
     @classmethod
-    def _transform_config(cls, cache_dir: str) -> Dict[str, Any]:
+    def _transform_config(cls, pretrained_model_name: str,
+                          cache_dir: str) -> Dict[str, Any]:
         info = list(os.walk(cache_dir))
         root, _, files = info[0]
         config_path = None
-        for file in files:
-            if file.endswith('config.json'):
-                config_path = os.path.join(root, file)
-                with open(config_path) as f:
-                    config_ckpt = json.loads(f.read())
-                    hidden_dim = config_ckpt['hidden_size']
-                    vocab_size = config_ckpt['vocab_size']
-                    type_vocab_size = config_ckpt['type_vocab_size']
-                    position_size = config_ckpt['max_position_embeddings']
-                    embedding_dropout = config_ckpt['hidden_dropout_prob']
-                    num_blocks = config_ckpt['num_hidden_layers']
-                    num_heads = config_ckpt['num_attention_heads']
-                    dropout_rate = config_ckpt['attention_probs_dropout_prob']
-                    residual_dropout = config_ckpt['hidden_dropout_prob']
-                    intermediate_size = config_ckpt['intermediate_size']
-                    hidden_act = config_ckpt['hidden_act']
 
-            elif file.endswith('model.pt'):
-                config_path = os.path.join(root, file)
-                device = torch.device(
-                    "cuda" if torch.cuda.is_available() else "cpu")
-                args = torch.load(config_path, map_location=device)['args']
-                hidden_dim = args.encoder_embed_dim
-                vocab_size = 50265
-                type_vocab_size = 0
-                position_size = args.max_positions + 2
-                embedding_dropout = args.dropout
-                num_blocks = args.encoder_layers
-                num_heads = args.encoder_attention_heads
-                dropout_rate = args.attention_dropout
-                residual_dropout = args.dropout
-                intermediate_size = args.encoder_ffn_embed_dim
-                hidden_act = args.activation_fn
+        if pretrained_model_name.startswith('bert'):
+            for file in files:
+                if file.endswith('config.json'):
+                    config_path = os.path.join(root, file)
+                    with open(config_path) as f:
+                        config_ckpt = json.loads(f.read())
+                        hidden_dim = config_ckpt['hidden_size']
+                        vocab_size = config_ckpt['vocab_size']
+                        type_vocab_size = config_ckpt['type_vocab_size']
+                        position_size = config_ckpt['max_position_embeddings']
+                        embedding_dropout = config_ckpt['hidden_dropout_prob']
+                        num_blocks = config_ckpt['num_hidden_layers']
+                        num_heads = config_ckpt['num_attention_heads']
+                        dropout_rate = config_ckpt[
+                            'attention_probs_dropout_prob']
+                        residual_dropout = config_ckpt['hidden_dropout_prob']
+                        intermediate_size = config_ckpt['intermediate_size']
+                        hidden_act = config_ckpt['hidden_act']
+
+        if pretrained_model_name.startswith('roberta'):
+            for file in files:
+                if file.endswith('model.pt'):
+                    config_path = os.path.join(root, file)
+                    args = torch.load(config_path, map_location="cpu")['args']
+                    hidden_dim = args.encoder_embed_dim
+                    vocab_size = 50265
+                    type_vocab_size = 0
+                    position_size = args.max_positions + 2
+                    embedding_dropout = args.dropout
+                    num_blocks = args.encoder_layers
+                    num_heads = args.encoder_attention_heads
+                    dropout_rate = args.attention_dropout
+                    residual_dropout = args.dropout
+                    intermediate_size = args.encoder_ffn_embed_dim
+                    hidden_act = args.activation_fn
 
         if config_path is None:
             raise ValueError(f"Cannot find the config file in {cache_dir}")
@@ -173,10 +177,11 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
         return configs
 
-    def _init_from_checkpoint(self, cache_dir: str, **kwargs):
-        if cache_dir.split('/')[-1].startswith('bert'):
+    def _init_from_checkpoint(self, pretrained_model_name: str,
+                              cache_dir: str, **kwargs):
+        if pretrained_model_name.startswith('bert'):
             self._init_bert_from_checkpoint(cache_dir)
-        if cache_dir.split('/')[-1].startswith('roberta'):
+        if pretrained_model_name.startswith('roberta'):
             self._init_roberta_from_checkpoint(cache_dir)
 
     def _init_bert_from_checkpoint(self, cache_dir: str):
@@ -324,8 +329,7 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         }
 
         checkpoint_path = os.path.abspath(os.path.join(cache_dir, 'model.pt'))
-        device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu")
+        device = next(self.parameters()).device
         params = torch.load(checkpoint_path, map_location=device)['model']
 
         for name, tensor in params.items():
