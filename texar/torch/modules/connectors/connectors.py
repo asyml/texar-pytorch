@@ -90,7 +90,7 @@ def _sum_output_size(output_size: OutputSize) -> int:
     if isinstance(flat_output_size[0], torch.Size):
         size_list = [0] * len(flat_output_size)
         for (i, shape) in enumerate(flat_output_size):
-            size_list[i] = shape.numel()
+            size_list[i] = _prod(shape)
     else:
         size_list = flat_output_size
     ret = sum(size_list)
@@ -130,7 +130,7 @@ def _mlp_transform(inputs: TensorStruct,
     if isinstance(flat_output_size[0], torch.Size):
         size_list = [0] * len(flat_output_size)
         for (i, shape) in enumerate(flat_output_size):
-            size_list[i] = shape.numel()
+            size_list[i] = _prod(shape)
     else:
         size_list = flat_output_size
 
@@ -158,8 +158,6 @@ def _prod(x: Tuple[int, ...]) -> int:
     Args:
         x: A ``tuple`` of ``int``.
     """
-    if isinstance(x, torch.Size):
-        return x.numel()
     res = 1
     for i in x:
         res *= i
