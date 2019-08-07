@@ -55,7 +55,7 @@ def parse_args():
         "--checkpoint", type=str, default=None,
         help="Path to a saved checkpoint file to load")
     parser.add_argument(
-        "--save-dir", type=str, default="saved_models/",
+        "--save-dir", type=str, default=None,
         help="Directory to save model checkpoints")
 
     parser.add_argument(
@@ -172,8 +172,9 @@ def main(args):
         train_data=datasets["train"],
         valid_data=datasets["dev"],
         test_data=datasets.get("test", None),
-        checkpoint_dir=args.save_dir,
+        checkpoint_dir=args.save_dir or f"saved_models/{args.task}",
         save_every=get_condition(args.save_steps),
+        max_to_keep=1,
         train_metrics=[
             ("loss", metric.RunningAverage(args.display_steps * bps)),
             metric.LR(optim)],

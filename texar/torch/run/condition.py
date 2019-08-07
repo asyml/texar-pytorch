@@ -121,13 +121,16 @@ class iteration(Condition):
     """
 
     def __new__(cls, num_iters: int = 1, mode: str = "train"):
+        obj = super().__new__(cls)
         if mode == "train":
-            return super().__new__(_training_iter)
+            obj.check_iteration_end = obj._check_iteration_end
         elif mode == "valid":
-            return super().__new__(_valid_iter)
+            obj.check_validation_iteration_end = obj._check_iteration_end
         elif mode == "test":
-            return super().__new__(_test_iter)
-        raise ValueError(f"Invalid mode {mode}")
+            obj.check_testing_iteration_end = obj._check_iteration_end
+        else:
+            raise ValueError(f"Invalid mode {mode}")
+        return obj
 
     def __init__(self, num_iters: int = 1, mode: str = "train"):
         if not isinstance(num_iters, int) or num_iters <= 0:
@@ -146,18 +149,6 @@ class iteration(Condition):
             self.count = 0
             return True
         return False
-
-
-class _training_iter(iteration):
-    check_iteration_end = iteration._check_iteration_end
-
-
-class _valid_iter(iteration):
-    check_validation_iteration_end = iteration._check_iteration_end
-
-
-class _test_iter(iteration):
-    check_testing_iteration_end = iteration._check_iteration_end
 
 
 class validation(Condition):

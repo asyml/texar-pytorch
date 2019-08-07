@@ -56,6 +56,8 @@ args = parser.parse_args()
 config_model: Any = importlib.import_module(args.config_model)
 config_data: Any = importlib.import_module(args.config_data)
 
+make_deterministic(config_model.random_seed)
+
 
 class ModelWrapper(nn.Module):
     def __init__(self, model: Transformer, beam_width: int):
@@ -79,6 +81,22 @@ class ModelWrapper(nn.Module):
         return {"preds": decoded_ids}
 
 
+def spm_decode(tokens: List[str]) -> List[str]:
+    spm_bos_token = "▁"
+    words = []
+    pieces = []
+    for t in tokens:
+        if t[0] == spm_bos_token:
+            if len(pieces) > 0:
+                words.append(''.join(pieces))
+            pieces = [t[1:]]
+        else:
+            pieces.append(t)
+    if len(pieces) > 0:
+        words.append(''.join(pieces))
+    return words
+
+
 class FileBLEUMetric(metric.SimpleMetric[List[int], float]):
     def __init__(self, vocab: tx.data.Vocab,
                  file_path: Optional[str] = None):
@@ -97,19 +115,7 @@ class FileBLEUMetric(metric.SimpleMetric[List[int], float]):
             tokens = tokens[:pos]
         vocab_map = self.vocab.id_to_token_map_py
 
-        spm_bos_token = "▁"
-        words = []
-        pieces = []
-        for t in tokens:
-            w = vocab_map[t]
-            if w[0] == spm_bos_token:
-                if len(pieces) > 0:
-                    words.append(''.join(pieces))
-                pieces = [w[1:]]
-            else:
-                pieces.append(w)
-        if len(pieces) > 0:
-            words.append(''.join(pieces))
+        words = spm_decode([vocab_map[t] for t in tokens])
         sentence = ' '.join(words)
         return sentence
 
@@ -124,9 +130,34 @@ class FileBLEUMetric(metric.SimpleMetric[List[int], float]):
         hyp_file, ref_file = tx.utils.write_paired_text(
             hypotheses, references,
             path, mode="s", src_fname_suffix="hyp", tgt_fname_suffix="ref")
-        bleu = tx.evals.file_bleu(
-            ref_file, hyp_file, case_sensitive=True)
+        bleu = tx.evals.file_bleu(ref_file, hyp_file, case_sensitive=True)
         return bleu
+
+
+class BLEUWrapper(metric.BLEU):
+    def __init__(self, vocab: tx.data.Vocab):
+        super().__init__(pred_name="preds", label_name="target_output")
+        self.vocab = vocab
+
+    @property
+    def metric_name(self) -> str:
+        return "BLEU"
+
+    def _to_str(self, tokens: List[int]) -> str:
+        pos = next((idx for idx, x in enumerate(tokens)
+                    if x == self.vocab.eos_token_id), -1)
+        if pos != -1:
+            tokens = tokens[:pos]
+        vocab_map = self.vocab.id_to_token_map_py
+
+        words = [vocab_map[t] for t in tokens]
+        sentence = ' '.join(words)
+        return sentence
+
+    def add(self, predicted, labels) -> None:
+        predicted = [self._to_str(s) for s in predicted]
+        labels = [self._to_str(s) for s in labels]
+        super().add(predicted, labels)
 
 
 def main():
@@ -182,14 +213,18 @@ def main():
         log_every=cond.iteration(config_data.display_steps),
         validate_every=[cond.iteration(config_data.eval_steps), cond.epoch(1)],
         stop_training_on=cond.epoch(config_data.max_train_epoch),
-        train_metrics=(
-            "loss", metric.RunningAverage(config_data.display_steps)),
-        valid_metrics=FileBLEUMetric(vocab, output_dir / "tmp.eval"),
+        train_metrics=[
+            ("loss", metric.RunningAverage(1)),  # only show current loss
+            ("lr", metric.LR(optim))],
+        log_format="{time} : Epoch {epoch:2d} @ {iteration:6d}it "
+                   "({progress}%, {speed}), lr = {lr:.3e}, loss = {loss:.3f}",
+        valid_metrics=BLEUWrapper(vocab),
         test_metrics=FileBLEUMetric(vocab, output_dir / "test.output"),
         validate_mode='predict',
         checkpoint_dir=args.output_dir,
         save_every=cond.validation(better=True),
         max_to_keep=1,
+        show_live_progress=True,
     )
     if args.run_mode == "train_and_evaluate":
         executor.write_log("Begin running with train_and_evaluate mode")

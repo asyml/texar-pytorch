@@ -1,5 +1,3 @@
-import copy
-import functools
 import pickle
 import random
 import re
@@ -492,6 +490,10 @@ class Executor:
              1. :attr:`test_metrics` is `None`;
              2. :attr:`validate_mode` is the same as :attr:`test_mode`.
 
+             In this case, calling validation while testing (or vice versa)
+             could cause incorrect results since the same |Metric| instances
+             are used.
+
     `test_every`: |Condition|, or a list
         Conditions that, when triggered, performs testing.
 
@@ -519,10 +521,11 @@ class Executor:
     `log_destination`: ``str``, IO object, or a list
         Logging destinations. Acceptable values include:
 
-        - A string, denoting the path to a log file. The file will be opened in
-          "append" (``"a"``) mode.
         - An IO object. This can be an opened file, ``sys.stdout``, or any other
           file-like object.
+        - A string, denoting the path to a log file. The file will be opened in
+          "append" (``"a"``) mode to prevent accidentally overwriting previous
+          logs. To force overwrite, supply the file IO object instead.
         - A list, with each element being one of the above.
 
         When writing to a file, special syntax for terminals (e.g. color codes)
@@ -599,14 +602,25 @@ class Executor:
 
             2019-08-05 11:36:53 : Epoch 6, valid result = {PearsonR: 0.918, loss: 0.363}
 
-    `print_configs_to_log`: bool
-        If `True`, model architecture and :class:`Executor` configurations will
-        logged in a readable format. Defaults to `True`.
+    `print_model_arch`: bool
+        If `True`, model architecture and will logged in a readable format.
+        Defaults to `True`.
 
-    `show_live_progress`: bool
-        If `True`, live progress will be shown. The specified format string will
-        be shown similar to a sticky progress bar at the bottom of the terminal
-        window, and updated after each iteration.
+    `show_live_progress`: bool or str
+        Controls whether live progress will be shown. Acceptable values include:
+
+        - `True`: Live progress is enabled for training, validation, and
+          testing.
+        - `False`: Live progress is disabled.
+        - ``"train"``: Live progress is enabled for training only.
+        - ``"valid"``: Live progress is enabled for validation only.
+        - ``"test"``: Live progress is enabled for testing only.
+        - ``"eval"``: Live progress is enabled for evaluation (validation &
+          testing).
+
+        If live progress is enabled for a certain stage, the specified format
+        string will be shown similar to a sticky progress bar at the bottom of
+        the terminal window, and updated after each iteration.
 
         Note that live progress is only shown on terminals. It will not be
         printed to log files.
@@ -615,8 +629,8 @@ class Executor:
             This may incur extra overhead because an update requires
             re-evaluating metrics. Make sure that all metrics logged are
             :class:`~texar.torch.run.metric.StreamingMetric`\ s. You can also
-            explicitly log only streaming metrics, disable live progress for
-            evaluation, or use a separate template???
+            explicitly log only streaming metrics, or disable live progress for
+            certain stages.
     """
     _EVENT_TYPES = (Event,)
     _CHECKPOINT_METAINFO_FILE = "checkpoint.meta-info"
@@ -671,9 +685,9 @@ class Executor:
                  log_every: OptionalList[Condition] = None,
                  log_format: Optional[str] = None,
                  log_destination: OptionalList[Union[str, IO[str]]] = None,
-                 print_configs_to_log: bool = True,
+                 print_model_arch: bool = True,
                  eval_log_format: Optional[str] = None,
-                 show_live_progress: bool = False,
+                 show_live_progress: Union[bool, str] = False,
                  # Tensorboard
                  # pylint: disable=unused-argument
                  tensorboard_log_dir: Optional[str] = None,
@@ -700,8 +714,7 @@ class Executor:
 
         # Logging
         self._log_conditions = utils.to_list(log_every)
-        self._print_configs_to_log = print_configs_to_log
-        self._show_progress_bar = show_live_progress
+        self._print_model_arch = print_model_arch
 
         self.log_format: str = log_format or self._defaults["log_format"]
         self.eval_log_format: str = (
@@ -723,12 +736,18 @@ class Executor:
 
         # TODO: Close files somewhere? Maybe `atexit.register`?
         # Create logging files after checkpoint directory is created.
-        self.log_destination: List[IO[str]] = [
-            # We append to the logs to prevent accidentally overwriting previous
-            # logs. To force overwrite, pass IO objects instead of file paths.
-            open(dest, "a") if isinstance(dest, (str, Path)) else dest  # type: ignore
-            for dest in utils.to_list(  # type: ignore
-                log_destination or self._defaults["log_destination"])]
+        self.log_destination: List[IO[str]] = []
+        self._opened_files: List[IO[str]] = []
+        for dest in utils.to_list(
+                log_destination or self._defaults["log_destination"]):
+            if isinstance(dest, (str, Path)):
+                # Append to the logs to prevent accidentally overwriting
+                # previous logs.
+                file = open(dest, "a")
+                self._opened_files.append(file)
+            else:
+                file = dest
+            self.log_destination.append(file)
 
         # Training loop
         self.train_metrics = utils.to_metric_dict(train_metrics)
@@ -742,7 +761,6 @@ class Executor:
         self._stop_training_conditions = utils.to_list(stop_training_on)
         self.num_iters_per_update = num_iters_per_update
         self.grad_clip = grad_clip
-        self._should_terminate = False
 
         # Validation
         self.valid_metrics = utils.to_metric_dict(valid_metrics)
@@ -754,7 +772,7 @@ class Executor:
         # Testing
         if (test_metrics is None and valid_metrics is not None and
                 validate_mode == test_mode):
-            self.test_metrics = copy.deepcopy(self.valid_metrics)
+            self.test_metrics = self.valid_metrics
         else:
             self.test_metrics = utils.to_metric_dict(test_metrics)
         self._test_conditions = utils.to_list(test_every)
@@ -763,7 +781,8 @@ class Executor:
         # Initialize hooks.
         self._hooks = {
             (event, point): defaultdict(list)
-            for event in Event for point in (False, True)}
+            for event_class in self._EVENT_TYPES
+            for event in event_class for point in (False, True)}
 
         self.status = {
             "epoch": 0,
@@ -778,60 +797,15 @@ class Executor:
         self._valid_tracker = utils.ProgressTracker()
         self._test_tracker = utils.ProgressTracker()
 
-        # Register events & actions.
-        train_logging_hook = self._create_logging_hook(
-            self.log_format, self.train_metrics, self._train_tracker)
-        valid_logging_hook = self._create_logging_hook(
-            self.eval_log_format, self.valid_metrics, self._valid_tracker)
-        test_logging_hook = self._create_logging_hook(
-            self.eval_log_format, self.test_metrics, self._test_tracker)
+        self._register_logging_actions(show_live_progress)
 
-        if show_live_progress:
-            # Progress is displayed by writing the log string after every
-            # iteration, and clearing the line. In this case, when a normal log
-            # condition is triggered, a newline character is simply printed.
-            # However, this applies to terminal output only, so we revert to
-            # the original approach for files.
-            progress_log_kwargs = dict(
-                skip_non_tty=True, clear_line=True, newline=False)
+        # Meta variables
+        self._within_event_action = False  # ._fire_event()
+        self._should_terminate = False  # .terminate()
+        self._should_remove_current_action = False  # .remove_action()
+        self._status_line_str: Optional[str] = None
 
-            def _flush_log_hook(executor: 'Executor'):
-                executor.write_log("", mode="log", skip_non_tty=True)
-
-            # TODO: Check terminal width and do something to prevent wrapping?
-
-            self._register_hook(
-                (Event.Iteration, True),
-                functools.partial(train_logging_hook, **progress_log_kwargs))
-            for cond in self._log_conditions:
-                self._register_action(cond, _flush_log_hook)
-                self._register_action(
-                    cond, functools.partial(train_logging_hook, skip_tty=True))
-
-            self._register_hook(
-                (Event.ValidationIteration, True),
-                functools.partial(valid_logging_hook, **progress_log_kwargs))
-            self._register_hook((Event.Validation, True), _flush_log_hook)
-            self._register_hook(
-                (Event.Validation, True),
-                functools.partial(valid_logging_hook, skip_tty=True))
-
-            self._register_hook(
-                (Event.TestingIteration, True),
-                functools.partial(test_logging_hook, **progress_log_kwargs))
-            self._register_hook((Event.Testing, True), _flush_log_hook)
-            self._register_hook(
-                (Event.Testing, True),
-                functools.partial(test_logging_hook, skip_tty=True))
-        else:
-            train_logging_hook = self._create_logging_hook(
-                self.log_format, self.train_metrics, self._train_tracker)
-            for cond in self._log_conditions:
-                self._register_action(cond, train_logging_hook)
-
-            self._register_hook((Event.Validation, True), valid_logging_hook)
-            self._register_hook((Event.Testing, True), test_logging_hook)
-
+        # Register other events and actions.
         for cond in self._valid_conditions:
             self._register_action(cond, self._validate.__func__)  # type: ignore
         for cond in self._test_conditions:
@@ -846,9 +820,70 @@ class Executor:
         for cond in self._stop_training_conditions:
             self._register_action(cond, self.terminate.__func__)  # type: ignore
 
+    def _register_logging_actions(self, show_live_progress: Union[bool, str]):
+        # Register logging actions.
+        train_logging_fn = self._create_logging_fn(
+            self.log_format, self.train_metrics, self._train_tracker)
+        valid_logging_fn = self._create_logging_fn(
+            self.eval_log_format, self.valid_metrics, self._valid_tracker)
+        test_logging_fn = self._create_logging_fn(
+            self.eval_log_format, self.test_metrics, self._test_tracker)
+
+        Points = List[Union[Condition, Event]]
+
+        def register(points: Points, fn: Callable[['Executor'], None]):
+            for cond_or_event in points:
+                if isinstance(cond_or_event, Condition):
+                    self._register_action(cond_or_event, fn)
+                else:
+                    self._register_hook((cond_or_event, True), fn)
+
+        def register_log_fn(points: Points,
+                            logging_fn: Callable[['Executor'], str],
+                            **log_kwargs):
+            def log_fn(executor: 'Executor'):
+                executor.write_log(
+                    logging_fn(executor), mode="log", **log_kwargs)
+
+            register(points, log_fn)
+
+        # Progress is displayed by writing the log string after every
+        # iteration, and clearing the line. In this case, when a normal log
+        # condition is triggered, a newline character is simply printed.
+        # However, this applies to terminal output only, so we revert to
+        # the original approach for files.
+        def _flush_log_hook(executor: 'Executor'):
+            executor._write_log("", skip_non_tty=True)
+
+        def register_status_fn(points: Points, update_event: Event,
+                               logging_fn: Callable[['Executor'], str]):
+            def status_fn(executor: 'Executor'):
+                executor.set_status_line(logging_fn(executor))
+
+            self._register_hook((update_event, True), status_fn)
+            register(points, _flush_log_hook)
+            register_log_fn(points, logging_fn, skip_tty=True)
+
+        if show_live_progress in [True, "train"]:
+            register_status_fn(
+                self._log_conditions, Event.Iteration, train_logging_fn)
+        else:
+            register_log_fn(self._log_conditions, train_logging_fn)
+
+        if show_live_progress in [True, "valid", "eval"]:
+            register_status_fn(
+                [Event.Validation], Event.ValidationIteration, valid_logging_fn)
+        else:
+            register_log_fn([Event.Validation], valid_logging_fn)
+
+        if show_live_progress in [True, "test", "eval"]:
+            register_status_fn(
+                [Event.Testing], Event.TestingIteration, test_logging_fn)
+        else:
+            register_log_fn([Event.Testing], test_logging_fn)
+
     def write_log(self, log_str: str, *, mode: str = "info",
-                  skip_tty: bool = False, skip_non_tty: bool = False,
-                  newline: bool = True, clear_line: bool = False) -> None:
+                  skip_tty: bool = False, skip_non_tty: bool = False) -> None:
         r"""Write a string to log.
 
         Args:
@@ -867,10 +902,6 @@ class Executor:
                 log destinations. Defaults to `False`.
             skip_non_tty: If `True`, the log string will not be written to
                 non-terminal (e.g., files) destinations. Defaults to `False`.
-            newline: If `True`, print a newline character after printing the log
-                string. Defaults to `True`.
-            clear_line: If `True`, clear the line before printing. This only
-                works for terminals. Defaults to `False`.
         """
         if mode == "log":
             pass
@@ -884,7 +915,34 @@ class Executor:
             log_str = utils.color(log_str, "red")
         else:
             raise ValueError(f"Invalid logging mode {mode}")
-        plain_str = re.sub(r"\033\[\d{1,2}[Km]", "", log_str)
+        if not skip_tty and self._status_line_str is not None:
+            self._write_log(log_str, skip_non_tty=True, clear_line=True)
+            self._write_log(
+                self._status_line_str, skip_non_tty=True, newline=False)
+            if not skip_non_tty:
+                self._write_log(log_str, skip_tty=True, skip_non_tty=False)
+        else:
+            self._write_log(log_str, skip_tty, skip_non_tty)
+
+    def _write_log(self, log_str: str,
+                   skip_tty: bool = False, skip_non_tty: bool = False,
+                   newline: bool = True, clear_line: bool = False):
+        r"""Write a string to log.
+
+        Args:
+            log_str (str): The string to log.
+            skip_tty: If `True`, the log string will not be written to terminal
+                log destinations. Defaults to `False`.
+            skip_non_tty: If `True`, the log string will not be written to
+                non-terminal (e.g., files) destinations. Defaults to `False`.
+            newline: If `True`, print a newline character after printing the log
+                string. Defaults to `True`.
+            clear_line: If `True`, clear the line before printing. This only
+                works for terminals. Defaults to `False`.
+        """
+        plain_str = None
+        if not skip_non_tty:
+            plain_str = re.sub(r"\033\[\d{1,2}[Km]", "", log_str)
         for dest in self.log_destination:
             if dest.isatty():
                 if skip_tty:
@@ -900,6 +958,13 @@ class Executor:
             if newline:
                 dest.write("\n")
             dest.flush()
+
+    def set_status_line(self, status_str: Optional[str]):
+        # TODO: Check terminal width and do something to prevent wrapping?
+        self._status_line_str = status_str
+        if status_str is not None:
+            self._write_log(status_str, skip_non_tty=True,
+                            newline=False, clear_line=True)
 
     # pylint: disable=unused-argument,no-self-use,function-redefined
 
@@ -1186,14 +1251,27 @@ class Executor:
 
     def terminate(self) -> None:
         r"""Terminate training. This method is intended to be called within
-        actions, an example use case would be to implement a custom
+        actions. An example use case would be to implement a custom
         early-stopping mechanism.
 
         It is guaranteed that no other event points will be fired once
         :meth:`terminate` is called. However, conditions and actions under the
         same event point is still called.
         """
+        if not self._within_event_action:
+            raise ValueError(f"terminate() should only be called "
+                             "within event actions")
         self._should_terminate = True
+
+    def remove_action(self) -> None:
+        r"""Remove the current action being run. This method is intended to be
+        called within actions. An example use case would be to implement an
+        action that is only run once at a certain event point.
+        """
+        if not self._within_event_action:
+            raise ValueError(f"remove_action() should only be called "
+                             "within event actions")
+        self._should_remove_current_action = True
 
     def train(self):
         r"""Start the training loop.
@@ -1230,17 +1308,38 @@ class Executor:
         self._fire_event(Event.Training, False)
         self.write_log("Training started", mode="info")
 
-        if self._print_configs_to_log:
+        if self._print_model_arch:
             # TODO: Also somehow gather training settings?
-            self.write_log(f"Model architecture:\n{self.model!r}", mode="info")
+            model_repr = utils.repr_module(self.model)
+            self.write_log(f"Model architecture:\n{model_repr}", mode="info")
 
         self.model.train()
 
+        try:
+            data_size: Optional[int] = len(self.train_data)
+        except TypeError:
+            # Try again after one epoch. If still doesn't work, it's not going
+            # to work ever.
+            def _try_get_data_size(executor: 'Executor'):
+                try:
+                    size = len(executor.train_data)
+                    executor._train_tracker.set_size(size)
+                except TypeError:
+                    pass
+                executor.remove_action()
+
+            self._register_hook((Event.Epoch, True), _try_get_data_size)
+            data_size = None
+        self._train_tracker.set_size(data_size)
+
         # Main training loop.
+        self._train_tracker.start()
         try:
             self._train_loop(iterator)
-        except utils.TerminateExecution:
+        except utils.ExecutorTerminateSignal:
             self.write_log("Training terminated", mode='info')
+        finally:
+            self._train_tracker.stop()
         self._fire_event(Event.Training, True)
 
     def test(self, dataset: OptionalDict[DataBase] = None):
@@ -1269,38 +1368,43 @@ class Executor:
 
         model_mode = self.model.training
         self.model.train(self.test_mode == "train")
-        with torch.no_grad():
-            for name, data in datasets.items():
-                try:
-                    self.status["split"] = name
+        for name, data in datasets.items():
+            self.status["split"] = name
 
-                    # Initialize metrics.
-                    for metric in self.test_metrics.values():
-                        metric.reset()
+            # Initialize metrics.
+            for metric in self.test_metrics.values():
+                metric.reset()
 
-                    self._fire_event(Event.Testing, False)
-                    data.to(self.device)
-                    if self.test_mode == "eval":
-                        iterator = DataIterator(data, self.batching_strategy)
-                    else:
-                        iterator = DataIterator(data)
-                    try:
-                        data_size: Optional[int] = len(data)
-                    except TypeError:
-                        data_size = None
-                    self._test_tracker.reset(data_size)
+            self._fire_event(Event.Testing, False)
+            data.to(self.device)
+            if self.test_mode == "eval":
+                iterator = DataIterator(data, self.batching_strategy)
+            else:
+                iterator = DataIterator(data)
+            try:
+                data_size: Optional[int] = len(data)
+            except TypeError:
+                data_size = None
+            self._test_tracker.set_size(data_size)
 
+            self._test_tracker.start()
+            try:
+                with torch.no_grad():
                     self._test_loop(iterator)
-                except utils.TerminateExecution:
-                    self.write_log(
-                        "Testing terminated. This is likely unintended. Please "
-                        "check your custom actions.", mode='warning')
-                self._fire_event(Event.Testing, True)
+            except utils.ExecutorTerminateSignal:
+                self.write_log(
+                    "Testing terminated. This is likely unintended. Please "
+                    "check your custom actions.", mode='warning')
+            finally:
+                self._test_tracker.stop()
+
+            self._fire_event(Event.Testing, True)
         self.model.train(model_mode)
 
-    def _create_logging_hook(self, format_str: str,
-                             metrics: 'OrderedDict[str, Metric]',
-                             tracker: utils.ProgressTracker) -> ActionFn:
+    def _create_logging_fn(self, format_str: str,
+                           metrics: 'OrderedDict[str, Metric]',
+                           tracker: utils.ProgressTracker) \
+            -> Callable[['Executor'], str]:
         r"""Given a logging format string, create a function that takes the
         executor instance as argument and returns the logging string.
 
@@ -1363,7 +1467,7 @@ class Executor:
         format_str_wo_progress = re.sub(
             r"{progress(:([^{}]+))?}", "{progress}", format_str)
 
-        def log_fn(executor: 'Executor', **log_kwargs):
+        def log_fn(executor: 'Executor') -> str:
             format_args = executor.status.copy()
             cur_format_str = format_str
             if "time" in format_vars:
@@ -1387,8 +1491,7 @@ class Executor:
             format_args.update({
                 name: metrics[name].value() for name in metrics_to_print})
             log_str = cur_format_str.format(**format_args)
-
-            self.write_log(log_str, mode="log", **log_kwargs)
+            return log_str
 
         return log_fn
 
@@ -1415,18 +1518,30 @@ class Executor:
                 :attr:`event`.
 
         :raises: If any triggered action calls :meth:`terminate`,
-            :exc:`~texar.torch.run.executor_utils.TerminateException` is thrown
-            after all conditions are checked and actions executed.
+            :exc:`~texar.torch.run.executor_utils.ExecutorTerminateSignal` is
+            thrown after all conditions are checked and actions executed.
         """
+        self._within_event_action = True
+        _remove_count = 0
         for cond, actions in self._hooks[(event, end)].items():
             # If condition is `None` (raw function hooks), action always
             # triggers.
             if cond is None or cond.hooks[(event, end)](self):
-                for action in actions:
-                    action(self)
+                for idx, action in enumerate(actions):
+                    try:
+                        action(self)
+                    except utils.ExecutorRemoveActionSignal:
+                        # Rebind `actions` variable and assign to _hooks. This
+                        # does not affect the current for-loop over `actions`.
+                        index = idx - _remove_count
+                        _remove_count += 1
+                        actions = actions[:index] + actions[(index + 1):]
+                        self._hooks[(event, end)][cond] = actions
+
+        self._within_event_action = False
         if self._should_terminate:
             self._should_terminate = False
-            raise utils.TerminateExecution
+            raise utils.ExecutorTerminateSignal
 
     def _validate_step(self, batch: Batch):
         r"""Perform one step of validation, i.e., perform a forward pass (or
@@ -1480,7 +1595,7 @@ class Executor:
         except KeyError:
             raise ValueError("Return dictionary from model does not "
                              "contain 'loss' entry")
-        loss /= self.num_iters_per_update
+        loss = loss / self.num_iters_per_update
         loss.backward()
         if (self.num_iters_per_update == 1 or
                 self.status["iteration"] % self.num_iters_per_update == 0):
@@ -1504,18 +1619,13 @@ class Executor:
         epoch = 0
         iteration = 0
 
-        while True:
-            try:
-                data_size: Optional[int] = len(self.train_data)
-            except TypeError:
-                data_size = None
-            self._train_tracker.reset(data_size)
+        # Initialize metrics.
+        for metric in self.train_metrics.values():
+            metric.reset()
 
+        while True:
             epoch += 1
             self.status["epoch"] = epoch
-            # Initialize metrics.
-            for metric in self.train_metrics.values():
-                metric.reset()
 
             self._fire_event(Event.Epoch, False)
 
@@ -1564,8 +1674,6 @@ class Executor:
             self._fire_event(Event.TestingIteration, True)
 
     def _validate(self) -> None:
-        # TODO: Pause training tracker during validation.
-
         if self.valid_data is None:
             raise ValueError("Validation data not specified.")
 
@@ -1584,7 +1692,7 @@ class Executor:
             data_size: Optional[int] = len(self.valid_data)
         except TypeError:
             data_size = None
-        self._valid_tracker.reset(data_size)
+        self._valid_tracker.set_size(data_size)
 
         model_mode = self.model.training
         self.model.train(self.test_mode == "train")
@@ -1592,10 +1700,20 @@ class Executor:
         prev_split = self.status["split"]
         self.status["split"] = "valid"
 
-        with torch.no_grad():
-            self._validate_loop(iterator)
+        # Main validation loop.
+        self._valid_tracker.start()
+        try:
+            with torch.no_grad():
+                self._validate_loop(iterator)
+        except utils.ExecutorTerminateSignal:
+            self.write_log(
+                "Validation terminated. This is likely unintended. Please "
+                "check your custom actions.", mode='warning')
+        finally:
+            self._valid_tracker.stop()
 
         self._fire_event(Event.Validation, True)
 
+        # Restore status values.
         self.status["split"] = prev_split
         self.model.train(model_mode)

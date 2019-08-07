@@ -26,18 +26,6 @@ __all__ = [
 ]
 
 
-def _add_indent(s_, n_spaces):
-    s = s_.split('\n')
-    # don't do anything for single-line stuff
-    if len(s) == 1:
-        return s_
-    first = s.pop(0)
-    s = [(n_spaces * ' ') + line for line in s]
-    s = '\n'.join(s)
-    s = first + '\n' + s
-    return s
-
-
 class ModuleBase(nn.Module, ABC):
     r"""Base class inherited by modules that are configurable through
     hyperparameters.
@@ -110,69 +98,3 @@ class ModuleBase(nn.Module, ABC):
         tensor size.
         """
         raise NotImplementedError
-
-    def __repr__(self):
-        r"""Create a compressed representation by combining identical modules in
-        `nn.ModuleList`s and `nn.ParameterList`s.
-        """
-
-        def _convert_id(keys: List[str]) -> List[str]:
-            start = end = None
-            for key in keys:
-                if key.isnumeric() and end == int(key) - 1:
-                    end = int(key)
-                else:
-                    if start is not None:
-                        if start == end:
-                            yield f"id {start}"
-                        else:
-                            yield f"ids {start}-{end}"
-                    if key.isnumeric():
-                        start = end = int(key)
-                    else:
-                        start = end = None
-                        yield key
-            if start is not None:
-                if start == end:
-                    yield f"id {start}"
-                else:
-                    yield f"ids {start}-{end}"
-
-        # We treat the extra repr like the sub-module, one item per line
-        extra_lines = []
-        extra_repr = self.extra_repr()
-        # empty string will be split into list ['']
-        if extra_repr:
-            extra_lines = extra_repr.split('\n')
-        child_lines = []
-        prev_mod_str = None
-        keys = []
-        for key, module in self._modules.items():
-            if isinstance(module, ModuleBase):
-                mod_str = repr(module)
-            else:
-                mod_str = ModuleBase.__repr__(module)
-            mod_str = _add_indent(mod_str, 2)
-            if prev_mod_str is None or prev_mod_str != mod_str:
-                if prev_mod_str is not None:
-                    for name in _convert_id(keys):
-                        child_lines.append(f"({name}): {prev_mod_str}")
-                prev_mod_str = mod_str
-                keys = [key]
-            else:
-                keys.append(key)
-        if len(keys) > 0:
-            for name in _convert_id(keys):
-                child_lines.append(f"({name}): {prev_mod_str}")
-        lines = extra_lines + child_lines
-
-        main_str = self._get_name() + '('
-        if lines:
-            # simple one-liner info, which most builtin Modules will use
-            if len(extra_lines) == 1 and not child_lines:
-                main_str += extra_lines[0]
-            else:
-                main_str += '\n  ' + '\n  '.join(lines) + '\n'
-
-        main_str += ')'
-        return main_str

@@ -7,6 +7,7 @@ from typing import (
 
 from mypy_extensions import TypedDict
 import torch
+from torch import nn
 
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.run.metric import Metric
@@ -24,10 +25,11 @@ __all__ = [
     "TrainingStatus",
     "CheckpointMetaInfo",
     "ProgressTracker",
-    "TerminateExecution",
+    "ExecutorTerminateSignal",
     "MetricList",
     "update_metrics",
     "color",
+    "repr_module",
 ]
 
 T = TypeVar('T')
@@ -148,13 +150,42 @@ class ProgressTracker:
     start_time: float
     size: Optional[int]
     n_examples: int
+    accumulated_time: float
+    paused: bool
+
+    _tracker_stack: List['ProgressTracker'] = []
 
     def __init__(self, size: Optional[int] = None):
-        self.reset(size)
-
-    def reset(self, size: Optional[int]):
         self.size = size
+
+    def set_size(self, size: Optional[int]):
+        self.size = size
+
+    def start(self):
+        if len(self._tracker_stack) > 0:
+            self._tracker_stack[-1].pause()
+        self._tracker_stack.append(self)
         self.n_examples = 0
+        self.start_time = time.time()
+        self.accumulated_time = 0.0
+        self.paused = False
+
+    def stop(self):
+        obj = self._tracker_stack.pop(-1)
+        assert obj is self
+        if len(self._tracker_stack) > 0:
+            self._tracker_stack[-1].resume()
+
+    def pause(self):
+        if self.paused:
+            return
+        self.paused = True
+        self.accumulated_time += time.time() - self.start_time
+
+    def resume(self):
+        if not self.paused:
+            return
+        self.paused = False
         self.start_time = time.time()
 
     def add(self, n_examples: int):
@@ -165,14 +196,21 @@ class ProgressTracker:
             return None
         return self.n_examples / self.size * 100
 
+    def time_elapsed(self) -> float:
+        return self.accumulated_time + (time.time() - self.start_time)
+
     def speed(self) -> str:
-        speed = self.n_examples / (time.time() - self.start_time)
+        speed = self.n_examples / self.time_elapsed()
         if speed > 1.0:
             return f"{speed:.2f}ex/s"
         return f"{1.0 / speed:.2f}s/ex"
 
 
-class TerminateExecution(Exception):
+class ExecutorTerminateSignal(Exception):
+    pass
+
+
+class ExecutorRemoveActionSignal(Exception):
     pass
 
 
@@ -272,3 +310,80 @@ COLOR_CODE = {
 
 def color(s: str, col: str):
     return COLOR_CODE[col.lower()] + s + RESET_CODE
+
+
+def _add_indent(s_, n_spaces):
+    s = s_.split('\n')
+    # don't do anything for single-line stuff
+    if len(s) == 1:
+        return s_
+    first = s.pop(0)
+    s = [(n_spaces * ' ') + line for line in s]
+    s = '\n'.join(s)
+    s = first + '\n' + s
+    return s
+
+
+def _convert_id(keys: List[str]) -> List[str]:
+    start = end = None
+    for key in keys:
+        if key.isnumeric() and end == int(key) - 1:
+            end = int(key)
+        else:
+            if start is not None:
+                if start == end:
+                    yield f"id {start}"
+                else:
+                    yield f"ids {start}-{end}"
+            if key.isnumeric():
+                start = end = int(key)
+            else:
+                start = end = None
+                yield key
+    if start is not None:
+        if start == end:
+            yield f"id {start}"
+        else:
+            yield f"ids {start}-{end}"
+
+
+def repr_module(module: nn.Module) -> str:
+    r"""Create a compressed representation by combining identical modules in
+    `nn.ModuleList`s and `nn.ParameterList`s.
+    """
+
+    # We treat the extra repr like the sub-module, one item per line
+    extra_lines = []
+    extra_repr = module.extra_repr()
+    # empty string will be split into list ['']
+    if extra_repr:
+        extra_lines = extra_repr.split('\n')
+    child_lines = []
+    prev_mod_str = None
+    keys = []
+    for key, submodule in module.named_children():
+        mod_str = repr_module(submodule)
+        mod_str = _add_indent(mod_str, 2)
+        if prev_mod_str is None or prev_mod_str != mod_str:
+            if prev_mod_str is not None:
+                for name in _convert_id(keys):
+                    child_lines.append(f"({name}): {prev_mod_str}")
+            prev_mod_str = mod_str
+            keys = [key]
+        else:
+            keys.append(key)
+    if len(keys) > 0:
+        for name in _convert_id(keys):
+            child_lines.append(f"({name}): {prev_mod_str}")
+    lines = extra_lines + child_lines
+
+    main_str = module.__class__.__name__ + '('
+    if lines:
+        # simple one-liner info, which most builtin Modules will use
+        if len(extra_lines) == 1 and not child_lines:
+            main_str += extra_lines[0]
+        else:
+            main_str += '\n  ' + '\n  '.join(lines) + '\n'
+
+    main_str += ')'
+    return main_str

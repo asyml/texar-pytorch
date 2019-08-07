@@ -68,10 +68,11 @@ class RunningAverage(StreamingMetric[float, float]):
 
     def add(self, predicted: List[float], _) -> None:
         if len(predicted) >= self.queue_size:
-            self.history = deque(predicted[:-self.queue_size])
+            self.history = deque(predicted[-self.queue_size:])
             self.sum = sum(self.history)
         else:
-            for _ in range(len(predicted) - (self.queue_size - len(self.history))):
+            for _ in range(len(predicted) -
+                           (self.queue_size - len(self.history))):
                 self.sum -= self.history.popleft()
             self.sum += sum(predicted)
             self.history.extend(predicted)
