@@ -1,3 +1,4 @@
+import atexit
 import pickle
 import random
 import re
@@ -527,9 +528,10 @@ class Executor:
 
         - An IO object. This can be an opened file, ``sys.stdout``, or any other
           file-like object.
-        - A string, denoting the path to a log file. The file will be opened in
-          "append" (``"a"``) mode to prevent accidentally overwriting previous
-          logs. To force overwrite, supply the file IO object instead.
+        - A string, denoting the path to a log file. :class:`Executor` will open
+          the file and close it when the program exits. The file will be opened
+          in "append" (``"a"``) mode to prevent accidentally overwriting
+          previous logs. To force overwrite, supply the file object instead.
         - A list, with each element being one of the above.
 
         When writing to a file, special syntax for terminals (e.g. color codes)
@@ -734,6 +736,13 @@ class Executor:
                  # pylint: enable=unused-argument
                  ):
 
+        try:
+            from tqdm._utils import _environ_cols_wrapper, _term_move_up
+            self._tty_ncols: Optional[Callable] = _environ_cols_wrapper()
+            self._tty_move_up: str = _term_move_up()
+        except ImportError:
+            self._tty_ncols = None
+
         # TODO: Add support for Tensorboard.
         # Meta variables
         self._should_terminate = False  # .terminate()
@@ -787,9 +796,9 @@ class Executor:
             else:
                 self._directory_exists = True
 
-        # TODO: Close files somewhere? Maybe `atexit.register`?
         # Create logging files after checkpoint directory is created.
-        self.log_destination: List[IO[str]] = []
+        self._log_destination: List[IO[str]] = []
+        self._log_destination_is_tty: List[bool] = []
         self._opened_files: List[IO[str]] = []
         log_destination = log_destination or self._defaults["log_destination"]
         for dest in utils.to_list(log_destination):  # type: ignore
@@ -798,11 +807,21 @@ class Executor:
                 # previous logs.
                 file = open(dest, "a")
                 self._opened_files.append(file)
+                self._log_destination_is_tty.append(False)
             else:
-                # TODO: Move isatty check here with try-catch. Also check if
-                #  has .write() (is valid file)
+                if not hasattr(dest, "write"):
+                    raise ValueError(f"Log destination {dest} is not a "
+                                     f"file-like object")
+                try:
+                    isatty = dest.isatty()
+                except AttributeError:
+                    isatty = False
                 file = dest  # type: ignore
-            self.log_destination.append(file)
+                self._log_destination_is_tty.append(isatty)
+            self._log_destination.append(file)
+
+        # Close files when program exits.
+        atexit.register(self._close_files)
 
         # Training loop
         self.train_metrics = utils.to_metric_dict(train_metrics)
@@ -1464,24 +1483,33 @@ class Executor:
             clear_line: If `True`, clear the line before printing. This only
                 works for terminals. Defaults to `False`.
         """
-        plain_str = None
-        if not skip_non_tty:
-            plain_str = re.sub(r"\033\[\d{1,2}[Km]", "", log_str)
-        for dest in self.log_destination:
-            if dest.isatty():
-                if skip_tty:
+        if not skip_tty:
+            for dest, isatty in zip(
+                    self._log_destination, self._log_destination_is_tty):
+                if not isatty:
                     continue
                 if clear_line:
+                    if self._tty_ncols is not None:
+                        n_cols = self._tty_ncols(dest.fileno())
+                        n_lines = (len(self._status_line_str) - 1) // n_cols + 1
+                        if n_lines > 1:
+                            dest.write(self._tty_move_up * (n_lines - 1))
                     dest.write(utils.CLEAR_LINE)
                 dest.write(log_str)
-            else:
-                if skip_non_tty:
+                if newline:
+                    dest.write("\n")
+                dest.flush()
+        if not skip_non_tty:
+            plain_str = re.sub(r"\033\[\d{1,2}[Km]", "", log_str)
+            for dest, isatty in zip(
+                    self._log_destination, self._log_destination_is_tty):
+                if isatty:
                     continue
                 # Erase color codes if the destination is not a terminal.
-                dest.write(plain_str)  # type: ignore
-            if newline:
-                dest.write("\n")
-            dest.flush()
+                dest.write(plain_str)
+                if newline:
+                    dest.write("\n")
+                dest.flush()
 
     def _create_logging_fn(self, format_str: str,
                            metrics: 'OrderedDict[str, Metric]',
@@ -1604,6 +1632,10 @@ class Executor:
         except KeyError:
             raise ValueError(
                 f"Specified hook point {event_point} is invalid") from None
+
+    def _close_files(self):
+        for file in self._opened_files:
+            file.close()
 
     def _fire_event(self, event: Event, end: bool):
         r"""Signal the beginning or end of an event. Internally, this is where
