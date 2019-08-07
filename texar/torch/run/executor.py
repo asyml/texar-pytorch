@@ -3,10 +3,12 @@ import random
 import re
 import sys
 import time
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict  # pylint: disable=unused-import
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, IO, List, Optional, Set, Union, overload
+from typing import (
+    Any, Callable, Dict, IO, List, Optional, Sequence, Set, Union,
+    no_type_check, overload)
 
 import numpy as np
 import torch
@@ -21,6 +23,7 @@ from texar.torch.run import executor_utils as utils
 from texar.torch.run.condition import Condition, Event, EventPoint
 from texar.torch.run.executor_utils import Instance, OptionalDict, OptionalList
 from texar.torch.run.metric import Metric
+from texar.torch.utils.types import MaybeList
 
 __all__ = [
     "make_deterministic",
@@ -53,6 +56,7 @@ def make_deterministic(seed: int = 19260817,
 
 
 class Executor:
+    # pylint: disable=line-too-long
     r""":class:`Executor` is a substitute for the general training/evaluation
     loop. It is designed with the following goals in mind:
 
@@ -612,11 +616,8 @@ class Executor:
         - `True`: Live progress is enabled for training, validation, and
           testing.
         - `False`: Live progress is disabled.
-        - ``"train"``: Live progress is enabled for training only.
-        - ``"valid"``: Live progress is enabled for validation only.
-        - ``"test"``: Live progress is enabled for testing only.
-        - ``"eval"``: Live progress is enabled for evaluation (validation &
-          testing).
+        - ``"train"``, ``"valid"``, ``"test"``, or a list of these strings:
+          Live progress is enabled for the specified stages only.
 
         If live progress is enabled for a certain stage, the specified format
         string will be shown similar to a sticky progress bar at the bottom of
@@ -632,6 +633,8 @@ class Executor:
             explicitly log only streaming metrics, or disable live progress for
             certain stages.
     """
+    # pylint: enable=line-too-long
+
     _EVENT_TYPES = (Event,)
     _CHECKPOINT_METAINFO_FILE = "checkpoint.meta-info"
     _CHECKPOINT_EXTENSION = ".pt"
@@ -687,7 +690,7 @@ class Executor:
                  log_destination: OptionalList[Union[str, IO[str]]] = None,
                  print_model_arch: bool = True,
                  eval_log_format: Optional[str] = None,
-                 show_live_progress: Union[bool, str] = False,
+                 show_live_progress: Union[bool, MaybeList[str]] = False,
                  # Tensorboard
                  # pylint: disable=unused-argument
                  tensorboard_log_dir: Optional[str] = None,
@@ -738,15 +741,17 @@ class Executor:
         # Create logging files after checkpoint directory is created.
         self.log_destination: List[IO[str]] = []
         self._opened_files: List[IO[str]] = []
-        for dest in utils.to_list(
-                log_destination or self._defaults["log_destination"]):
+        log_destination = log_destination or self._defaults["log_destination"]
+        for dest in utils.to_list(log_destination):  # type: ignore
             if isinstance(dest, (str, Path)):
                 # Append to the logs to prevent accidentally overwriting
                 # previous logs.
                 file = open(dest, "a")
                 self._opened_files.append(file)
             else:
-                file = dest
+                # TODO: Move isatty check here with try-catch. Also check if
+                #  has .write() (is valid file)
+                file = dest  # type: ignore
             self.log_destination.append(file)
 
         # Training loop
@@ -792,17 +797,31 @@ class Executor:
             "eval_metric": self.valid_metrics,
         }
 
-        # TODO: Move trackers to another process, as in tqdm? Refer to `tqdm.TMonitor`
+        # TODO: Move trackers to another process, as in tqdm? Refer to
+        #   `tqdm.TMonitor`
         self._train_tracker = utils.ProgressTracker()
         self._valid_tracker = utils.ProgressTracker()
         self._test_tracker = utils.ProgressTracker()
 
+        if isinstance(show_live_progress, bool):
+            if show_live_progress is True:
+                show_live_progress = ["train", "valid", "test"]
+            else:
+                show_live_progress = []
+        elif isinstance(show_live_progress, str):
+            show_live_progress = [show_live_progress]
+        if any(stage not in ["train", "valid", "test"]
+               for stage in show_live_progress):
+            raise ValueError("Invalid value for `show_live_progress`")
         self._register_logging_actions(show_live_progress)
 
         # Meta variables
-        self._within_event_action = False  # ._fire_event()
         self._should_terminate = False  # .terminate()
         self._should_remove_current_action = False  # .remove_action()
+        # Since an event action could be internally fire other events (e.g.
+        # validation), there could be nested events. Thus we keep track of
+        # the number of layers.
+        self._event_nested_layers = 0  # ._fire_event()
         self._status_line_str: Optional[str] = None
 
         # Register other events and actions.
@@ -820,7 +839,7 @@ class Executor:
         for cond in self._stop_training_conditions:
             self._register_action(cond, self.terminate.__func__)  # type: ignore
 
-    def _register_logging_actions(self, show_live_progress: Union[bool, str]):
+    def _register_logging_actions(self, show_live_progress: List[str]):
         # Register logging actions.
         train_logging_fn = self._create_logging_fn(
             self.log_format, self.train_metrics, self._train_tracker)
@@ -829,23 +848,23 @@ class Executor:
         test_logging_fn = self._create_logging_fn(
             self.eval_log_format, self.test_metrics, self._test_tracker)
 
-        Points = List[Union[Condition, Event]]
+        Points = Sequence[Union[Condition, Event]]
 
-        def register(points: Points, fn: Callable[['Executor'], None]):
+        def _register(points: Points, fn: Callable[['Executor'], None]):
             for cond_or_event in points:
                 if isinstance(cond_or_event, Condition):
                     self._register_action(cond_or_event, fn)
                 else:
                     self._register_hook((cond_or_event, True), fn)
 
-        def register_log_fn(points: Points,
-                            logging_fn: Callable[['Executor'], str],
-                            **log_kwargs):
+        def _register_log_fn(points: Points,
+                             logging_fn: Callable[['Executor'], str],
+                             **log_kwargs):
             def log_fn(executor: 'Executor'):
                 executor.write_log(
                     logging_fn(executor), mode="log", **log_kwargs)
 
-            register(points, log_fn)
+            _register(points, log_fn)
 
         # Progress is displayed by writing the log string after every
         # iteration, and clearing the line. In this case, when a normal log
@@ -853,34 +872,30 @@ class Executor:
         # However, this applies to terminal output only, so we revert to
         # the original approach for files.
         def _flush_log_hook(executor: 'Executor'):
-            executor._write_log("", skip_non_tty=True)
+            executor._write_log("", skip_non_tty=True)  # pylint: disable=protected-access
 
-        def register_status_fn(points: Points, update_event: Event,
-                               logging_fn: Callable[['Executor'], str]):
+        def _register_status_fn(points: Points, update_event: Event,
+                                logging_fn: Callable[['Executor'], str]):
             def status_fn(executor: 'Executor'):
                 executor.set_status_line(logging_fn(executor))
 
             self._register_hook((update_event, True), status_fn)
-            register(points, _flush_log_hook)
-            register_log_fn(points, logging_fn, skip_tty=True)
+            _register(points, _flush_log_hook)
+            _register_log_fn(points, logging_fn, skip_tty=True)
 
-        if show_live_progress in [True, "train"]:
-            register_status_fn(
-                self._log_conditions, Event.Iteration, train_logging_fn)
-        else:
-            register_log_fn(self._log_conditions, train_logging_fn)
+        def register(name: str, points: Points, update_event: Event,
+                     logging_fn: Callable[['Executor'], str]):
+            if name in show_live_progress:
+                _register_status_fn(points, update_event, logging_fn)
+            else:
+                _register_log_fn(points, logging_fn)
 
-        if show_live_progress in [True, "valid", "eval"]:
-            register_status_fn(
-                [Event.Validation], Event.ValidationIteration, valid_logging_fn)
-        else:
-            register_log_fn([Event.Validation], valid_logging_fn)
-
-        if show_live_progress in [True, "test", "eval"]:
-            register_status_fn(
-                [Event.Testing], Event.TestingIteration, test_logging_fn)
-        else:
-            register_log_fn([Event.Testing], test_logging_fn)
+        register("train", self._log_conditions,
+                 Event.Iteration, train_logging_fn)
+        register("valid", [Event.Validation],
+                 Event.ValidationIteration, valid_logging_fn)
+        register("test", [Event.Testing],
+                 Event.TestingIteration, test_logging_fn)
 
     def write_log(self, log_str: str, *, mode: str = "info",
                   skip_tty: bool = False, skip_non_tty: bool = False) -> None:
@@ -954,7 +969,7 @@ class Executor:
                 if skip_non_tty:
                     continue
                 # Erase color codes if the destination is not a terminal.
-                dest.write(plain_str)
+                dest.write(plain_str)  # type: ignore
             if newline:
                 dest.write("\n")
             dest.flush()
@@ -1235,6 +1250,7 @@ class Executor:
                 if self.optimizer is not None:
                     self.optimizer.load_state_dict(checkpoint.optimizer)
                 if self.lr_scheduler is not None:
+                    assert checkpoint.scheduler is not None
                     self.lr_scheduler.load_state_dict(checkpoint.scheduler)
                 random.setstate(checkpoint.system_rng)
                 np.random.set_state(checkpoint.numpy_rng)
@@ -1258,7 +1274,7 @@ class Executor:
         :meth:`terminate` is called. However, conditions and actions under the
         same event point is still called.
         """
-        if not self._within_event_action:
+        if not self._event_nested_layers:
             raise ValueError(f"terminate() should only be called "
                              "within event actions")
         self._should_terminate = True
@@ -1268,7 +1284,7 @@ class Executor:
         called within actions. An example use case would be to implement an
         action that is only run once at a certain event point.
         """
-        if not self._within_event_action:
+        if not self._event_nested_layers:
             raise ValueError(f"remove_action() should only be called "
                              "within event actions")
         self._should_remove_current_action = True
@@ -1321,9 +1337,10 @@ class Executor:
             # Try again after one epoch. If still doesn't work, it's not going
             # to work ever.
             def _try_get_data_size(executor: 'Executor'):
+                assert executor.train_data is not None
                 try:
                     size = len(executor.train_data)
-                    executor._train_tracker.set_size(size)
+                    executor._train_tracker.set_size(size)  # pylint: disable=protected-access
                 except TypeError:
                     pass
                 executor.remove_action()
@@ -1467,6 +1484,7 @@ class Executor:
         format_str_wo_progress = re.sub(
             r"{progress(:([^{}]+))?}", "{progress}", format_str)
 
+        @no_type_check
         def log_fn(executor: 'Executor') -> str:
             format_args = executor.status.copy()
             cur_format_str = format_str
@@ -1521,7 +1539,7 @@ class Executor:
             :exc:`~texar.torch.run.executor_utils.ExecutorTerminateSignal` is
             thrown after all conditions are checked and actions executed.
         """
-        self._within_event_action = True
+        self._event_nested_layers += 1
         _remove_count = 0
         for cond, actions in self._hooks[(event, end)].items():
             # If condition is `None` (raw function hooks), action always
@@ -1538,7 +1556,7 @@ class Executor:
                         actions = actions[:index] + actions[(index + 1):]
                         self._hooks[(event, end)][cond] = actions
 
-        self._within_event_action = False
+        self._event_nested_layers -= 1
         if self._should_terminate:
             self._should_terminate = False
             raise utils.ExecutorTerminateSignal

@@ -95,4 +95,4 @@ class LR(StreamingMetric[Any, float]):
         pass
 
     def value(self) -> float:
-        return self.optimizer.param_groups[0]['lr']
+        return self.optimizer.param_groups[0]['lr']  # type: ignore

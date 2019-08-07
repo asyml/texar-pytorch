@@ -2,8 +2,8 @@ import functools
 import time
 from collections import Counter, OrderedDict
 from typing import (
-    Any, Counter as CounterType, Dict, List, NamedTuple, Optional, Tuple, Type,
-    TypeVar, Union, Callable)
+    Any, Callable, Counter as CounterType, Dict, Iterator, List, NamedTuple,
+    Optional, Tuple, Type, TypeVar, Union)
 
 from mypy_extensions import TypedDict
 import torch
@@ -77,11 +77,12 @@ def _to_dict(ds: OptionalDict[T],
     return ret_dict
 
 
-def to_dict(xs: OptionalDict[T], default_name: Optional[str] = None) -> Dict[str, T]:
-    def unambiguous_name_fn(name: str, unused_item: T, cnt: int) -> str:
+def to_dict(xs: OptionalDict[T],
+            default_name: Optional[str] = None) -> Dict[str, T]:
+    def unambiguous_name_fn(name: str, _item: T, cnt: int) -> str:
         return f"{name}.{cnt}"
 
-    def default_name_fn(idx: int, unused_item: T) -> str:
+    def default_name_fn(idx: int, _item: T) -> str:
         if default_name is not None:
             return default_name
         return str(idx)
@@ -90,13 +91,13 @@ def to_dict(xs: OptionalDict[T], default_name: Optional[str] = None) -> Dict[str
 
 
 def to_metric_dict(metrics: OptionalDict[Metric]) -> 'OrderedDict[str, Metric]':
-    def unambiguous_name_fn(name: str, metric: Metric, unused_cnt: int) -> str:
+    def unambiguous_name_fn(name: str, metric: Metric, _cnt: int) -> str:
         new_name = f"{name}_{metric.pred_name}"
         if metric.label_name is not None:
             new_name = f"{new_name}_{metric.label_name}"
         return new_name
 
-    def default_name_fn(unused_idx: int, metric: Metric) -> str:
+    def default_name_fn(_idx: int, metric: Metric) -> str:
         return metric.metric_name
 
     if isinstance(metrics, dict) and not isinstance(metrics, OrderedDict):
@@ -127,7 +128,7 @@ class SavedTrainingState(NamedTuple):
     r"""The entire training state to save to or load from checkpoints."""
     model: Dict[str, torch.Tensor]
     optimizer: Dict[str, torch.Tensor]
-    scheduler: Dict[str, Any]
+    scheduler: Optional[Dict[str, Any]]
     system_rng: Any
     numpy_rng: Any
     torch_rng: Any
@@ -266,7 +267,7 @@ class MetricList:
 def update_metrics(return_dict: Dict[str, Any], batch: Batch,
                    metrics: 'OrderedDict[str, Metric]') -> None:
     for metric_name, metric in metrics.items():
-        if metric.requires_pred:
+        if metric.pred_name is not None:
             try:
                 pred_val = return_dict[metric.pred_name]
             except KeyError:
@@ -279,7 +280,7 @@ def update_metrics(return_dict: Dict[str, Any], batch: Batch,
             pred_val = to_list(pred_val)
         else:
             pred_val = None
-        if metric.requires_label:
+        if metric.label_name is not None:
             try:
                 label_val = batch[metric.label_name]
             except KeyError:
@@ -324,7 +325,7 @@ def _add_indent(s_, n_spaces):
     return s
 
 
-def _convert_id(keys: List[str]) -> List[str]:
+def _convert_id(keys: List[str]) -> Iterator[str]:
     start = end = None
     for key in keys:
         if key.isnumeric() and end == int(key) - 1:
@@ -353,14 +354,14 @@ def repr_module(module: nn.Module) -> str:
     """
 
     # We treat the extra repr like the sub-module, one item per line
-    extra_lines = []
+    extra_lines: List[str] = []
     extra_repr = module.extra_repr()
     # empty string will be split into list ['']
     if extra_repr:
         extra_lines = extra_repr.split('\n')
     child_lines = []
     prev_mod_str = None
-    keys = []
+    keys: List[str] = []
     for key, submodule in module.named_children():
         mod_str = repr_module(submodule)
         mod_str = _add_indent(mod_str, 2)

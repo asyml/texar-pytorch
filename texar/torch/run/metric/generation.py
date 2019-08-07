@@ -66,7 +66,8 @@ class BLEU(StreamingMetric[MaybeList[str], float]):
         self.matches_by_order = [0] * self.max_order
         self.possible_matches_by_order = [0] * self.max_order
 
-    def add(self, predicted: List[str], labels: List[str]) -> None:
+    def add(self, predicted: List[MaybeList[str]],
+            labels: List[MaybeList[str]]) -> None:
         for (reference, hypothesis) in zip(labels, predicted):
             reference = _maybe_str_to_list(reference)
             if self.lowercase:

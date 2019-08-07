@@ -122,6 +122,7 @@ class iteration(Condition):
 
     def __new__(cls, num_iters: int = 1, mode: str = "train"):
         obj = super().__new__(cls)
+        # pylint: disable=protected-access
         if mode == "train":
             obj.check_iteration_end = obj._check_iteration_end
         elif mode == "valid":
@@ -130,6 +131,7 @@ class iteration(Condition):
             obj.check_testing_iteration_end = obj._check_iteration_end
         else:
             raise ValueError(f"Invalid mode {mode}")
+        # pylint: enable=protected-access
         return obj
 
     def __init__(self, num_iters: int = 1, mode: str = "train"):

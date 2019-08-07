@@ -224,7 +224,7 @@ def main():
         checkpoint_dir=args.output_dir,
         save_every=cond.validation(better=True),
         max_to_keep=1,
-        show_live_progress=True,
+        show_live_progress=["train", "valid"],
     )
     if args.run_mode == "train_and_evaluate":
         executor.write_log("Begin running with train_and_evaluate mode")

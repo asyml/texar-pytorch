@@ -37,7 +37,7 @@ class Metric(Generic[Input, Value], ABC):
         return self.__class__.__name__
 
     @property
-    def pred_name(self) -> str:
+    def pred_name(self) -> Optional[str]:
         return self._pred_name
 
     @property
