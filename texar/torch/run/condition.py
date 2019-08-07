@@ -46,7 +46,7 @@ class Condition(ABC):
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Condition):
-            raise ValueError("Cannot compare to object not of type Condition")
+            return False
         return self._hash_attributes == other._hash_attributes  # pylint: disable=protected-access
 
     def __hash__(self):
@@ -206,10 +206,36 @@ class consecutive(Condition):
     trigger if validation results do not improve for 3 times in a row.
 
     .. warning::
+        This method works by calling the inner condition at each event point
+        that it registers. The consecutive counter is reset to zero if any check
+        returns `False`. Thus, the behavior of :class:`consecutive` might be
+        different to what you expect. For instance:
 
-        This method might not work as you would expect.
-        # TODO: Think about whether this is a good design.
-        # TODO: Think about why I thought this might not work as I expected.
+        - :python:`cond.consecutive(cond.iteration(1), n_times)` is equivalent to
+          :python:`cond.iteration(n_times)`.
+        - :python:`cond.consecutive(cond.iteration(2), n_times)` will never
+          trigger.
+
+        It is recommended against using :class:`consecutive` for conditions
+        except :class:`validation`. You should also be careful when implementing
+        custom conditions for using with :class:`consecutive`.
+
+    .. warning::
+        Conditions are stateful objects. Using a registered condition as the
+        inner condition here could result in unexpected behaviors. For example:
+
+        .. code-block:: python
+
+            my_cond = cond.validation(better=True)
+            executor.on(my_cond, some_action)
+            executor.on(cond.consecutive(my_cond, 2), some_other_action)
+
+        In the code above, if no other conditions are registered,
+        :python:`some_other_action` will never be called. This is because both
+        conditions are checked at the end of each iteration, but the
+        :class:`consecutive` condition internally checks :python:`my_cond`,
+        which has already updated the previous best result that it stored. As a
+        result, the check will never succeed.
 
     Args:
         cond: The base condition to check.
@@ -239,8 +265,8 @@ class consecutive(Condition):
 
     def _create_check_method(self, method):
         @functools.wraps(method)
-        def check_fn(self, *args, **kwargs) -> bool:
-            if method(*args, **kwargs):
+        def check_fn(self, executor) -> bool:
+            if method(executor):
                 self.count += 1
                 if self.count >= self.times:
                     if self.clear_after_trigger:
@@ -248,6 +274,47 @@ class consecutive(Condition):
                     return True
             else:
                 self.count = 0
+            return False
+
+        return types.MethodType(check_fn, self)
+
+
+class once(Condition):
+    r"""Triggers only when the specified condition triggers for the first time.
+
+    Internally, this condition calls the
+    :meth:`~texar.torch.run.Executor.remove_action` method to remove itself from
+    the registered actions.
+
+    For example: :python:`once(iteration(5))` would only trigger on the 5th
+    epoch of the entire training loop.
+
+    .. warning::
+        Conditions are stateful objects. Using a registered condition as the
+        inner condition here could result in unexpected behaviors. Please refer
+        to :class:`consecutive` for a concrete example.
+
+    Args:
+        cond: The base condition to check.
+    """
+
+    def __init__(self, cond: Condition):
+        super().__init__()
+        self.cond = cond
+
+        for hook_point, method in self.cond.hooks.items():
+            self._hooks[hook_point] = self._create_check_method(method)
+
+    @property
+    def _hash_attributes(self):
+        return self.cond
+
+    def _create_check_method(self, method):
+        @functools.wraps(method)
+        def check_fn(self, executor) -> bool:
+            if method(executor):
+                executor.remove_action()
+                return True
             return False
 
         return types.MethodType(check_fn, self)

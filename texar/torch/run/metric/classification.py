@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Dict, List, Optional, TypeVar
+from typing import Dict, List, Optional, TypeVar, Tuple
 
 import numpy as np
 
@@ -26,7 +26,6 @@ class Accuracy(StreamingMetric[Input, float]):
 
     def add(self, predicted: List[Input], labels: List[Input]) -> None:
         super().add(predicted, labels)
-        self.count += len(predicted)
         self.correct += sum(int(a == b) for a, b in zip(predicted, labels))
 
     def value(self) -> float:
@@ -83,7 +82,7 @@ class ConfusionMatrix(_ConfusionMatrix[Input, Optional[np.ndarray]]):
 
 
 class _MicroMacro(_ConfusionMatrix[Input, float], ABC):
-    _valid_modes = ['micro', 'macro', 'macro_weighted']
+    _valid_modes = ['micro', 'macro', 'weighted']
 
     def __init__(self, mode: str = 'micro', **kwargs):
         super().__init__(**kwargs)
@@ -92,10 +91,26 @@ class _MicroMacro(_ConfusionMatrix[Input, float], ABC):
             raise ValueError(f"Invalid mode {mode}. "
                              f"Supported modes are: {self._valid_modes}")
 
-    def _wrap_micro_macro(self, value: np.ndarray) -> float:
+    def _safe_divide(self, numerator: np.ndarray, denominator: np.ndarray) \
+            -> np.ndarray:
+        # Credit: sklearn.metrics.classification._prf_divide
+        if self.mode == 'micro':
+            if denominator == 0.0:
+                return np.array(0.0)
+            return numerator / denominator
+
+        mask = denominator == 0.0
+        denominator = denominator.copy()
+        denominator[mask] = 1.0
+        value = numerator / denominator
+        return value
+
+    def _wrap_micro_macro(self, numerator: np.ndarray,
+                          denominator: np.ndarray) -> float:
+        value = self._safe_divide(numerator, denominator)
         if self.mode == 'macro':
             value = value.sum() / len(self.class_id)
-        elif self.mode == 'macro_weighted':
+        elif self.mode == 'weighted':
             value = (value * np.asarray(self.label_count)).sum() / self.count
         return value.item()
 
@@ -122,29 +137,31 @@ class _MicroMacro(_ConfusionMatrix[Input, float], ABC):
         value = np.asarray(self.label_count) - self.matrix.diagonal()
         return value.sum() if self.mode == 'micro' else value
 
+    def _value(self) -> Tuple[np.ndarray, np.ndarray]:
+        raise NotImplementedError
 
-class Precision(_MicroMacro[Input]):
     def value(self) -> float:
         if self.count == 0:
             return 0.0
-        return self._wrap_micro_macro(
-            self._true_positive() /
-            (self._true_positive() + self._false_positive()))
+        numerator, denominator = self._value()
+        return self._wrap_micro_macro(numerator, denominator)
+
+
+class Precision(_MicroMacro[Input]):
+    def _value(self) -> Tuple[np.ndarray, np.ndarray]:
+        return (self._true_positive(),
+                (self._true_positive() + self._false_positive()))
 
 
 class Recall(_MicroMacro[Input]):
-    def value(self) -> float:
-        if self.count == 0:
-            return 0.0
-        return self._wrap_micro_macro(
-            self._true_positive() /
-            (self._true_positive() + self._false_negative()))
+    def _value(self) -> Tuple[np.ndarray, np.ndarray]:
+        return (self._true_positive(),
+                (self._true_positive() + self._false_negative()))
 
 
 class F1(Precision[Input], Recall[Input]):
-    def value(self) -> float:
-        if self.count == 0:
-            return 0.0
-        precision = Precision.value(self)
-        recall = Recall.value(self)
-        return 2 * precision * recall / (precision + recall)
+    def _value(self) -> Tuple[np.ndarray, np.ndarray]:
+        precision = self._safe_divide(*Precision._value(self))
+        recall = self._safe_divide(*Recall._value(self))
+        return (2 * precision * recall,
+                precision + recall)

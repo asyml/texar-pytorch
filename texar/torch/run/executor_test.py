@@ -103,6 +103,7 @@ class ExecutorTest(unittest.TestCase):
                                action.reset_params(),
                                action.scale_lr(0.8)],
             log_every=cond.iteration(20),
+            show_live_progress=True,
         )
 
         executor.train()

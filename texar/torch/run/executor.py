@@ -1627,6 +1627,8 @@ class Executor:
 
     def _register_hook(self, event_point: EventPoint, action: ActionFn,
                        cond: Optional[Condition] = None):
+        # TODO: Check if a nested condition contains something that is already
+        #   registered.
         try:
             self._hooks[event_point][cond].append(action)
         except KeyError:
@@ -1653,20 +1655,32 @@ class Executor:
         """
         self._event_nested_layers += 1
         _remove_count = 0
+        _conds_to_remove = []
         for cond, actions in self._hooks[(event, end)].items():
             # If condition is `None` (raw function hooks), action always
             # triggers.
-            if cond is None or cond.hooks[(event, end)](self):
+            should_trigger = True
+            if cond is not None:
+                should_trigger = cond.hooks[(event, end)](self)
+                if self._should_remove_current_action:
+                    self._should_remove_current_action = False
+                    _conds_to_remove.append(cond)
+            if should_trigger:
                 for idx, action in enumerate(actions):
-                    try:
-                        action(self)
-                    except utils.ExecutorRemoveActionSignal:
+                    action(self)
+                    if self._should_remove_current_action:
                         # Rebind `actions` variable and assign to _hooks. This
                         # does not affect the current for-loop over `actions`.
+                        self._should_remove_current_action = False
                         index = idx - _remove_count
                         _remove_count += 1
                         actions = actions[:index] + actions[(index + 1):]
-                        self._hooks[(event, end)][cond] = actions
+                        if len(actions) == 0:
+                            _conds_to_remove.append(cond)
+                        else:
+                            self._hooks[(event, end)][cond] = actions
+        for cond in _conds_to_remove:
+            del self._hooks[(event, end)][cond]
 
         self._event_nested_layers -= 1
         if self._should_terminate:

@@ -5,17 +5,9 @@ from typing import List, Counter, Tuple
 from texar.torch.run.metric.base_metric import StreamingMetric
 from texar.torch.utils.types import MaybeList
 
-
-class METEOR(StreamingMetric[str, float]):
-
-    def reset(self) -> None:
-        pass
-
-    def add(self, predicted: List[str], labels: List[str]) -> None:
-        pass
-
-    def value(self) -> float:
-        pass
+__all__ = [
+    "BLEU",
+]
 
 
 def _maybe_str_to_list(list_or_str: MaybeList[str]) -> List[str]:
