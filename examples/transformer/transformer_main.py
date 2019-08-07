@@ -135,9 +135,10 @@ class FileBLEUMetric(metric.SimpleMetric[List[int], float]):
 
 
 class BLEUWrapper(metric.BLEU):
-    def __init__(self, vocab: tx.data.Vocab):
+    def __init__(self, vocab: tx.data.Vocab, run_spm_decode: bool = False):
         super().__init__(pred_name="preds", label_name="target_output")
         self.vocab = vocab
+        self.run_spm_decode = run_spm_decode
 
     @property
     def metric_name(self) -> str:
@@ -151,6 +152,8 @@ class BLEUWrapper(metric.BLEU):
         vocab_map = self.vocab.id_to_token_map_py
 
         words = [vocab_map[t] for t in tokens]
+        if self.run_spm_decode:
+            words = spm_decode(words)
         sentence = ' '.join(words)
         return sentence
 
@@ -219,12 +222,19 @@ def main():
         log_format="{time} : Epoch {epoch:2d} @ {iteration:6d}it "
                    "({progress}%, {speed}), lr = {lr:.3e}, loss = {loss:.3f}",
         valid_metrics=BLEUWrapper(vocab),
-        test_metrics=FileBLEUMetric(vocab, output_dir / "test.output"),
+        test_metrics=[
+            FileBLEUMetric(vocab, output_dir / "test.output"),
+            ("unofficial_bleu", BLEUWrapper(vocab, run_spm_decode=True))],
+        valid_log_format="{time} : Epoch {epoch}, "
+                         "{split} BLEU = {BLEU:.3f}",
+        test_progress_log_format=(
+            "{time} : Evaluating on test ({progress}%, {speed}), "
+            "unofficial BLEU = {unofficial_bleu:.2f}"),
         validate_mode='predict',
         checkpoint_dir=args.output_dir,
         save_every=cond.validation(better=True),
         max_to_keep=1,
-        show_live_progress=["train", "valid"],
+        show_live_progress=True,
     )
     if args.run_mode == "train_and_evaluate":
         executor.write_log("Begin running with train_and_evaluate mode")

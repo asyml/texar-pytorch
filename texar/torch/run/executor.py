@@ -22,7 +22,7 @@ from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.run import executor_utils as utils
 from texar.torch.run.condition import Condition, Event, EventPoint
 from texar.torch.run.executor_utils import Instance, OptionalDict, OptionalList
-from texar.torch.run.metric import Metric
+from texar.torch.run.metric import Metric, StreamingMetric
 from texar.torch.utils.types import MaybeList
 
 __all__ = [
@@ -389,7 +389,7 @@ class Executor:
           automatically named when they're logged.
         - A tuple of (``str``, |Metric|), or a list of this. These metrics are
           explicitly named according to the provided strings. Note that names
-          must be unique.
+          must be unique, and should be valid identifier names.
         - An :class:`~collections.OrderedDict` mapping names to metrics. Note
           that a plain (unordered) dictionary is not accepted.
 
@@ -589,10 +589,9 @@ class Executor:
 
             2019-08-05 11:46:26 : Epoch 1 @ 800it (20.3%, 16.14ex/s), {loss: 0.358, Accuracy: 0.567}
 
-    `eval_log_format`: str
-        The format string for logs during evaluation (i.e. validation and
-        testing). Please refer to :ref:`log_format <log-format>` for details of
-        the format string.
+    `valid_log_format`: str
+        The format string for logs when validation completes. Please refer to
+        :ref:`log_format <log-format>` for details of the format string.
 
         The default format string is:
 
@@ -605,6 +604,38 @@ class Executor:
         .. code-block::
 
             2019-08-05 11:36:53 : Epoch 6, valid result = {PearsonR: 0.918, loss: 0.363}
+
+    `test_log_format`: str, optional
+        The format string for logs when testing completes. Please refer to
+        :ref:`log_format <log-format>` for details of the format string.
+
+        If `None`, the format string for validation (``valid_log_format``) is
+        used. Defaults to `None`.
+
+    `valid_progress_log_format`: str
+        The format string for logs during validation if live progress is
+        enabled. Please refer to :ref:`log_format <log-format>` for details of
+        the format string.
+
+        The default format string is:
+
+        .. code-block::
+
+            {time} : Evaluating on {split} ({progress}%, {speed}), {{{metric:.3f}}}
+
+        which produces logs similar to:
+
+        .. code-block::
+
+            2019-08-05 11:35:56 : Evaluating on test (65.4%, 1.12s/ex), {PearsonR: 0.911, loss: 0.384}
+
+    `test_progress_log_format`: str
+        The format string for logs during testing if live progress is
+        enabled. Please refer to :ref:`log_format <log-format>` for details of
+        the format string.
+
+        If `None`, the format string for validation
+        (``valid_progress_log_format``) is used. Defaults to `None`.
 
     `print_model_arch`: bool
         If `True`, model architecture and will logged in a readable format.
@@ -641,8 +672,10 @@ class Executor:
     _defaults: Dict[str, Any] = {
         "log_format": "{time} : Epoch {epoch} @ {iteration}it "
                       "({progress}%, {speed}), {{{metric:.3f}}}",
-        "eval_log_format": "{time} : Epoch {epoch}, "
-                           "{split} result = {{{metric:.3f}}}",
+        "valid_progress_log_format": "{time} : Evaluating on {split} "
+                                     "({progress}%, {speed}), {{{metric:.3f}}}",
+        "valid_log_format": "{time} : Epoch {epoch}, "
+                            "{split} result = {{{metric:.3f}}}",
         "log_destination": [sys.stdout],
     }
 
@@ -689,7 +722,10 @@ class Executor:
                  log_format: Optional[str] = None,
                  log_destination: OptionalList[Union[str, IO[str]]] = None,
                  print_model_arch: bool = True,
-                 eval_log_format: Optional[str] = None,
+                 valid_log_format: Optional[str] = None,
+                 test_log_format: Optional[str] = None,
+                 valid_progress_log_format: Optional[str] = None,
+                 test_progress_log_format: Optional[str] = None,
                  show_live_progress: Union[bool, MaybeList[str]] = False,
                  # Tensorboard
                  # pylint: disable=unused-argument
@@ -699,6 +735,14 @@ class Executor:
                  ):
 
         # TODO: Add support for Tensorboard.
+        # Meta variables
+        self._should_terminate = False  # .terminate()
+        self._should_remove_current_action = False  # .remove_action()
+        # Since an event action could be internally fire other events (e.g.
+        # validation), there could be nested events. Thus we keep track of
+        # the number of layers.
+        self._event_nested_layers = 0  # ._fire_event()
+        self._status_line_str: Optional[str] = None
 
         self.model = model
         self.train_data = train_data
@@ -720,8 +764,14 @@ class Executor:
         self._print_model_arch = print_model_arch
 
         self.log_format: str = log_format or self._defaults["log_format"]
-        self.eval_log_format: str = (
-                eval_log_format or self._defaults["eval_log_format"])
+        self.valid_log_format: str = (
+                valid_log_format or self._defaults["valid_log_format"])
+        self.valid_progress_log_format: str = (
+                valid_progress_log_format or
+                self._defaults["valid_progress_log_format"])
+        self.test_log_format: str = test_log_format or self.valid_log_format
+        self.test_progress_log_format: str = (
+                test_progress_log_format or self.valid_progress_log_format)
 
         # Checkpoint management
         self.checkpoint_dir = (Path(checkpoint_dir)
@@ -815,15 +865,6 @@ class Executor:
             raise ValueError("Invalid value for `show_live_progress`")
         self._register_logging_actions(show_live_progress)
 
-        # Meta variables
-        self._should_terminate = False  # .terminate()
-        self._should_remove_current_action = False  # .remove_action()
-        # Since an event action could be internally fire other events (e.g.
-        # validation), there could be nested events. Thus we keep track of
-        # the number of layers.
-        self._event_nested_layers = 0  # ._fire_event()
-        self._status_line_str: Optional[str] = None
-
         # Register other events and actions.
         for cond in self._valid_conditions:
             self._register_action(cond, self._validate.__func__)  # type: ignore
@@ -838,64 +879,6 @@ class Executor:
 
         for cond in self._stop_training_conditions:
             self._register_action(cond, self.terminate.__func__)  # type: ignore
-
-    def _register_logging_actions(self, show_live_progress: List[str]):
-        # Register logging actions.
-        train_logging_fn = self._create_logging_fn(
-            self.log_format, self.train_metrics, self._train_tracker)
-        valid_logging_fn = self._create_logging_fn(
-            self.eval_log_format, self.valid_metrics, self._valid_tracker)
-        test_logging_fn = self._create_logging_fn(
-            self.eval_log_format, self.test_metrics, self._test_tracker)
-
-        Points = Sequence[Union[Condition, Event]]
-
-        def _register(points: Points, fn: Callable[['Executor'], None]):
-            for cond_or_event in points:
-                if isinstance(cond_or_event, Condition):
-                    self._register_action(cond_or_event, fn)
-                else:
-                    self._register_hook((cond_or_event, True), fn)
-
-        def _register_log_fn(points: Points,
-                             logging_fn: Callable[['Executor'], str],
-                             **log_kwargs):
-            def log_fn(executor: 'Executor'):
-                executor.write_log(
-                    logging_fn(executor), mode="log", **log_kwargs)
-
-            _register(points, log_fn)
-
-        # Progress is displayed by writing the log string after every
-        # iteration, and clearing the line. In this case, when a normal log
-        # condition is triggered, a newline character is simply printed.
-        # However, this applies to terminal output only, so we revert to
-        # the original approach for files.
-        def _flush_log_hook(executor: 'Executor'):
-            executor._write_log("", skip_non_tty=True)  # pylint: disable=protected-access
-
-        def _register_status_fn(points: Points, update_event: Event,
-                                logging_fn: Callable[['Executor'], str]):
-            def status_fn(executor: 'Executor'):
-                executor.set_status_line(logging_fn(executor))
-
-            self._register_hook((update_event, True), status_fn)
-            _register(points, _flush_log_hook)
-            _register_log_fn(points, logging_fn, skip_tty=True)
-
-        def register(name: str, points: Points, update_event: Event,
-                     logging_fn: Callable[['Executor'], str]):
-            if name in show_live_progress:
-                _register_status_fn(points, update_event, logging_fn)
-            else:
-                _register_log_fn(points, logging_fn)
-
-        register("train", self._log_conditions,
-                 Event.Iteration, train_logging_fn)
-        register("valid", [Event.Validation],
-                 Event.ValidationIteration, valid_logging_fn)
-        register("test", [Event.Testing],
-                 Event.TestingIteration, test_logging_fn)
 
     def write_log(self, log_str: str, *, mode: str = "info",
                   skip_tty: bool = False, skip_non_tty: bool = False) -> None:
@@ -939,47 +922,13 @@ class Executor:
         else:
             self._write_log(log_str, skip_tty, skip_non_tty)
 
-    def _write_log(self, log_str: str,
-                   skip_tty: bool = False, skip_non_tty: bool = False,
-                   newline: bool = True, clear_line: bool = False):
-        r"""Write a string to log.
-
-        Args:
-            log_str (str): The string to log.
-            skip_tty: If `True`, the log string will not be written to terminal
-                log destinations. Defaults to `False`.
-            skip_non_tty: If `True`, the log string will not be written to
-                non-terminal (e.g., files) destinations. Defaults to `False`.
-            newline: If `True`, print a newline character after printing the log
-                string. Defaults to `True`.
-            clear_line: If `True`, clear the line before printing. This only
-                works for terminals. Defaults to `False`.
-        """
-        plain_str = None
-        if not skip_non_tty:
-            plain_str = re.sub(r"\033\[\d{1,2}[Km]", "", log_str)
-        for dest in self.log_destination:
-            if dest.isatty():
-                if skip_tty:
-                    continue
-                if clear_line:
-                    dest.write(utils.CLEAR_LINE)
-                dest.write(log_str)
-            else:
-                if skip_non_tty:
-                    continue
-                # Erase color codes if the destination is not a terminal.
-                dest.write(plain_str)  # type: ignore
-            if newline:
-                dest.write("\n")
-            dest.flush()
-
     def set_status_line(self, status_str: Optional[str]):
         # TODO: Check terminal width and do something to prevent wrapping?
         self._status_line_str = status_str
-        if status_str is not None:
-            self._write_log(status_str, skip_non_tty=True,
-                            newline=False, clear_line=True)
+        if status_str is None:
+            status_str = ""  # just clear the line
+        self._write_log(status_str, skip_non_tty=True,
+                        newline=False, clear_line=True)
 
     # pylint: disable=unused-argument,no-self-use,function-redefined
 
@@ -1221,7 +1170,7 @@ class Executor:
                     load_info_str = (f"saved at: {time_str}, "
                                      f"meta-info: epoch={status['epoch']}, "
                                      f"iteration={status['iteration']}, "
-                                     f"metrics={{{metric_str}}}")
+                                     f"valid metrics={{{metric_str}}}")
                 else:
                     m_time, ckpt_path = max(
                         (name.stat().st_mtime, name)
@@ -1418,9 +1367,126 @@ class Executor:
             self._fire_event(Event.Testing, True)
         self.model.train(model_mode)
 
+    def _register_logging_actions(self, show_live_progress: List[str]):
+        # Register logging actions.
+        Points = Sequence[Union[Condition, Event]]
+        LogFn = Callable[['Executor'], str]
+
+        def _register(points: Points, fn: ActionFn):
+            for cond_or_event in points:
+                if isinstance(cond_or_event, Condition):
+                    self._register_action(cond_or_event, fn)
+                else:
+                    self._register_hook((cond_or_event, True), fn)
+
+        def _register_log_fn(points: Points, logging_fn: LogFn,
+                             **log_kwargs):
+            def log_fn(executor: 'Executor'):
+                executor.write_log(
+                    logging_fn(executor), mode="log", **log_kwargs)
+
+            _register(points, log_fn)
+
+        def _flush_log_hook(executor: 'Executor'):
+            executor._write_log("", skip_non_tty=True)  # pylint: disable=protected-access
+
+        def _register_status_fn(update_event: Event, log_fn: LogFn):
+            def status_fn(executor: 'Executor'):
+                executor.set_status_line(log_fn(executor))
+
+            self._register_hook((update_event, True), status_fn)
+
+        if "train" in show_live_progress:
+            # Training progress is displayed by writing the log string after
+            # every iteration, and clearing the line. In this case, when a
+            # normal log condition is triggered, a newline character is simply
+            # printed. However, this applies to terminal output only, so we
+            # revert to the original approach for files.
+            train_log_fn = self._create_logging_fn(
+                self.log_format, self.train_metrics, self._train_tracker,
+                warn_non_streaming_metric=True)
+            _register_status_fn(Event.Iteration, train_log_fn)
+            for cond in self._log_conditions:
+                self._register_action(cond, _flush_log_hook)
+            _register_log_fn(self._log_conditions, train_log_fn, skip_tty=True)
+        else:
+            train_log_fn = self._create_logging_fn(
+                self.log_format, self.train_metrics, self._train_tracker)
+            _register_log_fn(self._log_conditions, train_log_fn)
+
+        def _register_eval_log_fn(name: str,
+                                  metrics: 'OrderedDict[str, Metric]',
+                                  tracker: utils.ProgressTracker,
+                                  log_format: str, progress_log_format: str,
+                                  update_event: Event, end_event: Event):
+            log_fn = self._create_logging_fn(log_format, metrics, tracker)
+            if name in show_live_progress:
+                progress_log_fn = self._create_logging_fn(
+                    progress_log_format, metrics, tracker,
+                    warn_non_streaming_metric=True)
+                _register_status_fn(update_event, progress_log_fn)
+
+                def erase_status_and_log_fn(executor: 'Executor'):
+                    # Compute metrics before erasing status line, so there won't
+                    # be a blank period.
+                    log_str = log_fn(executor)
+                    executor.set_status_line(None)
+                    executor.write_log(log_str, mode="log")
+
+                self._register_hook((end_event, True), erase_status_and_log_fn)
+            else:
+                _register_log_fn([end_event], log_fn)
+
+        _register_eval_log_fn(
+            "valid",
+            self.valid_metrics, self._valid_tracker,
+            self.valid_log_format, self.valid_progress_log_format,
+            Event.ValidationIteration, Event.Validation)
+        _register_eval_log_fn(
+            "test",
+            self.test_metrics, self._test_tracker,
+            self.test_log_format, self.test_progress_log_format,
+            Event.TestingIteration, Event.Testing)
+
+    def _write_log(self, log_str: str,
+                   skip_tty: bool = False, skip_non_tty: bool = False,
+                   newline: bool = True, clear_line: bool = False):
+        r"""Write a string to log.
+
+        Args:
+            log_str (str): The string to log.
+            skip_tty: If `True`, the log string will not be written to terminal
+                log destinations. Defaults to `False`.
+            skip_non_tty: If `True`, the log string will not be written to
+                non-terminal (e.g., files) destinations. Defaults to `False`.
+            newline: If `True`, print a newline character after printing the log
+                string. Defaults to `True`.
+            clear_line: If `True`, clear the line before printing. This only
+                works for terminals. Defaults to `False`.
+        """
+        plain_str = None
+        if not skip_non_tty:
+            plain_str = re.sub(r"\033\[\d{1,2}[Km]", "", log_str)
+        for dest in self.log_destination:
+            if dest.isatty():
+                if skip_tty:
+                    continue
+                if clear_line:
+                    dest.write(utils.CLEAR_LINE)
+                dest.write(log_str)
+            else:
+                if skip_non_tty:
+                    continue
+                # Erase color codes if the destination is not a terminal.
+                dest.write(plain_str)  # type: ignore
+            if newline:
+                dest.write("\n")
+            dest.flush()
+
     def _create_logging_fn(self, format_str: str,
                            metrics: 'OrderedDict[str, Metric]',
-                           tracker: utils.ProgressTracker) \
+                           tracker: utils.ProgressTracker,
+                           warn_non_streaming_metric: bool = False) \
             -> Callable[['Executor'], str]:
         r"""Given a logging format string, create a function that takes the
         executor instance as argument and returns the logging string.
@@ -1431,6 +1497,11 @@ class Executor:
                 hook function.
             tracker: The progress tracker that will be used in the logging hook
                 function.
+            warn_non_streaming_metric (bool): If `True`, will issue a warning
+                if any of the provided metric is not a
+                :class:`~texar.torch.run.metric.StreamingMetric`. Defaults to
+                `False`. This is set to `True` when the logging string is used
+                as the status line.
 
         Returns:
             A hook function to print logs given the format string. Note that
@@ -1451,6 +1522,15 @@ class Executor:
 
         # Set metric print formats for aggregated format variable.
         if "metric" in format_vars and format_vars["metric"] is not None:
+            if warn_non_streaming_metric:
+                # Check if any metrics are non-streaming.
+                for name, metric in metrics.items():
+                    if not isinstance(metric, StreamingMetric):
+                        self.write_log(
+                            f"Metric \"{name}\" (`{metric.__class__.__name__}`)"
+                            f" is not a StreamingMetric, which may cause "
+                            f"performance issues", mode="warning")
+
             # Check which metrics can be printed with specified format.
             fmt_metrics: Set[str] = set()
             metric_format = format_vars["metric"]

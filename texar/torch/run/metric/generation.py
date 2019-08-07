@@ -120,4 +120,4 @@ class BLEU(StreamingMetric[MaybeList[str], float]):
                 bp = math.exp(1 - 1.0 / ratio)
 
         bleu = geo_mean * bp
-        return bleu
+        return bleu * 100.0

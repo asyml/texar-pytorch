@@ -104,7 +104,10 @@ def to_metric_dict(metrics: OptionalDict[Metric]) -> 'OrderedDict[str, Metric]':
         raise ValueError("Metrics dictionary must be of type OrderedDict")
     metric_dict = _to_dict(metrics, unambiguous_name_fn, default_name_fn)
 
-    for metric in metric_dict.values():
+    for name, metric in metric_dict.items():
+        if not name.isidentifier():
+            raise ValueError(f"Name \"{name}\" for metric {metric} is not a "
+                             f"valid identifier name")
         if not isinstance(metric, Metric):
             raise ValueError(f"All metrics must be of class Metric, but found "
                              f"{type(metric)}")
