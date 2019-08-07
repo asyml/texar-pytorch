@@ -117,6 +117,7 @@ def _mlp_transform(inputs: TensorStruct,
         output_size: Can be an ``Integer``, a ``torch.Size``, or a (nested)
             ``tuple`` of ``Integers`` or ``torch.Size``.
         activation_fn: Activation function applied to the output.
+
     :returns:
         If :attr:`output_size` is an ``Integer`` or a ``torch.Size``,
         returns a ``Tensor`` of shape ``[batch_size, *, output_size]``.
