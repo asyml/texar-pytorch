@@ -76,6 +76,7 @@ disable=invalid-name,too-many-branches,too-many-statements,too-many-arguments,  
         no-name-in-module,unsubscriptable-object,import-error,
         access-member-before-definition,
         redefined-builtin,abstract-method,missing-docstring,                    # Too many false positives
+        unused-wildcard-import,                                                 # Too many false positives (https://github.com/rogalski/astroid/commit/82c6ef644a2efb77217a23d9b8a6cfb5caffb4ba)
         duplicate-code,                                                         # Too many false positives (will be fixed in next release)
 
 
@@ -410,6 +411,8 @@ known-third-party=enchant
 # 3 compatible code, which means that the block might have code that exists
 # only in one or another interpreter, leading to false positives when analysed.
 analyse-fallback-blocks=no
+
+allow-wildcard-with-all=yes
 
 
 [EXCEPTIONS]

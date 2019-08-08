@@ -1,6 +1,6 @@
 import collections
 import math
-from typing import List, Counter, Tuple
+from typing import Counter, List, Sequence, Tuple
 
 from texar.torch.run.metric.base_metric import StreamingMetric
 from texar.torch.utils.types import MaybeList
@@ -58,8 +58,8 @@ class BLEU(StreamingMetric[MaybeList[str], float]):
         self.matches_by_order = [0] * self.max_order
         self.possible_matches_by_order = [0] * self.max_order
 
-    def add(self, predicted: List[MaybeList[str]],
-            labels: List[MaybeList[str]]) -> None:
+    def add(self, predicted: Sequence[MaybeList[str]],
+            labels: Sequence[MaybeList[str]]) -> None:
         for (reference, hypothesis) in zip(labels, predicted):
             reference = _maybe_str_to_list(reference)
             if self.lowercase:

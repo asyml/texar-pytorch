@@ -1,5 +1,5 @@
 from collections import deque
-from typing import List, Deque, Any
+from typing import Any, Deque, Sequence
 
 import numpy as np
 from torch.optim.optimizer import Optimizer
@@ -28,7 +28,7 @@ class Average(StreamingMetric[float, float]):
         super().reset()
         self.sum = 0.0
 
-    def add(self, predicted: List[float], _) -> None:
+    def add(self, predicted: Sequence[float], _) -> None:
         self.count += len(predicted)
         self.sum += sum(predicted)
 
@@ -43,7 +43,7 @@ class AveragePerplexity(Average):
     #   and subclass that instead.
     higher_is_better = False
 
-    def add(self, predicted: List[float], _) -> None:
+    def add(self, predicted: Sequence[float], _) -> None:
         super().add(np.exp(predicted), _)
 
 
@@ -66,7 +66,7 @@ class RunningAverage(StreamingMetric[float, float]):
         self.sum = 0.0
         self.history = deque()
 
-    def add(self, predicted: List[float], _) -> None:
+    def add(self, predicted: Sequence[float], _) -> None:
         if len(predicted) >= self.queue_size:
             self.history = deque(predicted[-self.queue_size:])
             self.sum = sum(self.history)

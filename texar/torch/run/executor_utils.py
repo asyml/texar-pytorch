@@ -207,7 +207,10 @@ class ProgressTracker:
         speed = self.n_examples / self.time_elapsed()
         if speed > 1.0:
             return f"{speed:.2f}ex/s"
-        return f"{1.0 / speed:.2f}s/ex"
+        try:
+            return f"{1.0 / speed:.2f}s/ex"
+        except ZeroDivisionError:
+            return f"0.00ex/s"
 
 
 class ExecutorTerminateSignal(Exception):

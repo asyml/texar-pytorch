@@ -1,5 +1,5 @@
 import math
-from typing import List
+from typing import Sequence
 
 from texar.torch.run.metric.base_metric import StreamingMetric
 
@@ -21,7 +21,7 @@ class PearsonR(StreamingMetric[float, float]):
         self.x2_sum = self.y2_sum = 0.0
         self.xy_sum = 0.0
 
-    def add(self, xs: List[float], ys: List[float]):
+    def add(self, xs: Sequence[float], ys: Sequence[float]):
         super().add(xs, ys)
         self.x_sum += sum(xs)
         self.x2_sum += sum(x * x for x in xs)

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic, List, Optional, TypeVar
+from typing import Generic, List, Optional, Sequence, TypeVar
 
 __all__ = [
     "Metric",
@@ -49,7 +49,7 @@ class Metric(Generic[Input, Value], ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def add(self, predicted: List[Input], labels: List[Input]) -> None:
+    def add(self, predicted: Sequence[Input], labels: Sequence[Input]) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -72,7 +72,7 @@ class SimpleMetric(Metric[Input, Value], ABC):
         self.labels = []
         self.predicted = []
 
-    def add(self, predicted: List[Input], labels: List[Input]):
+    def add(self, predicted: Sequence[Input], labels: Sequence[Input]):
         self.predicted.extend(predicted)
         self.labels.extend(labels)
 
@@ -83,7 +83,7 @@ class StreamingMetric(Metric[Input, Value], ABC):
     def reset(self) -> None:
         self.count = 0
 
-    def add(self, predicted: List[Input], labels: List[Input]) -> None:
+    def add(self, predicted: Sequence[Input], labels: Sequence[Input]) -> None:
         if len(predicted) != len(labels):
             raise ValueError(
                 "Lists 'predicted' and 'labels' should have the same length")

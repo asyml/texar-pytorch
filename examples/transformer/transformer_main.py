@@ -65,7 +65,8 @@ class ModelWrapper(nn.Module):
         self.model = model
         self.beam_width = beam_width
 
-    def forward(self, batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
+    def forward(self,  # type: ignore
+                batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
         loss = self.model(encoder_input=batch.source,
                           decoder_input=batch.target_input,
                           labels=batch.target_output)
@@ -84,7 +85,7 @@ class ModelWrapper(nn.Module):
 def spm_decode(tokens: List[str]) -> List[str]:
     spm_bos_token = "▁"
     words = []
-    pieces = []
+    pieces: List[str] = []
     for t in tokens:
         if t[0] == spm_bos_token:
             if len(pieces) > 0:

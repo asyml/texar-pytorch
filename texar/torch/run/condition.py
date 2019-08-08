@@ -211,8 +211,8 @@ class consecutive(Condition):
         returns `False`. Thus, the behavior of :class:`consecutive` might be
         different to what you expect. For instance:
 
-        - :python:`cond.consecutive(cond.iteration(1), n_times)` is equivalent to
-          :python:`cond.iteration(n_times)`.
+        - :python:`cond.consecutive(cond.iteration(1), n_times)` is equivalent
+          to :python:`cond.iteration(n_times)`.
         - :python:`cond.consecutive(cond.iteration(2), n_times)` will never
           trigger.
 

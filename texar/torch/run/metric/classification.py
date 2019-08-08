@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Dict, List, Optional, TypeVar, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple, TypeVar
 
 import numpy as np
 
@@ -24,7 +24,7 @@ class Accuracy(StreamingMetric[Input, float]):
         super().reset()
         self.correct = 0
 
-    def add(self, predicted: List[Input], labels: List[Input]) -> None:
+    def add(self, predicted: Sequence[Input], labels: Sequence[Input]) -> None:
         super().add(predicted, labels)
         self.correct += sum(int(a == b) for a, b in zip(predicted, labels))
 
@@ -48,7 +48,7 @@ class _ConfusionMatrix(StreamingMetric[Input, Value], ABC):
         self.label_count = []
         self.class_id = {}
 
-    def _convert_ids(self, classes: List[Input]) -> List[int]:
+    def _convert_ids(self, classes: Sequence[Input]) -> List[int]:
         ids = []
         cnt = 0
         for klass in classes:
@@ -65,7 +65,7 @@ class _ConfusionMatrix(StreamingMetric[Input, Value], ABC):
         self.label_count.extend([0] * cnt)
         return ids
 
-    def add(self, predicted: List[Input], labels: List[Input]) -> None:
+    def add(self, predicted: Sequence[Input], labels: Sequence[Input]) -> None:
         super().add(predicted, labels)
         predicted = self._convert_ids(predicted)
         labels = self._convert_ids(labels)
@@ -161,7 +161,9 @@ class Recall(_MicroMacro[Input]):
 
 class F1(Precision[Input], Recall[Input]):
     def _value(self) -> Tuple[np.ndarray, np.ndarray]:
+        # pylint: disable=protected-access
         precision = self._safe_divide(*Precision._value(self))
         recall = self._safe_divide(*Recall._value(self))
+        # pylint: enable=protected-access
         return (2 * precision * recall,
                 precision + recall)

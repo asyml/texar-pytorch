@@ -813,7 +813,7 @@ class Executor:
                     raise ValueError(f"Log destination {dest} is not a "
                                      f"file-like object")
                 try:
-                    isatty = dest.isatty()
+                    isatty = dest.isatty()  # type: ignore
                 except AttributeError:
                     isatty = False
                 file = dest  # type: ignore
@@ -1491,7 +1491,8 @@ class Executor:
                 if clear_line:
                     if self._tty_ncols is not None:
                         n_cols = self._tty_ncols(dest.fileno())
-                        n_lines = (len(self._status_line_str) - 1) // n_cols + 1
+                        status_len = len(self._status_line_str)  # type: ignore
+                        n_lines = (status_len - 1) // n_cols + 1
                         if n_lines > 1:
                             dest.write(self._tty_move_up * (n_lines - 1))
                     dest.write(utils.CLEAR_LINE)
@@ -1655,7 +1656,7 @@ class Executor:
         """
         self._event_nested_layers += 1
         _remove_count = 0
-        _conds_to_remove = []
+        _conds_to_remove: List[Optional[Condition]] = []
         for cond, actions in self._hooks[(event, end)].items():
             # If condition is `None` (raw function hooks), action always
             # triggers.
