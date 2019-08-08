@@ -16,6 +16,7 @@ Various connectors.
 """
 
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+import numpy as np
 
 import torch
 from torch import nn
@@ -75,7 +76,7 @@ def _get_tensor_depth(x: torch.Tensor) -> int:
     Args:
         x: A tensor.
     """
-    return _prod(x.size()[1:])
+    return np.prod(x.size()[1:])
 
 
 def _sum_output_size(output_size: OutputSize) -> int:
@@ -90,7 +91,7 @@ def _sum_output_size(output_size: OutputSize) -> int:
     if isinstance(flat_output_size[0], torch.Size):
         size_list = [0] * len(flat_output_size)
         for (i, shape) in enumerate(flat_output_size):
-            size_list[i] = _prod(shape)
+            size_list[i] = np.prod(shape)
     else:
         size_list = flat_output_size
     ret = sum(size_list)
@@ -130,7 +131,7 @@ def _mlp_transform(inputs: TensorStruct,
     if isinstance(flat_output_size[0], torch.Size):
         size_list = [0] * len(flat_output_size)
         for (i, shape) in enumerate(flat_output_size):
-            size_list[i] = _prod(shape)
+            size_list[i] = np.prod(shape)
     else:
         size_list = flat_output_size
 
@@ -150,18 +151,6 @@ def _mlp_transform(inputs: TensorStruct,
     output = nest.pack_sequence_as(structure=output_size,
                                    flat_sequence=flat_output)
     return output
-
-
-def _prod(x: Tuple[int, ...]) -> int:
-    r"""Return product of all elements in :attr:`x`.
-
-    Args:
-        x: A ``tuple`` of ``int``.
-    """
-    res = 1
-    for i in x:
-        res *= i
-    return res
 
 
 class ConstantConnector(ConnectorBase):
@@ -530,7 +519,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
         if isinstance(mlp_input_size, int):
             input_feature = mlp_input_size
         else:
-            input_feature = _prod(mlp_input_size)
+            input_feature = np.prod(mlp_input_size)
         self._linear_layer = nn.Linear(
             input_feature, _sum_output_size(output_size))
 
@@ -683,7 +672,7 @@ class StochasticConnector(ConnectorBase):
         if isinstance(mlp_input_size, int):
             input_feature = mlp_input_size
         else:
-            input_feature = _prod(mlp_input_size)
+            input_feature = np.prod(mlp_input_size)
         self._linear_layer = nn.Linear(
             input_feature, _sum_output_size(output_size))
 
