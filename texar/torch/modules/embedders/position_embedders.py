@@ -230,6 +230,8 @@ class SinusoidsPositionEmbedder(EmbedderBase):
 
     .. document private functions
     """
+    signal: torch.Tensor
+    inv_timescales: torch.Tensor
 
     def __init__(self, position_size: Optional[int] = None, hparams=None):
         super().__init__(hparams=hparams)

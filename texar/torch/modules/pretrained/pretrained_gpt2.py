@@ -180,10 +180,6 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
             arrays.append(array.squeeze())
 
         tensor_names = []
-        for name, _ in self.word_embedder.named_parameters():
-            tensor_names.append(name)
-        for name, _ in self.position_embedder.named_parameters():
-            tensor_names.append(name)
         for name, _ in self.named_parameters():
             tensor_names.append(name)
 
@@ -200,17 +196,18 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
 
                 if name == "model/wte":
                     if load_output_layer:
-                        pointer = self.word_embedder.embedding
+                        pointer = self._name_to_variable(
+                            "word_embedder.embedding")
                         assert pointer.shape == array.shape
                         pointer.data = torch.from_numpy(array)
 
-                        output_pointer = name_to_variable(
-                            self, "_output_layer.weight")
-                        if not isinstance(output_pointer, nn.Identity):
-                            assert output_pointer.shape == array.shape
-                            output_pointer.data = torch.from_numpy(array)
+                        output_pointer = self._name_to_variable(
+                            "_output_layer.weight")
+                        assert output_pointer.shape == array.shape
+                        output_pointer.data = torch.from_numpy(array)
                 elif name == "model/wpe":
-                    pointer = self.position_embedder.embedding
+                    pointer = self._name_to_variable(
+                        "position_embedder.embedding")
                     assert pointer.shape == array.shape
                     pointer.data = torch.from_numpy(array)
                 else:
@@ -278,18 +275,3 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
                 else:
                     print("Name error", name)
                     raise Exception
-
-
-def name_to_variable(model: nn.Module, name: str) -> nn.Module:
-    r"""Find the corresponding variable given the specified name.
-    """
-    pointer = model
-    name = name.split(".")
-    for m_name in name:
-        if m_name.isdigit():
-            num = int(m_name)
-            pointer = pointer[num]  # type: ignore
-        else:
-            if not isinstance(pointer, nn.Identity):
-                pointer = getattr(pointer, m_name)
-    return pointer

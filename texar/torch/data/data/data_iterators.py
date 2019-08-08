@@ -348,18 +348,19 @@ class DynamicBatchSampler(torch_sampler.BatchSampler, Generic[Example]):
 
 # pylint: disable=ungrouped-imports
 if _torch_version >= (1, 2):  # PyTorch 1.2.0 +
-    from torch.utils.data._utils.pin_memory import pin_memory as _pin_memory  # type: ignore
+    from torch.utils.data._utils.pin_memory import (  # type: ignore
+        pin_memory as _pin_memory)
 elif _torch_version >= (1, 1):  # PyTorch 1.1.0 +
     from torch.utils.data._utils.pin_memory import (  # type: ignore
         pin_memory_batch as _pin_memory)
 else:
-    from torch.utils.data.dataloader import pin_memory_batch as _pin_memory  # type: ignore
+    from torch.utils.data.dataloader import (  # type: ignore
+        pin_memory_batch as _pin_memory)
 
 if _torch_version >= (1, 2):  # PyTorch 1.2.0 +
     from torch.utils.data.dataloader import (  # type: ignore
         _BaseDataLoaderIter, _SingleProcessDataLoaderIter,
         _MultiProcessingDataLoaderIter)
-
 
     class _DataLoaderIter(_BaseDataLoaderIter):
         r"""Iterates once over the DataLoader's dataset. This is almost
@@ -391,14 +392,11 @@ if _torch_version >= (1, 2):  # PyTorch 1.2.0 +
                 raise StopIteration
             return batch
 
-
     class _SPDataLoaderIter(_DataLoaderIter, _SingleProcessDataLoaderIter):
         pass
 
-
     class _MPDataLoaderIter(_DataLoaderIter, _MultiProcessingDataLoaderIter):
         pass
-
 
     class _CacheDataLoaderIter(_BaseDataLoaderIter):
         r"""Iterates once over the DataLoader's dataset. This class is used when
@@ -414,7 +412,6 @@ if _torch_version >= (1, 2):  # PyTorch 1.2.0 +
                 return super().__new__(_MPCacheDataLoaderIter)
             else:
                 return super().__new__(_SPCacheDataLoaderIter)
-
 
     class _SPCacheDataLoaderIter(_CacheDataLoaderIter,
                                  _SingleProcessDataLoaderIter):
@@ -433,7 +430,6 @@ if _torch_version >= (1, 2):  # PyTorch 1.2.0 +
             if self.pin_memory:
                 data = _pin_memory(data)
             return data
-
 
     class _MPCacheDataLoaderIter(_CacheDataLoaderIter,
                                  _MultiProcessingDataLoaderIter):
@@ -487,7 +483,6 @@ else:
     from torch.utils.data.dataloader import (  # type: ignore
         _DataLoaderIter as torch_DataLoaderIter)
 
-
     class _DataLoaderIter(torch_DataLoaderIter):  # type: ignore
         r"""Iterates once over the DataLoader's dataset. This is almost
         identical to PyTorch
@@ -511,7 +506,6 @@ else:
                     not self.dataset.hparams.allow_smaller_final_batch):
                 raise StopIteration
             return batch
-
 
     class _CacheDataLoaderIter(torch_DataLoaderIter):  # type: ignore
         r"""Iterates once over the DataLoader's dataset. This class is used when
