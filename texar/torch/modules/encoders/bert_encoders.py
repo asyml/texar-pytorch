@@ -46,7 +46,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
 
     Args:
         pretrained_model_name (optional): a str with the name
-            of a pre-trained model to load. selected in the list of:
+            of a pre-trained model to load selected in the list of:
             `bert-base-uncased`, `bert-large-uncased`, `bert-base-cased`,
             `bert-large-cased`, `bert-base-multilingual-uncased`,
             `bert-base-multilingual-cased`, `bert-base-chinese`,
