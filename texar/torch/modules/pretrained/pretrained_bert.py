@@ -39,10 +39,19 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
     The BERT model was proposed in
     `BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`_
     by `Devlin et al.` It is a bidirectional Transformer model pre-trained
-    on a large corpus.
+    on a large corpus. The available BERT models are as follows:
+    `bert-base-uncased`, `bert-large-uncased`, `bert-base-cased`,
+    `bert-large-cased`, `bert-base-multilingual-uncased`,
+    `bert-base-multilingual-cased`, and `bert-base-chinese`.
 
     The RoBERTa model was proposed in
     `RoBERTa: A Robustly Optimized BERT Pretraining Approach` by `Liu et al.`
+    RoBERTa iterates on BERT's pre-training procedure, including training the
+    model longer, with bigger batches over more data; removing the next
+    sentence prediction objective; training on longer sequences;
+    and dynamically changing the masking pattern applied to the training data.
+    The available RoBERTa models are as follows:
+    `roberta-base-cased` and `roberta-large-cased`.
 
     .. _`BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`:
         https://arxiv.org/abs/1810.04805
@@ -71,8 +80,6 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
             _ROBERTA_PATH + "roberta.base.tar.gz",
         'roberta-large':
             _ROBERTA_PATH + "roberta.large.tar.gz",
-        'roberta-large-mnli':
-            _ROBERTA_PATH + "roberta.large.mnli.tar.gz",
     }
 
     @classmethod
@@ -101,7 +108,7 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
                         intermediate_size = config_ckpt['intermediate_size']
                         hidden_act = config_ckpt['hidden_act']
 
-        if pretrained_model_name.startswith('roberta'):
+        elif pretrained_model_name.startswith('roberta'):
             for file in files:
                 if file.endswith('model.pt'):
                     config_path = os.path.join(root, file)
@@ -181,7 +188,7 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
                               cache_dir: str, **kwargs):
         if pretrained_model_name.startswith('bert'):
             self._init_bert_from_checkpoint(cache_dir)
-        if pretrained_model_name.startswith('roberta'):
+        elif pretrained_model_name.startswith('roberta'):
             self._init_roberta_from_checkpoint(cache_dir)
 
     def _init_bert_from_checkpoint(self, cache_dir: str):

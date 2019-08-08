@@ -43,13 +43,16 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
     Arguments are the same as in
     :class:`~texar.torch.modules.BERTEncoder`.
 
+    Please refer to :class:`~texar.torch.modules.pretrained.PretrainedBERTMixin`
+    for the detailed information of the supported models.
+
     Args:
         pretrained_model_name (optional): a str with the name
             of a pre-trained model to load selected in the list of:
             `bert-base-uncased`, `bert-large-uncased`, `bert-base-cased`,
             `bert-large-cased`, `bert-base-multilingual-uncased`,
             `bert-base-multilingual-cased`, `bert-base-chinese`,
-            `roberta-base`, `roberta-large`, `roberta-large-mnli`.
+            `roberta-base-cased`, `roberta-large-cased`.
             If `None`, will use the model name in :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
