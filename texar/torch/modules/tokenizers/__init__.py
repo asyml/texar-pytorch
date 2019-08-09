@@ -12,15 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of Texar library module.
+Tokenizer modules of Texar library.
 """
 
-from texar.torch.modules.classifiers import *
-from texar.torch.modules.connectors import *
-from texar.torch.modules.decoders import *
-from texar.torch.modules.embedders import *
-from texar.torch.modules.encoders import *
-from texar.torch.modules.networks import *
-from texar.torch.modules.pretrained import *
-from texar.torch.modules.regressors import *
-from texar.torch.modules.tokenizers import *
+from texar.torch.modules.tokenizers.pretrained_tokenizer_base import *
+from texar.torch.modules.tokenizers.pretrained_bert_tokenizer import *
+from texar.torch.modules.tokenizers.pretrained_gpt2_tokenizer import *
+from texar.torch.modules.tokenizers.pretrained_xlnet_tokenizer import *
