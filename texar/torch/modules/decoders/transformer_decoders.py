@@ -32,6 +32,7 @@ from texar.torch.modules.encoders.transformer_encoder import (
 from texar.torch.modules.networks.networks import FeedForwardNetwork
 from texar.torch.utils import transformer_attentions as attn
 from texar.torch.utils.beam_search import beam_search
+from texar.torch.utils.dtypes import torch_bool
 from texar.torch.utils.shapes import mask_sequences
 from texar.torch.utils.utils import sequence_mask
 
@@ -748,7 +749,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             # Maximum decoding length reached, mark all batches as finished.
             # This requires special handling because performing lookup on
             # position embeddings with `time + 1` may result in IndexError.
-            finished = torch.ones_like(sample_ids, dtype=torch.uint8)
+            finished = torch.ones_like(sample_ids, dtype=torch_bool)
             # Since `next_inputs` will not be used, simply create a null tensor.
             next_inputs = torch.empty(0)
         else:

@@ -794,7 +794,7 @@ class StochasticConnector(ConnectorBase):
 #    """
 #
 #    def __init__(self, output_size, hparams=None):
-#        ConnectorBase.__init__(self, output_size, hparams)
+#        super().__init__(self, output_size, hparams)
 #
 #    @staticmethod
 #    def default_hparams():

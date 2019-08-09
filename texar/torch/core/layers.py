@@ -17,7 +17,7 @@ Various neural network layers
 
 import copy
 import functools
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 import torch
 from torch import nn

@@ -59,15 +59,14 @@ class PositionEmbedder(EmbedderBase):
     .. document private functions
     """
 
-    def __init__(self, init_value: Optional[torch.Tensor] = None,
-                 position_size: Optional[int] = None, hparams=None):
+    def __init__(self, position_size: Optional[int] = None,
+                 init_value: Optional[torch.Tensor] = None, hparams=None):
 
         if init_value is None and position_size is None:
             raise ValueError(
                 "Either `init_value` or `position_size` is required.")
 
-        EmbedderBase.__init__(self, init_value=init_value,
-                              num_embeds=position_size, hparams=hparams)
+        super().__init__(position_size, init_value, hparams=hparams)
 
         self._position_size = position_size
         if position_size is None:

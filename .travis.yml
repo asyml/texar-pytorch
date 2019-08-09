@@ -13,6 +13,7 @@ env:
   - TORCH_VER="1.2.0"
 
 matrix:
+  fast_finish: true
   exclude:
     - python: "3.6"
       env: TORCH_VER="1.0.1"
@@ -23,28 +24,22 @@ install:
   - pip install --upgrade pip
   - pip install --progress-bar off torch==$TORCH_VER
   - pip install --progress-bar off .[extras]
+  - pip install pylint==2.3.1 flake8==3.7.7
   - pip install mypy==0.720
   - pip install pytest
 
 script:
+  # linting
+  - pylint texar/ examples/
+  - flake8 texar/ examples/
   # type-checking (only for PyTorch version 1.2.0)
-  - [[ $TORCH_VER != "1.0.1" ]] mypy .
-  - [[ $TORCH_VER != "1.0.1" ]] for dir in `echo examples/**/`; do mypy $dir; done
+  - "if [[ $TORCH_VER != '1.0.1' ]]; then mypy .; fi"
+  - "if [[ $TORCH_VER != '1.0.1' ]]; then for dir in `echo examples/**/`; do mypy $dir; done; fi"
   # unit tests
   - pytest
 
 jobs:
   include:
-    - stage: test
-      name: linting
-      install:
-        - pip install --upgrade pip
-        - pip install --progress-bar off -r requirements.txt
-        - pip install pylint==2.3.1 flake8==3.7.7
-      script:
-        # linting
-        - pylint texar/ examples/
-        - flake8 texar/ examples/
     - stage: docs
       python: "3.7"
       install:

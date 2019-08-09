@@ -44,7 +44,7 @@ class FeedForwardNetworkBase(ModuleBase):
 
     def __init__(self,
                  hparams: Optional[Union[HParams, Dict[str, Any]]] = None):
-        ModuleBase.__init__(self, hparams)
+        super().__init__(hparams)
 
         self._layers = nn.ModuleList()
         self._layer_names: List[str] = []
