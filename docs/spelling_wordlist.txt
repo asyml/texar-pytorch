@@ -34,6 +34,7 @@ logits
 softmax
 argmax
 backprop
+backpropagate
 backpropagation
 initializer
 initializers
@@ -61,3 +62,8 @@ Tokenize
 Regressor
 regressor
 mixin
+timestamp
+stateful
+subclassing
+reimplement
+uncomparable

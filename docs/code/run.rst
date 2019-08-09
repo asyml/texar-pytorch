@@ -41,6 +41,10 @@ Conditions
 ~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.run.condition.consecutive
 
+:hidden:`once`
+~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.condition.once
+
 :hidden:`time`
 ~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.run.condition.time
@@ -71,6 +75,7 @@ Metrics
 :hidden:`ConfusionMatrix`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.run.metric.ConfusionMatrix
+    :members: class_id
 
 :hidden:`Precision`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -88,6 +93,10 @@ Metrics
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.run.metric.PearsonR
 
+:hidden:`RMSE`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.RMSE
+
 :hidden:`Average`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.run.metric.Average
@@ -99,6 +108,10 @@ Metrics
 :hidden:`RunningAverage`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.run.metric.RunningAverage
+
+:hidden:`LR`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.run.metric.LR
 
 
 Actions

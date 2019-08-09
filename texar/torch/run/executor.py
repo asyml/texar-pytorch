@@ -1,3 +1,20 @@
+# Copyright 2019 The Texar Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+The Executor module.
+"""
+
 import atexit
 import pickle
 import random
@@ -64,11 +81,11 @@ class Executor:
     1. **Minimize the amount of boilerplate code** that is essentially the same
        across all experiments.
     2. Provide **best practices** and hide hideous details from the user.
-    3. Guarantee **reproducability** (runs with same config & seed always
+    3. Guarantee **reproducability** (runs with same configuration & seed always
        produces the same result) and **portability** (same code runs whether
        using GPU or not).
     4. Meanwhile, allowing **flexible configurations** and support
-       user-overriden behaviors.
+       user-overridden behaviors.
 
     Example:
         Here is a realistic training loop example using :class:`Executor`,
@@ -943,11 +960,11 @@ class Executor:
 
     def set_status_line(self, status_str: Optional[str]):
         # TODO: Check terminal width and do something to prevent wrapping?
-        self._status_line_str = status_str
         if status_str is None:
             status_str = ""  # just clear the line
         self._write_log(status_str, skip_non_tty=True,
                         newline=False, clear_line=True)
+        self._status_line_str = status_str
 
     # pylint: disable=unused-argument,no-self-use,function-redefined
 
@@ -1489,9 +1506,10 @@ class Executor:
                 if not isatty:
                     continue
                 if clear_line:
-                    if self._tty_ncols is not None:
+                    if (self._tty_ncols is not None and
+                            self._status_line_str is not None):
                         n_cols = self._tty_ncols(dest.fileno())
-                        status_len = len(self._status_line_str)  # type: ignore
+                        status_len = len(self._status_line_str)
                         n_lines = (status_len - 1) // n_cols + 1
                         if n_lines > 1:
                             dest.write(self._tty_move_up * (n_lines - 1))

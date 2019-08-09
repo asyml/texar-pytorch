@@ -1,3 +1,20 @@
+# Copyright 2019 The Texar Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+Executor metrics for generation tasks.
+"""
+
 import collections
 import math
 from typing import Counter, List, Sequence, Tuple
@@ -8,12 +25,6 @@ from texar.torch.utils.types import MaybeList
 __all__ = [
     "BLEU",
 ]
-
-
-def _maybe_str_to_list(list_or_str: MaybeList[str]) -> List[str]:
-    if isinstance(list_or_str, str):
-        return list_or_str.split()
-    return list_or_str
 
 
 def _get_ngrams(segment: MaybeList[str],
@@ -39,18 +50,51 @@ def _get_ngrams(segment: MaybeList[str],
 
 
 class BLEU(StreamingMetric[MaybeList[str], float]):
+    r"""The BLEU metric for evaluating translation tasks. BLEU stands for
+    bilingual evaluation understudy, and measure the percentage of overlapping
+    n-grams between the translation (hypothesis) and references.
+
+    This metric also
+    supports Smooth BLEU, computed following the method outlined in the paper:
+
+        (Lin et al. 2004) ORANGE: a method for evaluating automatic evaluation
+        metrics for machine translation.
+        Chin-Yew Lin, Franz Josef Och. COLING 2004.
+
+    BLEU is a :class:`~texar.torch.run.metric.StreamingMetric`, requires both
+    predicted values and labels. BLEU values are :class:`float` numbers between
+    0 and 100, with higher values being better.
+
+    Args:
+        max_order (int): Maximum n-gram order to use when computing BLEU score.
+            Defaults to 4.
+        lowercase (bool): Whether to lowercase all text before computing. If
+            enabled, the metric is also known as "uncased BLEU". Defaults to
+            `False`.
+        smooth (bool): Whether or not to apply `(Lin et al. 2004)` smoothing.
+            Defaults to `False`.
+        brevity_penalty (bool): Whether to apply brevity penalty. Defaults to
+            `True`.
+
+    Keyword Args:
+        pred_name (str): Name of the predicted value. This will be used as the
+            key to the dictionary returned by the model.
+        label_name (str): Name of the label. This will be used as the key to the
+            batch object returned by the dataset.
+    """
     reference_length: int
     hypothesis_length: int
     matches_by_order: List[int]
     possible_matches_by_order: List[int]
 
     def __init__(self, max_order: int = 4, lowercase: bool = False,
-                 smooth: bool = False, use_bp: bool = True, **kwargs):
+                 smooth: bool = False, brevity_penalty: bool = True,
+                 *, pred_name: str, label_name: str):
         self.max_order = max_order
         self.lowercase = lowercase
         self.smooth = smooth
-        self.use_bp = use_bp
-        super().__init__(**kwargs)
+        self.brevity_penalty = brevity_penalty
+        super().__init__(pred_name=pred_name, label_name=label_name)
 
     def reset(self) -> None:
         self.reference_length = 0
@@ -61,12 +105,14 @@ class BLEU(StreamingMetric[MaybeList[str], float]):
     def add(self, predicted: Sequence[MaybeList[str]],
             labels: Sequence[MaybeList[str]]) -> None:
         for (reference, hypothesis) in zip(labels, predicted):
-            reference = _maybe_str_to_list(reference)
+            if isinstance(reference, str):
+                reference = reference.split()
             if self.lowercase:
                 reference = [x.lower() for x in reference]
             reference_ngram_counts = _get_ngrams(reference, self.max_order)
 
-            hypothesis = _maybe_str_to_list(hypothesis)
+            if isinstance(hypothesis, str):
+                hypothesis = hypothesis.split()
             if self.lowercase:
                 hypothesis = [x.lower() for x in hypothesis]
             hypothesis_ngram_counts = _get_ngrams(hypothesis, self.max_order)
@@ -102,7 +148,7 @@ class BLEU(StreamingMetric[MaybeList[str], float]):
             geo_mean = math.exp(p_log_sum)
 
         bp = 1.0
-        if self.use_bp:
+        if self.brevity_penalty:
             ratio = self.hypothesis_length / self.reference_length
             if ratio > 1.0:
                 bp = 1.0
