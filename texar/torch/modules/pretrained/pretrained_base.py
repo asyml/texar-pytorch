@@ -18,7 +18,7 @@ import os
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional, Union
 
 from torch import nn
 
@@ -29,17 +29,18 @@ from texar.torch.utils.types import MaybeList
 
 __all__ = [
     "default_download_dir",
+    "set_default_download_dir",
     "PretrainedMixin",
 ]
+
+_default_texar_download_dir: Optional[Path] = None
 
 
 def default_download_dir(name: str) -> Path:
     r"""Return the directory to which packages will be downloaded by default.
     """
-    package_dir: Path = Path(__file__).parents[4]  # 5 levels up
-    if os.access(package_dir, os.W_OK):
-        texar_download_dir = package_dir / 'texar_download'
-    else:
+    global _default_texar_download_dir  # pylint: disable=global-statement
+    if _default_texar_download_dir is None:
         if sys.platform == 'win32' and 'APPDATA' in os.environ:
             # On Windows, use %APPDATA%
             home_dir = Path(os.environ['APPDATA'])
@@ -47,12 +48,30 @@ def default_download_dir(name: str) -> Path:
             # Otherwise, install in the user's home directory.
             home_dir = Path.home()
 
-        texar_download_dir = home_dir / 'texar_download'
+        if os.access(home_dir, os.W_OK):
+            _default_texar_download_dir = home_dir / 'texar_download'
+        else:
+            raise ValueError(f"The path {home_dir} is not writable. Please "
+                             f"manually specify the download directory")
 
-    if not texar_download_dir.exists():
-        texar_download_dir.mkdir(parents=True)
+    if not _default_texar_download_dir.exists():
+        _default_texar_download_dir.mkdir(parents=True)
 
-    return texar_download_dir / name
+    return _default_texar_download_dir / name
+
+
+def set_default_download_dir(path: Union[str, Path]) -> None:
+    if isinstance(path, str):
+        path = Path(path)
+    elif not isinstance(path, Path):
+        raise ValueError("`path` must be a string or a pathlib.Path object")
+
+    if not os.access(path, os.W_OK):
+        raise ValueError(
+            f"The specified download directory {path} is not writable")
+
+    global _default_texar_download_dir  # pylint: disable=global-statement
+    _default_texar_download_dir = path
 
 
 class PretrainedMixin(ModuleBase, ABC):

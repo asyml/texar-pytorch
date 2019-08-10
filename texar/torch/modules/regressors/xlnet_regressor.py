@@ -178,6 +178,15 @@ class XLNetRegressor(RegressorBase):
         :attr:`lr_layer_decay_rate` is not 1.0, parameters from each layer form
         separate groups with different base learning rates.
 
+        The return value of this method can be used in the constructor of
+        optimizers, for example:
+
+        .. code-block:: python
+
+            model = XLNetRegressor(...)
+            param_groups = model.param_groups(lr=2e-5, lr_layer_scale=0.8)
+            optim = torch.optim.Adam(param_groups)
+
         Args:
             lr (float): The learning rate. Can be omitted if
                 :attr:`lr_layer_decay_rate` is 1.0.

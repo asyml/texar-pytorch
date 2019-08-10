@@ -230,6 +230,15 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         :attr:`lr_layer_decay_rate` is not 1.0, parameters from each layer form
         separate groups with different base learning rates.
 
+        The return value of this method can be used in the constructor of
+        optimizers, for example:
+
+        .. code-block:: python
+
+            model = XLNetEncoder(...)
+            param_groups = model.param_groups(lr=2e-5, lr_layer_scale=0.8)
+            optim = torch.optim.Adam(param_groups)
+
         Args:
             lr (float): The learning rate. Can be omitted if
                 :attr:`lr_layer_decay_rate` is 1.0.
@@ -322,18 +331,18 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         r"""Compute XLNet representations for the input.
 
         Args:
-            token_ids: Shape `[batch_size, seq_len]`.
-            segment_ids: Shape `[batch_size, seq_len]`.
-            input_mask: Float tensor of shape `[batch_size, seq_len]`. Note that
-                positions with value 1 are masked out.
+            token_ids: Shape `[batch_size, max_time]`.
+            segment_ids: Shape `[batch_size, max_time]`.
+            input_mask: Float tensor of shape `[batch_size, max_time]`. Note
+                that positions with value 1 are masked out.
             memory: Memory from previous batches. A list of length `num_layers`,
                 each tensor of shape `[batch_size, mem_len, hidden_dim]`.
             permute_mask: The permutation mask. Float tensor of shape
-                `[batch_size, seq_len, seq_len]`.
+                `[batch_size, max_time, max_time]`.
                 A value of 0 for ``permute_mask[i, j, k]`` indicates that
                 position `i` attends to position `j` in batch `k`.
             target_mapping: The target token mapping. Float tensor of shape
-                `[batch_size, num_targets, seq_len]`.
+                `[batch_size, num_targets, max_time]`.
                 A value of 1 for ``target_mapping[i, j, k]`` indicates that
                 the `i`-th target token (in order of permutation) in batch `k`
                 is the token at position `j`.
@@ -354,7 +363,7 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         :returns: A tuple of `(output, new_memory)`:
 
             - **`output`**: The final layer output representations. Shape
-              `[batch_size, seq_len, hidden_dim]`.
+              `[batch_size, max_time, hidden_dim]`.
             - **`new_memory`**: The memory of the current batch.
               If `cache_len` is 0, then `new_memory` is `None`. Otherwise, it is
               a list of length `num_layers`, each tensor of shape
@@ -390,10 +399,11 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
             -> Tuple[torch.Tensor, Optional[List[torch.Tensor]]]:
         r"""Compute XLNet representations for the input. This layer exists
         because :class:`XLNetDecoder` compute embeddings in the decoder helper.
-        `word_embed` has shape `[batch_size, seq_len, word_embed_dim]`.
+        `word_embed` has shape `[batch_size, max_time, word_embed_dim]`.
         Please refer to :meth:`forward` for the detailed information of other
         arguments.
         """
+        # seq_len == max_time
         # word_embed: [seq_len, batch_size, word_embed_dim]
         word_embed = word_embed.permute(1, 0, 2)
         # segment_ids: [seq_len, batch_size]

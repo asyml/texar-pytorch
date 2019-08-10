@@ -720,8 +720,9 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 "__len__ not supported for datasets with undetermined size")
         return self._dataset_size
 
-    def process(self, raw_example: RawExample) -> Example:
-        r"""The process routine. Subclasses must implement this method.
+    def process(self, raw_example: RawExample) -> Example:  # pylint: disable=no-self-use
+        r"""The process routine. A default implementation of no-op is provided,
+        but subclasses are free to override this behavior.
 
         The process routine would take raw examples loaded from the data source
         as input, and return processed examples. If `parallelize_processing`
@@ -734,7 +735,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         Returns:
             The processed example.
         """
-        raise NotImplementedError
+        return raw_example  # type: ignore
 
     def __getitem__(self, index: Union[int, Tuple[int, RawExample]]) -> Example:
         if isinstance(index, int):
