@@ -85,7 +85,7 @@ class RNNCellBase(nn.Module, Generic[State]):
        routines.
     """
 
-    def __init__(self, cell: nn.Module):
+    def __init__(self, cell: Union[nn.RNNCellBase, 'RNNCellBase']):
         super().__init__()
         if not isinstance(cell, nn.Module):
             raise ValueError("Type of parameter 'cell' must be derived from"
@@ -346,8 +346,9 @@ class HighwayWrapper(RNNCellBase[State]):
     https://arxiv.org/pdf/1505.00387.pdf
     """
 
-    def __init__(self, cell: nn.Module, carry_bias_init: Optional[float] = None,
-                 couple_carry_transform_gates=True):
+    def __init__(self, cell: RNNCellBase[State],
+                 carry_bias_init: Optional[float] = None,
+                 couple_carry_transform_gates: bool = True):
         r"""Constructs a `HighwayWrapper` for `cell`.
 
         Args:
@@ -392,7 +393,7 @@ class MultiRNNCell(RNNCellBase[List[State]]):
         stacked_rnn_cell = MultiRNNCell(cells)
     """
 
-    _cell: nn.ModuleList
+    _cell: nn.ModuleList  # type: ignore
 
     def __init__(self, cells: List[RNNCellBase[State]]):
         r"""Create a RNN cell composed sequentially of a number of RNNCells.
@@ -406,7 +407,7 @@ class MultiRNNCell(RNNCellBase[List[State]]):
         if len(cells) == 0:
             raise ValueError("Parameter 'cells' should not be empty.")
         cell = nn.ModuleList(cells)
-        super().__init__(cell)
+        super().__init__(cell)  # type: ignore
 
     @property
     def input_size(self):
@@ -421,7 +422,8 @@ class MultiRNNCell(RNNCellBase[List[State]]):
             cell.init_batch()
 
     def zero_state(self, batch_size: int) -> List[State]:
-        states = [cell.zero_state(batch_size) for cell in self._cell]
+        states = [cell.zero_state(batch_size)  # type: ignore
+                  for cell in self._cell]
         return states
 
     def forward(self,  # type: ignore

@@ -17,7 +17,7 @@ Various neural network layers
 
 import copy
 import functools
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 import torch
 from torch import nn
@@ -37,7 +37,6 @@ __all__ = [
     'get_regularizer',
     'get_activation_fn',
     'get_layer',
-    '_ReducePool1d',
     'MaxReducePool1d',
     'AvgReducePool1d',
     'get_pooling_layer_hparams',
@@ -488,13 +487,11 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
                   "in_channels" not in hparams["kwargs"]):
                 raise ValueError("\"in_channels\" should be specified for "
                                  "\"torch.nn.{}\"".format(layer_class.__name__))
-            default_kwargs = _layer_class_to_default_kwargs_map.get(
-                layer_class, {})
+            default_kwargs: Dict[str, Any] = {}
             default_hparams = {"type": layer_type, "kwargs": default_kwargs}
             hparams = HParams(hparams, default_hparams)
 
-        # this case needs to be handled separately because
-        # :torch_nn:`Sequential`
+        # this case needs to be handled separately because nn.Sequential
         # does not accept kwargs
         if layer_type == "Sequential":
             names: List[str] = []
@@ -502,7 +499,7 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
             sub_hparams = hparams.kwargs.layers
             for hparam in sub_hparams:
                 sub_layer = get_layer(hparam)
-                name = utils.uniquify_str(sub_layer._get_name(), names)
+                name = utils.uniquify_str(sub_layer.__class__.__name__, names)
                 names.append(name)
                 layer.add_module(name=name, module=sub_layer)
         else:
@@ -515,47 +512,27 @@ def get_layer(hparams: Union[HParams, Dict[str, Any]]) -> nn.Module:
     return layer
 
 
-class _ReducePool1d(nn.Module):
-    r"""Pooling layer for arbitrary reduce functions for 1D inputs.
-
-    This class is for code reuse, rather than an exposed API.
+class MaxReducePool1d(nn.Module):
+    r"""A subclass of :torch_nn:`Module`.
+    Max Pool layer for 1D inputs. The same as :torch_nn:`MaxPool1d` except that
+    the pooling dimension is entirely reduced (i.e., `pool_size=input_length`).
     """
 
-    def __init__(self, reduce_function):
-        super().__init__()
-        self._reduce_function = reduce_function
-
-    def forward(self, input: Tuple) -> torch.Tensor:  # type: ignore
-        # if check is required because
-        # :torch_docs:`torch.mean <torch.html#torch.mean>`
-        # does not return a tuple
-        if self._reduce_function == torch.mean:
-            output = self._reduce_function(input, dim=2)
-        else:
-            output, _ = self._reduce_function(input, dim=2)
+    def forward(self,  # type: ignore  # pylint: disable=no-self-use
+                input: torch.Tensor) -> torch.Tensor:
+        output, _ = torch.max(input, dim=2)
         return output
 
 
-class MaxReducePool1d(_ReducePool1d):
+class AvgReducePool1d(nn.Module):
     r"""A subclass of :torch_nn:`Module`.
-    Max Pool layer for 1D inputs. The same as
-    :torch_nn:`MaxPool1d` except that the pooling
-    dimension is entirely reduced (i.e., `pool_size=input_length`).
+    Avg Pool layer for 1D inputs. The same as :torch_nn:`AvgPool1d` except that
+    the pooling dimension is entirely reduced (i.e., `pool_size=input_length`).
     """
 
-    def __init__(self):
-        super().__init__(torch.max)
-
-
-class AvgReducePool1d(_ReducePool1d):
-    r"""A subclass of :torch_nn:`Module`.
-    Avg Pool layer for 1D inputs. The same as
-    :torch_nn:`AvgPool1d` except that the pooling
-    dimension is entirely reduced (i.e., `pool_size=input_length`).
-    """
-
-    def __init__(self):
-        super().__init__(torch.mean)
+    def forward(self,  # type: ignore  # pylint: disable=no-self-use
+                input: torch.Tensor) -> torch.Tensor:
+        return torch.mean(input, dim=2)
 
 
 _POOLING_TO_REDUCE = {
@@ -729,112 +706,3 @@ class Identity(nn.Module):
     def forward(self,  # type: ignore  # pylint: disable=no-self-use
                 input: torch.Tensor) -> torch.Tensor:
         return input
-
-
-def default_conv1d_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_conv2d_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_conv3d_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_conv2d_transpose_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_conv3d_transpose_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_dropout_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_max_pool1d_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_max_pool2d_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_max_pool3d_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_batch_normalization1d_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_batch_normalization2d_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_batch_normalization3d_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_avg_pool1d_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_avg_pool2d_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-def default_avg_pool3d_kwargs() -> Dict[str, Any]:
-    """TODO
-    """
-    return {}
-
-
-_layer_class_to_default_kwargs_map = {
-    nn.Conv1d: default_conv1d_kwargs(),
-    nn.Conv2d: default_conv2d_kwargs(),
-    nn.Conv3d: default_conv3d_kwargs(),
-    nn.ConvTranspose2d: default_conv2d_transpose_kwargs(),
-    nn.ConvTranspose3d: default_conv3d_transpose_kwargs(),
-    nn.Dropout: default_dropout_kwargs(),
-    nn.MaxPool1d: default_max_pool1d_kwargs(),
-    nn.MaxPool2d: default_max_pool2d_kwargs,
-    nn.MaxPool3d: default_max_pool3d_kwargs(),
-    nn.BatchNorm1d: default_batch_normalization1d_kwargs(),
-    nn.BatchNorm2d: default_batch_normalization2d_kwargs(),
-    nn.BatchNorm3d: default_batch_normalization3d_kwargs(),
-    nn.AvgPool1d: default_avg_pool1d_kwargs(),
-    nn.AvgPool2d: default_avg_pool2d_kwargs(),
-    nn.AvgPool3d: default_avg_pool3d_kwargs(),
-}

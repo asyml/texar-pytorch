@@ -23,12 +23,17 @@ import torch
 from texar.torch.hyperparams import HParams
 
 __all__ = [
+    'torch_bool',
     'get_numpy_dtype',
     'is_str',
     'is_callable',
     'maybe_hparams_to_dict',
     'compat_as_text',
 ]
+
+# `torch.bool` exists in PyTorch 1.1, but the default type for comparisons
+# is still `torch.uint8`.
+torch_bool = (torch.empty(()) < 0).dtype
 
 
 def get_numpy_dtype(dtype: Union[str, type]):
@@ -41,7 +46,7 @@ def get_numpy_dtype(dtype: Union[str, type]):
     Returns:
         The corresponding NumPy dtype.
     """
-    if dtype in {'float', 'float32', 'tf.float32', 'torch.float',
+    if dtype in {'float32', 'float', 'tf.float32', 'torch.float',
                  'torch.float32', float, np.float32, torch.float32}:
         return np.float32
     elif dtype in {'float64', 'tf.float64', 'torch.float64',
@@ -59,8 +64,14 @@ def get_numpy_dtype(dtype: Union[str, type]):
     elif dtype in {'int16', 'tf.int16', 'torch.int16',
                    np.int16, torch.int16}:
         return np.int16
-    elif dtype in {'bool', 'tf.bool', 'torch.uint8',
-                   bool, np.bool, np.bool_, torch.uint8}:
+    elif dtype in {'int8', 'char', 'tf.int8', 'torch.int8',
+                   np.int8, torch.int8}:
+        return np.int8
+    elif dtype in {'uint8', 'tf.uint8', 'torch.uint8',
+                   np.uint8, torch.uint8}:
+        return np.uint8
+    elif dtype in {'bool', 'tf.bool', 'torch.bool',
+                   bool, np.bool, np.bool_, torch_bool}:
         return np.bool_
     elif dtype in {'string', 'str', 'tf.string',
                    str, np.str, np.str_}:

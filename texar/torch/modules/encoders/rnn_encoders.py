@@ -181,9 +181,6 @@ class RNNEncoderBase(EncoderBase, Generic[State]):
             'name': 'rnn_encoder'
         }
 
-    def forward(self, inputs, *args, **kwargs):
-        raise NotImplementedError
-
 
 class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
     r"""One directional RNN encoder.

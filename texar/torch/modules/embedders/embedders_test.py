@@ -72,7 +72,7 @@ class EmbedderTest(unittest.TestCase):
         self.assertEqual(outputs.size(-1), embedder.output_size)
         self.assertEqual(emb_dim, hparams_dim)
         self.assertEqual(embedder.position_size, 100)
-        seq_length = torch.empty(64).uniform_(pos_size).long()
+        seq_length = torch.empty(64).uniform_(0, pos_size).long()
         outputs = embedder(sequence_length=seq_length)
 
     def test_sinusoids_position_embedder(self):

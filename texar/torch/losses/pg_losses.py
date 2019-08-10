@@ -116,7 +116,7 @@ def pg_loss_with_logits(actions: torch.Tensor,
     """
     actions = actions.detach()
     logits = F.log_softmax(logits, dim=-1)
-    logits = logits.permute([0, -1] + list(range(1, logits.dim() - 1)))
+    logits = logits.permute((0, -1) + tuple(range(1, logits.dim() - 1)))
     neg_log_probs = F.nll_loss(logits, actions, reduction='none')
 
     return pg_loss_with_log_probs(

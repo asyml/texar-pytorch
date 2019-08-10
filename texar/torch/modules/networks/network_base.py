@@ -44,7 +44,7 @@ class FeedForwardNetworkBase(ModuleBase):
 
     def __init__(self,
                  hparams: Optional[Union[HParams, Dict[str, Any]]] = None):
-        ModuleBase.__init__(self, hparams)
+        super().__init__(hparams)
 
         self._layers = nn.ModuleList()
         self._layer_names: List[str] = []
@@ -66,7 +66,8 @@ class FeedForwardNetworkBase(ModuleBase):
             "name": "NN"
         }
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:  # type: ignore
+    def forward(self,  # type: ignore
+                input: torch.Tensor) -> torch.Tensor:
         r"""Feeds forward inputs through the network layers and returns outputs.
 
         Args:
@@ -94,7 +95,7 @@ class FeedForwardNetworkBase(ModuleBase):
         if not isinstance(layer_, nn.Module):
             layer_ = get_layer(hparams=layer_)
         self._layers.append(layer_)
-        layer_name = uniquify_str(layer_._get_name(), self._layer_names)
+        layer_name = uniquify_str(layer_.__class__.__name__, self._layer_names)
         self._layer_names.append(layer_name)
         self._layers_by_name[layer_name] = layer_
 
@@ -161,6 +162,7 @@ class FeedForwardNetworkBase(ModuleBase):
                 self._layers.append(get_layer(hparams=hparams))
 
         for layer in self._layers:
-            layer_name = uniquify_str(layer._get_name(), self._layer_names)
+            layer_name = uniquify_str(layer.__class__.__name__,
+                                      self._layer_names)
             self._layer_names.append(layer_name)
             self._layers_by_name[layer_name] = layer

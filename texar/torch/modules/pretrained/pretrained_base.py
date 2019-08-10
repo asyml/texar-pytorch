@@ -36,7 +36,7 @@ __all__ = [
 def default_download_dir(name: str) -> Path:
     r"""Return the directory to which packages will be downloaded by default.
     """
-    package_dir: Path = Path(__file__).parents[3]  # 4 levels up
+    package_dir: Path = Path(__file__).parents[4]  # 5 levels up
     if os.access(package_dir, os.W_OK):
         texar_download_dir = package_dir / 'texar_download'
     else:
@@ -68,7 +68,7 @@ class PretrainedMixin(ModuleBase, ABC):
     def available_checkpoints(cls) -> List[str]:
         return list(cls._MODEL2URL.keys())
 
-    def _name_to_variable(self, name: str) -> nn.Module:
+    def _name_to_variable(self, name: str) -> nn.Parameter:
         r"""Find the corresponding variable given the specified name.
         """
         pointer = self
@@ -78,7 +78,7 @@ class PretrainedMixin(ModuleBase, ABC):
                 pointer = pointer[num]  # type: ignore
             else:
                 pointer = getattr(pointer, m_name)
-        return pointer
+        return pointer  # type: ignore
 
     def load_pretrained_config(self,
                                pretrained_model_name: Optional[str] = None,
