@@ -85,10 +85,6 @@ class Seq2SeqData(tx.data.DataBase[Example, Example]):
             "eos_id": 2,
         }
 
-    def process(self, raw_example: Example) -> Example:  # pylint: disable=no-self-use
-        # No-op. The data should already be processed.
-        return raw_example
-
     def collate(self, examples: List[Example]) -> tx.data.Batch:
         src_seqs = [ex[0] for ex in examples]
         tgt_seqs = [ex[1] for ex in examples]
