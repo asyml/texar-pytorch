@@ -16,8 +16,8 @@ Various connectors.
 """
 
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-import numpy as np
 
+import numpy as np
 import torch
 from torch import nn
 from torch.distributions.distribution import Distribution
@@ -67,16 +67,6 @@ def _assert_same_size(outputs: TensorStruct,
         elif output[0].size()[-1] != size:
             raise ValueError(
                 "The output size does not match the the required output_size")
-
-
-def _get_tensor_depth(x: torch.Tensor) -> int:
-    r"""Returns the size of a tensor excluding the first dimension
-    (typically the batch dimension).
-
-    Args:
-        x: A tensor.
-    """
-    return np.prod(x.size()[1:])
 
 
 def _sum_output_size(output_size: OutputSize) -> int:
@@ -500,7 +490,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
 
     def __init__(self,
                  output_size: OutputSize,
-                 mlp_input_size: MaybeTuple[int],
+                 mlp_input_size: Union[torch.Size, MaybeTuple[int]],
                  distribution: Union[Distribution, str] = 'MultivariateNormal',
                  distribution_kwargs: Optional[Dict[str, Any]] = None,
                  hparams: Optional[HParams] = None):
@@ -650,7 +640,7 @@ class StochasticConnector(ConnectorBase):
 
     def __init__(self,
                  output_size: OutputSize,
-                 mlp_input_size: MaybeTuple[int],
+                 mlp_input_size: Union[torch.Size, MaybeTuple[int]],
                  distribution: Union[Distribution, str] = 'MultivariateNormal',
                  distribution_kwargs: Optional[Dict[str, Any]] = None,
                  hparams: Optional[HParams] = None):
