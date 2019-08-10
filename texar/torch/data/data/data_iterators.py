@@ -17,11 +17,11 @@ Various data iterator classes.
 
 # pylint: disable=protected-access
 
-import pkg_resources
 from typing import (
     Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional,
     Sequence, Tuple, TypeVar, Union)
 
+import pkg_resources
 import torch
 from torch import __version__ as _torch_version  # type: ignore
 from torch.utils.data import DataLoader
