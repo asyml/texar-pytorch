@@ -358,6 +358,23 @@ else:
         pin_memory_batch as _pin_memory)
 
 if _torch_version >= (1, 2):  # PyTorch 1.2.0 +
+    # PyTorch 1.2 split the `_DataLoaderIter` class into two:
+    # `_SingleProcessDataLoaderIter` for when `num_workers == 0`, i.e. when
+    # multi-processing is disabled; `_MultiProcessingDataLoaderIter` for
+    # otherwise. The implementation is also slightly different from previous
+    # releases.
+    #
+    # To keep compatibility, our iterator classes should be a subclass of both
+    # PyTorch `_Single...`/`_Multi...` (for single/multi-process), and our own
+    # `_Cache...`/`_Data...` (for caching/no caching). This results in four
+    # different concrete classes, as this regex shows:
+    # `_[SM]P(Cache)?DataLoaderIter`.
+    #
+    # We only expose `_DataLoaderIter` and `_CacheDataLoaderIter` to other
+    # classes, and construct concrete classes in their `__new__` methods
+    # depending on the value of `num_workers`. This is for compatibility with
+    # previous versions, so we don't need to change other parts of the code.
+
     from torch.utils.data.dataloader import (  # type: ignore
         _BaseDataLoaderIter, _SingleProcessDataLoaderIter,
         _MultiProcessingDataLoaderIter)
@@ -480,6 +497,9 @@ if _torch_version >= (1, 2):  # PyTorch 1.2.0 +
                 raise StopIteration
             return batch
 else:
+    # PyTorch 1.1 and lower defines only the class `_DataLoaderIter` for
+    # iterating over `DataLoader`.
+
     from torch.utils.data.dataloader import (  # type: ignore
         _DataLoaderIter as torch_DataLoaderIter)
 
