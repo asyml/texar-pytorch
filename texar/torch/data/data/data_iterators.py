@@ -17,6 +17,7 @@ Various data iterator classes.
 
 # pylint: disable=protected-access
 
+import pkg_resources
 from typing import (
     Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional,
     Sequence, Tuple, TypeVar, Union)
@@ -31,7 +32,7 @@ from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.utils.types import MaybeSeq
 from texar.torch.utils.utils import ceildiv
 
-_torch_version = tuple(int(x) for x in _torch_version.split("."))
+_torch_version = pkg_resources.parse_version(_torch_version)
 
 __all__ = [
     "DataIterator",
@@ -347,17 +348,17 @@ class DynamicBatchSampler(torch_sampler.BatchSampler, Generic[Example]):
 
 
 # pylint: disable=ungrouped-imports
-if _torch_version >= (1, 2):  # PyTorch 1.2.0 +
+if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
     from torch.utils.data._utils.pin_memory import (  # type: ignore
         pin_memory as _pin_memory)
-elif _torch_version >= (1, 1):  # PyTorch 1.1.0 +
+elif _torch_version >= pkg_resources.parse_version("1.1.0"):  # PyTorch 1.1.0 +
     from torch.utils.data._utils.pin_memory import (  # type: ignore
         pin_memory_batch as _pin_memory)
 else:
     from torch.utils.data.dataloader import (  # type: ignore
         pin_memory_batch as _pin_memory)
 
-if _torch_version >= (1, 2):  # PyTorch 1.2.0 +
+if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
     # PyTorch 1.2 split the `_DataLoaderIter` class into two:
     # `_SingleProcessDataLoaderIter` for when `num_workers == 0`, i.e. when
     # multi-processing is disabled; `_MultiProcessingDataLoaderIter` for
