@@ -39,7 +39,7 @@ _default_texar_download_dir: Optional[Path] = None
 def default_download_dir(name: str) -> Path:
     r"""Return the directory to which packages will be downloaded by default.
     """
-    global _default_texar_download_dir
+    global _default_texar_download_dir  # pylint: disable=global-statement
     if _default_texar_download_dir is None:
         if sys.platform == 'win32' and 'APPDATA' in os.environ:
             # On Windows, use %APPDATA%
@@ -70,7 +70,7 @@ def set_default_download_dir(path: Union[str, Path]) -> None:
         raise ValueError(
             f"The specified download directory {path} is not writable")
 
-    global _default_texar_download_dir
+    global _default_texar_download_dir  # pylint: disable=global-statement
     _default_texar_download_dir = path
 
 

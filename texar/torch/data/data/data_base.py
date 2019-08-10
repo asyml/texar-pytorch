@@ -720,7 +720,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 "__len__ not supported for datasets with undetermined size")
         return self._dataset_size
 
-    def process(self, raw_example: RawExample) -> Example:
+    def process(self, raw_example: RawExample) -> Example:  # pylint: disable=no-self-use
         r"""The process routine. A default implementation of no-op is provided,
         but subclasses are free to override this behavior.
 

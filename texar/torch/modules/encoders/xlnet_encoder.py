@@ -333,8 +333,8 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         Args:
             token_ids: Shape `[batch_size, max_time]`.
             segment_ids: Shape `[batch_size, max_time]`.
-            input_mask: Float tensor of shape `[batch_size, max_time]`. Note that
-                positions with value 1 are masked out.
+            input_mask: Float tensor of shape `[batch_size, max_time]`. Note
+                that positions with value 1 are masked out.
             memory: Memory from previous batches. A list of length `num_layers`,
                 each tensor of shape `[batch_size, mem_len, hidden_dim]`.
             permute_mask: The permutation mask. Float tensor of shape
