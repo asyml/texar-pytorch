@@ -18,18 +18,20 @@ Various data iterator classes.
 # pylint: disable=protected-access
 
 from typing import (
-    Any, Callable, Dict, Generic, Iterable, Iterator, List, Mapping, Optional,
+    Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional,
     Sequence, Tuple, TypeVar, Union)
 
+import torch
+from torch import __version__ as _torch_version  # type: ignore
 from torch.utils.data import DataLoader
 from torch.utils.data import sampler as torch_sampler
-from torch.utils.data.dataloader import _DataLoaderIter as torch_DataLoaderIter
 
-import torch
 from texar.torch.data.data.data_base import DataBase
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.utils.types import MaybeSeq
 from texar.torch.utils.utils import ceildiv
+
+_torch_version = tuple(int(x) for x in _torch_version.split("."))
 
 __all__ = [
     "DataIterator",
@@ -344,100 +346,244 @@ class DynamicBatchSampler(torch_sampler.BatchSampler, Generic[Example]):
         raise TypeError("DynamicBatchSampler does not support __len__")
 
 
-class _DataLoaderIter(torch_DataLoaderIter):  # pylint: disable=abstract-method
-    r"""Iterates once over the DataLoader's dataset. This is almost identical
-    to PyTorch :class:`torch.utils.data.dataloader._DataLoaderIter`, except
-    that we check `allow_smaller_final_batch` here. This is because using
-    `drop_last` in :class:`~torch.utils.data.sampler.BatchSampler` would cause
-    the dataset to not load/process/cache certain elements from the final batch,
-    which complicates the already complex logic.
-    """
+# pylint: disable=ungrouped-imports
+if _torch_version >= (1, 2):  # PyTorch 1.2.0 +
+    from torch.utils.data._utils.pin_memory import (  # type: ignore
+        pin_memory as _pin_memory)
+elif _torch_version >= (1, 1):  # PyTorch 1.1.0 +
+    from torch.utils.data._utils.pin_memory import (  # type: ignore
+        pin_memory_batch as _pin_memory)
+else:
+    from torch.utils.data.dataloader import (  # type: ignore
+        pin_memory_batch as _pin_memory)
 
-    def __init__(self, loader: DataLoader):
-        self._batch_size = loader.batch_size
-        super().__init__(loader)
+if _torch_version >= (1, 2):  # PyTorch 1.2.0 +
+    # PyTorch 1.2 split the `_DataLoaderIter` class into two:
+    # `_SingleProcessDataLoaderIter` for when `num_workers == 0`, i.e. when
+    # multi-processing is disabled; `_MultiProcessingDataLoaderIter` for
+    # otherwise. The implementation is also slightly different from previous
+    # releases.
+    #
+    # To keep compatibility, our iterator classes should be a subclass of both
+    # PyTorch `_Single...`/`_Multi...` (for single/multi-process), and our own
+    # `_Cache...`/`_Data...` (for caching/no caching). This results in four
+    # different concrete classes, as this regex shows:
+    # `_[SM]P(Cache)?DataLoaderIter`.
+    #
+    # We only expose `_DataLoaderIter` and `_CacheDataLoaderIter` to other
+    # classes, and construct concrete classes in their `__new__` methods
+    # depending on the value of `num_workers`. This is for compatibility with
+    # previous versions, so we don't need to change other parts of the code.
 
-    def __next__(self):
-        batch = super().__next__()
-        # Drop smaller final batch according to settings. Note that
-        # `_batch_size` could be None if dynamic batching is used.
-        if (self._batch_size is not None and
-                batch.batch_size < self._batch_size and
-                not self.dataset.hparams.allow_smaller_final_batch):
-            raise StopIteration
-        return batch
+    from torch.utils.data.dataloader import (  # type: ignore
+        _BaseDataLoaderIter, _SingleProcessDataLoaderIter,
+        _MultiProcessingDataLoaderIter)
 
+    class _DataLoaderIter(_BaseDataLoaderIter):
+        r"""Iterates once over the DataLoader's dataset. This is almost
+        identical to PyTorch
+        :class:`torch.utils.data.dataloader._BaseDataLoaderIter`, except that we
+        check `allow_smaller_final_batch` here. This is because using
+        `drop_last` in :class:`~torch.utils.data.sampler.BatchSampler` would
+        cause the dataset to not load/process/cache certain elements from the
+        final batch, which complicates the already complex logic.
+        """
 
-class _CacheDataLoaderIter(torch_DataLoaderIter):  # pylint: disable=abstract-method
-    r"""Iterates once over the DataLoader's dataset. This class is used when
-    examples are processed and returned by worker processes. We need to record
-    the corresponding indices of each batch, call
-    :meth:`texar.torch.data.data.DataBase._add_cached_examples` to cache the
-    processed examples, and return only the
-    :class:`~texar.torch.data.data.Batch` instance to the user.
-    """
-    dataset: DataBase
+        def __new__(cls, loader: DataLoader):
+            if loader.num_workers > 0:
+                return super().__new__(_MPDataLoaderIter)
+            else:
+                return super().__new__(_SPDataLoaderIter)
 
-    worker_queue_idx: int  # so that Pylint gives no errors
+        def __init__(self, loader: DataLoader):
+            self._batch_size = loader.batch_size
+            super().__init__(loader)
 
-    def __init__(self, loader: DataLoader):
-        self._indices_dict: Dict[int, List[int]] = {}
-        self._batch_size = loader.batch_size
-        super().__init__(loader)
-
-    def _put_indices(self):
-        assert self.batches_outstanding < 2 * self.num_workers
-        indices = next(self.sample_iter, None)
-        if indices is None:
-            return
-        self.index_queues[self.worker_queue_idx].put((self.send_idx, indices))
-        if self.dataset._should_yield_raw_example:
-            indices = [index[0] for index in indices]
-        self._indices_dict[self.send_idx] = indices
-        self.worker_queue_idx = (self.worker_queue_idx + 1) % self.num_workers
-        self.batches_outstanding += 1
-        self.send_idx += 1
-
-    def _process_next_batch(self, batch):
-        batch = super()._process_next_batch(batch)
-        indices = self._indices_dict[self.rcvd_idx - 1]
-        del self._indices_dict[self.rcvd_idx - 1]
-        examples, batch = batch
-        self.dataset._add_cached_examples(indices, examples)
-        return batch
-
-    @staticmethod
-    def pin_memory_batch(batch):
-        if isinstance(batch, torch.Tensor):
-            return batch.pin_memory()
-        elif isinstance(batch, (str, bytes)):
-            return batch
-        elif isinstance(batch, Mapping):
-            return {k: _CacheDataLoaderIter.pin_memory_batch(sample)
-                    for k, sample in batch.items()}
-        elif isinstance(batch, Sequence):
-            return [_CacheDataLoaderIter.pin_memory_batch(sample)
-                    for sample in batch]
-        else:
+        def __next__(self):
+            batch = super().__next__()
+            # Drop smaller final batch according to settings. Note that
+            # `_batch_size` could be None if dynamic batching is used.
+            if (self._batch_size is not None and
+                    batch.batch_size < self._batch_size and
+                    not self.dataset.hparams.allow_smaller_final_batch):
+                raise StopIteration
             return batch
 
-    def __next__(self):
-        if self.num_workers == 0:  # same-process loading
-            indices = next(self.sample_iter)  # may raise StopIteration
-            batch = self.collate_fn([self.dataset[i] for i in indices])
-            if self.pin_memory:
-                batch = self.pin_memory_batch(batch)
+    class _SPDataLoaderIter(_DataLoaderIter, _SingleProcessDataLoaderIter):
+        pass
+
+    class _MPDataLoaderIter(_DataLoaderIter, _MultiProcessingDataLoaderIter):
+        pass
+
+    class _CacheDataLoaderIter(_BaseDataLoaderIter):
+        r"""Iterates once over the DataLoader's dataset. This class is used when
+        examples are processed and returned by worker processes. We need to
+        record the corresponding indices of each batch, call
+        :meth:`texar.torch.data.data.DataBase._add_cached_examples` to cache the
+        processed examples, and return only the
+        :class:`~texar.torch.data.data.Batch` instance to the user.
+        """
+
+        def __new__(cls, loader: DataLoader):
+            if loader.num_workers > 0:
+                return super().__new__(_MPCacheDataLoaderIter)
+            else:
+                return super().__new__(_SPCacheDataLoaderIter)
+
+    class _SPCacheDataLoaderIter(_CacheDataLoaderIter,
+                                 _SingleProcessDataLoaderIter):
+        def __init__(self, loader: DataLoader):
+            self._indices_dict: Dict[int, List[int]] = {}
+            self._batch_size = loader.batch_size
+            super().__init__(loader)
+
+        def __next__(self):
+            index = self._next_index()  # may raise StopIteration
+            data = self.dataset_fetcher.fetch(index)  # may raise StopIteration
             if self.dataset._should_yield_raw_example:
-                indices = [index[0] for index in indices]
+                index = [idx[0] for idx in index]
+            examples, data = data
+            self.dataset._add_cached_examples(index, examples)
+            if self.pin_memory:
+                data = _pin_memory(data)
+            return data
+
+    class _MPCacheDataLoaderIter(_CacheDataLoaderIter,
+                                 _MultiProcessingDataLoaderIter):
+        dataset: DataBase
+
+        worker_queue_idx: int  # so that Pylint gives no errors
+
+        def __init__(self, loader: DataLoader):
+            self._indices_dict: Dict[int, List[int]] = {}
+            self._batch_size = loader.batch_size
+            super().__init__(loader)
+
+        def _try_put_index(self):
+            assert self.tasks_outstanding < 2 * self.num_workers
+            try:
+                index = self._next_index()
+            except StopIteration:
+                return
+            for _ in range(self.num_workers):  # find next active worker, if any
+                worker_queue_idx = next(self.worker_queue_idx_cycle)
+                if self.workers_status[worker_queue_idx]:
+                    break
+            else:
+                # not found (i.e., didn't break)
+                return
+
+            self.index_queues[worker_queue_idx].put((self.send_idx, index))
+            if self.dataset._should_yield_raw_example:
+                index = [idx[0] for idx in index]
+            self._indices_dict[self.send_idx] = index
+            self.task_info[self.send_idx] = (worker_queue_idx,)
+            self.tasks_outstanding += 1
+            self.send_idx += 1
+
+        def _process_data(self, batch):
+            batch = super()._process_data(batch)
+            indices = self._indices_dict[self.rcvd_idx - 1]
+            del self._indices_dict[self.rcvd_idx - 1]
             examples, batch = batch
             self.dataset._add_cached_examples(indices, examples)
-        else:
+            return batch
+
+        def __next__(self):
             batch = super().__next__()
-        if (self._batch_size is not None and
-                batch.batch_size < self.dataset.batch_size and
-                not self.dataset.hparams.allow_smaller_final_batch):
-            raise StopIteration
-        return batch
+            if (self._batch_size is not None and
+                    batch.batch_size < self.dataset.batch_size and
+                    not self.dataset.hparams.allow_smaller_final_batch):
+                raise StopIteration
+            return batch
+else:
+    # PyTorch 1.1 and lower defines only the class `_DataLoaderIter` for
+    # iterating over `DataLoader`.
+
+    from torch.utils.data.dataloader import (  # type: ignore
+        _DataLoaderIter as torch_DataLoaderIter)
+
+    class _DataLoaderIter(torch_DataLoaderIter):  # type: ignore
+        r"""Iterates once over the DataLoader's dataset. This is almost
+        identical to PyTorch
+        :class:`torch.utils.data.dataloader._DataLoaderIter`, except that we
+        check `allow_smaller_final_batch` here. This is because using
+        `drop_last` in :class:`~torch.utils.data.sampler.BatchSampler` would
+        cause the dataset to not load/process/cache certain elements from the
+        final batch, which complicates the already complex logic.
+        """
+
+        def __init__(self, loader: DataLoader):
+            self._batch_size = loader.batch_size
+            super().__init__(loader)
+
+        def __next__(self):
+            batch = super().__next__()
+            # Drop smaller final batch according to settings. Note that
+            # `_batch_size` could be None if dynamic batching is used.
+            if (self._batch_size is not None and
+                    batch.batch_size < self._batch_size and
+                    not self.dataset.hparams.allow_smaller_final_batch):
+                raise StopIteration
+            return batch
+
+    class _CacheDataLoaderIter(torch_DataLoaderIter):  # type: ignore
+        r"""Iterates once over the DataLoader's dataset. This class is used when
+        examples are processed and returned by worker processes. We need to
+        record the corresponding indices of each batch, call
+        :meth:`texar.torch.data.data.DataBase._add_cached_examples` to cache the
+        processed examples, and return only the
+        :class:`~texar.torch.data.data.Batch` instance to the user.
+        """
+        dataset: DataBase
+
+        worker_queue_idx: int  # so that Pylint gives no errors
+
+        def __init__(self, loader: DataLoader):
+            self._indices_dict: Dict[int, List[int]] = {}
+            self._batch_size = loader.batch_size
+            super().__init__(loader)
+
+        def _put_indices(self):
+            assert self.batches_outstanding < 2 * self.num_workers
+            indices = next(self.sample_iter, None)
+            if indices is None:
+                return
+            self.index_queues[self.worker_queue_idx].put(
+                (self.send_idx, indices))
+            if self.dataset._should_yield_raw_example:
+                indices = [index[0] for index in indices]
+            self._indices_dict[self.send_idx] = indices
+            self.worker_queue_idx = ((self.worker_queue_idx + 1) %
+                                     self.num_workers)
+            self.batches_outstanding += 1
+            self.send_idx += 1
+
+        def _process_next_batch(self, batch):
+            batch = super()._process_next_batch(batch)
+            indices = self._indices_dict[self.rcvd_idx - 1]
+            del self._indices_dict[self.rcvd_idx - 1]
+            examples, batch = batch
+            self.dataset._add_cached_examples(indices, examples)
+            return batch
+
+        def __next__(self):
+            if self.num_workers == 0:  # same-process loading
+                indices = next(self.sample_iter)  # may raise StopIteration
+                batch = self.collate_fn([self.dataset[i] for i in indices])
+                if self.dataset._should_yield_raw_example:
+                    indices = [index[0] for index in indices]
+                examples, batch = batch
+                self.dataset._add_cached_examples(indices, examples)
+                if self.pin_memory:
+                    batch = _pin_memory(batch)
+            else:
+                batch = super().__next__()
+            if (self._batch_size is not None and
+                    batch.batch_size < self.dataset.batch_size and
+                    not self.dataset.hparams.allow_smaller_final_batch):
+                raise StopIteration
+            return batch
 
 
 class SingleDatasetIterator(DataLoader):

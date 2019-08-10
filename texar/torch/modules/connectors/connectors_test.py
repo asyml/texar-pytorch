@@ -23,9 +23,7 @@ class TestConnectors(unittest.TestCase):
     r"""Tests various connectors.
     """
 
-    def __init__(self, *args, **kwargs):
-        super(TestConnectors, self).__init__(*args, **kwargs)
-
+    def setUp(self) -> None:
         self._batch_size = 100
 
         self._decoder_cell = layers.get_rnn_cell(

@@ -68,7 +68,7 @@ class PretrainedMixin(ModuleBase, ABC):
     def available_checkpoints(cls) -> List[str]:
         return list(cls._MODEL2URL.keys())
 
-    def _name_to_variable(self, name: str) -> nn.Module:
+    def _name_to_variable(self, name: str) -> nn.Parameter:
         r"""Find the corresponding variable given the specified name.
         """
         pointer = self
@@ -78,7 +78,7 @@ class PretrainedMixin(ModuleBase, ABC):
                 pointer = pointer[num]  # type: ignore
             else:
                 pointer = getattr(pointer, m_name)
-        return pointer
+        return pointer  # type: ignore
 
     def load_pretrained_config(self,
                                pretrained_model_name: Optional[str] = None,

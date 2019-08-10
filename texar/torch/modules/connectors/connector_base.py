@@ -61,11 +61,6 @@ class ConnectorBase(ModuleBase, Generic[OutputSize], ABC):
             "name": "connector"
         }
 
-    def forward(self, *args, **kwargs):
-        r"""Transforms inputs to outputs with specified shape.
-        """
-        raise NotImplementedError
-
     @property
     def output_size(self):
         return self._output_size

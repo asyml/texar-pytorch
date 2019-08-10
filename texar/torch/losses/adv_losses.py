@@ -78,10 +78,10 @@ def binary_adversarial_losses(
     d_loss = real_loss + fake_loss
 
     if mode == "min_fake":
-        g_loss = - fake_loss
+        g_loss = -fake_loss
     elif mode == "max_real":
-        g_loss = torch.nn.BCEWithLogitsLoss(reduction='mean')
-        g_loss = g_loss(fake_logits, torch.ones_like(fake_logits))
+        bce_loss = torch.nn.BCEWithLogitsLoss(reduction='mean')
+        g_loss = bce_loss(fake_logits, torch.ones_like(fake_logits))
     else:
         raise ValueError("Unknown mode: %s. Only 'min_fake' and 'max_real' "
                          "are allowed.")

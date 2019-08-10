@@ -17,11 +17,12 @@ Various helper classes and utilities for RNN decoders.
 from abc import ABC
 from typing import Callable, Generic, Optional, Tuple, Type, TypeVar, Union
 
+import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical, Gumbel
 
-import torch
 from texar.torch.utils import utils
+from texar.torch.utils.dtypes import torch_bool
 
 __all__ = [
     'Helper',
@@ -205,7 +206,7 @@ class EmbeddingHelper(Helper[IDType], ABC):
         del inputs, sequence_length
         times = torch.zeros_like(self._start_tokens)
         self._start_inputs = embedding_fn(self._start_tokens, times)
-        finished = torch.zeros_like(self._start_tokens, dtype=torch.uint8)
+        finished = torch.zeros_like(self._start_tokens, dtype=torch_bool)
         return (finished, self._start_inputs)
 
 
@@ -540,7 +541,7 @@ class SoftmaxEmbeddingHelper(EmbeddingHelper[torch.Tensor]):
             hard_ids = torch.argmax(sample_ids, dim=-1)
             finished = (hard_ids == self._end_token)
         else:
-            finished = torch.zeros_like(self._start_tokens, dtype=torch.uint8)
+            finished = torch.zeros_like(self._start_tokens, dtype=torch_bool)
         if self._stop_gradient:
             sample_ids = sample_ids.detach()
 

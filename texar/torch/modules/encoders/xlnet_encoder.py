@@ -264,9 +264,8 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
                     "lr": lr * decay_rate,
                 }
                 param_groups.append(param_group)
-        else:
-            param_groups = self.parameters()
-        return param_groups
+            return param_groups
+        return self.parameters()
 
     @property
     def output_size(self):
@@ -473,6 +472,7 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         pos_embed = self.dropout(pos_embed)
 
         states_h = self.dropout(word_embed)
+        states_g = None
         if two_stream:
             if target_mapping is not None:
                 word_embed_q = self.mask_emb.expand(
@@ -480,8 +480,6 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
             else:
                 word_embed_q = word_embed
             states_g = self.dropout(word_embed_q)
-        else:
-            states_g = None
         new_memory = []
 
         for idx in range(self._hparams.num_layers):
@@ -489,7 +487,8 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
             if cache_len > 0:
                 new_memory.append(self._cache_mem(
                     states_h, cur_memory, cache_len, reuse_len))
-            attn_layer: RelativeMultiheadAttention = self.attn_layers[idx]
+            attn_layer: RelativeMultiheadAttention
+            attn_layer = self.attn_layers[idx]  # type: ignore
             states_h, states_g = attn_layer(
                 states_h=states_h, states_g=states_g,
                 pos_embed=pos_embed, segment_mat=segment_matrix,

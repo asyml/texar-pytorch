@@ -226,9 +226,8 @@ class XLNetClassifier(ClassifierBase, PretrainedXLNetMixin):
             param_group = self._encoder.param_groups(lr, lr_layer_scale,
                                                      decay_base_params)
             param_groups.extend(param_group)
-        else:
-            param_groups = self.parameters()
-        return param_groups
+            return param_groups
+        return self.parameters()
 
     def forward(self,  # type: ignore
                 token_ids: torch.LongTensor,

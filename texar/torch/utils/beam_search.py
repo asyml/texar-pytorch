@@ -24,7 +24,7 @@ from typing import Any, Callable, Optional, Tuple, TypeVar, overload
 
 import torch
 
-from texar.torch.utils import map_structure
+from texar.torch.utils import map_structure, torch_bool
 
 __all__ = [
     'beam_search',
@@ -311,8 +311,8 @@ def beam_search(
     # finished_flags will keep track of booleans
     finished_seq = torch.zeros(alive_seq.size(), dtype=torch.long)
     # Setting the scores of the initial to negative infinity.
-    finished_scores = torch.ones((batch_size, beam_size)) * -INF
-    finished_flags = torch.zeros((batch_size, beam_size)).byte()
+    finished_scores = torch.full((batch_size, beam_size), -INF)
+    finished_flags = torch.zeros((batch_size, beam_size), dtype=torch_bool)
 
     finished_seq = finished_seq.to(device=initial_ids.device)
     finished_scores = finished_scores.to(device=initial_ids.device)
