@@ -23,13 +23,10 @@ class GPT2ClassifierTest(unittest.TestCase):
     @pretrained_test
     def test_model_loading(self):
         r"""Tests model loading functionality."""
-        # case 1
-        classifier = GPT2Classifier(pretrained_model_name="117M")
-        _, _ = classifier(self.inputs)
-
-        # case 2
-        classifier = GPT2Classifier(pretrained_model_name="345M")
-        _, _ = classifier(self.inputs)
+        for pretrained_model_name in GPT2Classifier.available_checkpoints():
+            classifier = GPT2Classifier(
+                pretrained_model_name=pretrained_model_name)
+            _, _ = classifier(self.inputs)
 
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable

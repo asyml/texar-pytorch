@@ -23,13 +23,10 @@ class XLNetClassifierTest(unittest.TestCase):
     @pretrained_test
     def test_model_loading(self):
         r"""Tests model loading functionality."""
-        # case 1
-        classifier = XLNetClassifier(pretrained_model_name="xlnet-base-cased")
-        _, _ = classifier(self.inputs)
-
-        # case 2
-        classifier = XLNetClassifier(pretrained_model_name="xlnet-large-cased")
-        _, _ = classifier(self.inputs)
+        for pretrained_model_name in XLNetClassifier.available_checkpoints():
+            classifier = XLNetClassifier(
+                pretrained_model_name=pretrained_model_name)
+            _, _ = classifier(self.inputs)
 
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable

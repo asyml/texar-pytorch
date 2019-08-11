@@ -29,7 +29,8 @@ class GPT2UtilsTest(unittest.TestCase):
         self.assertIn('vocab.bpe', files)
 
         model_config = PretrainedGPT2Mixin._transform_config(
-            pretrained_model_dir)
+            pretrained_model_name="117M",
+            cache_dir=pretrained_model_dir)
 
         exp_config = {
             'vocab_size': 50257,

@@ -24,6 +24,7 @@ from texar.torch.core.layers import get_initializer
 from texar.torch.hyperparams import HParams
 from texar.torch.modules.classifiers.classifier_base import ClassifierBase
 from texar.torch.modules.encoders.bert_encoders import BERTEncoder
+from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
 from texar.torch.utils.utils import dict_fetch
 
 __all__ = [
@@ -31,7 +32,7 @@ __all__ = [
 ]
 
 
-class BERTClassifier(ClassifierBase):
+class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
     r"""Classifier based on BERT modules.
 
     This is a combination of the
@@ -42,12 +43,16 @@ class BERTClassifier(ClassifierBase):
     Arguments are the same as in
     :class:`~texar.torch.modules.BERTEncoder`.
 
+    Please refer to :class:`~texar.torch.modules.pretrained.PretrainedBERTMixin`
+    for the detailed information of the supported models.
+
     Args:
         pretrained_model_name (optional): a str with the name
             of a pre-trained model to load selected in the list of:
             `bert-base-uncased`, `bert-large-uncased`, `bert-base-cased`,
             `bert-large-cased`, `bert-base-multilingual-uncased`,
-            `bert-base-multilingual-cased`, `bert-base-chinese`.
+            `bert-base-multilingual-cased`, `bert-base-chinese`,
+            `roberta-base-cased`, `roberta-large-cased`.
             If `None`, will use the model name in :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),

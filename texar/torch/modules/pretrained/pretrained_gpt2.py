@@ -54,7 +54,8 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
     }
 
     @classmethod
-    def _transform_config(cls, cache_dir: str) -> Dict[str, Any]:
+    def _transform_config(cls, pretrained_model_name: str,
+                          cache_dir: str) -> Dict[str, Any]:
         info = list(os.walk(cache_dir))
         root, _, files = info[0]
         config_path = None
@@ -127,7 +128,8 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
         })
         return configs
 
-    def _init_from_checkpoint(self, cache_dir: str,
+    def _init_from_checkpoint(self, pretrained_model_name: str,
+                              cache_dir: str,
                               load_output_layer: bool = True, **kwargs):
         r"""Initialize model parameters from weights stored in the pre-trained
         checkpoint.
