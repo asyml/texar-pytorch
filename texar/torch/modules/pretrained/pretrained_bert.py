@@ -43,15 +43,15 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
     The available BERT models are as follows:
 
-      * `bert-base-uncased`: 12-layer, 768-hidden, 12-heads, 110M parameters.
-      * `bert-large-uncased`: 24-layer, 1024-hidden, 16-heads, 340M parameters.
-      * `bert-base-cased`: 12-layer, 768-hidden, 12-heads , 110M parameters.
-      * `bert-large-cased`: 24-layer, 1024-hidden, 16-heads, 340M parameters.
-      * `bert-base-multilingual-uncased`: 102 languages, 12-layer, 768-hidden,
+      * ``bert-base-uncased``: 12-layer, 768-hidden, 12-heads, 110M parameters.
+      * ``bert-large-uncased``: 24-layer, 1024-hidden, 16-heads, 340M parameters.
+      * ``bert-base-cased``: 12-layer, 768-hidden, 12-heads , 110M parameters.
+      * ``bert-large-cased``: 24-layer, 1024-hidden, 16-heads, 340M parameters.
+      * ``bert-base-multilingual-uncased``: 102 languages, 12-layer, 768-hidden,
         12-heads, 110M parameters.
-      * `bert-base-multilingual-cased`: 104 languages, 12-layer, 768-hidden,
+      * ``bert-base-multilingual-cased``: 104 languages, 12-layer, 768-hidden,
         12-heads, 110M parameters.
-      * `bert-base-chinese`: Chinese Simplified and Traditional, 12-layer,
+      * ``bert-base-chinese``: Chinese Simplified and Traditional, 12-layer,
         768-hidden, 12-heads, 110M parameters.
 
     The RoBERTa model was proposed in
@@ -63,9 +63,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
     The available RoBERTa models are as follows:
 
-      * `roberta-base`: RoBERTa using the BERT-base architecture,
+      * ``roberta-base``: RoBERTa using the BERT-base architecture,
         125M parameters.
-      * `roberta-large`: RoBERTa using the BERT-large architecture,
+      * ``roberta-large``: RoBERTa using the BERT-large architecture,
         355M parameters.
 
     .. _`BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`:

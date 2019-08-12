@@ -46,9 +46,9 @@ class PretrainedXLNetMixin(PretrainedMixin, ABC):
 
     The available XLNet models are as follows:
 
-      * `xlnet-based-cased`: 12-layer, 768-hidden, 12-heads. This model is
+      * ``xlnet-based-cased``: 12-layer, 768-hidden, 12-heads. This model is
         trained on full data (different from the one in the paper).
-      * `xlnet-large-cased`: 24-layer, 1024-hidden, 16-heads.
+      * ``xlnet-large-cased``: 24-layer, 1024-hidden, 16-heads.
 
     .. _`XLNet: Generalized Autoregressive Pretraining for Language Understanding`:
         http://arxiv.org/abs/1906.08237
