@@ -50,8 +50,8 @@ We show the generated examples with transformer as decoder trained  on PTB train
 
 |Examples|
 |:---------|
-|regarded as the result of the market <unk> has three currencies as unusual as <unk> companies \<EOS\>|
-|chung <unk> 's proposal that saved the page in september and the ad pages \$ N from yale city with more than a small fee that tenants had been made by support in the past N years ago \<EOS\>|
-|the university of state commerce was <unk> from cooperation last year when it controls for cleaning up a bipartisan aid to moscow new arms-control <unk> <unk> \<EOS\>|
-|his return was the unusual of its operations in reacting to the day \<EOS\>|
-|the company said its travel subsidiary has been operating for \$ N million \<EOS\>|
+|mostly in its annual <unk> spending N in september to $ N billion from $ N billion a year earlier \<EOS\>|
+|note it 's a N rating of N N owned by shareholders from the banking and the expectation of interest payment since trading of a sale of a stock was a effect \<EOS\>|
+|but the profit margin eye on its rise disrupted that cms had slashed its quarterly profit in the quarter \<EOS\>|
+|that weeks ago the new business was to follow the dollar \<EOS\>|
+|the issue was quoted at N marks and for november delivery of N cent \<EOS\>|
