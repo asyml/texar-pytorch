@@ -47,7 +47,7 @@ enc_cell_hparams = {
     "type": "LSTMCell",
     "kwargs": {
         "num_units": hidden_size,
-        "forget_bias": 0.
+        "bias": 0.
     },
     "dropout": {"output_keep_prob": 1. - enc_dropout_out},
     "num_layers": 1
@@ -57,7 +57,7 @@ dec_cell_hparams = {
     "type": "LSTMCell",
     "kwargs": {
         "num_units": hidden_size,
-        "forget_bias": 0.
+        "bias": 0.
     },
     "dropout": {"output_keep_prob": 1. - dec_dropout_out},
     "num_layers": 1

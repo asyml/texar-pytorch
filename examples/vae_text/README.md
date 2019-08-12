@@ -42,8 +42,8 @@ Here `--model` specifies the saved model checkpoint, which is saved in `./models
 
 |Dataset    |Metrics   | VAE-LSTM |VAE-Transformer |
 |---------------|-------------|----------------|------------------------|
-|Yahoo | Test PPL<br>Test NLL | 69.42<br>338.65 |67.81<br>328.34|
-|PTB | Test PPL<br>Test NLL | 107.87<br>102.59 | 102.28<br>101.43 |
+|Yahoo | Test PPL<br>Test NLL | 69.85<br>339.15 |60.78<br>328.03|
+|PTB | Test PPL<br>Test NLL | 107.64<br>102.54 | 103.14<br>101.61 |
 
 ### Generated Examples
 We show the generated examples with transformer as decoder trained  on PTB training data.
