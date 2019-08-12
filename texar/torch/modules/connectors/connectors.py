@@ -94,8 +94,8 @@ def _sum_output_size(output_size: OutputSize) -> int:
             size_list[i] = np.prod([dim for dim in shape])
     else:
         size_list = flat_output_size
-    sum_output_size = sum(size_list)
-    return sum_output_size
+    ret = sum(size_list)
+    return ret
 
 
 def _mlp_transform(inputs: TensorStruct,
@@ -133,7 +133,7 @@ def _mlp_transform(inputs: TensorStruct,
     else:
         batch_size = flat_input[0].size(0)
     flat_input = [x.view(-1, x.size(-1)) for x in flat_input]
-    concat_input = torch.cat(flat_input, 0)
+    concat_input = torch.cat(flat_input, 1)
     # Get output dimension
     flat_output_size = nest.flatten(output_size)
 
