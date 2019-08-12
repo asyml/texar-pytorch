@@ -44,7 +44,8 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
     The available BERT models are as follows:
 
       * ``bert-base-uncased``: 12-layer, 768-hidden, 12-heads, 110M parameters.
-      * ``bert-large-uncased``: 24-layer, 1024-hidden, 16-heads, 340M parameters.
+      * ``bert-large-uncased``: 24-layer, 1024-hidden, 16-heads,
+        340M parameters.
       * ``bert-base-cased``: 12-layer, 768-hidden, 12-heads , 110M parameters.
       * ``bert-large-cased``: 24-layer, 1024-hidden, 16-heads, 340M parameters.
       * ``bert-base-multilingual-uncased``: 102 languages, 12-layer, 768-hidden,
