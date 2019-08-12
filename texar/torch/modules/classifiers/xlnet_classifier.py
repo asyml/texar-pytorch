@@ -43,8 +43,9 @@ class XLNetClassifier(ClassifierBase, PretrainedXLNetMixin):
 
     Args:
         pretrained_model_name (optional): a str with the name
-            of a pre-trained model to load selected in the list of:
-            `xlnet-base-cased`, `xlnet-large-cased`.
+            of a pre-trained model. Please refer to
+            :class:`~texar.torch.modules.pretrained.PretrainedXLNetMixin` for
+            the detailed information of the supported models.
             If `None`, will use the model name in :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),

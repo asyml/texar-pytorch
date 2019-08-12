@@ -39,19 +39,34 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
     The BERT model was proposed in
     `BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`_
     by `Devlin et al.` It is a bidirectional Transformer model pre-trained
-    on a large corpus. The available BERT models are as follows:
-    `bert-base-uncased`, `bert-large-uncased`, `bert-base-cased`,
-    `bert-large-cased`, `bert-base-multilingual-uncased`,
-    `bert-base-multilingual-cased`, and `bert-base-chinese`.
+    on a large corpus.
+
+    The available BERT models are as follows:
+
+      * `bert-base-uncased`: 12-layer, 768-hidden, 12-heads, 110M parameters.
+      * `bert-large-uncased`: 24-layer, 1024-hidden, 16-heads, 340M parameters.
+      * `bert-base-cased`: 12-layer, 768-hidden, 12-heads , 110M parameters.
+      * `bert-large-cased`: 24-layer, 1024-hidden, 16-heads, 340M parameters.
+      * `bert-base-multilingual-uncased`: 102 languages, 12-layer, 768-hidden,
+        12-heads, 110M parameters.
+      * `bert-base-multilingual-cased`: 104 languages, 12-layer, 768-hidden,
+        12-heads, 110M parameters.
+      * `bert-base-chinese`: Chinese Simplified and Traditional, 12-layer,
+        768-hidden, 12-heads, 110M parameters.
 
     The RoBERTa model was proposed in
-    `RoBERTa: A Robustly Optimized BERT Pretraining Approach` by `Liu et al.`
+    `RoBERTa: A Robustly Optimized BERT Pretraining Approach`_ by `Liu et al.`
     RoBERTa iterates on BERT's pre-training procedure, including training the
     model longer, with bigger batches over more data; removing the next
     sentence prediction objective; training on longer sequences;
     and dynamically changing the masking pattern applied to the training data.
+
     The available RoBERTa models are as follows:
-    `roberta-base-cased` and `roberta-large-cased`.
+
+      * `roberta-base`: RoBERTa using the BERT-base architecture,
+        125M parameters.
+      * `roberta-large`: RoBERTa using the BERT-large architecture,
+        355M parameters.
 
     .. _`BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`:
         https://arxiv.org/abs/1810.04805

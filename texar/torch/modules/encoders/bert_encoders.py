@@ -41,16 +41,11 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
     :class:`~texar.torch.modules.encoders.TransformerEncoder` and a dense
     pooler.
 
-    Please refer to :class:`~texar.torch.modules.pretrained.PretrainedBERTMixin`
-    for the detailed information of the supported models.
-
     Args:
         pretrained_model_name (optional): a str with the name
-            of a pre-trained model to load selected in the list of:
-            `bert-base-uncased`, `bert-large-uncased`, `bert-base-cased`,
-            `bert-large-cased`, `bert-base-multilingual-uncased`,
-            `bert-base-multilingual-cased`, `bert-base-chinese`,
-            `roberta-base-cased`, `roberta-large-cased`.
+            of a pre-trained model. Please refer to
+            :class:`~texar.torch.modules.pretrained.PretrainedBERTMixin` for
+            the detailed information of the supported models.
             If `None`, will use the model name in :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),

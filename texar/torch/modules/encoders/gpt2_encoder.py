@@ -37,14 +37,12 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
     :class:`~texar.torch.modules.embedders.PositionEmbedder`,
     :class:`~texar.torch.modules.encoders.TransformerEncoder`.
 
-    This module supports the architecture first proposed
-    in `(Radford et al.)` GPT2.
-
     Args:
         pretrained_model_name (optional): a str with the name
-            of a pre-trained model to load selected in the list of:
-            `117M`, `345M`. If `None`, will use the model name in
-            :attr:`hparams`.
+            of a pre-trained model. Please refer to
+            :class:`~texar.torch.modules.pretrained.PretrainedGPT2Mixin` for
+            the detailed information of the supported models.
+            If `None`, will use the model name in :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
             a default directory will be used.
