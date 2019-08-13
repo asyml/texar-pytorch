@@ -460,16 +460,16 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
     @property
     def output_size(self) -> int:
         r"""The feature size of :meth:`forward` output :attr:`outputs`.
-        If output layer does not exist, equals to
-        :attr:`encoder.cell.hidden_size`, otherwise equals to
-        last dimension value of output layer output size.
+        If output layer does not exist, the feature size equals to
+        :attr:`encoder.cell.hidden_size`, otherwise the feature size
+        equals to last dimension value of output layer output size.
         """
         # TODO: We will change the implementation to
         # something that does not require a forward pass.
 
         dim = self._cell.hidden_size
-        dummy_tensor = torch.Tensor(dim)
         if self._output_layer is not None:
+            dummy_tensor = torch.Tensor(dim)
             dim = self._output_layer(dummy_tensor).size(-1)
         return dim
 
@@ -805,20 +805,20 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
     def output_size(self) -> Tuple[int, int]:
         r"""The feature sizes of :meth:`forward` outputs
         :attr:`output_size_fw` and :attr:`output_size_bw`.
-        Each output size equals to last dimension
+        Each feature size equals to last dimension
         value of corresponding result size.
         """
         # TODO: We will change the implementation to
         # something that does not require a forward pass.
         dim_bw = self._cell_bw.hidden_size
-        dummy_tensor_bw = torch.Tensor(dim_bw)
         dim_fw = self._cell_fw.hidden_size
-        dummy_tensor_fw = torch.Tensor(dim_fw)
         if self._output_layer_bw is not None:
+            dummy_tensor_bw = torch.Tensor(dim_bw)
             output_bw = self._output_layer_bw(dummy_tensor_bw).size()[-1]
         else:
             output_bw = dim_bw
         if self._output_layer_fw is not None:
+            dummy_tensor_fw = torch.Tensor(dim_fw)
             output_fw = self._output_layer_fw(dummy_tensor_fw).size()[-1]
         else:
             output_fw = dim_fw

@@ -293,7 +293,6 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
 
     @property
     def output_size(self):
-        r"""The feature size of :meth:`forward` output
-        :attr:`output`.
+        r"""The feature size of :meth:`forward` output.
         """
         return self._hparams.dim

@@ -141,9 +141,5 @@ class EmbeddingDropout(ModuleBase):
         return input_tensor * mask
 
     @property
-    def output_size(self) -> int:
-        r"""The feature size of :meth:`forward` output.
-        Equals to ``1`` because here output size equals
-        to the input size.
-        """
-        return 1
+    def output_size(self):
+        raise ValueError("'output_size' can not be calculated.")

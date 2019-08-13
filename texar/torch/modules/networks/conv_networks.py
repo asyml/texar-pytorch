@@ -628,7 +628,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
     @property
     def output_size(self) -> int:
-        r"""The feature size of :meth:`forward` output :attr:`output`.
+        r"""The feature size of :meth:`forward` output.
         """
         if self.hparams.num_dense_layers <= 0:
             out_channels = self._hparams.out_channels
