@@ -460,7 +460,7 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
     @property
     def output_size(self) -> int:
         r"""The feature size of :meth:`forward` output :attr:`outputs`.
-        If output layer doesnot exist, equals to
+        If output layer does not exist, equals to
         :attr:`encoder.cell.hidden_size`, otherwise equals to
         last dimension value of output layer output size.
         """
