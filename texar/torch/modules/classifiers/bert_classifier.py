@@ -273,15 +273,21 @@ class BERTClassifier(ClassifierBase):
 
     @property
     def output_size(self) -> int:
-        r"""The final dimension(s) of :meth:`forward` output tensor(s).
-
-        Here output is :attr:`logits`. The final dimension equals to ``1``
-        when output final dimension is only determined by input.
+        r"""The output feature size of :meth:`forward` result :attr:`logits`.
+        If :attr:`logits` size is only determined by input
+        (i.e. if ``num_classes`` == 1), output size equals to ``1``.
+        Otherwise it equals to last dimension value of :attr:`logits` size.
         """
-        if self._hparams.num_classes > 1:
-            logit_dim = self._hparams.num_classes
-        elif self._hparams.num_classes == 1:
+        if self._hparams.num_classes == 1:
             logit_dim = 1
-        else:
+        elif self._hparams.num_classes > 1:
+            logit_dim = self._hparams.num_classes
+        elif self._hparams.clas_strategy == 'all_time':
+            logit_dim = (self._encoder.output_size *
+                         self._hparams.max_seq_length)
+        elif self._hparams.clas_strategy == 'cls_time':
+            logit_dim = self._encoder.output_size
+        elif self._hparams.clas_strategy == 'time_wise':
             logit_dim = self._hparams.encoder.dim
+
         return logit_dim

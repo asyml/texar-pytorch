@@ -258,6 +258,9 @@ class WordEmbedder(EmbedderBase):
 
     @property
     def output_size(self) -> int:
+        r"""The output feature size of :meth:`forward` result :attr:`outputs`.
+        Same as embedding dimension's last element or itself.
+        """
         if isinstance(self._dim, (list, tuple)):
             return self._dim[-1]
         else:

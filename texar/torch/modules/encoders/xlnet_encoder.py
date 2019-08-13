@@ -269,6 +269,9 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
 
     @property
     def output_size(self):
+        r"""The output feature size of :meth:`_forward` result
+        :attr:`output`.
+        """
         return self._hparams.hidden_dim
 
     @staticmethod

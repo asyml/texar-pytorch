@@ -63,4 +63,6 @@ class ConnectorBase(ModuleBase, Generic[OutputSize], ABC):
 
     @property
     def output_size(self):
+        r"""The output size of :attr:`Connectors`.
+        """
         return self._output_size

@@ -645,7 +645,7 @@ def get_instance_kwargs(kwargs: Kwargs, hparams: ParamDict) -> Kwargs:
 
 
 def get_output_size(instance_: nn.Module) -> Optional[int]:
-    r"""Return the final dimension of output size from :attr:`instance_`.
+    r"""Return the final dimension value of output size from :attr:`instance_`.
 
     If type of :attr:`instance_` is among the common types, the final
     dimension of output size will be computed.
@@ -655,7 +655,7 @@ def get_output_size(instance_: nn.Module) -> Optional[int]:
             which to compute output size.
 
     Returns:
-        int (optional): The final dimension of the output size.
+        int (optional): The final dimension value of the output size.
     """
 
     for t, l in Type_lambda_map.items():

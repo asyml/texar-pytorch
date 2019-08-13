@@ -303,8 +303,7 @@ class TransformerEncoder(EncoderBase):
 
     def forward(self,  # type: ignore
                 inputs: torch.Tensor,
-                sequence_length: torch.LongTensor) \
-            -> torch.Tensor:
+                sequence_length: torch.LongTensor) -> torch.Tensor:
         r"""Encodes the inputs.
 
         Args:

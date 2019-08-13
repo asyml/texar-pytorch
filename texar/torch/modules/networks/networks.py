@@ -87,12 +87,9 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
 
     @property
     def output_size(self) -> int:
-        r"""The final dimension(s) of :meth:`forward` output tensor(s).
-
-        Here final dimension equals to ``1`` if unable to get output size
-        from network layers.
+        r"""The output feature size of network layers result.
+        If unable to get output size from network layers, equals to ``1``.
         """
-
         for layer in reversed(self._layers):
             size = get_output_size(layer)
             if size is not None:

@@ -255,4 +255,7 @@ class MultiheadAttentionEncoder(EncoderBase):
 
     @property
     def output_size(self):
+        r"""The output feature size of :meth:`forward` result
+        :attr:`outputs`.
+        """
         return self._hparams.output_dim

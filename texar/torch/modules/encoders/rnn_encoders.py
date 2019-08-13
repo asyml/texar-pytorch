@@ -459,15 +459,19 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
 
     @property
     def output_size(self) -> int:
+        r"""The output feature size of :meth:`forward` result :attr:`outputs`.
+        If output layer doesnot exist, equals to
+        :attr:`encoder.cell.hidden_size`, otherwise equals to
+        last dimension value of output layer output size.
+        """
         # TODO: We will change the implementation to
         # something that does not require a forward pass.
 
         dim = self._cell.hidden_size
         dummy_tensor = torch.Tensor(dim)
         if self._output_layer is not None:
-            return self._output_layer(dummy_tensor).size(-1)
-        else:
-            return dim
+            dim = self._output_layer(dummy_tensor).size(-1)
+        return dim
 
 
 class BidirectionalRNNEncoder(RNNEncoderBase):
@@ -799,10 +803,10 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
 
     @property
     def output_size(self) -> Tuple[int, int]:
-        r"""The final dimension(s) of :meth:`forward` output tensor(s).
-
-        Here final dimension is a tuple consisting of forward
-        RNN final dimension and backward RNN final dimension.
+        r"""The output feature sizes of :meth:`forward` results
+        :attr:`output_size_fw` and :attr:`output_size_bw`.
+        Each output size equals to last dimension
+        value of corresponding result size.
         """
         # TODO: We will change the implementation to
         # something that does not require a forward pass.

@@ -142,9 +142,8 @@ class EmbeddingDropout(ModuleBase):
 
     @property
     def output_size(self) -> int:
-        r"""The final dimension(s) of :meth:`forward` output tensor(s).
-
-        Here final dimension is ``1``, because here output tensor size equals
-        to the input tensor size.
+        r"""The output feature size of :meth:`forward` result.
+        Equals to ``1`` because here output size equals
+        to the input size.
         """
         return 1
