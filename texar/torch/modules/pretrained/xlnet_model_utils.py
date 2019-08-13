@@ -67,7 +67,7 @@ class PositionWiseFF(ModuleBase):
 
     @property
     def output_size(self):
-        r"""The output feature size of :meth:`forward` result :attr:`output`.
+        r"""The feature size of :meth:`forward` output :attr:`output`.
         """
         return self._hparams.hidden_dim
 
@@ -121,7 +121,7 @@ class RelativePositionalEncoding(ModuleBase):
 
     @property
     def output_size(self):
-        r"""The output feature size of :meth:`forward` result
+        r"""The feature size of :meth:`forward` output
         :attr:`pos_embed`.
         """
         return self._hparams.dim
@@ -234,7 +234,7 @@ class RelativeMultiheadAttention(ModuleBase):
 
     @property
     def output_size(self):
-        r"""The output feature size of :meth:`forward` result
+        r"""The feature size of :meth:`forward` output
         :attr:`output_h`.
         """
         return self._hparams.hidden_dim

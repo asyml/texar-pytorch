@@ -87,7 +87,7 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
 
     @property
     def output_size(self) -> int:
-        r"""The output feature size of network layers result.
+        r"""The feature size of network layers result.
         If unable to get output size from network layers, equals to ``1``.
         """
         for layer in reversed(self._layers):

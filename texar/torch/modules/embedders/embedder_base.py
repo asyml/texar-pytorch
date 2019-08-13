@@ -142,7 +142,7 @@ class EmbeddingDropout(ModuleBase):
 
     @property
     def output_size(self) -> int:
-        r"""The output feature size of :meth:`forward` result.
+        r"""The feature size of :meth:`forward` output.
         Equals to ``1`` because here output size equals
         to the input size.
         """

@@ -269,7 +269,7 @@ class GPT2Classifier(ClassifierBase):
 
     @property
     def output_size(self) -> int:
-        r"""The output feature size of :meth:`forward` result :attr:`logits`.
+        r"""The feature size of :meth:`forward` output :attr:`logits`.
         If :attr:`logits` size is only determined by input
         (i.e. if ``num_classes`` == 1), the output size equals to ``1``.
         Otherwise it equals to last dimension value of :attr:`logits` size.
