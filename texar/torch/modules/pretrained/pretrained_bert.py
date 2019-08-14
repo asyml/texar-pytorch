@@ -60,11 +60,12 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         * ``bert-base-chinese``: Chinese Simplified and Traditional, 12-layer,
           768-hidden, 12-heads, 110M parameters.
 
-      * **RoBERTa**: proposed in (`Liu et al`. 2019) `RoBERTa: A Robustly Optimized BERT Pretraining Approach`_
+      * **RoBERTa**: proposed in (`Liu et al`. 2019)
+        `RoBERTa: A Robustly Optimized BERT Pretraining Approach`_
         . As a variant of the standard BERT model, RoBERTa trains for more
         iterations on more data with a larger batch size as well as other tweaks
-        in pre-training. Differing from the standard BERT, the RoBERTa model does
-        not use segmentation embedding. Available model names include:
+        in pre-training. Differing from the standard BERT, the RoBERTa model
+        does not use segmentation embedding. Available model names include:
 
         * ``roberta-base``: RoBERTa using the BERT-base architecture,
           125M parameters.
