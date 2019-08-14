@@ -41,7 +41,7 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
             of pre-trained model (e.g., ``xlnet-based-cased``). Please refer to
             :class:`~texar.torch.modules.pretrained.PretrainedXLNetMixin` for
             all supported models.
-            If `None`, will use the model name in :attr:`hparams`.
+            If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
             a default directory will be used.
