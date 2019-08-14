@@ -44,10 +44,11 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
     :class:`~texar.torch.modules.BERTEncoder`.
 
     Args:
-        pretrained_model_name (optional): a str with the name
-            of a pre-trained model. Please refer to
+        pretrained_model_name (optional): a `str`, the name
+            of pre-trained model (e.g., ``bert-base-uncased``). Please refer to
             :class:`~texar.torch.modules.pretrained.PretrainedBERTMixin` for
-            the detailed information of the supported models.
+            all supported models (including the standard BERT models and
+            variants like RoBERTa).
             If `None`, will use the model name in :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),

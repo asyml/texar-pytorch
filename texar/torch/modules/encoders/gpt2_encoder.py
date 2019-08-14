@@ -38,10 +38,10 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
     :class:`~texar.torch.modules.encoders.TransformerEncoder`.
 
     Args:
-        pretrained_model_name (optional): a str with the name
-            of a pre-trained model. Please refer to
+        pretrained_model_name (optional): a `str`, the name
+            of pre-trained model (e.g., ``117M``). Please refer to
             :class:`~texar.torch.modules.pretrained.PretrainedGPT2Mixin` for
-            the detailed information of the supported models.
+            all supported models.
             If `None`, will use the model name in :attr:`hparams`.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
