@@ -36,22 +36,41 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
     r"""A mixin class to support loading pre-trained checkpoints for modules
     that implement the BERT model.
 
-    The BERT model was proposed in
-    `BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`_
-    by `Devlin et al.` It is a bidirectional Transformer model pre-trained
-    on a large corpus. The available BERT models are as follows:
-    `bert-base-uncased`, `bert-large-uncased`, `bert-base-cased`,
-    `bert-large-cased`, `bert-base-multilingual-uncased`,
-    `bert-base-multilingual-cased`, and `bert-base-chinese`.
+    Both standard BERT models and many variants are supported. Usually, you can
+    specify the :attr:`pretrained_model_name` argument to pick which pre-trained
+    BERT model to use. All available categories of pre-trained models
+    (and names) include:
 
-    The RoBERTa model was proposed in
-    `RoBERTa: A Robustly Optimized BERT Pretraining Approach` by `Liu et al.`
-    RoBERTa iterates on BERT's pre-training procedure, including training the
-    model longer, with bigger batches over more data; removing the next
-    sentence prediction objective; training on longer sequences;
-    and dynamically changing the masking pattern applied to the training data.
-    The available RoBERTa models are as follows:
-    `roberta-base-cased` and `roberta-large-cased`.
+      * **Standard BERT**: proposed in (`Devlin et al`. 2018)
+        `BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`_
+        . A bidirectional Transformer language model pre-trained on large text
+        corpora. Available model names include:
+
+        * ``bert-base-uncased``: 12-layer, 768-hidden, 12-heads,
+          110M parameters.
+        * ``bert-large-uncased``: 24-layer, 1024-hidden, 16-heads,
+          340M parameters.
+        * ``bert-base-cased``: 12-layer, 768-hidden, 12-heads , 110M parameters.
+        * ``bert-large-cased``: 24-layer, 1024-hidden, 16-heads,
+          340M parameters.
+        * ``bert-base-multilingual-uncased``: 102 languages, 12-layer,
+          768-hidden, 12-heads, 110M parameters.
+        * ``bert-base-multilingual-cased``: 104 languages, 12-layer, 768-hidden,
+          12-heads, 110M parameters.
+        * ``bert-base-chinese``: Chinese Simplified and Traditional, 12-layer,
+          768-hidden, 12-heads, 110M parameters.
+
+      * **RoBERTa**: proposed in (`Liu et al`. 2019)
+        `RoBERTa: A Robustly Optimized BERT Pretraining Approach`_
+        . As a variant of the standard BERT model, RoBERTa trains for more
+        iterations on more data with a larger batch size as well as other tweaks
+        in pre-training. Differing from the standard BERT, the RoBERTa model
+        does not use segmentation embedding. Available model names include:
+
+        * ``roberta-base``: RoBERTa using the BERT-base architecture,
+          125M parameters.
+        * ``roberta-large``: RoBERTa using the BERT-large architecture,
+          355M parameters.
 
     .. _`BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`:
         https://arxiv.org/abs/1810.04805

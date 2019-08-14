@@ -44,10 +44,11 @@ class GPT2Classifier(ClassifierBase, PretrainedGPT2Mixin):
     :class:`~texar.torch.modules.GPT2Encoder`.
 
     Args:
-        pretrained_model_name (optional): a str with the name
-            of a pre-trained model to load selected in the list of:
-            `117M`, `345M`. If `None`, will use the model name in
-            :attr:`hparams`.
+        pretrained_model_name (optional): a `str`, the name
+            of pre-trained model (e.g., ``117M``). Please refer to
+            :class:`~texar.torch.modules.pretrained.PretrainedGPT2Mixin` for
+            all supported models.
+            If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
             a default directory will be used.

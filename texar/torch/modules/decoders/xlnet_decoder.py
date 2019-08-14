@@ -48,14 +48,12 @@ State = List[torch.Tensor]
 class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
     r"""Raw XLNet module for decoding sequences.
 
-    This module supports the architecture first proposed
-    in `(Yang et al.)` XLNet.
-
     Args:
-        pretrained_model_name (optional): a str with the name
-            of a pre-trained model to load selected in the list of:
-            `xlnet-base-cased`, `xlnet-large-cased`.
-            If `None`, will use the model name in :attr:`hparams`.
+        pretrained_model_name (optional): a `str`, the name
+            of pre-trained model (e.g., ``xlnet-based-cased``). Please refer to
+            :class:`~texar.torch.modules.pretrained.PretrainedXLNetMixin` for
+            all supported models.
+            If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
             a default directory will be used.

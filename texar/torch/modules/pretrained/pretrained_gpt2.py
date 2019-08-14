@@ -44,6 +44,11 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
     by `Radford et al.` from OpenAI. It is a unidirectional Transformer model
     pre-trained using the vanilla language modeling objective on a large corpus.
 
+    The available GPT2 models are as follows:
+
+      * ``117M``: Small version of GPT-2, 117M parameters.
+      * ``345M``: Medium version of GPT-2, 345M parameters.
+
     .. _`Language Models are Unsupervised Multitask Learners`:
         https://openai.com/blog/better-language-models/
     """
@@ -135,6 +140,7 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
         checkpoint.
 
         Args:
+            pretrained_model_name (str): Name of the pre-trained model.
             cache_dir (str): Path to the cache directory.
             load_output_layer (bool): If `False`, will not load weights of the
                 output layer. Set this argument to `False` when loading weights
