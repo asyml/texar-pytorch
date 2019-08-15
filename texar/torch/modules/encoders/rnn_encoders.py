@@ -460,9 +460,9 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
     @property
     def output_size(self) -> int:
         r"""The feature size of :meth:`forward` output :attr:`outputs`.
-        If output layer does not exist, the feature size equals to
+        If output layer does not exist, the feature size is equal to
         :attr:`encoder.cell.hidden_size`, otherwise the feature size
-        equals to last dimension value of output layer output size.
+        is equal to last dimension value of output layer output size.
         """
         # TODO: We will change the implementation to
         # something that does not require a forward pass.
@@ -805,7 +805,7 @@ class BidirectionalRNNEncoder(RNNEncoderBase):
     def output_size(self) -> Tuple[int, int]:
         r"""The feature sizes of :meth:`forward` outputs
         :attr:`output_size_fw` and :attr:`output_size_bw`.
-        Each feature size equals to last dimension
+        Each feature size is equal to last dimension
         value of corresponding result size.
         """
         # TODO: We will change the implementation to

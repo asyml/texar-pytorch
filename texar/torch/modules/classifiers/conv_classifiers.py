@@ -262,13 +262,14 @@ class Conv1DClassifier(ClassifierBase):
     def output_size(self) -> int:
         r"""The feature size of :meth:`forward` output :attr:`logits`.
         If :attr:`logits` size is only determined by input
-        (i.e. if ``num_classes`` == 1), the feature size equals
-        to ``1``. Otherwise, if ``num_classes`` > 1, it equals to ``1``.
+        (i.e. if ``num_classes`` == 1), the feature size is equal
+        to ``-1``. Otherwise, if ``num_classes`` > 1, it is equal
+        to ``num_classes``.
         """
         if self._hparams.num_classes > 1:
             logit_dim = self._hparams.num_classes
         elif self._hparams.num_classes == 1:
-            logit_dim = 1
+            logit_dim = -1
         else:
             raise AttributeError("'Conv1DClassifier' object has"
                                  "no attribute 'output_size'"

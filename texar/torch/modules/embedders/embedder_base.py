@@ -142,4 +142,5 @@ class EmbeddingDropout(ModuleBase):
 
     @property
     def output_size(self):
-        raise ValueError("'output_size' can not be calculated.")
+        raise ValueError("'output_size' can not be calculated "
+                         "because it is equal to the input size.")

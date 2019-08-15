@@ -650,7 +650,7 @@ def get_instance_kwargs(kwargs: Kwargs, hparams: ParamDict) -> Kwargs:
     return kwargs_
 
 
-def get_output_size(input_instance: nn.Module) -> int:
+def get_output_size(input_instance: nn.Module) -> Optional[int]:
     r"""Return the final dimension size of :attr:`input_instance` output.
 
     If type of :attr:`input_instance` is among the common types, the final
@@ -662,7 +662,7 @@ def get_output_size(input_instance: nn.Module) -> int:
 
     Returns:
         int (optional): The final dimension size of the output.
-            If output size is determined by input, returns ``1``,
+            If output size is determined by input, returns ``-1``,
             otherwise if output size is not computable, return `None`.
     """
 
@@ -671,8 +671,8 @@ def get_output_size(input_instance: nn.Module) -> int:
             return l(input_instance)
     for t in Type_size_keeper:
         if isinstance(input_instance, t):
-            return 1
-    return -1
+            return -1
+    return None
 
 
 def dict_patch(tgt_dict: AnyDict, src_dict: AnyDict) -> AnyDict:

@@ -311,13 +311,13 @@ class XLNetClassifier(ClassifierBase):
     def output_size(self) -> int:
         r"""The feature size of :meth:`forward` output :attr:`logits`.
         If :attr:`logits` size is only determined by input
-        (i.e. if ``num_classes`` == 1), the feature size equals to ``1``.
-        Otherwise it equals to last dimension value of :attr:`logits` size.
+        (i.e. if ``num_classes`` == 1), the feature size is equal to ``-1``.
+        Otherwise it is equal to last dimension value of :attr:`logits` size.
         """
         if self._hparams.num_classes > 1:
             logit_dim = self._hparams.num_classes
         elif self._hparams.num_classes == 1:
-            logit_dim = 1
+            logit_dim = -1
         else:
             logit_dim = self._hparams.hidden_dim
         return logit_dim

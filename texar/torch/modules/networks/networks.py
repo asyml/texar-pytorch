@@ -88,19 +88,19 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
     @property
     def output_size(self) -> int:
         r"""The feature size of network layers output. If output size is
-        only determined by input, the feature size equals to ``1``.
+        only determined by input, the feature size is equal to ``-1``.
         """
-        ones_cnt = 1
-        for layer in reversed(self._layers):
+        for i, layer in enumerate(reversed(self._layers)):
             size = get_output_size(layer)
             size_ext = getattr(layer, 'output_size', None)
             if size_ext is not None:
                 size = size_ext
-            if size > 1:
+            if size is None:
+                break
+            elif size > 1:
                 return size
-            elif size == 1:
-                ones_cnt += 1
-        if ones_cnt == len(self._layers):
-            return 1
-        else:
-            raise ValueError("'output_size' can not be calculated.")
+            elif i == len(self._layers) - 1:
+                return -1
+
+        raise ValueError("'output_size' can not be calculated because "
+                         "it is equal to the input size.")
