@@ -22,7 +22,6 @@ from abc import ABC
 from typing import Any, Dict
 
 import torch
-from torch import nn
 
 from texar.torch.modules.pretrained.pretrained_base import PretrainedMixin
 
@@ -45,6 +44,11 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
     by `Radford et al.` from OpenAI. It is a unidirectional Transformer model
     pre-trained using the vanilla language modeling objective on a large corpus.
 
+    The available GPT2 models are as follows:
+
+      * ``117M``: Small version of GPT-2, 117M parameters.
+      * ``345M``: Medium version of GPT-2, 345M parameters.
+
     .. _`Language Models are Unsupervised Multitask Learners`:
         https://openai.com/blog/better-language-models/
     """
@@ -55,7 +59,8 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
     }
 
     @classmethod
-    def _transform_config(cls, cache_dir: str) -> Dict[str, Any]:
+    def _transform_config(cls, pretrained_model_name: str,
+                          cache_dir: str) -> Dict[str, Any]:
         info = list(os.walk(cache_dir))
         root, _, files = info[0]
         config_path = None
@@ -128,12 +133,14 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
         })
         return configs
 
-    def _init_from_checkpoint(self, cache_dir: str,
+    def _init_from_checkpoint(self, pretrained_model_name: str,
+                              cache_dir: str,
                               load_output_layer: bool = True, **kwargs):
         r"""Initialize model parameters from weights stored in the pre-trained
         checkpoint.
 
         Args:
+            pretrained_model_name (str): Name of the pre-trained model.
             cache_dir (str): Path to the cache directory.
             load_output_layer (bool): If `False`, will not load weights of the
                 output layer. Set this argument to `False` when loading weights
@@ -180,10 +187,6 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
             arrays.append(array.squeeze())
 
         tensor_names = []
-        for name, _ in self.word_embedder.named_parameters():
-            tensor_names.append(name)
-        for name, _ in self.position_embedder.named_parameters():
-            tensor_names.append(name)
         for name, _ in self.named_parameters():
             tensor_names.append(name)
 
@@ -200,17 +203,18 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
 
                 if name == "model/wte":
                     if load_output_layer:
-                        pointer = self.word_embedder.embedding
+                        pointer = self._name_to_variable(
+                            "word_embedder.embedding")
                         assert pointer.shape == array.shape
                         pointer.data = torch.from_numpy(array)
 
-                        output_pointer = name_to_variable(
-                            self, "_output_layer.weight")
-                        if not isinstance(output_pointer, nn.Identity):
-                            assert output_pointer.shape == array.shape
-                            output_pointer.data = torch.from_numpy(array)
+                        output_pointer = self._name_to_variable(
+                            "_output_layer.weight")
+                        assert output_pointer.shape == array.shape
+                        output_pointer.data = torch.from_numpy(array)
                 elif name == "model/wpe":
-                    pointer = self.position_embedder.embedding
+                    pointer = self._name_to_variable(
+                        "position_embedder.embedding")
                     assert pointer.shape == array.shape
                     pointer.data = torch.from_numpy(array)
                 else:
@@ -278,18 +282,3 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
                 else:
                     print("Name error", name)
                     raise Exception
-
-
-def name_to_variable(model: nn.Module, name: str) -> nn.Module:
-    r"""Find the corresponding variable given the specified name.
-    """
-    pointer = model
-    name = name.split(".")
-    for m_name in name:
-        if m_name.isdigit():
-            num = int(m_name)
-            pointer = pointer[num]  # type: ignore
-        else:
-            if not isinstance(pointer, nn.Identity):
-                pointer = getattr(pointer, m_name)
-    return pointer

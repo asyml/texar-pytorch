@@ -92,9 +92,6 @@ class EmbedderBase(ModuleBase):
             "name": "embedder"
         }
 
-    def forward(self, *args, **kwargs):
-        raise NotImplementedError
-
     @property
     def num_embeds(self) -> int:
         r"""The number of embedding elements.

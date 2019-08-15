@@ -24,6 +24,7 @@ from texar.torch.core.layers import get_initializer
 from texar.torch.hyperparams import HParams
 from texar.torch.modules.classifiers.classifier_base import ClassifierBase
 from texar.torch.modules.encoders.gpt2_encoder import GPT2Encoder
+from texar.torch.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
 from texar.torch.utils.utils import dict_fetch
 
 __all__ = [
@@ -31,7 +32,7 @@ __all__ = [
 ]
 
 
-class GPT2Classifier(ClassifierBase):
+class GPT2Classifier(ClassifierBase, PretrainedGPT2Mixin):
     r"""Classifier based on GPT2 modules.
 
     This is a combination of the
@@ -43,10 +44,11 @@ class GPT2Classifier(ClassifierBase):
     :class:`~texar.torch.modules.GPT2Encoder`.
 
     Args:
-        pretrained_model_name (optional): a str with the name
-            of a pre-trained model to load selected in the list of:
-            `117M`, `345M`. If `None`, will use the model name in
-            :attr:`hparams`.
+        pretrained_model_name (optional): a `str`, the name
+            of pre-trained model (e.g., ``117M``). Please refer to
+            :class:`~texar.torch.modules.pretrained.PretrainedGPT2Mixin` for
+            all supported models.
+            If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
             a default directory will be used.

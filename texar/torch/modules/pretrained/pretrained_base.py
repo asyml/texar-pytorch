@@ -18,7 +18,7 @@ import os
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional, Union
 
 from torch import nn
 
@@ -29,17 +29,18 @@ from texar.torch.utils.types import MaybeList
 
 __all__ = [
     "default_download_dir",
+    "set_default_download_dir",
     "PretrainedMixin",
 ]
+
+_default_texar_download_dir: Optional[Path] = None
 
 
 def default_download_dir(name: str) -> Path:
     r"""Return the directory to which packages will be downloaded by default.
     """
-    package_dir: Path = Path(__file__).parents[3]  # 4 levels up
-    if os.access(package_dir, os.W_OK):
-        texar_download_dir = package_dir / 'texar_download'
-    else:
+    global _default_texar_download_dir  # pylint: disable=global-statement
+    if _default_texar_download_dir is None:
         if sys.platform == 'win32' and 'APPDATA' in os.environ:
             # On Windows, use %APPDATA%
             home_dir = Path(os.environ['APPDATA'])
@@ -47,12 +48,30 @@ def default_download_dir(name: str) -> Path:
             # Otherwise, install in the user's home directory.
             home_dir = Path.home()
 
-        texar_download_dir = home_dir / 'texar_download'
+        if os.access(home_dir, os.W_OK):
+            _default_texar_download_dir = home_dir / 'texar_download'
+        else:
+            raise ValueError(f"The path {home_dir} is not writable. Please "
+                             f"manually specify the download directory")
 
-    if not texar_download_dir.exists():
-        texar_download_dir.mkdir(parents=True)
+    if not _default_texar_download_dir.exists():
+        _default_texar_download_dir.mkdir(parents=True)
 
-    return texar_download_dir / name
+    return _default_texar_download_dir / name
+
+
+def set_default_download_dir(path: Union[str, Path]) -> None:
+    if isinstance(path, str):
+        path = Path(path)
+    elif not isinstance(path, Path):
+        raise ValueError("`path` must be a string or a pathlib.Path object")
+
+    if not os.access(path, os.W_OK):
+        raise ValueError(
+            f"The specified download directory {path} is not writable")
+
+    global _default_texar_download_dir  # pylint: disable=global-statement
+    _default_texar_download_dir = path
 
 
 class PretrainedMixin(ModuleBase, ABC):
@@ -68,7 +87,7 @@ class PretrainedMixin(ModuleBase, ABC):
     def available_checkpoints(cls) -> List[str]:
         return list(cls._MODEL2URL.keys())
 
-    def _name_to_variable(self, name: str) -> nn.Module:
+    def _name_to_variable(self, name: str) -> nn.Parameter:
         r"""Find the corresponding variable given the specified name.
         """
         pointer = self
@@ -78,7 +97,7 @@ class PretrainedMixin(ModuleBase, ABC):
                 pointer = pointer[num]  # type: ignore
             else:
                 pointer = getattr(pointer, m_name)
-        return pointer
+        return pointer  # type: ignore
 
     def load_pretrained_config(self,
                                pretrained_model_name: Optional[str] = None,
@@ -110,20 +129,22 @@ class PretrainedMixin(ModuleBase, ABC):
                     "argument is not None.")
 
         self.pretrained_model_dir = None
+        self.pretrained_model_name = pretrained_model_name
 
-        if pretrained_model_name is None:
-            pretrained_model_name = self._hparams.pretrained_model_name
-        if pretrained_model_name is not None:
+        if self.pretrained_model_name is None:
+            self.pretrained_model_name = self._hparams.pretrained_model_name
+        if self.pretrained_model_name is not None:
             self.pretrained_model_dir = self.download_checkpoint(
-                pretrained_model_name, cache_dir)
+                self.pretrained_model_name, cache_dir)
             pretrained_model_hparams = self._transform_config(
-                self.pretrained_model_dir)
+                self.pretrained_model_name, self.pretrained_model_dir)
             self._hparams = HParams(
                 pretrained_model_hparams, self._hparams.todict())
 
     def init_pretrained_weights(self, *args, **kwargs):
         if self.pretrained_model_dir:
             self._init_from_checkpoint(
+                self.pretrained_model_name,
                 self.pretrained_model_dir, *args, **kwargs)
         else:
             self.reset_parameters()
@@ -204,11 +225,13 @@ class PretrainedMixin(ModuleBase, ABC):
 
     @classmethod
     @abstractmethod
-    def _transform_config(cls, cache_dir: str) -> Dict[str, Any]:
+    def _transform_config(cls, pretrained_model_name: str,
+                          cache_dir: str) -> Dict[str, Any]:
         r"""Load the official configuration file and transform it into
         Texar-style hyperparameters.
 
         Args:
+            pretrained_model_name (str): Name of the pre-trained model.
             cache_dir (str): Path to the cache directory.
 
         Returns:
@@ -217,11 +240,13 @@ class PretrainedMixin(ModuleBase, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _init_from_checkpoint(self, cache_dir: str, **kwargs):
+    def _init_from_checkpoint(self, pretrained_model_name: str,
+                              cache_dir: str, **kwargs):
         r"""Initialize model parameters from weights stored in the pre-trained
         checkpoint.
 
         Args:
+            pretrained_model_name (str): Name of the pre-trained model.
             cache_dir (str): Path to the cache directory.
             **kwargs: Additional arguments for specific models.
         """

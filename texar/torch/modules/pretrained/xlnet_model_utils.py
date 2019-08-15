@@ -83,6 +83,7 @@ class PositionWiseFF(ModuleBase):
 
 
 class PositionalEmbedding(nn.Module):
+    inv_freq: torch.Tensor
 
     def __init__(self, embed_dim: int):
         super().__init__()
@@ -338,6 +339,7 @@ class RelativeMultiheadAttention(ModuleBase):
         # residual + layer norm
         output_h = self.layer_norm(states_h + attn_out_h)
 
+        output_g = None
         if states_g is not None:
             proj_dim = self.num_heads * self.head_dim
             proj_weight = self.head_projection.weight[:proj_dim]
@@ -355,8 +357,6 @@ class RelativeMultiheadAttention(ModuleBase):
                     'lbnd,mlb->mbnd', [attn_vec_g, target_mapping])
             attn_out_g = self._post_attention(attn_vec_g)
             output_g = self.layer_norm(states_g + attn_out_g)
-        else:
-            output_g = None
 
         return output_h, output_g
 

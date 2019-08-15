@@ -22,13 +22,9 @@ class XLNetEncoderTest(unittest.TestCase):
     @pretrained_test
     def test_model_loading(self):
         r"""Tests model loading functionality."""
-        # case 1
-        encoder = XLNetEncoder(pretrained_model_name="xlnet-base-cased")
-        _, _ = encoder(self.inputs)
-
-        # case 2
-        encoder = XLNetEncoder(pretrained_model_name="xlnet-large-cased")
-        _, _ = encoder(self.inputs)
+        for pretrained_model_name in XLNetEncoder.available_checkpoints():
+            encoder = XLNetEncoder(pretrained_model_name=pretrained_model_name)
+            _ = encoder(self.inputs)
 
     @pretrained_test
     def test_hparams(self):

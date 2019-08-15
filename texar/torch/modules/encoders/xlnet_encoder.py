@@ -36,14 +36,12 @@ __all__ = [
 class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
     r"""Raw XLNet module for encoding sequences.
 
-    This module supports the architecture first proposed
-    in `(Yang et al.)` XLNet.
-
     Args:
-        pretrained_model_name (optional): a str with the name
-            of a pre-trained model to load selected in the list of:
-            `xlnet-base-cased`, `xlnet-large-cased`.
-            If `None`, will use the model name in :attr:`hparams`.
+        pretrained_model_name (optional): a `str`, the name
+            of pre-trained model (e.g., ``xlnet-based-cased``). Please refer to
+            :class:`~texar.torch.modules.pretrained.PretrainedXLNetMixin` for
+            all supported models.
+            If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
             a default directory will be used.
@@ -230,6 +228,15 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         :attr:`lr_layer_decay_rate` is not 1.0, parameters from each layer form
         separate groups with different base learning rates.
 
+        The return value of this method can be used in the constructor of
+        optimizers, for example:
+
+        .. code-block:: python
+
+            model = XLNetEncoder(...)
+            param_groups = model.param_groups(lr=2e-5, lr_layer_scale=0.8)
+            optim = torch.optim.Adam(param_groups)
+
         Args:
             lr (float): The learning rate. Can be omitted if
                 :attr:`lr_layer_decay_rate` is 1.0.
@@ -264,9 +271,8 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
                     "lr": lr * decay_rate,
                 }
                 param_groups.append(param_group)
-        else:
-            param_groups = self.parameters()
-        return param_groups
+            return param_groups
+        return self.parameters()
 
     @property
     def output_size(self):
@@ -323,18 +329,18 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         r"""Compute XLNet representations for the input.
 
         Args:
-            token_ids: Shape `[batch_size, seq_len]`.
-            segment_ids: Shape `[batch_size, seq_len]`.
-            input_mask: Float tensor of shape `[batch_size, seq_len]`. Note that
-                positions with value 1 are masked out.
+            token_ids: Shape `[batch_size, max_time]`.
+            segment_ids: Shape `[batch_size, max_time]`.
+            input_mask: Float tensor of shape `[batch_size, max_time]`. Note
+                that positions with value 1 are masked out.
             memory: Memory from previous batches. A list of length `num_layers`,
                 each tensor of shape `[batch_size, mem_len, hidden_dim]`.
             permute_mask: The permutation mask. Float tensor of shape
-                `[batch_size, seq_len, seq_len]`.
+                `[batch_size, max_time, max_time]`.
                 A value of 0 for ``permute_mask[i, j, k]`` indicates that
                 position `i` attends to position `j` in batch `k`.
             target_mapping: The target token mapping. Float tensor of shape
-                `[batch_size, num_targets, seq_len]`.
+                `[batch_size, num_targets, max_time]`.
                 A value of 1 for ``target_mapping[i, j, k]`` indicates that
                 the `i`-th target token (in order of permutation) in batch `k`
                 is the token at position `j`.
@@ -355,7 +361,7 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         :returns: A tuple of `(output, new_memory)`:
 
             - **`output`**: The final layer output representations. Shape
-              `[batch_size, seq_len, hidden_dim]`.
+              `[batch_size, max_time, hidden_dim]`.
             - **`new_memory`**: The memory of the current batch.
               If `cache_len` is 0, then `new_memory` is `None`. Otherwise, it is
               a list of length `num_layers`, each tensor of shape
@@ -391,10 +397,11 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
             -> Tuple[torch.Tensor, Optional[List[torch.Tensor]]]:
         r"""Compute XLNet representations for the input. This layer exists
         because :class:`XLNetDecoder` compute embeddings in the decoder helper.
-        `word_embed` has shape `[batch_size, seq_len, word_embed_dim]`.
+        `word_embed` has shape `[batch_size, max_time, word_embed_dim]`.
         Please refer to :meth:`forward` for the detailed information of other
         arguments.
         """
+        # seq_len == max_time
         # word_embed: [seq_len, batch_size, word_embed_dim]
         word_embed = word_embed.permute(1, 0, 2)
         # segment_ids: [seq_len, batch_size]
@@ -473,6 +480,7 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         pos_embed = self.dropout(pos_embed)
 
         states_h = self.dropout(word_embed)
+        states_g = None
         if two_stream:
             if target_mapping is not None:
                 word_embed_q = self.mask_emb.expand(
@@ -480,8 +488,6 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
             else:
                 word_embed_q = word_embed
             states_g = self.dropout(word_embed_q)
-        else:
-            states_g = None
         new_memory = []
 
         for idx in range(self._hparams.num_layers):
@@ -489,7 +495,8 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
             if cache_len > 0:
                 new_memory.append(self._cache_mem(
                     states_h, cur_memory, cache_len, reuse_len))
-            attn_layer: RelativeMultiheadAttention = self.attn_layers[idx]
+            attn_layer: RelativeMultiheadAttention
+            attn_layer = self.attn_layers[idx]  # type: ignore
             states_h, states_g = attn_layer(
                 states_h=states_h, states_g=states_g,
                 pos_embed=pos_embed, segment_mat=segment_matrix,

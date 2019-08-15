@@ -23,35 +23,9 @@ class BERTEncoderTest(unittest.TestCase):
     @pretrained_test
     def test_model_loading(self):
         r"""Tests model loading functionality."""
-        # case 1
-        encoder = BERTEncoder(pretrained_model_name="bert-base-uncased")
-        _, _ = encoder(self.inputs)
-
-        # case 2
-        encoder = BERTEncoder(pretrained_model_name="bert-large-uncased")
-        _, _ = encoder(self.inputs)
-
-        # case 3
-        encoder = BERTEncoder(pretrained_model_name="bert-base-cased")
-        _, _ = encoder(self.inputs)
-
-        # case 4
-        encoder = BERTEncoder(pretrained_model_name="bert-large-cased")
-        _, _ = encoder(self.inputs)
-
-        # case 5
-        encoder = BERTEncoder(
-            pretrained_model_name="bert-base-multilingual-uncased")
-        _, _ = encoder(self.inputs)
-
-        # case 6
-        encoder = BERTEncoder(
-            pretrained_model_name="bert-base-multilingual-cased")
-        _, _ = encoder(self.inputs)
-
-        # case 7
-        encoder = BERTEncoder(pretrained_model_name="bert-base-chinese")
-        _, _ = encoder(self.inputs)
+        for pretrained_model_name in BERTEncoder.available_checkpoints():
+            encoder = BERTEncoder(pretrained_model_name=pretrained_model_name)
+            _, _ = encoder(self.inputs)
 
     @pretrained_test
     def test_hparams(self):

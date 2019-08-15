@@ -42,10 +42,11 @@ class XLNetRegressor(RegressorBase):
     :class:`~texar.torch.modules.XLNetEncoder`.
 
     Args:
-        pretrained_model_name (optional): a str with the name
-            of a pre-trained model to load selected in the list of:
-            `xlnet-base-cased`, `xlnet-large-cased`.
-            If `None`, will use the model name in :attr:`hparams`.
+        pretrained_model_name (optional): a `str`, the name
+            of pre-trained model (e.g., ``xlnet-based-cased``). Please refer to
+            :class:`~texar.torch.modules.pretrained.PretrainedXLNetMixin` for
+            all supported models.
+            If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
             a default directory will be used.
@@ -178,6 +179,15 @@ class XLNetRegressor(RegressorBase):
         :attr:`lr_layer_decay_rate` is not 1.0, parameters from each layer form
         separate groups with different base learning rates.
 
+        The return value of this method can be used in the constructor of
+        optimizers, for example:
+
+        .. code-block:: python
+
+            model = XLNetRegressor(...)
+            param_groups = model.param_groups(lr=2e-5, lr_layer_scale=0.8)
+            optim = torch.optim.Adam(param_groups)
+
         Args:
             lr (float): The learning rate. Can be omitted if
                 :attr:`lr_layer_decay_rate` is 1.0.
@@ -206,9 +216,8 @@ class XLNetRegressor(RegressorBase):
             param_group = self._encoder.param_groups(lr, lr_layer_scale,
                                                      decay_base_params)
             param_groups.extend(param_group)
-        else:
-            param_groups = self.parameters()
-        return param_groups
+            return param_groups
+        return self.parameters()
 
     def forward(self,  # type: ignore
                 token_ids: torch.LongTensor,

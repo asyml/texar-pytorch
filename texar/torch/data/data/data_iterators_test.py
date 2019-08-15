@@ -37,9 +37,6 @@ class SamplerTest(unittest.TestCase):
             }
             super().__init__(source, hparams=hparams)
 
-        def process(self, raw_example):
-            return raw_example
-
     def setUp(self) -> None:
         self.size = 10
         self.buffer_size = 5
@@ -256,9 +253,6 @@ class DataIteratorTest(unittest.TestCase):
         class CustomData(DataBase):
             def __init__(self, source):
                 super().__init__(source)
-
-            def process(self, raw_example):
-                return raw_example
 
             def collate(self, examples):
                 return Batch(len(examples), text=examples)

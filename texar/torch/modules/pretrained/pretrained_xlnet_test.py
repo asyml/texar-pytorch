@@ -28,7 +28,8 @@ class XLNetUtilsTest(unittest.TestCase):
         self.assertIn('xlnet_config.json', files)
 
         model_config = PretrainedXLNetMixin._transform_config(
-            pretrained_model_dir)
+            pretrained_model_name="xlnet-base-cased",
+            cache_dir=pretrained_model_dir)
 
         exp_config = {'head_dim': 64,
                       'ffn_inner_dim': 3072,

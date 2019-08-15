@@ -94,8 +94,8 @@ def _sum_output_size(output_size: OutputSize) -> int:
             size_list[i] = np.prod([dim for dim in shape])
     else:
         size_list = flat_output_size
-    sum_output_size = sum(size_list)
-    return sum_output_size
+    ret = sum(size_list)
+    return ret
 
 
 def _mlp_transform(inputs: TensorStruct,
@@ -133,7 +133,7 @@ def _mlp_transform(inputs: TensorStruct,
     else:
         batch_size = flat_input[0].size(0)
     flat_input = [x.view(-1, x.size(-1)) for x in flat_input]
-    concat_input = torch.cat(flat_input, 0)
+    concat_input = torch.cat(flat_input, 1)
     # Get output dimension
     flat_output_size = nest.flatten(output_size)
 
@@ -331,8 +331,7 @@ class ForwardConnector(ConnectorBase):
         }
 
     def forward(self,  # type: ignore
-                inputs: TensorStruct
-                ) -> Any:
+                inputs: TensorStruct) -> Any:
         r"""Transforms inputs to have the same structure as with
         :attr:`output_size`. Values of the inputs are not changed.
         :attr:`inputs` must either have the same structure, or have the same
@@ -434,8 +433,7 @@ class MLPTransformConnector(ConnectorBase):
         }
 
     def forward(self,  # type: ignore
-                inputs: TensorStruct
-                ) -> Any:
+                inputs: TensorStruct) -> Any:
         r"""Transforms inputs with an MLP layer and packs the results to have
         the same structure as specified by :attr:`output_size`.
 
@@ -796,7 +794,7 @@ class StochasticConnector(ConnectorBase):
 #    """
 #
 #    def __init__(self, output_size, hparams=None):
-#        ConnectorBase.__init__(self, output_size, hparams)
+#        super().__init__(self, output_size, hparams)
 #
 #    @staticmethod
 #    def default_hparams():

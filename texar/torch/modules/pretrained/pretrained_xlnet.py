@@ -44,6 +44,12 @@ class PretrainedXLNetMixin(PretrainedMixin, ABC):
     large corpus using a language modeling objective that considers all
     permutations of the input sentence.
 
+    The available XLNet models are as follows:
+
+      * ``xlnet-based-cased``: 12-layer, 768-hidden, 12-heads. This model is
+        trained on full data (different from the one in the paper).
+      * ``xlnet-large-cased``: 24-layer, 1024-hidden, 16-heads.
+
     .. _`XLNet: Generalized Autoregressive Pretraining for Language Understanding`:
         http://arxiv.org/abs/1906.08237
     """
@@ -64,7 +70,8 @@ class PretrainedXLNetMixin(PretrainedMixin, ABC):
                 nn.init.normal_(self.r_s_bias, 0.0, 0.02)
 
     @classmethod
-    def _transform_config(cls, cache_dir: str) -> Dict[str, Any]:
+    def _transform_config(cls, pretrained_model_name: str,
+                          cache_dir: str) -> Dict[str, Any]:
         info = list(os.walk(cache_dir))
         root, _, files = info[0]
         config_path = None
@@ -90,7 +97,8 @@ class PretrainedXLNetMixin(PretrainedMixin, ABC):
 
         return configs
 
-    def _init_from_checkpoint(self, cache_dir: str, **kwargs):
+    def _init_from_checkpoint(self, pretrained_model_name: str,
+                              cache_dir: str, **kwargs):
         # remember to call .contiguous after trans_fn
         try:
             import numpy as np

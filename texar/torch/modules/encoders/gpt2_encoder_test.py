@@ -21,13 +21,9 @@ class GPT2EncoderTest(unittest.TestCase):
     @pretrained_test
     def test_model_loading(self):
         r"""Tests model loading functionality."""
-        # case 1
-        encoder = GPT2Encoder(pretrained_model_name="117M")
-        _ = encoder(self.inputs)
-
-        # case 2
-        encoder = GPT2Encoder(pretrained_model_name="345M")
-        _ = encoder(self.inputs)
+        for pretrained_model_name in GPT2Encoder.available_checkpoints():
+            encoder = GPT2Encoder(pretrained_model_name=pretrained_model_name)
+            _ = encoder(self.inputs)
 
     @pretrained_test
     def test_hparams(self):

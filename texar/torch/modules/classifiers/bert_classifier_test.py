@@ -23,35 +23,10 @@ class BERTClassifierTest(unittest.TestCase):
     @pretrained_test
     def test_model_loading(self):
         r"""Tests model loading functionality."""
-        # case 1
-        classifier = BERTClassifier(pretrained_model_name="bert-base-uncased")
-        _, _ = classifier(self.inputs)
-
-        # case 2
-        classifier = BERTClassifier(pretrained_model_name="bert-large-uncased")
-        _, _ = classifier(self.inputs)
-
-        # case 3
-        classifier = BERTClassifier(pretrained_model_name="bert-base-cased")
-        _, _ = classifier(self.inputs)
-
-        # case 4
-        classifier = BERTClassifier(pretrained_model_name="bert-large-cased")
-        _, _ = classifier(self.inputs)
-
-        # case 5
-        classifier = BERTClassifier(
-            pretrained_model_name="bert-base-multilingual-uncased")
-        _, _ = classifier(self.inputs)
-
-        # case 6
-        classifier = BERTClassifier(
-            pretrained_model_name="bert-base-multilingual-cased")
-        _, _ = classifier(self.inputs)
-
-        # case 7
-        classifier = BERTClassifier(pretrained_model_name="bert-base-chinese")
-        _, _ = classifier(self.inputs)
+        for pretrained_model_name in BERTClassifier.available_checkpoints():
+            classifier = BERTClassifier(
+                pretrained_model_name=pretrained_model_name)
+            _, _ = classifier(self.inputs)
 
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
