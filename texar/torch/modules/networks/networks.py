@@ -97,10 +97,10 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
                 size = size_ext
             if size is None:
                 break
-            elif size > 1:
+            elif size > 0:
                 return size
             elif i == len(self._layers) - 1:
                 return -1
 
         raise ValueError("'output_size' can not be calculated because "
-                         "it is equal to the input size.")
+                         "this module contains submodules whose output size cannot be determined.")
