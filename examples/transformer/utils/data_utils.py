@@ -81,29 +81,24 @@ class Seq2SeqData(tx.data.DataBase[Example, Example]):
     def default_hparams():
         return {
             **tx.data.DataBase.default_hparams(),
+            "pad_id": 0,
             "bos_id": 1,
             "eos_id": 2,
         }
 
     def collate(self, examples: List[Example]) -> tx.data.Batch:
-        src_seqs = [ex[0] for ex in examples]
-        tgt_seqs = [ex[1] for ex in examples]
-        max_src_len = max(map(len, src_seqs))
-        max_tgt_len = max(map(len, tgt_seqs))
-        # Add EOS token by setting pad_length to max length + 1.
+        # Add EOS tokens.
+        src_seqs = [ex[0].tolist() + [self._hparams.eos_id] for ex in examples]
+        tgt_seqs = [ex[1].tolist() + [self._hparams.eos_id] for ex in examples]
+        # Pad sentences to equal length.
         source, _ = tx.data.padded_batch(
-            src_seqs, pad_length=(max_src_len + 1),
-            pad_value=self._hparams.eos_id,
-        )
+            src_seqs, pad_value=self._hparams.pad_id)
         target_output, _ = tx.data.padded_batch(
-            tgt_seqs, pad_length=(max_tgt_len + 1),
-            pad_value=self._hparams.eos_id,
-        )
+            tgt_seqs, pad_value=self._hparams.pad_id)
         # Add BOS token to the target inputs.
         target_input = np.pad(
-            target_output[:, :max_tgt_len], ((0, 0), (1, 0)),
-            "constant", constant_values=self._hparams.bos_id,
-        )
+            target_output[:, :-1], ((0, 0), (1, 0)),
+            mode="constant", constant_values=self._hparams.bos_id)
         source, target_input, target_output = [
             torch.from_numpy(x).to(device=self.device)
             for x in [source, target_input, target_output]
@@ -112,5 +107,5 @@ class Seq2SeqData(tx.data.DataBase[Example, Example]):
             len(examples),
             source=source,
             target_input=target_input,
-            target_output=target_output
+            target_output=target_output,
         )

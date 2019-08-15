@@ -67,8 +67,9 @@ def main():
     # Load data
     vocab = tx.data.Vocab(config_data.vocab_file)
     data_hparams = {
-        # "batch_size" is ignored for train since we use dynamic batching
+        # "batch_size" is ignored for train since we use dynamic batching.
         "batch_size": config_data.test_batch_size,
+        "pad_id": vocab.pad_token_id,
         "bos_id": vocab.bos_token_id,
         "eos_id": vocab.eos_token_id,
     }
@@ -78,8 +79,9 @@ def main():
                 config_data.input_dir,
                 f"{config_data.filename_prefix}{split}.npy"
             ),
-            hparams=data_hparams,
-            device=device
+            # Only shuffle during training.
+            hparams={**data_hparams, "shuffle": split == "train"},
+            device=device,
         ) for split in ["train", "valid", "test"]
     }
     print(f"Training data size: {len(datasets['train'])}")
