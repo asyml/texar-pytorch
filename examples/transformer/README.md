@@ -105,7 +105,7 @@ python bleu_main.py --reference=data/en_de/test.de --translation=temp/test.outpu
 
 ### Results
 
-* On **IWSLT'15**, the implementation achieves around `BLEU_cased=28.44` and `BLEU_uncased=29.21` (reported by
+* On **IWSLT'15**, the implementation achieves around `BLEU_cased=29.00` and `BLEU_uncased=29.82` (reported by
   [bleu_main.py](./bleu_main.py)), which are comparable to the base_single_gpu results by the
   [official implementation](https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/models/transformer.py)
   (`28.12` and `28.97`, respectively, as reported [here](https://github.com/tensorflow/tensor2tensor/pull/611)).
@@ -118,9 +118,14 @@ python bleu_main.py --reference=data/en_de/test.de --translation=temp/test.outpu
 ### Example training log
 
 ```
-12:57:06,611:INFO:step: 500, loss: 7.4818
-12:58:24,629:INFO:step: 1000, loss: 6.8003
-12:59:42,661:INFO:step: 1500, loss: 6.3096
+2019-08-14 16:37:48,346:INFO:Begin running with train_and_evaluate mode
+2019-08-14 16:39:10,780:INFO:step: 500, loss: 7.4967
+2019-08-14 16:40:34,075:INFO:step: 1000, loss: 6.7844
+2019-08-14 16:41:57,523:INFO:step: 1500, loss: 6.3648
+2019-08-14 16:43:21,424:INFO:step: 2000, loss: 5.8466
+2019-08-14 16:48:31,190:INFO:epoch: 0, eval_bleu 2.0754
+2019-08-14 16:48:31,191:INFO:epoch: 0, best bleu: 2.0754
+2019-08-14 16:48:31,191:INFO:Saving model to ./outputs/best-model.ckpt
 ```
 Using an NVIDIA GTX 1080Ti, the model usually converges within 5 hours (~15 epochs) on **IWSLT'15**.
 
