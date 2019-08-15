@@ -103,4 +103,5 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
                 return -1
 
         raise ValueError("'output_size' can not be calculated because "
-                         "this module contains submodules whose output size cannot be determined.")
+                         "'FeedForwardNetwork' contains submodule "
+                         "whose output size cannot be determined.")
