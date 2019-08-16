@@ -4,10 +4,13 @@ from typing import Any, Callable, Dict, IO, Iterator, List, Optional, Sequence, 
 
 import numpy as np
 from ._tensor_str import set_printoptions
-from .random import get_rng_state, initial_seed, manual_seed, set_rng_state
+from .random import get_rng_state, initial_seed, set_rng_state
 from .storage import _StorageBase
 from .tensor import Tensor as TensorBase
 from .utils.hooks import RemovableHandle
+
+
+def manual_seed(seed: int): ...
 
 
 def load(f: Union[str, IO],

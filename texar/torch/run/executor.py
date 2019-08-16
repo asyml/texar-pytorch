@@ -1804,6 +1804,7 @@ class Executor:
 
                 self._fire_event(Event.Iteration, True)
             self._fire_event(Event.Epoch, True)
+            self._train_tracker.reset()
 
     def _validate_loop(self, iterator: DataIterator) -> None:
         r"""Run the validation loop given the data iterator.

@@ -178,24 +178,34 @@ class ProgressTracker:
 
     def __init__(self, size: Optional[int] = None):
         self.size = size
+        self.started = False
 
     def set_size(self, size: Optional[int]):
         self.size = size
 
     def start(self):
+        if self.started:
+            return
+        self.started = True
         if len(self._tracker_stack) > 0:
             self._tracker_stack[-1].pause()
         self._tracker_stack.append(self)
-        self.n_examples = 0
-        self.start_time = time.time()
-        self.accumulated_time = 0.0
+        self.reset()
         self.paused = False
 
     def stop(self):
+        if not self.started:
+            return
+        self.started = False
         obj = self._tracker_stack.pop(-1)
         assert obj is self
         if len(self._tracker_stack) > 0:
             self._tracker_stack[-1].resume()
+
+    def reset(self):
+        self.n_examples = 0
+        self.start_time = time.time()
+        self.accumulated_time = 0.0
 
     def pause(self):
         if self.paused:
@@ -231,10 +241,6 @@ class ProgressTracker:
 
 
 class ExecutorTerminateSignal(Exception):
-    pass
-
-
-class ExecutorRemoveActionSignal(Exception):
     pass
 
 
