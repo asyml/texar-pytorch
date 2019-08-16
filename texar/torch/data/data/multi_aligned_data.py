@@ -167,8 +167,8 @@ class MultiAlignedData(
                 #    'x_length': [5],
                 #
                 #    # "t_image" is a list of a "numpy.ndarray" image
-                #    # in this example. Its width equals to 512 and
-                #    # its height equals to 512.
+                #    # in this example. Its width is equal to 512 and
+                #    # its height is equal to 512.
                 #    't_image': [...]
                 # }
 

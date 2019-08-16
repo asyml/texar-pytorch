@@ -77,7 +77,7 @@ Kwargs = Dict[str, Any]
 AnyDict = MutableMapping[str, Any]
 ParamDict = Union[HParams, AnyDict]
 
-Type_lambda_map = {
+Type_size_lambda_map = {
     nn.Linear: lambda x: x.out_features,
     nn.Bilinear: lambda x: x.out_features,
     _ConvNd: lambda x: x.out_channels * len(x.kernel_size),
@@ -86,6 +86,12 @@ Type_lambda_map = {
     nn.RNNCellBase: lambda x: x.hidden_size,
 }
 
+Type_size_keeper = [
+    nn.ELU, nn.Hardshrink, nn.Hardtanh, nn.LeakyReLU, nn.LogSigmoid,
+    nn.PReLU, nn.ReLU, nn.RReLU, nn.SELU, nn.CELU, nn.Sigmoid, nn.Softplus,
+    nn.Softshrink, nn.Softsign, nn.Tanh, nn.Tanhshrink, nn.Threshold,
+    nn.Softmin, nn.Softmax, nn.LogSoftmax, nn.Dropout, nn.AlphaDropout,
+]
 
 # NestedCollection = Union[T, Collection['NestedCollection']]
 
@@ -644,23 +650,28 @@ def get_instance_kwargs(kwargs: Kwargs, hparams: ParamDict) -> Kwargs:
     return kwargs_
 
 
-def get_output_size(instance_: nn.Module) -> Optional[int]:
-    r"""Return the final dimension of output size from :attr:`instance_`.
+def get_output_size(input_instance: nn.Module) -> Optional[int]:
+    r"""Return the final dimension size of :attr:`input_instance` output.
 
-    If type of :attr:`instance_` is among the common types, the final
-    dimension of output size will be computed.
+    If type of :attr:`input_instance` is among the common types, the final
+    dimension size will be computed.
 
     Args:
-        instance_: A :class:`~torch.nn.Module` instance from
-            which to compute output size.
+        input_instance: A :class:`~torch.nn.Module` instance from
+            which to compute the final dimension size.
 
     Returns:
-        int (optional): The final dimension of the output size.
+        int (optional): The final dimension size of the output.
+            If output size is determined by input, returns ``-1``,
+            otherwise if output size is not computable, return `None`.
     """
 
-    for t, l in Type_lambda_map.items():
-        if isinstance(instance_, t):
-            return l(instance_)
+    for t, l in Type_size_lambda_map.items():
+        if isinstance(input_instance, t):
+            return l(input_instance)
+    for t in Type_size_keeper:
+        if isinstance(input_instance, t):
+            return -1
     return None
 
 

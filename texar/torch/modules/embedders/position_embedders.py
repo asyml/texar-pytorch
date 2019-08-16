@@ -194,6 +194,11 @@ class PositionEmbedder(EmbedderBase):
 
     @property
     def output_size(self) -> int:
+        r"""The feature size of :meth:`forward` output. If the :attr:`dim`
+        hyperparameter is a ``list`` or ``tuple``, the feature size
+        equals its final dimension; otherwise, if :attr:`dim` is an
+        ``int``, the feature size equals :attr:`dim`.
+        """
         if isinstance(self._dim, (list, tuple)):
             return self._dim[-1]
         else:
@@ -353,6 +358,11 @@ class SinusoidsPositionEmbedder(EmbedderBase):
 
     @property
     def output_size(self) -> int:
+        r"""The feature size of :meth:`forward` output. If the :attr:`dim`
+        hyperparameter is a ``list`` or ``tuple``, the feature size
+        equals its final dimension; otherwise, if :attr:`dim` is an
+        ``int``, the feature size equals :attr:`dim`.
+        """
         if isinstance(self._dim, (list, tuple)):
             dim = self._dim[-1]
         else:

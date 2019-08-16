@@ -92,6 +92,8 @@ class ModuleBase(nn.Module, ABC):
 
     @property
     def output_size(self):
-        r"""The final dimension(s) of :meth:`forward` output tensor(s).
+        r"""The feature size of :meth:`forward` output tensor(s),
+        usually it is equal to the last dimension value of the output
+        tensor size.
         """
         raise NotImplementedError

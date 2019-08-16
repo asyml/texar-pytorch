@@ -272,4 +272,7 @@ class XLNetRegressor(RegressorBase):
 
     @property
     def output_size(self) -> int:
-        return 1
+        r"""The feature size of :meth:`forward` output. Since output size is
+        only determined by input, the feature size is equal to ``-1``.
+        """
+        return -1

@@ -63,10 +63,10 @@ def _assert_same_size(outputs: TensorStruct,
         if isinstance(size, torch.Size):
             if output[0].size() != size:
                 raise ValueError("The output size does not match"
-                                 "the the required output_size")
+                                 "the required output_size")
         elif output[0].size()[-1] != size:
             raise ValueError(
-                "The output size does not match the the required output_size")
+                "The output size does not match the required output_size")
 
 
 def _get_tensor_depth(x: torch.Tensor) -> int:

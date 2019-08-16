@@ -87,14 +87,21 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
 
     @property
     def output_size(self) -> int:
-        r"""The final dimension(s) of :meth:`forward` output tensor(s).
-
-        Here final dimension equals to ``1`` if unable to get output size
-        from network layers.
+        r"""The feature size of network layers output. If output size is
+        only determined by input, the feature size is equal to ``-1``.
         """
-
-        for layer in reversed(self._layers):
+        for i, layer in enumerate(reversed(self._layers)):
             size = get_output_size(layer)
-            if size is not None:
+            size_ext = getattr(layer, 'output_size', None)
+            if size_ext is not None:
+                size = size_ext
+            if size is None:
+                break
+            elif size > 0:
                 return size
-        return 1
+            elif i == len(self._layers) - 1:
+                return -1
+
+        raise ValueError("'output_size' can not be calculated because "
+                         "'FeedForwardNetwork' contains submodule "
+                         "whose output size cannot be determined.")

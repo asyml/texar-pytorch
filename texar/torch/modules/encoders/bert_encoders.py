@@ -336,4 +336,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
 
     @property
     def output_size(self):
+        r"""The feature size of :meth:`forward` output
+        :attr:`pooled_output`.
+        """
         return self._hparams.hidden_size

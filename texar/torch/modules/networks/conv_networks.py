@@ -240,7 +240,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                Number of dense layers.
 
            `"out_features"`: int or list
-               Dimension of output features after the dense layers. If an
+               Dimension of features after the dense layers. If an
                ``int``, all dense layers will have the same feature dimension.
                If a list of ``int``, the list length must equal
                ``"num_dense_layers"``.
@@ -628,6 +628,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
     @property
     def output_size(self) -> int:
+        r"""The feature size of :meth:`forward` output.
+        """
         if self.hparams.num_dense_layers <= 0:
             out_channels = self._hparams.out_channels
             if not isinstance(out_channels, (list, tuple)):

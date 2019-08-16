@@ -260,15 +260,16 @@ class Conv1DClassifier(ClassifierBase):
 
     @property
     def output_size(self) -> int:
-        r"""The final dimension(s) of :meth:`forward` output tensor(s).
-
-        Here output is :attr:`logits`. The final dimension equals to ``1``
-        when output final dimension is only determined by input.
+        r"""The feature size of :meth:`forward` output :attr:`logits`.
+        If :attr:`logits` size is only determined by input
+        (i.e. if ``num_classes`` == 1), the feature size is equal
+        to ``-1``. Otherwise, if ``num_classes`` > 1, it is equal
+        to ``num_classes``.
         """
         if self._hparams.num_classes > 1:
             logit_dim = self._hparams.num_classes
         elif self._hparams.num_classes == 1:
-            logit_dim = 1
+            logit_dim = -1
         else:
             raise AttributeError("'Conv1DClassifier' object has"
                                  "no attribute 'output_size'"
