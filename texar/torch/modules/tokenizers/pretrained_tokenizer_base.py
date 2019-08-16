@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Base class for pre-trained tokenizers.
+Base class for Pre-trained Tokenizers.
 
 The code structure adapted from:
     `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_utils.py`
@@ -22,13 +22,8 @@ from typing import Dict, List, Optional, Tuple
 
 import os
 import json
-from abc import ABC
-from pathlib import Path
 
-from texar.torch.data.data_utils import maybe_download
-from texar.torch.hyperparams import HParams
-from texar.torch.module_base import ModuleBase
-from texar.torch.modules.pretrained.pretrained_base import default_download_dir
+from texar.torch.modules.pretrained.pretrained_base import PretrainedMixin
 from texar.torch.utils.types import MaybeList
 
 __all__ = [
@@ -37,9 +32,10 @@ __all__ = [
 
 SPECIAL_TOKENS_MAP_FILE = 'special_tokens_map.json'
 ADDED_TOKENS_FILE = 'added_tokens.json'
+CONFIG_FILE = 'config.json'
 
 
-class PretrainedTokenizerBase(ModuleBase, ABC):
+class PretrainedTokenizerBase(PretrainedMixin):
     r"""Base class inherited by all pre-trained tokenizer classes. This class
     handles downloading and loading pre-trained tokenizer and adding tokens to
     the vocabulary.
@@ -50,7 +46,7 @@ class PretrainedTokenizerBase(ModuleBase, ABC):
 
     We defined an `added_tokens_encoder` to add new tokens to the vocabulary
     without having to handle the specific vocabulary augmentation methods of
-    the various underlying dictionary structures (BPE, sentencepiece...).
+    the various underlying dictionary structures (`BPE`, `sentencepiece` ...).
     """
 
     _MODEL_NAME = None
@@ -79,92 +75,17 @@ class PretrainedTokenizerBase(ModuleBase, ABC):
 
         for key, value in self.hparams.items():
             if key in self._SPECIAL_TOKENS_ATTRIBUTES:
+                if key == 'additional_special_tokens':
+                    assert isinstance(value, (list, tuple)) and \
+                           all(isinstance(v, str) for v in value)
+                else:
+                    assert isinstance(value, str)
                 setattr(self, key, value)
 
-    def load_pretrained_tokenizer(self,
-                                  pretrained_model_name: Optional[str] = None,
-                                  cache_dir: Optional[str] = None,
-                                  hparams=None):
-        if not hasattr(self, "_hparams"):
-            self._hparams = HParams(hparams, self.default_hparams())
-        else:
-            # Probably already parsed by subclasses. We rely on subclass
-            # implementations to get this right.
-            # As a sanity check, we require `hparams` to be `None` in this case.
-            if hparams is not None:
-                raise ValueError(
-                    "`self._hparams` is already assigned, but `hparams` "
-                    "argument is not None.")
-
-        self.pretrained_model_dir = None
-
-        if pretrained_model_name is None:
-            pretrained_model_name = self._hparams.pretrained_model_name
-        if pretrained_model_name is not None:
-            self.pretrained_model_dir = self.download_checkpoint(
-                pretrained_model_name, cache_dir)
-
     @classmethod
-    def download_checkpoint(cls, pretrained_model_name: str,
-                            cache_dir: Optional[str] = None) -> str:
-        r"""Download the specified pre-trained checkpoint, and return the
-        directory in which the checkpoint is cached.
-
-        Args:
-            pretrained_model_name (str): Name of the model checkpoint.
-            cache_dir (str, optional): Path to the cache directory. If `None`,
-                uses the default directory given by
-                :meth:`~default_download_dir`.
-
-        Returns:
-            Path to the cache directory.
-        """
-        if pretrained_model_name in cls._MODEL2URL:
-            download_path = cls._MODEL2URL[pretrained_model_name]
-        else:
-            raise ValueError(
-                f"Pre-trained model not found: {pretrained_model_name}")
-
-        if cache_dir is None:
-            cache_path = default_download_dir(cls._MODEL_NAME)
-        else:
-            cache_path = Path(cache_dir)
-        cache_path = cache_path / pretrained_model_name
-
-        if not cache_path.exists():
-            if isinstance(download_path, str):
-                filename = download_path.split('/')[-1]
-                maybe_download(download_path, cache_path, extract=True)
-                folder = None
-                for file in cache_path.iterdir():
-                    if file.is_dir():
-                        folder = file
-                assert folder is not None
-                (cache_path / filename).unlink()
-                for file in folder.iterdir():
-                    file.rename(file.parents[1] / file.name)
-                folder.rmdir()
-            else:
-                for path in download_path:
-                    maybe_download(path, cache_path)
-            print(f"Pre-trained {cls._MODEL_NAME} checkpoint "
-                  f"{pretrained_model_name} cached to {cache_path}")
-        else:
-            print(f"Using cached pre-trained {cls._MODEL_NAME} checkpoint "
-                  f"from {cache_path}.")
-
-        return str(cache_path)
-
-    @classmethod
-    def from_pretrained(cls, pretrained_model_path: str,
-                        hparams=None):
+    def load(cls, pretrained_model_path: str, hparams=None):
         r"""Instantiate a pre-trained tokenizer from pre-trained vocabulary
         files.
-
-        Args:
-            pretrained_model_path: Path/Directory to the pre-trained model
-                vocab files.
-
         """
         vocab_files = {}
         # Look for the tokenizer main vocabulary files
@@ -185,7 +106,8 @@ class PretrainedTokenizerBase(ModuleBase, ABC):
         # Look for the additional tokens files
         all_vocab_files_names = {
             'added_tokens_file': ADDED_TOKENS_FILE,
-            'special_tokens_map_file': SPECIAL_TOKENS_MAP_FILE}
+            'special_tokens_map_file': SPECIAL_TOKENS_MAP_FILE,
+            'tokenizer_config_file': CONFIG_FILE}
 
         # If a path to a file was provided, get the parent directory
         saved_directory = pretrained_model_path
@@ -207,13 +129,11 @@ class PretrainedTokenizerBase(ModuleBase, ABC):
                 saved_directory))
 
         kwargs = {'pretrained_model_name': None}
-        if hparams is not None:
-            for key, value in hparams.items():
-                kwargs[key] = value
 
         added_tokens_file = vocab_files.pop('added_tokens_file', None)
         special_tokens_map_file = vocab_files.pop(
             'special_tokens_map_file', None)
+        tokenizer_config_file = vocab_files.pop('tokenizer_config_file', None)
 
         for args_name, file_path in vocab_files.items():
             if args_name not in kwargs:
@@ -225,6 +145,17 @@ class PretrainedTokenizerBase(ModuleBase, ABC):
             for key, value in special_tokens_map.items():
                 if key not in kwargs:
                     kwargs[key] = value
+
+        if tokenizer_config_file is not None:
+            with open(tokenizer_config_file, encoding="utf-8") as f:
+                tokenizer_config = json.load(f)
+            for key, value in tokenizer_config.items():
+                if key not in kwargs:
+                    kwargs[key] = value
+
+        if hparams is not None:
+            for key, value in hparams.items():
+                kwargs[key] = value
 
         tokenizer = cls(hparams=kwargs)
 
@@ -238,7 +169,7 @@ class PretrainedTokenizerBase(ModuleBase, ABC):
 
         return tokenizer
 
-    def save_pretrained(self, save_directory: str) -> Tuple[str, str, str]:
+    def save(self, save_directory: str) -> Tuple[str]:
         r"""Save the tokenizer vocabulary files (with added tokens) and the
         `special-tokens-to-class-attributes-mapping` to a directory, so that it
         can be re-loaded using the :meth:`~from_pretrained`.
@@ -250,6 +181,7 @@ class PretrainedTokenizerBase(ModuleBase, ABC):
         special_tokens_map_file = os.path.join(save_directory,
                                                SPECIAL_TOKENS_MAP_FILE)
         added_tokens_file = os.path.join(save_directory, ADDED_TOKENS_FILE)
+        tokenzier_config_file = os.path.join(save_directory, CONFIG_FILE)
 
         with open(special_tokens_map_file, 'w', encoding='utf-8') as f:
             f.write(json.dumps(self.special_tokens_map, ensure_ascii=False))
@@ -262,10 +194,18 @@ class PretrainedTokenizerBase(ModuleBase, ABC):
                 out_str = u"{}"
             f.write(out_str)
 
-        vocab_files = self.save_vocabulary(save_directory)
-        return vocab_files + (special_tokens_map_file, added_tokens_file)
+        with open(tokenzier_config_file, 'w', encoding='utf-8') as f:
+            if self.config:
+                out_str = json.dumps(self.config, ensure_ascii=False)
+            else:
+                out_str = u"{}"
+            f.write(out_str)
 
-    def save_vocabulary(self, save_directory: str) -> str:
+        vocab_files = self.save_vocabulary(save_directory)
+        return vocab_files + (special_tokens_map_file, added_tokens_file,
+                              tokenzier_config_file)
+
+    def save_vocabulary(self, save_directory):
         r"""Save the tokenizer vocabulary to a directory. This method doesn't
         save added tokens and special token mappings.
 
@@ -450,12 +390,8 @@ class PretrainedTokenizerBase(ModuleBase, ABC):
             token_ids, skip_special_tokens=skip_special_tokens)
         text = self.convert_tokens_to_string(filtered_tokens)
         if clean_up_tokenization_spaces:
-            text = clean_up_tokenization(text)
+            text = self.clean_up_tokenization(text)
         return text
-
-    @classmethod
-    def available_checkpoints(cls) -> List[str]:
-        return list(cls._MODEL2URL.keys())
 
     @property
     def special_tokens_map(self) -> Dict[str, str]:
@@ -493,11 +429,14 @@ class PretrainedTokenizerBase(ModuleBase, ABC):
         all_ids = list(self.convert_tokens_to_ids(t) for t in all_toks)
         return all_ids
 
-
-def clean_up_tokenization(out_string: str) -> str:
-    out_string = out_string.replace(' .', '.').replace(' ?', '?').\
-        replace(' !', '!').replace(' ,', ',').replace(" ' ", "'").\
-        replace(" n't", "n't").replace(" 'm", "'m").\
-        replace(" do not", " don't").replace(" 's", "'s").\
-        replace(" 've", "'ve").replace(" 're", "'re")
-    return out_string
+    @staticmethod
+    def clean_up_tokenization(out_string: str) -> str:
+        r"""Clean up a list of simple English tokenization artifacts like
+        spaces before punctuations and abbreviated forms.
+        """
+        out_string = out_string.replace(' .', '.').replace(' ?', '?').\
+            replace(' !', '!').replace(' ,', ',').replace(" ' ", "'").\
+            replace(" n't", "n't").replace(" 'm", "'m").\
+            replace(" do not", " don't").replace(" 's", "'s").\
+            replace(" 've", "'ve").replace(" 're", "'re")
+        return out_string

@@ -13,37 +13,34 @@
 # limitations under the License.
 """
 Pre-trained BERT tokenizer.
-
-The code structure adapted from:
-    `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_bert.py`
 """
 
 from typing import Any, Dict, List, Optional, Tuple
 
 import os
 
+from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
 from texar.torch.modules.tokenizers.pretrained_tokenizer_base import \
     PretrainedTokenizerBase
-from texar.torch.modules.tokenizers.pretrained_bert_tokenizer_utils import \
+from texar.torch.modules.tokenizers.bert_tokenizer_utils import \
     load_vocab, BasicTokenizer, WordpieceTokenizer
 
 __all__ = [
-    'PretrainedBERTTokenizer',
+    'BERTTokenizer',
 ]
 
 
 _BERT_PATH = "https://storage.googleapis.com/bert_models/"
 
 
-class PretrainedBERTTokenizer(PretrainedTokenizerBase):
+class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
     r"""Pre-trained BERT Tokenizer.
 
     Args:
         pretrained_model_name (optional): a `str`, the name of
             pre-trained model (e.g., `bert-base-uncased`). Please refer to
             :class:`~texar.torch.modules.pretrained.PretrainedBERTMixin` for
-            all supported models (including the standard BERT models and
-            variants like RoBERTa).
+            all supported models.
             If None, the model name in :attr:hparams is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
@@ -54,23 +51,6 @@ class PretrainedBERTTokenizer(PretrainedTokenizerBase):
             and default values.
     """
 
-    _MODEL_NAME = "BERT"
-    _MODEL2URL = {
-        'bert-base-uncased':
-            _BERT_PATH + "2018_10_18/uncased_L-12_H-768_A-12.zip",
-        'bert-large-uncased':
-            _BERT_PATH + "2018_10_18/uncased_L-24_H-1024_A-16.zip",
-        'bert-base-cased':
-            _BERT_PATH + "2018_10_18/cased_L-12_H-768_A-12.zip",
-        'bert-large-cased':
-            _BERT_PATH + "2018_10_18/cased_L-24_H-1024_A-16.zip",
-        'bert-base-multilingual-uncased':
-            _BERT_PATH + "2018_11_23/multi_cased_L-12_H-768_A-12.zip",
-        'bert-base-multilingual-cased':
-            _BERT_PATH + "2018_11_03/multilingual_L-12_H-768_A-12.zip",
-        'bert-base-chinese':
-            _BERT_PATH + "2018_11_03/chinese_L-12_H-768_A-12.zip",
-    }
     _MAX_INPUT_SIZE = {
         'bert-base-uncased': 512,
         'bert-large-uncased': 512,
@@ -88,11 +68,20 @@ class PretrainedBERTTokenizer(PretrainedTokenizerBase):
                  hparams=None):
         super().__init__(hparams=hparams)
 
-        self.load_pretrained_tokenizer(pretrained_model_name, cache_dir)
+        self.config = {
+            'tokenize_chinese_chars': self.hparams['tokenize_chinese_chars'],
+            'do_lower_case': self.hparams['do_lower_case'],
+            'do_basic_tokenize': self.hparams['do_basic_tokenize'],
+            'never_split': self.hparams['never_split'],
+        }
+
+        self.load_pretrained_config(pretrained_model_name, cache_dir)
 
         if self.pretrained_model_dir is not None:
-            vocab_file = os.path.join(self.pretrained_model_dir, 'vocab.txt')
-            self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
+            vocab_file = os.path.join(self.pretrained_model_dir,
+                                      self._VOCAB_FILE_NAMES['vocab_file'])
+            if self._MAX_INPUT_SIZE.get(pretrained_model_name):
+                self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
         else:
             vocab_file = self.hparams['vocab_file']
             if self.hparams.get('max_len'):
@@ -113,6 +102,29 @@ class PretrainedBERTTokenizer(PretrainedTokenizerBase):
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab,
                                                       unk_token=self.unk_token)
 
+    def forward(self, inputs, job_type, **kwargs):
+        if job_type == 'text-to-token':
+            return self.tokenize(inputs)
+        elif job_type == 'token-to-text':
+            return self.convert_tokens_to_string(inputs)
+        elif job_type == 'text-to-id':
+            return self.encode(inputs)
+        elif job_type == 'id-to-text':
+            skip_special_tokens = kwargs.get('skip_special_tokens', False)
+            clean_up_tokenization_spaces = kwargs.get(
+                'clean_up_tokenization_spaces', True)
+            return self.decode(
+                inputs, skip_special_tokens=skip_special_tokens,
+                clean_up_tokenization_spaces=clean_up_tokenization_spaces)
+        elif job_type == 'token-to-id':
+            return self.convert_tokens_to_ids(inputs)
+        elif job_type == 'id-to-token':
+            skip_special_tokens = kwargs.get('skip_special_tokens', False)
+            return self.convert_ids_to_tokens(
+                inputs, skip_special_tokens=skip_special_tokens)
+        else:
+            raise ValueError("Unrecognized job type.")
+
     def _tokenize(self, text: str) -> List[str]:
         split_tokens = []
         if self.do_basic_tokenize:
@@ -128,7 +140,8 @@ class PretrainedBERTTokenizer(PretrainedTokenizerBase):
         r"""Save the tokenizer vocabulary to a directory or file."""
         index = 0
         if os.path.isdir(save_directory):
-            save_directory = os.path.join(save_directory, 'vocab.txt')
+            save_directory = os.path.join(save_directory,
+                                          self._VOCAB_FILE_NAMES['vocab_file'])
         with open(save_directory, "w", encoding="utf-8") as writer:
             for token, token_index in sorted(self.vocab.items(),
                                              key=lambda kv: kv[1]):
@@ -139,6 +152,7 @@ class PretrainedBERTTokenizer(PretrainedTokenizerBase):
                     index = token_index
                 writer.write(token + u'\n')
                 index += 1
+
         return (save_directory, )
 
     @property
@@ -146,12 +160,17 @@ class PretrainedBERTTokenizer(PretrainedTokenizerBase):
         return len(self.vocab)
 
     def _convert_token_to_id(self, token: str) -> int:
+        r"""Converts a token (str/unicode) in an id using the vocab."""
         return self.vocab.get(token, self.vocab.get(self.unk_token))
 
-    def _convert_id_to_token(self, id: int) -> str:
-        return self.ids_to_tokens.get(id, self.unk_token)
+    def _convert_id_to_token(self, index: int) -> str:
+        r"""Converts an index (integer) in a token (string/unicode) using
+        the vocab.
+        """
+        return self.ids_to_tokens.get(index, self.unk_token)
 
     def convert_tokens_to_string(self, tokens: List[str]) -> str:
+        r"""Converts a sequence of tokens (string) in a single string."""
         out_string = ' '.join(tokens).replace(' ##', '').strip()
         return out_string
 
@@ -159,16 +178,16 @@ class PretrainedBERTTokenizer(PretrainedTokenizerBase):
     def default_hparams() -> Dict[str, Any]:
         return {
             'pretrained_model_name': 'bert-base-uncased',
-            'max_len': 512,
             'vocab_file': None,
-            'do_lower_case': True,
-            'do_basic_tokenize': True,
-            'never_split': None,
+            'max_len': 512,
             'unk_token': '[UNK]',
             'sep_token': '[SEP]',
             'pad_token': '[PAD]',
             'cls_token': '[CLS]',
             'mask_token': '[MASK]',
             'tokenize_chinese_chars': True,
+            'do_lower_case': True,
+            'do_basic_tokenize': True,
+            'never_split': None,
             '@no_typecheck': ['pretrained_model_name'],
         }

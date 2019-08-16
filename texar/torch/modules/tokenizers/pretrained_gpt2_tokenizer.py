@@ -22,13 +22,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import os
 import json
-
-try:
-    import regex as re
-except ImportError:
-    raise ValueError(
-                "You need to install regex to use PretrainedGPT2Tokenizer: "
-                "pip install regex.")
+import regex as re
 
 from texar.torch.modules.tokenizers.pretrained_tokenizer_base import \
     PretrainedTokenizerBase
@@ -85,9 +79,12 @@ class PretrainedGPT2Tokenizer(PretrainedTokenizerBase):
         self.load_pretrained_tokenizer(pretrained_model_name, cache_dir)
 
         if self.pretrained_model_dir is not None:
-            vocab_file = os.path.join(self.pretrained_model_dir, 'encoder.json')
-            merges_file = os.path.join(self.pretrained_model_dir, 'vocab.bpe')
-            self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
+            vocab_file = os.path.join(self.pretrained_model_dir,
+                                      self._VOCAB_FILE_NAMES['vocab_file'])
+            merges_file = os.path.join(self.pretrained_model_dir,
+                                       self._VOCAB_FILE_NAMES['merges_file'])
+            if self._MAX_INPUT_SIZE.get(pretrained_model_name):
+                self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
         else:
             vocab_file = self.hparams['vocab_file']
             merges_file = self.hparams['merges_file']
@@ -118,8 +115,30 @@ class PretrainedGPT2Tokenizer(PretrainedTokenizerBase):
             r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| 
             ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
+    def forward(self, inputs, job_type, **kwargs):
+        if job_type == 'text-to-token':
+            return self.tokenize(inputs)
+        elif job_type == 'token-to-text':
+            return self.convert_tokens_to_string(inputs)
+        elif job_type == 'text-to-id':
+            return self.encode(inputs)
+        elif job_type == 'id-to-text':
+            skip_special_tokens = kwargs.get('skip_special_tokens', False)
+            clean_up_tokenization_spaces = kwargs.get(
+                'clean_up_tokenization_spaces', True)
+            return self.decode(
+                inputs, skip_special_tokens=skip_special_tokens,
+                clean_up_tokenization_spaces=clean_up_tokenization_spaces)
+        elif job_type == 'token-to-id':
+            return self.convert_tokens_to_ids(inputs)
+        elif job_type == 'id-to-token':
+            skip_special_tokens = kwargs.get('skip_special_tokens', False)
+            return self.convert_ids_to_tokens(
+                inputs, skip_special_tokens=skip_special_tokens)
+        else:
+            raise ValueError("Unrecognized job type.")
+
     def _tokenize(self, text: str) -> List[str]:
-        r"""Tokenize a string."""
         bpe_tokens = []
         for token in re.findall(self.pat, text):
             token = ''.join(self.byte_encoder[b] for b in token.encode('utf-8'))
@@ -156,7 +175,7 @@ class PretrainedGPT2Tokenizer(PretrainedTokenizerBase):
 
         return (vocab_file, merge_file)
 
-    def bpe(self, token):
+    def bpe(self, token: str) -> str:
         if token in self.cache:
             return self.cache[token]
         word = tuple(token)
@@ -202,19 +221,19 @@ class PretrainedGPT2Tokenizer(PretrainedTokenizerBase):
     def vocab_size(self) -> int:
         return len(self.encoder)
 
-    def _convert_token_to_id(self, token):
+    def _convert_token_to_id(self, token: str) -> int:
         r"""Converts a token (str/unicode) in an id using the vocab."""
         if token in self.encoder:
             return self.encoder.get(token)
         return self.encoder.get(self.unk_token)
 
-    def _convert_id_to_token(self, index):
+    def _convert_id_to_token(self, index: int) -> str:
         r"""Converts an index (integer) in a token (string/unicode) using
         the vocab.
         """
         return self.decoder.get(index)
 
-    def convert_tokens_to_string(self, tokens):
+    def convert_tokens_to_string(self, tokens: List[str]) -> str:
         r"""Converts a sequence of tokens (string) in a single string."""
         text = ''.join(tokens)
         text = bytearray([self.byte_decoder[c] for c in text]).decode(
@@ -225,9 +244,9 @@ class PretrainedGPT2Tokenizer(PretrainedTokenizerBase):
     def default_hparams() -> Dict[str, Any]:
         return {
             'pretrained_model_name': '117M',
-            'max_len': 1024,
             'vocab_file': None,
             'merges_file': None,
+            'max_len': 1024,
             'bos_token': '<|endoftext|>',
             'eos_token': '<|endoftext|>',
             'unk_token': '<unk>',

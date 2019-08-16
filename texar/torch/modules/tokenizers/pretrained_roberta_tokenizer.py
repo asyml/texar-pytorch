@@ -11,11 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Tokenizer modules of Texar library.
-"""
-
-from texar.torch.modules.tokenizers.pretrained_tokenizer_base import *
-from texar.torch.modules.tokenizers.bert_tokenizer import *
-from texar.torch.modules.tokenizers.pretrained_gpt2_tokenizer import *
-from texar.torch.modules.tokenizers.pretrained_xlnet_tokenizer import *

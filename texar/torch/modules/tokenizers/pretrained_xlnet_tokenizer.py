@@ -21,16 +21,9 @@ The code structure adapted from:
 from typing import Any, Dict, List, Optional, Tuple
 
 import os
-from shutil import copyfile
-
 import unicodedata
-
-try:
-    import sentencepiece as spm
-except ImportError:
-    raise ValueError(
-        "You need to install SentencePiece to use PretrainedXLNetTokenizer: "
-        "pip install sentencepiece.")
+import sentencepiece as spm
+from shutil import copyfile
 
 from texar.torch.modules.tokenizers.pretrained_tokenizer_base import \
     PretrainedTokenizerBase
@@ -45,14 +38,13 @@ SPIECE_UNDERLINE = u'▁'
 
 
 class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
-    r"""Pre-trained BERT Tokenizer.
+    r"""Pre-trained XLNet Tokenizer.
 
     Args:
         pretrained_model_name (optional): a `str`, the name of
             pre-trained model (e.g., `xlnet-base-uncased`). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedBERTMixin` for
-            all supported models (including the standard BERT models and
-            variants like RoBERTa).
+            :class:`~texar.torch.modules.pretrained.PretrainedXLNetMixin` for
+            all supported models.
             If None, the model name in :attr:hparams is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
@@ -85,7 +77,10 @@ class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
         self.load_pretrained_tokenizer(pretrained_model_name, cache_dir)
 
         if self.pretrained_model_dir is not None:
-            vocab_file = os.path.join(self.pretrained_model_dir, 'spiece.model')
+            vocab_file = os.path.join(self.pretrained_model_dir,
+                                      self._VOCAB_FILE_NAMES['vocab_file'])
+            if self._MAX_INPUT_SIZE.get(pretrained_model_name):
+                self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
         else:
             vocab_file = self.hparams['vocab_file']
             if self.hparams.get('max_len'):
@@ -101,7 +96,31 @@ class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
         self.vocab_file = vocab_file
 
         self.sp_model = spm.SentencePieceProcessor()
-        self.sp_model.Load(vocab_file)
+        self.sp_model.Load(self.vocab_file)
+
+    def forward(self, inputs, job_type, **kwargs):
+        if job_type == 'text-to-token':
+            sample = kwargs.get('sample', False)
+            return self.tokenize(inputs, sample=sample)
+        elif job_type == 'token-to-text':
+            return self.convert_tokens_to_string(inputs)
+        elif job_type == 'text-to-id':
+            return self.encode(inputs)
+        elif job_type == 'id-to-text':
+            skip_special_tokens = kwargs.get('skip_special_tokens', False)
+            clean_up_tokenization_spaces = kwargs.get(
+                'clean_up_tokenization_spaces', True)
+            return self.decode(
+                inputs, skip_special_tokens=skip_special_tokens,
+                clean_up_tokenization_spaces=clean_up_tokenization_spaces)
+        elif job_type == 'token-to-id':
+            return self.convert_tokens_to_ids(inputs)
+        elif job_type == 'id-to-token':
+            skip_special_tokens = kwargs.get('skip_special_tokens', False)
+            return self.convert_ids_to_tokens(
+                inputs, skip_special_tokens=skip_special_tokens)
+        else:
+            raise ValueError("Unrecognized job type.")
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -113,7 +132,7 @@ class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
         self.sp_model = spm.SentencePieceProcessor()
         self.sp_model.Load(self.vocab_file)
 
-    def preprocess_text(self, inputs):
+    def preprocess_text(self, inputs: str) -> str:
         if self.remove_space:
             outputs = ' '.join(inputs.strip().split())
         else:
@@ -129,7 +148,7 @@ class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
 
         return outputs
 
-    def _tokenize(self, text, sample=False):
+    def _tokenize(self, text: str, sample: bool = False) -> List[str]:
         text = self.preprocess_text(text)
         if not sample:
             pieces = self.sp_model.EncodeAsPieces(text)
@@ -155,8 +174,8 @@ class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
         return new_pieces
 
     def save_vocabulary(self, save_directory: str) -> Tuple[str]:
-        r"""Save the sentencepiece vocabulary (copy original file) and special
-        tokens file to a directory.
+        r"""Save the sentencepiece vocabulary (copy original file) to
+        a directory.
         """
         if not os.path.isdir(save_directory):
             raise ValueError("Vocabulary path ({}) should be a "
@@ -173,14 +192,14 @@ class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
     def vocab_size(self) -> int:
         return len(self.sp_model)
 
-    def _convert_token_to_id(self, token):
+    def _convert_token_to_id(self, token: str) -> int:
         return self.sp_model.PieceToId(token)
 
-    def _convert_id_to_token(self, index):
+    def _convert_id_to_token(self, index: int) -> str:
         token = self.sp_model.IdToPiece(index)
         return token
 
-    def convert_tokens_to_string(self, tokens):
+    def convert_tokens_to_string(self, tokens: List[str]) -> str:
         out_string = ''.join(tokens).replace(SPIECE_UNDERLINE, ' ').strip()
         return out_string
 
@@ -188,11 +207,8 @@ class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
     def default_hparams() -> Dict[str, Any]:
         return {
             'pretrained_model_name': 'xlnet-base-cased',
-            'max_len': None,
             'vocab_file': None,
-            'do_lower_case': False,
-            'remove_space': True,
-            'keep_accents': False,
+            'max_len': None,
             'bos_token': '<s>',
             'eos_token': '</s>',
             'unk_token': '<unk>',
@@ -201,5 +217,8 @@ class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
             'cls_token': '<cls>',
             'mask_token': '<mask>',
             'additional_special_tokens': ['<eop>', '<eod>'],
+            'do_lower_case': False,
+            'remove_space': True,
+            'keep_accents': False,
             '@no_typecheck': ['pretrained_model_name'],
         }

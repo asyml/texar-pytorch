@@ -14,7 +14,7 @@
 """Utils of pre-trained BERT tokenizer.
 """
 
-from typing import Dict
+from typing import Dict, List, Optional
 
 import collections
 import unicodedata
@@ -28,6 +28,7 @@ __all__ = [
 
 
 def load_vocab(vocab_file: str) -> Dict[str, int]:
+    r"""Loads a vocabulary file into a dictionary."""
     vocab = collections.OrderedDict()
     with open(vocab_file, "r", encoding="utf-8") as reader:
         tokens = reader.readlines()
@@ -39,15 +40,20 @@ def load_vocab(vocab_file: str) -> Dict[str, int]:
 
 class BasicTokenizer(object):
 
-    def __init__(self, do_lower_case=True, never_split=None, tokenize_chinese_chars=True):
+    def __init__(self, do_lower_case: bool = True,
+                 never_split: Optional[List[str]] = None,
+                 tokenize_chinese_chars: bool = True):
         if never_split is None:
             never_split = []
         self.do_lower_case = do_lower_case
         self.never_split = never_split
         self.tokenize_chinese_chars = tokenize_chinese_chars
 
-    def tokenize(self, text, never_split=None):
-        never_split = self.never_split + (never_split if never_split is not None else [])
+    def tokenize(self, text: str,
+                 never_split: Optional[List[str]] = None) -> \
+            List[Optional[str]]:
+        never_split = self.never_split + (never_split
+                                          if never_split is not None else [])
         text = self._clean_text(text)
         # This was added on November 1st, 2018 for the multilingual and Chinese
         # models. This is also applied to the English models now, but it doesn't
@@ -68,7 +74,7 @@ class BasicTokenizer(object):
         output_tokens = whitespace_tokenize(" ".join(split_tokens))
         return output_tokens
 
-    def _run_strip_accents(self, text):
+    def _run_strip_accents(self, text: str) -> str:
         text = unicodedata.normalize("NFD", text)
         output = []
         for char in text:
@@ -78,7 +84,9 @@ class BasicTokenizer(object):
             output.append(char)
         return "".join(output)
 
-    def _run_split_on_punc(self, text, never_split=None):
+    def _run_split_on_punc(self, text: str,
+                           never_split: Optional[List[str]] = None) -> \
+            List[str]:
         if never_split is not None and text in never_split:
             return [text]
         chars = list(text)
@@ -99,7 +107,7 @@ class BasicTokenizer(object):
 
         return ["".join(x) for x in output]
 
-    def _tokenize_chinese_chars(self, text):
+    def _tokenize_chinese_chars(self, text: str) -> str:
         output = []
         for char in text:
             cp = ord(char)
@@ -111,28 +119,29 @@ class BasicTokenizer(object):
                 output.append(char)
         return "".join(output)
 
-    def _is_chinese_char(self, cp):
-        # This defines a "chinese character" as anything in the CJK Unicode block:
+    def _is_chinese_char(self, cp: int) -> bool:
+        # This defines a "chinese character" as anything in the CJK Unicode
+        # block:
         #   https://en.wikipedia.org/wiki/CJK_Unified_Ideographs_(Unicode_block)
         #
-        # Note that the CJK Unicode block is NOT all Japanese and Korean characters,
-        # despite its name. The modern Korean Hangul alphabet is a different block,
-        # as is Japanese Hiragana and Katakana. Those alphabets are used to write
-        # space-separated words, so they are not treated specially and handled
-        # like the all of the other languages.
-        if ((cp >= 0x4E00 and cp <= 0x9FFF) or  #
-                (cp >= 0x3400 and cp <= 0x4DBF) or  #
-                (cp >= 0x20000 and cp <= 0x2A6DF) or  #
-                (cp >= 0x2A700 and cp <= 0x2B73F) or  #
-                (cp >= 0x2B740 and cp <= 0x2B81F) or  #
-                (cp >= 0x2B820 and cp <= 0x2CEAF) or
-                (cp >= 0xF900 and cp <= 0xFAFF) or  #
-                (cp >= 0x2F800 and cp <= 0x2FA1F)):  #
+        # Note that the CJK Unicode block is NOT all Japanese and Korean
+        # characters, despite its name. The modern Korean Hangul alphabet is a
+        # different block, as is Japanese Hiragana and Katakana. Those
+        # alphabets are used to write space-separated words, so they are not
+        # treated specially and handled like the all of the other languages.
+        if ((0x4E00 <= cp <= 0x9FFF) or
+                (0x3400 <= cp <= 0x4DBF) or
+                (0x20000 <= cp <= 0x2A6DF) or
+                (0x2A700 <= cp <= 0x2B73F) or
+                (0x2B740 <= cp <= 0x2B81F) or
+                (0x2B820 <= cp <= 0x2CEAF) or
+                (0xF900 <= cp <= 0xFAFF) or
+                (0x2F800 <= cp <= 0x2FA1F)):
             return True
 
         return False
 
-    def _clean_text(self, text):
+    def _clean_text(self, text: str) -> str:
         output = []
         for char in text:
             cp = ord(char)
@@ -147,12 +156,14 @@ class BasicTokenizer(object):
 
 class WordpieceTokenizer(object):
 
-    def __init__(self, vocab, unk_token, max_input_chars_per_word=100):
+    def __init__(self, vocab: Dict[str, int],
+                 unk_token: str,
+                 max_input_chars_per_word: int = 100):
         self.vocab = vocab
         self.unk_token = unk_token
         self.max_input_chars_per_word = max_input_chars_per_word
 
-    def tokenize(self, text):
+    def tokenize(self, text: str) -> List[str]:
         output_tokens = []
         for token in whitespace_tokenize(text):
             chars = list(token)
@@ -187,7 +198,7 @@ class WordpieceTokenizer(object):
         return output_tokens
 
 
-def whitespace_tokenize(text):
+def whitespace_tokenize(text: str) -> List[Optional[str]]:
     text = text.strip()
     if not text:
         return []
@@ -195,8 +206,8 @@ def whitespace_tokenize(text):
     return tokens
 
 
-def _is_whitespace(char):
-    # \t, \n, and \r are technically contorl characters but we treat them
+def _is_whitespace(char: str) -> bool:
+    # \t, \n, and \r are technically control characters but we treat them
     # as whitespace since they are generally considered as such.
     if char == " " or char == "\t" or char == "\n" or char == "\r":
         return True
@@ -206,7 +217,7 @@ def _is_whitespace(char):
     return False
 
 
-def _is_control(char):
+def _is_control(char: str) -> bool:
     # These are technically control characters but we count them as whitespace
     # characters.
     if char == "\t" or char == "\n" or char == "\r":
@@ -217,14 +228,14 @@ def _is_control(char):
     return False
 
 
-def _is_punctuation(char):
+def _is_punctuation(char: str) -> bool:
     cp = ord(char)
     # We treat all non-letter/number ASCII as punctuation.
     # Characters such as "^", "$", and "`" are not in the Unicode
     # Punctuation class but we treat them as punctuation anyways, for
     # consistency.
-    if ((cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or
-            (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126)):
+    if ((33 <= cp <= 47) or (58 <= cp <= 64) or
+            (91 <= cp <= 96) or (123 <= cp <= 126)):
         return True
     cat = unicodedata.category(char)
     if cat.startswith("P"):
