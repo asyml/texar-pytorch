@@ -82,32 +82,43 @@ class ModelWrapper(nn.Module):
         return {"preds": decoded_ids}
 
 
-def spm_decode(tokens: List[str]) -> List[str]:
+class DecodeMixin:
+    vocab: tx.data.Vocab
+    perform_decode: bool
+    encoding: Optional[str]
+
+    valid_encodings = ["bpe", "spm"]
     spm_bos_token = "▁"
-    words = []
-    pieces: List[str] = []
-    for t in tokens:
-        if t[0] == spm_bos_token:
-            if len(pieces) > 0:
-                words.append(''.join(pieces))
-            pieces = [t[1:]]
-        else:
-            pieces.append(t)
-    if len(pieces) > 0:
-        words.append(''.join(pieces))
-    return words
+    bpe_cont_str = "@@"
 
+    @staticmethod
+    def spm_decode(tokens: List[str]) -> List[str]:
+        words = []
+        pieces: List[str] = []
+        for t in tokens:
+            if t[0] == DecodeMixin.spm_bos_token:
+                if len(pieces) > 0:
+                    words.append(''.join(pieces))
+                pieces = [t[1:]]
+            else:
+                pieces.append(t)
+        if len(pieces) > 0:
+            words.append(''.join(pieces))
+        return words
 
-class FileBLEUMetric(metric.SimpleMetric[List[int], float]):
-    def __init__(self, vocab: tx.data.Vocab,
-                 file_path: Optional[str] = None):
-        super().__init__(pred_name="preds", label_name="target_output")
-        self.vocab = vocab
-        self.file_path = file_path
-
-    @property
-    def metric_name(self) -> str:
-        return "BLEU"
+    @staticmethod
+    def bpe_decode(tokens: List[str]) -> List[str]:
+        words = []
+        pieces: List[str] = []
+        for t in tokens:
+            if t.endswith(DecodeMixin.bpe_cont_str):
+                pieces.append(t[:-2])
+            else:
+                words.append(''.join(pieces + [t]))
+                pieces = []
+        if len(pieces) > 0:
+            words.append(''.join(pieces))
+        return words
 
     def _to_str(self, tokens: List[int]) -> str:
         pos = next((idx for idx, x in enumerate(tokens)
@@ -116,9 +127,31 @@ class FileBLEUMetric(metric.SimpleMetric[List[int], float]):
             tokens = tokens[:pos]
         vocab_map = self.vocab.id_to_token_map_py
 
-        words = spm_decode([vocab_map[t] for t in tokens])
+        words = [vocab_map[t] for t in tokens]
+        if self.encoding is not None and self.perform_decode:
+            if self.encoding == "bpe":
+                words = self.bpe_decode(words)
+            elif self.encoding == "spm":
+                words = self.spm_decode(words)
         sentence = ' '.join(words)
         return sentence
+
+
+class FileBLEU(metric.SimpleMetric[List[int], float], DecodeMixin):
+    def __init__(self, vocab: tx.data.Vocab,
+                 file_path: Optional[str] = None,
+                 encoding: Optional[str] = None):
+        super().__init__(pred_name="preds", label_name="target_output")
+        self.vocab = vocab
+        self.file_path = file_path
+        self.perform_decode = True
+        if encoding is not None and encoding not in self.valid_encodings:
+            raise ValueError(f"Invalid encoding scheme {self.encoding}")
+        self.encoding = encoding
+
+    @property
+    def metric_name(self) -> str:
+        return "BLEU"
 
     def value(self) -> float:
         if len(self.predicted) == 0:
@@ -135,28 +168,19 @@ class FileBLEUMetric(metric.SimpleMetric[List[int], float]):
         return bleu
 
 
-class BLEUWrapper(metric.BLEU):
-    def __init__(self, vocab: tx.data.Vocab, run_spm_decode: bool = False):
+class BLEUWrapper(metric.BLEU, DecodeMixin):
+    def __init__(self, vocab: tx.data.Vocab, decode: bool = False,
+                 encoding: Optional[str] = None):
         super().__init__(pred_name="preds", label_name="target_output")
         self.vocab = vocab
-        self.run_spm_decode = run_spm_decode
+        self.perform_decode = decode
+        if encoding is not None and encoding not in self.valid_encodings:
+            raise ValueError(f"Invalid encoding scheme {self.encoding}")
+        self.encoding = encoding
 
     @property
     def metric_name(self) -> str:
         return "BLEU"
-
-    def _to_str(self, tokens: List[int]) -> str:
-        pos = next((idx for idx, x in enumerate(tokens)
-                    if x == self.vocab.eos_token_id), -1)
-        if pos != -1:
-            tokens = tokens[:pos]
-        vocab_map = self.vocab.id_to_token_map_py
-
-        words = [vocab_map[t] for t in tokens]
-        if self.run_spm_decode:
-            words = spm_decode(words)
-        sentence = ' '.join(words)
-        return sentence
 
     def add(self, predicted, labels) -> None:
         predicted = [self._to_str(s) for s in predicted]
@@ -205,6 +229,7 @@ def main():
     scheduler = torch.optim.lr_scheduler.LambdaLR(optim, scheduler_lambda)
 
     output_dir = Path(args.output_dir)
+    encoding = getattr(config_data, 'encoding', None)
     executor = Executor(
         model=model,
         train_data=datasets["train"],
@@ -222,10 +247,11 @@ def main():
             ("lr", metric.LR(optim))],
         log_format="{time} : Epoch {epoch:2d} @ {iteration:6d}it "
                    "({progress}%, {speed}), lr = {lr:.3e}, loss = {loss:.3f}",
-        valid_metrics=BLEUWrapper(vocab),
+        valid_metrics=BLEUWrapper(vocab, encoding=encoding),
         test_metrics=[
-            FileBLEUMetric(vocab, output_dir / "test.output"),
-            ("unofficial_bleu", BLEUWrapper(vocab, run_spm_decode=True))],
+            FileBLEU(vocab, output_dir / "test.output", encoding=encoding),
+            ("unofficial_bleu", BLEUWrapper(
+                vocab, decode=True, encoding=encoding))],
         valid_log_format="{time} : Epoch {epoch}, "
                          "{split} BLEU = {BLEU:.3f}",
         test_progress_log_format=(

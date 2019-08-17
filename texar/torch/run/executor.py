@@ -959,7 +959,6 @@ class Executor:
             self._write_log(log_str, skip_tty, skip_non_tty)
 
     def set_status_line(self, status_str: Optional[str]):
-        # TODO: Check terminal width and do something to prevent wrapping?
         if status_str is None:
             status_str = ""  # just clear the line
         self._write_log(status_str, skip_non_tty=True,
@@ -1506,6 +1505,7 @@ class Executor:
                 if not isatty:
                     continue
                 if clear_line:
+                    dest.write(utils.CLEAR_LINE)
                     if (self._tty_ncols is not None and
                             self._status_line_str is not None):
                         n_cols = self._tty_ncols(dest.fileno())
@@ -1513,7 +1513,6 @@ class Executor:
                         n_lines = (status_len - 1) // n_cols + 1
                         if n_lines > 1:
                             dest.write(self._tty_move_up * (n_lines - 1))
-                    dest.write(utils.CLEAR_LINE)
                 dest.write(log_str)
                 if newline:
                     dest.write("\n")
