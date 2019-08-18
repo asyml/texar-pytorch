@@ -280,8 +280,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                 specified, you must subclass :class:`AttentionRNNDecoder` and
                 override :meth:`embed_tokens`.
         cell (RNNCellBase, optional): An instance of
-            :class:`~texar.torch.core.cell_wrappers.RNNCellBase`. If `None`, a cell
-            is created as specified in :attr:`hparams`.
+            :class:`~texar.torch.core.cell_wrappers.RNNCellBase`. If `None`,
+            a cell is created as specified in :attr:`hparams`.
         output_layer (optional): An output layer that transforms cell output
             to logits. This can be:
 
