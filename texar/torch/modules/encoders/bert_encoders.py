@@ -36,15 +36,15 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
     r"""Raw BERT Transformer for encoding sequences.
 
     This module basically stacks
-    :class:`~texar.torch.modules.embedders.WordEmbedder`,
-    :class:`~texar.torch.modules.embedders.PositionEmbedder`,
-    :class:`~texar.torch.modules.encoders.TransformerEncoder` and a dense
+    :class:`~texar.torch.modules.WordEmbedder`,
+    :class:`~texar.torch.modules.PositionEmbedder`,
+    :class:`~texar.torch.modules.TransformerEncoder` and a dense
     pooler.
 
     Args:
         pretrained_model_name (optional): a `str`, the name
             of pre-trained model (e.g., ``bert-base-uncased``). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedBERTMixin` for
+            :class:`~texar.torch.modules.PretrainedBERTMixin` for
             all supported models (including the standard BERT models and
             variants like RoBERTa).
             If `None`, the model name in :attr:`hparams` is used.
@@ -202,7 +202,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
 
         `"encoder"`: dict
             Hyperparameters for the TransformerEncoder.
-            See :func:`~texar.torch.modules.TransformerEncoder.default_harams`
+            See :func:`~texar.torch.modules.TransformerEncoder.default_hparams`
             for details.
 
         `"hidden_size"`: int
