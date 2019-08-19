@@ -63,20 +63,10 @@ def _assert_same_size(outputs: TensorStruct,
         if isinstance(size, torch.Size):
             if output[0].size() != size:
                 raise ValueError("The output size does not match"
-                                 "the required output_size")
+                                 "the the required output_size")
         elif output[0].size()[-1] != size:
             raise ValueError(
-                "The output size does not match the required output_size")
-
-
-def _get_tensor_depth(x: torch.Tensor) -> int:
-    r"""Returns the size of a tensor excluding the first dimension
-    (typically the batch dimension).
-
-    Args:
-        x: A tensor.
-    """
-    return int(np.prod(x.size()[1:]))
+                "The output size does not match the the required output_size")
 
 
 def _sum_output_size(output_size: OutputSize) -> int:
@@ -91,7 +81,7 @@ def _sum_output_size(output_size: OutputSize) -> int:
     if isinstance(flat_output_size[0], torch.Size):
         size_list = [0] * len(flat_output_size)
         for (i, shape) in enumerate(flat_output_size):
-            size_list[i] = np.prod([dim for dim in shape])
+            size_list[i] = np.prod(shape)
     else:
         size_list = flat_output_size
     ret = sum(size_list)
@@ -101,19 +91,14 @@ def _sum_output_size(output_size: OutputSize) -> int:
 def _mlp_transform(inputs: TensorStruct,
                    output_size: OutputSize,
                    linear_layer: Optional[LinearLayer] = None,
-                   activation_fn: Optional[ActivationFn] = None,
-                   ) -> Any:
+                   activation_fn: Optional[ActivationFn] = None) -> Any:
     r"""Transforms inputs through a fully-connected layer that creates
     the output with specified size.
 
     Args:
-        inputs: A ``Tensor`` of shape ``[batch_size, ..., finale_state]``
-            (i.e., batch-major), or a (nested) tuple of such elements.
-            A Tensor or a (nested) tuple of Tensors with shape
-            ``[max_time, batch_size, ...]`` (i.e., time-major) can
-            be transposed to batch-major using
-            :func:`~texar.torch.utils.transpose_batch_time` prior to this
-            function.
+        inputs: A Tensor of shape `[batch_size, d1, ..., dn]`, or a (nested)
+            ``tuple`` of such elements. The dimensions ``d1, ..., dn`` will be
+            flatten and transformed by a dense layer.
         output_size: Can be an ``Integer``, a ``torch.Size``, or a (nested)
             ``tuple`` of ``Integers`` or ``torch.Size``.
         activation_fn: Activation function applied to the output.
@@ -128,11 +113,7 @@ def _mlp_transform(inputs: TensorStruct,
     """
     # Flatten inputs
     flat_input = nest.flatten(inputs)
-    if len(flat_input[0].size()) == 1:
-        batch_size = 1
-    else:
-        batch_size = flat_input[0].size(0)
-    flat_input = [x.view(-1, x.size(-1)) for x in flat_input]
+    flat_input = [x.view(x.size(0), -1) for x in flat_input]
     concat_input = torch.cat(flat_input, 1)
     # Get output dimension
     flat_output_size = nest.flatten(output_size)
@@ -140,7 +121,7 @@ def _mlp_transform(inputs: TensorStruct,
     if isinstance(flat_output_size[0], torch.Size):
         size_list = [0] * len(flat_output_size)
         for (i, shape) in enumerate(flat_output_size):
-            size_list[i] = np.prod([dim for dim in shape])
+            size_list[i] = np.prod(shape)
     else:
         size_list = flat_output_size
 
@@ -152,11 +133,6 @@ def _mlp_transform(inputs: TensorStruct,
 
     flat_output = torch.split(fc_output, size_list, dim=1)
     flat_output = list(flat_output)
-    for i, _ in enumerate(flat_output):
-        final_state = flat_output[i].size(-1)
-        flat_output[i] = flat_output[i].view(batch_size, -1, final_state)
-        flat_output[i] = torch.squeeze(flat_output[i], 1)
-
     if isinstance(flat_output_size[0], torch.Size):
         for (i, shape) in enumerate(flat_output_size):
             flat_output[i] = torch.reshape(
@@ -175,7 +151,7 @@ class ConstantConnector(ConnectorBase):
         output_size: Size of output **excluding** the batch dimension. For
             example, set :attr:`output_size` to ``dim`` to generate output of
             shape ``[batch_size, dim]``.
-            Can be an ``int``, a tuple of ``int``, a ``torch.Size``,
+            Can be an ``int``, a ``tuple`` of ``int``, a ``torch.Size``,
             or a ``tuple`` of ``torch.Size``.
             For example, to transform inputs to have decoder state size, set
             :python:`output_size=decoder.state_size`.
@@ -287,7 +263,7 @@ class ForwardConnector(ConnectorBase):
         output_size: Size of output **excluding** the batch dimension. For
             example, set :attr:`output_size` to ``dim`` to generate output of
             shape ``[batch_size, dim]``.
-            Can be an ``int``, a tuple of ``int``, a ``torch.Size``, or a
+            Can be an ``int``, a ``tuple`` of ``int``, a ``torch.Size``, or a
             ``tuple`` of ``torch.Size``.
             For example, to transform inputs to have decoder state size, set
             :python:`output_size=decoder.state_size`.
@@ -514,7 +490,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
 
     def __init__(self,
                  output_size: OutputSize,
-                 mlp_input_size: Union[torch.Size, MaybeTuple[int], int],
+                 mlp_input_size: Union[torch.Size, MaybeTuple[int]],
                  distribution: Union[Distribution, str] = 'MultivariateNormal',
                  distribution_kwargs: Optional[Dict[str, Any]] = None,
                  hparams: Optional[HParams] = None):
@@ -664,7 +640,7 @@ class StochasticConnector(ConnectorBase):
 
     def __init__(self,
                  output_size: OutputSize,
-                 mlp_input_size: Union[torch.Size, MaybeTuple[int], int],
+                 mlp_input_size: Union[torch.Size, MaybeTuple[int]],
                  distribution: Union[Distribution, str] = 'MultivariateNormal',
                  distribution_kwargs: Optional[Dict[str, Any]] = None,
                  hparams: Optional[HParams] = None):
