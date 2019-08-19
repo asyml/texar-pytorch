@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-BERT classifier.
+RoBERTa classifier.
 """
 from typing import Optional, Tuple
 
@@ -23,30 +23,31 @@ from torch.nn import functional as F
 from texar.torch.core.layers import get_initializer
 from texar.torch.hyperparams import HParams
 from texar.torch.modules.classifiers.classifier_base import ClassifierBase
-from texar.torch.modules.encoders.bert_encoder import BERTEncoder
-from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
+from texar.torch.modules.encoders.roberta_encoder import RoBERTaEncoder
+from texar.torch.modules.pretrained.pretrained_roberta import \
+    PretrainedRoBERTaMixin
 from texar.torch.utils.utils import dict_fetch
 
 __all__ = [
-    "BERTClassifier"
+    "RoBERTaClassifier"
 ]
 
 
-class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
-    r"""Classifier based on BERT modules.
+class RoBERTaClassifier(ClassifierBase, PretrainedRoBERTaMixin):
+    r"""Classifier based on RoBERTa modules.
 
     This is a combination of the
-    :class:`~texar.torch.modules.BERTEncoder` with a classification
+    :class:`~texar.torch.modules.RoBERTaEncoder` with a classification
     layer. Both step-wise classification and sequence-level classification
     are supported, specified in :attr:`hparams`.
 
     Arguments are the same as in
-    :class:`~texar.torch.modules.BERTEncoder`.
+    :class:`~texar.torch.modules.RoBERTaEncoder`.
 
     Args:
         pretrained_model_name (optional): a `str`, the name
-            of pre-trained model (e.g., ``bert-base-uncased``). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedBERTMixin` for
+            of pre-trained model (e.g., ``roberta-base``). Please refer to
+            :class:`~texar.torch.modules.pretrained.PretrainedRoBERTaMixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
@@ -68,11 +69,12 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
         super().__init__(hparams=hparams)
 
         # Create the underlying encoder
-        encoder_hparams = dict_fetch(hparams, BERTEncoder.default_hparams())
+        encoder_hparams = dict_fetch(hparams, RoBERTaEncoder.default_hparams())
 
-        self._encoder = BERTEncoder(pretrained_model_name=pretrained_model_name,
-                                    cache_dir=cache_dir,
-                                    hparams=encoder_hparams)
+        self._encoder = RoBERTaEncoder(
+            pretrained_model_name=pretrained_model_name,
+            cache_dir=cache_dir,
+            hparams=encoder_hparams)
 
         # Create a dropout layer
         self._dropout_layer = nn.Dropout(self._hparams.dropout)
@@ -121,7 +123,7 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
         .. code-block:: python
 
             {
-                # (1) Same hyperparameters as in BertEncoder
+                # (1) Same hyperparameters as in RoBertaEncoder
                 ...
                 # (2) Additional hyperparameters
                 "num_classes": 2,
@@ -129,15 +131,15 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
                 "clas_strategy": "cls_time",
                 "max_seq_length": None,
                 "dropout": 0.1,
-                "name": "bert_classifier"
+                "name": "roberta_classifier"
             }
 
         Here:
 
         1. Same hyperparameters as in
-           :class:`~texar.torch.modules.BERTEncoder`.
-           See the :meth:`~texar.torch.modules.BERTEncoder.default_hparams`.
-           An instance of BERTEncoder is created for feature extraction.
+           :class:`~texar.torch.modules.RoBERTaEncoder`.
+           See the :meth:`~texar.torch.modules.RoBERTaEncoder.default_hparams`.
+           An instance of RoBERTaEncoder is created for feature extraction.
 
         2. Additional hyperparameters:
 
@@ -172,32 +174,31 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
                 `clas_strategy` is `all_time`.
 
             `"dropout"`: float
-                The dropout rate of the BERT encoder output.
+                The dropout rate of the RoBERTa encoder output.
 
             `"name"`: str
                 Name of the classifier.
         """
 
-        hparams = BERTEncoder.default_hparams()
+        hparams = RoBERTaEncoder.default_hparams()
         hparams.update({
             "num_classes": 2,
             "logit_layer_kwargs": None,
             "clas_strategy": "cls_time",
             "max_seq_length": None,
             "dropout": 0.1,
-            "name": "bert_classifier"
+            "name": "roberta_classifier"
         })
         return hparams
 
     def forward(self,  # type: ignore
                 inputs: torch.Tensor,
-                sequence_length: Optional[torch.LongTensor] = None,
-                segment_ids: Optional[torch.LongTensor] = None) \
+                sequence_length: Optional[torch.LongTensor] = None) \
             -> Tuple[torch.Tensor, torch.LongTensor]:
         r"""Feeds the inputs through the network and makes classification.
 
         The arguments are the same as in
-        :class:`~texar.torch.modules.BERTEncoder`.
+        :class:`~texar.torch.modules.RoBERTaEncoder`.
 
         Args:
             inputs: A 2D Tensor of shape `[batch_size, max_time]`,
@@ -205,10 +206,6 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
             sequence_length (optional): A 1D Tensor of shape `[batch_size]`.
                 Input tokens beyond respective sequence lengths are masked
                 out automatically.
-            segment_ids (optional): A 2D Tensor of shape
-                `[batch_size, max_time]`, containing the segment ids
-                of tokens in input sequences. If `None` (default), a tensor
-                with all elements set to zero is used.
 
         Returns:
             A tuple `(logits, preds)`, containing the logits over classes and
@@ -231,8 +228,7 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
                   shape ``[batch_size, max_time]``.
         """
         enc_outputs, pooled_output = self._encoder(inputs,
-                                                   sequence_length,
-                                                   segment_ids)
+                                                   sequence_length)
         # Compute logits
         strategy = self._hparams.clas_strategy
         if strategy == 'time_wise':

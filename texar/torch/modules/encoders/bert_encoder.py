@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-BERT encoders.
+BERT encoder.
 """
 
 from typing import Optional
@@ -45,8 +45,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
         pretrained_model_name (optional): a `str`, the name
             of pre-trained model (e.g., ``bert-base-uncased``). Please refer to
             :class:`~texar.torch.modules.pretrained.PretrainedBERTMixin` for
-            all supported models (including the standard BERT models and
-            variants like RoBERTa).
+            all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
@@ -186,7 +185,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
             Hyperparameters for word embedding layer.
 
         `"vocab_size"`: int
-            The vocabulary size of `inputs` in `BertModel`.
+            The vocabulary size of `inputs` in BERT model.
 
         `"segment_embed"`: dict
             Hyperparameters for segment embedding layer.

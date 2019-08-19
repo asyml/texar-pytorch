@@ -15,11 +15,12 @@
 Modules of Texar library encoders.
 """
 
-from texar.torch.modules.encoders.bert_encoders import *
+from texar.torch.modules.encoders.bert_encoder import *
 from texar.torch.modules.encoders.conv_encoders import *
 from texar.torch.modules.encoders.encoder_base import *
 from texar.torch.modules.encoders.gpt2_encoder import *
 from texar.torch.modules.encoders.multihead_attention import *
 from texar.torch.modules.encoders.rnn_encoders import *
+from texar.torch.modules.encoders.roberta_encoder import *
 from texar.torch.modules.encoders.transformer_encoder import *
 from texar.torch.modules.encoders.xlnet_encoder import *

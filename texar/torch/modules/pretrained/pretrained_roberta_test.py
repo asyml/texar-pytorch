@@ -1,33 +1,33 @@
 """
-Unit tests for BERT utils.
+Unit tests for RoBERTa utils.
 """
 
 import os
 import unittest
 
-from texar.torch.modules.pretrained.pretrained_bert import *
+from texar.torch.modules.pretrained.pretrained_roberta import *
 from texar.torch.utils.test import pretrained_test
 
 
-class BERTUtilsTest(unittest.TestCase):
-    r"""Tests BERT utils.
+class RoBERTaUtilsTest(unittest.TestCase):
+    r"""Tests RoBERTa utils.
     """
 
     @pretrained_test
-    def test_load_pretrained_bert_AND_transform_bert_to_texar_config(self):
+    def test_load_pretrained_roberta_AND_transform_roberta_to_texar_config(
+            self):
 
-        pretrained_model_dir = PretrainedBERTMixin.download_checkpoint(
-            pretrained_model_name="bert-base-uncased")
+        pretrained_model_dir = PretrainedRoBERTaMixin.download_checkpoint(
+            pretrained_model_name="roberta-base")
 
         info = list(os.walk(pretrained_model_dir))
         _, _, files = info[0]
-        self.assertIn('bert_model.ckpt.meta', files)
-        self.assertIn('bert_model.ckpt.data-00000-of-00001', files)
-        self.assertIn('bert_model.ckpt.index', files)
-        self.assertIn('bert_config.json', files)
+        self.assertIn('dict.txt', files)
+        self.assertIn('model.pt', files)
+        self.assertIn('NOTE', files)
 
-        model_config = PretrainedBERTMixin._transform_config(
-            pretrained_model_name="bert-base-uncased",
+        model_config = PretrainedRoBERTaMixin._transform_config(
+            pretrained_model_name="roberta-base",
             cache_dir=pretrained_model_dir)
 
         exp_config = {
@@ -36,17 +36,12 @@ class BERTUtilsTest(unittest.TestCase):
                 'name': 'word_embeddings',
                 'dim': 768
             },
-            'vocab_size': 30522,
-            'segment_embed': {
-                'name': 'token_type_embeddings',
-                'dim': 768
-            },
-            'type_vocab_size': 2,
+            'vocab_size': 50265,
             'position_embed': {
                 'name': 'position_embeddings',
                 'dim': 768
             },
-            'position_size': 512,
+            'position_size': 514,
             'encoder': {
                 'name': 'encoder',
                 'embedding_dropout': 0.1,
