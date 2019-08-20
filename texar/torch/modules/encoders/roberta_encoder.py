@@ -18,13 +18,8 @@ RoBERTa encoder.
 from typing import Optional
 
 import torch
-from torch import nn
 
-from texar.torch.core import layers
-from texar.torch.modules.embedders.embedders import WordEmbedder
-from texar.torch.modules.embedders.position_embedders import PositionEmbedder
-from texar.torch.modules.encoders.encoder_base import EncoderBase
-from texar.torch.modules.encoders.transformer_encoder import TransformerEncoder
+from texar.torch.modules.encoders.bert_encoder import BERTEncoder
 from texar.torch.modules.pretrained.pretrained_roberta import \
     PretrainedRoBERTaMixin
 
@@ -33,19 +28,19 @@ __all__ = [
 ]
 
 
-class RoBERTaEncoder(EncoderBase, PretrainedRoBERTaMixin):
+class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
     r"""RoBERTa Transformer for encoding sequences.
 
     This module basically stacks
-    :class:`~texar.torch.modules.embedders.WordEmbedder`,
-    :class:`~texar.torch.modules.embedders.PositionEmbedder`,
-    :class:`~texar.torch.modules.encoders.TransformerEncoder` and a dense
+    :class:`~texar.torch.modules.WordEmbedder`,
+    :class:`~texar.torch.modules.PositionEmbedder`,
+    :class:`~texar.torch.modules.TransformerEncoder` and a dense
     pooler.
 
     Args:
         pretrained_model_name (optional): a `str`, the name
             of pre-trained model (e.g., ``roberta-base``). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedRoBERTaMixin` for
+            :class:`~texar.torch.modules.PretrainedRoBERTaMixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
@@ -56,41 +51,6 @@ class RoBERTaEncoder(EncoderBase, PretrainedRoBERTaMixin):
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
-
-    def __init__(self,
-                 pretrained_model_name: Optional[str] = None,
-                 cache_dir: Optional[str] = None,
-                 hparams=None):
-        super().__init__(hparams=hparams)
-
-        self.load_pretrained_config(pretrained_model_name, cache_dir)
-
-        # Word embedding
-        self.word_embedder = WordEmbedder(
-            vocab_size=self._hparams.vocab_size,
-            hparams=self._hparams.embed)
-
-        # Position embedding
-        self.position_embedder = PositionEmbedder(
-            position_size=self._hparams.position_size,
-            hparams=self._hparams.position_embed)
-
-        # The RoBERTa encoder (a TransformerEncoder)
-        self.encoder = TransformerEncoder(hparams=self._hparams.encoder)
-
-        self.pooler = nn.Sequential(
-            nn.Linear(self._hparams.hidden_size, self._hparams.hidden_size),
-            nn.Tanh())
-
-        self.init_pretrained_weights()
-
-    def reset_parameters(self):
-        initialize = layers.get_initializer(self._hparams.initializer)
-        if initialize is not None:
-            # Do not re-initialize LayerNorm modules.
-            for name, param in self.named_parameters():
-                if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:
-                    initialize(param)
 
     @staticmethod
     def default_hparams():
@@ -184,7 +144,7 @@ class RoBERTaEncoder(EncoderBase, PretrainedRoBERTaMixin):
 
         `"encoder"`: dict
             Hyperparameters for the TransformerEncoder.
-            See :func:`~texar.torch.modules.TransformerEncoder.default_harams`
+            See :func:`~texar.torch.modules.TransformerEncoder.default_hparams`
             for details.
 
         `"hidden_size"`: int
@@ -279,30 +239,8 @@ class RoBERTaEncoder(EncoderBase, PretrainedRoBERTaMixin):
               character of the input (`CLS`), see RoBERTa's paper.
         """
 
-        word_embeds = self.word_embedder(inputs)
-        batch_size = inputs.size(0)
-        pos_length = inputs.new_full((batch_size,), inputs.size(1),
-                                     dtype=torch.int64)
-        pos_embeds = self.position_embedder(sequence_length=pos_length)
-
-        inputs_embeds = word_embeds + pos_embeds
-
-        if sequence_length is None:
-            sequence_length = inputs.new_full((batch_size,), inputs.size(1),
-                                              dtype=torch.int64)
-
-        output = self.encoder(inputs_embeds, sequence_length)
-
-        # taking the hidden state corresponding to the first token.
-        first_token_tensor = output[:, 0, :]
-
-        pooled_output = self.pooler(first_token_tensor)
+        output, pooled_output = super().forward(inputs=inputs,
+                                                sequence_length=sequence_length,
+                                                segment_ids=None)
 
         return output, pooled_output
-
-    @property
-    def output_size(self):
-        r"""The feature size of :meth:`forward` output
-        :attr:`pooled_output`.
-        """
-        return self._hparams.hidden_size

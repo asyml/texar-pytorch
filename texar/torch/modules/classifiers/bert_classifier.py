@@ -24,6 +24,7 @@ from texar.torch.core.layers import get_initializer
 from texar.torch.hyperparams import HParams
 from texar.torch.modules.classifiers.classifier_base import ClassifierBase
 from texar.torch.modules.encoders.bert_encoder import BERTEncoder
+from texar.torch.modules.encoders.roberta_encoder import RoBERTaEncoder
 from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
 from texar.torch.utils.utils import dict_fetch
 
@@ -68,11 +69,21 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
         super().__init__(hparams=hparams)
 
         # Create the underlying encoder
-        encoder_hparams = dict_fetch(hparams, BERTEncoder.default_hparams())
+        if self.__class__.__name__.startswith('BERT'):
+            encoder_hparams = dict_fetch(hparams, BERTEncoder.default_hparams())
 
-        self._encoder = BERTEncoder(pretrained_model_name=pretrained_model_name,
-                                    cache_dir=cache_dir,
-                                    hparams=encoder_hparams)
+            self._encoder = BERTEncoder(
+                pretrained_model_name=pretrained_model_name,
+                cache_dir=cache_dir,
+                hparams=encoder_hparams)
+        elif self.__class__.__name__.startswith('RoBERTa'):
+            encoder_hparams = dict_fetch(hparams,
+                                         RoBERTaEncoder.default_hparams())
+
+            self._encoder = RoBERTaEncoder(
+                pretrained_model_name=pretrained_model_name,
+                cache_dir=cache_dir,
+                hparams=encoder_hparams)
 
         # Create a dropout layer
         self._dropout_layer = nn.Dropout(self._hparams.dropout)
@@ -230,9 +241,14 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
                   ``[batch_size, max_time, num_classes]`` and ``pred`` is of
                   shape ``[batch_size, max_time]``.
         """
-        enc_outputs, pooled_output = self._encoder(inputs,
-                                                   sequence_length,
-                                                   segment_ids)
+        if self.__class__.__name__.startswith('BERT'):
+            enc_outputs, pooled_output = self._encoder(inputs,
+                                                       sequence_length,
+                                                       segment_ids)
+        elif self.__class__.__name__.startswith('RoBERTa'):
+            enc_outputs, pooled_output = self._encoder(inputs,
+                                                       sequence_length)
+
         # Compute logits
         strategy = self._hparams.clas_strategy
         if strategy == 'time_wise':

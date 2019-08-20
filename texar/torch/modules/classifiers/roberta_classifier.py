@@ -17,23 +17,18 @@ RoBERTa classifier.
 from typing import Optional, Tuple
 
 import torch
-from torch import nn
-from torch.nn import functional as F
 
-from texar.torch.core.layers import get_initializer
-from texar.torch.hyperparams import HParams
-from texar.torch.modules.classifiers.classifier_base import ClassifierBase
 from texar.torch.modules.encoders.roberta_encoder import RoBERTaEncoder
+from texar.torch.modules.classifiers.bert_classifier import BERTClassifier
 from texar.torch.modules.pretrained.pretrained_roberta import \
     PretrainedRoBERTaMixin
-from texar.torch.utils.utils import dict_fetch
 
 __all__ = [
     "RoBERTaClassifier"
 ]
 
 
-class RoBERTaClassifier(ClassifierBase, PretrainedRoBERTaMixin):
+class RoBERTaClassifier(PretrainedRoBERTaMixin, BERTClassifier):
     r"""Classifier based on RoBERTa modules.
 
     This is a combination of the
@@ -47,7 +42,7 @@ class RoBERTaClassifier(ClassifierBase, PretrainedRoBERTaMixin):
     Args:
         pretrained_model_name (optional): a `str`, the name
             of pre-trained model (e.g., ``roberta-base``). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedRoBERTaMixin` for
+            :class:`~texar.torch.modules.PretrainedRoBERTaMixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
@@ -60,61 +55,6 @@ class RoBERTaClassifier(ClassifierBase, PretrainedRoBERTaMixin):
 
     .. document private functions
     """
-
-    def __init__(self,
-                 pretrained_model_name: Optional[str] = None,
-                 cache_dir: Optional[str] = None,
-                 hparams=None):
-
-        super().__init__(hparams=hparams)
-
-        # Create the underlying encoder
-        encoder_hparams = dict_fetch(hparams, RoBERTaEncoder.default_hparams())
-
-        self._encoder = RoBERTaEncoder(
-            pretrained_model_name=pretrained_model_name,
-            cache_dir=cache_dir,
-            hparams=encoder_hparams)
-
-        # Create a dropout layer
-        self._dropout_layer = nn.Dropout(self._hparams.dropout)
-
-        # Create an additional classification layer if needed
-        self.num_classes = self._hparams.num_classes
-        if self.num_classes <= 0:
-            self._logits_layer = None
-        else:
-            logit_kwargs = self._hparams.logit_layer_kwargs
-            if logit_kwargs is None:
-                logit_kwargs = {}
-            elif not isinstance(logit_kwargs, HParams):
-                raise ValueError("hparams['logit_layer_kwargs'] "
-                                 "must be a dict.")
-            else:
-                logit_kwargs = logit_kwargs.todict()
-
-            if self._hparams.clas_strategy == 'all_time':
-                self._logits_layer = nn.Linear(
-                    self._encoder.output_size *
-                    self._hparams.max_seq_length,
-                    self.num_classes,
-                    **logit_kwargs)
-            else:
-                self._logits_layer = nn.Linear(
-                    self._encoder.output_size, self.num_classes,
-                    **logit_kwargs)
-
-        if self._hparams.initializer:
-            initialize = get_initializer(self._hparams.initializer)
-            assert initialize is not None
-            if self._logits_layer:
-                initialize(self._logits_layer.weight)
-                if self._logits_layer.bias:
-                    initialize(self._logits_layer.bias)
-
-        self.is_binary = (self.num_classes == 1) or \
-                         (self.num_classes <= 0 and
-                          self._hparams.encoder.dim == 1)
 
     @staticmethod
     def default_hparams():
@@ -227,63 +167,7 @@ class RoBERTaClassifier(ClassifierBase, PretrainedRoBERTaMixin):
                   ``[batch_size, max_time, num_classes]`` and ``pred`` is of
                   shape ``[batch_size, max_time]``.
         """
-        enc_outputs, pooled_output = self._encoder(inputs,
-                                                   sequence_length)
-        # Compute logits
-        strategy = self._hparams.clas_strategy
-        if strategy == 'time_wise':
-            logits = enc_outputs
-        elif strategy == 'cls_time':
-            logits = pooled_output
-        elif strategy == 'all_time':
-            # Pad `enc_outputs` to have max_seq_length before flatten
-            length_diff = self._hparams.max_seq_length - inputs.shape[1]
-            logit_input = F.pad(enc_outputs, [0, 0, 0, length_diff, 0, 0])
-            logit_input_dim = (self._encoder.output_size *
-                               self._hparams.max_seq_length)
-            logits = logit_input.view(-1, logit_input_dim)
-        else:
-            raise ValueError('Unknown classification strategy: {}'.format(
-                strategy))
-
-        if self._logits_layer is not None:
-            logits = self._dropout_layer(logits)
-            logits = self._logits_layer(logits)
-
-        # Compute predictions
-        if strategy == "time_wise":
-            if self.is_binary:
-                logits = torch.squeeze(logits, -1)
-                preds = (logits > 0).long()
-            else:
-                preds = torch.argmax(logits, dim=-1)
-        else:
-            if self.is_binary:
-                preds = (logits > 0).long()
-                logits = torch.flatten(logits)
-            else:
-                preds = torch.argmax(logits, dim=-1)
-            preds = torch.flatten(preds)
-
+        logits, preds = super().forward(inputs=inputs,
+                                        sequence_length=sequence_length,
+                                        segment_ids=None)
         return logits, preds
-
-    @property
-    def output_size(self) -> int:
-        r"""The feature size of :meth:`forward` output :attr:`logits`.
-        If :attr:`logits` size is only determined by input
-        (i.e. if ``num_classes`` == 1), the feature size is equal to ``-1``.
-        Otherwise it is equal to last dimension value of :attr:`logits` size.
-        """
-        if self._hparams.num_classes == 1:
-            logit_dim = -1
-        elif self._hparams.num_classes > 1:
-            logit_dim = self._hparams.num_classes
-        elif self._hparams.clas_strategy == 'all_time':
-            logit_dim = (self._encoder.output_size *
-                         self._hparams.max_seq_length)
-        elif self._hparams.clas_strategy == 'cls_time':
-            logit_dim = self._encoder.output_size
-        elif self._hparams.clas_strategy == 'time_wise':
-            logit_dim = self._hparams.encoder.dim
-
-        return logit_dim
