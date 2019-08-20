@@ -69,14 +69,14 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
         super().__init__(hparams=hparams)
 
         # Create the underlying encoder
-        if self.__class__.__name__.startswith('BERT'):
+        if self._MODEL_NAME == 'BERT':
             encoder_hparams = dict_fetch(hparams, BERTEncoder.default_hparams())
 
             self._encoder = BERTEncoder(
                 pretrained_model_name=pretrained_model_name,
                 cache_dir=cache_dir,
                 hparams=encoder_hparams)
-        elif self.__class__.__name__.startswith('RoBERTa'):
+        elif self._MODEL_NAME == 'RoBERTa':
             encoder_hparams = dict_fetch(hparams,
                                          RoBERTaEncoder.default_hparams())
 
@@ -241,11 +241,11 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
                   ``[batch_size, max_time, num_classes]`` and ``pred`` is of
                   shape ``[batch_size, max_time]``.
         """
-        if self.__class__.__name__.startswith('BERT'):
+        if self._MODEL_NAME == 'BERT':
             enc_outputs, pooled_output = self._encoder(inputs,
                                                        sequence_length,
                                                        segment_ids)
-        elif self.__class__.__name__.startswith('RoBERTa'):
+        elif self._MODEL_NAME == 'RoBERTa':
             enc_outputs, pooled_output = self._encoder(inputs,
                                                        sequence_length)
 

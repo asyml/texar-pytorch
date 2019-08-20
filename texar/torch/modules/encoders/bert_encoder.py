@@ -71,8 +71,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
 
         # Segment embedding for each type of tokens
         self.segment_embedder = None
-        if self._hparams.get('type_vocab_size') and \
-                self._hparams.type_vocab_size > 0:
+        if self._hparams.get('type_vocab_size', 0) > 0:
             self.segment_embedder = WordEmbedder(
                 vocab_size=self._hparams.type_vocab_size,
                 hparams=self._hparams.segment_embed)

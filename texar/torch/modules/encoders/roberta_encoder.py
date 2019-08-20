@@ -218,7 +218,9 @@ class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
     def forward(self,  # type: ignore
                 inputs: torch.Tensor,
                 sequence_length: Optional[torch.LongTensor] = None):
-        r"""Encodes the inputs.
+        r"""Encodes the inputs. Differing from the standard BERT, the RoBERTa
+        model does not use segmentation embedding. As a result, RoBERTa does not
+        require `segment_ids` as an input.
 
         Args:
             inputs: A 2D Tensor of shape `[batch_size, max_time]`,
