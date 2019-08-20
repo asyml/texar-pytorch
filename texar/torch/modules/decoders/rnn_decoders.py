@@ -468,10 +468,9 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
 
             `"type"`: str or class or instance
                 The attention type. Can be an attention class, its name or
-                module path, or a class instance. The class must be a subclass
-                of :class:`texar.torch.core.AttentionMechanism`.
-                If class name is given, the class must be from modules
-                :mod:`texar.torch.core` or :mod:`texar.torch.custom`.
+                module path, or a class instance. If class name is given, the
+                class must be from modules :mod:`texar.torch.core` or
+                :mod:`texar.torch.custom`.
 
                 Example:
 

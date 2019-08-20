@@ -50,9 +50,9 @@ EmbeddingFn = Callable[[torch.LongTensor, torch.LongTensor], torch.Tensor]
 IDType = TypeVar('IDType', bound=torch.Tensor)
 
 
+# Helper instances are used by :class:`texar.torch.modules.DecoderBase`.
 class Helper(Generic[IDType], ABC):
     r"""Interface for implementing sampling in seq2seq decoders.
-    Helper instances are used by :class:`texar.torch.modules.DecoderBase`.
 
     Please refer to the documentation for the TensorFlow counterpart
     `tf.contrib.seq2seq.Helper
