@@ -217,7 +217,8 @@ class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
 
     def forward(self,  # type: ignore
                 inputs: torch.Tensor,
-                sequence_length: Optional[torch.LongTensor] = None):
+                sequence_length: Optional[torch.LongTensor] = None,
+                segment_ids: Optional[torch.LongTensor] = None):
         r"""Encodes the inputs. Differing from the standard BERT, the RoBERTa
         model does not use segmentation embedding. As a result, RoBERTa does not
         require `segment_ids` as an input.
@@ -240,6 +241,8 @@ class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
               pre-trained on top of the hidden state associated to the first
               character of the input (`CLS`), see RoBERTa's paper.
         """
+        if segment_ids is not None:
+            raise ValueError("segment_ids should be None in RoBERTaEncoder.")
 
         output, pooled_output = super().forward(inputs=inputs,
                                                 sequence_length=sequence_length,

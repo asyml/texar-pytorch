@@ -55,6 +55,7 @@ class RoBERTaClassifier(PretrainedRoBERTaMixin, BERTClassifier):
 
     .. document private functions
     """
+    _ENCODER_CLASS = RoBERTaEncoder
 
     @staticmethod
     def default_hparams():
