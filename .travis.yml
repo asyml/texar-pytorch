@@ -45,6 +45,7 @@ jobs:
       install:
         - pip install --upgrade pip
         - pip install --progress-bar off -r requirements.txt
+        - pip install --progress-bar off .[extras]
         # install library required for spellcheck
         - sudo apt-get install libenchant1c2a myspell-en-us
         - pip install --progress-bar off -r docs/requirements.txt
