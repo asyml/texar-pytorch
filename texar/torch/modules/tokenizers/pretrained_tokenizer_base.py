@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Base class for Pre-trained Tokenizers.
-
-The code structure adapted from:
-    `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_utils.py`
+Base class for Pre-trained tokenizers.
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import os
 import json
@@ -49,16 +46,18 @@ class PretrainedTokenizerBase(PretrainedMixin):
     the various underlying dictionary structures (`BPE`, `sentencepiece` ...).
     """
 
-    _MODEL_NAME = None
-    _MODEL2URL = None
-    _MAX_INPUT_SIZE = None
-    _VOCAB_FILE_NAMES = None
+    _MODEL_NAME: str
+    _MODEL2URL: Dict[str, Any]
+    _MAX_INPUT_SIZE: Dict[str, Optional[int]]
+    _VOCAB_FILE_NAMES: Dict[str, str]
     _SPECIAL_TOKENS_ATTRIBUTES = ["bos_token", "eos_token", "unk_token",
                                   "sep_token", "pad_token", "cls_token",
                                   "mask_token", "additional_special_tokens"]
 
     def __init__(self, hparams):
         super().__init__(hparams=hparams)
+
+        self.config = None
 
         self.bos_token = None
         self.eos_token = None
@@ -90,6 +89,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
         vocab_files = {}
         # Look for the tokenizer main vocabulary files
         for file_id, file_name in cls._VOCAB_FILE_NAMES.items():
+            full_file_name: Optional[str]
             if os.path.isdir(pretrained_model_path):
                 # If a directory is provided we look for the standard file name
                 full_file_name = os.path.join(pretrained_model_path, file_name)
@@ -107,7 +107,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
         all_vocab_files_names = {
             'added_tokens_file': ADDED_TOKENS_FILE,
             'special_tokens_map_file': SPECIAL_TOKENS_MAP_FILE,
-            'tokenizer_config_file': CONFIG_FILE}
+            'config_file': CONFIG_FILE}
 
         # If a path to a file was provided, get the parent directory
         saved_directory = pretrained_model_path
@@ -128,12 +128,12 @@ class PretrainedTokenizerBase(PretrainedMixin):
             raise ValueError("Can't find tokenizer files in {}.".format(
                 saved_directory))
 
-        kwargs = {'pretrained_model_name': None}
+        kwargs: Dict[str, Any] = {'pretrained_model_name': None}
 
         added_tokens_file = vocab_files.pop('added_tokens_file', None)
         special_tokens_map_file = vocab_files.pop(
             'special_tokens_map_file', None)
-        tokenizer_config_file = vocab_files.pop('tokenizer_config_file', None)
+        tokenizer_config_file = vocab_files.pop('config_file', None)
 
         for args_name, file_path in vocab_files.items():
             if args_name not in kwargs:
@@ -181,7 +181,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
         special_tokens_map_file = os.path.join(save_directory,
                                                SPECIAL_TOKENS_MAP_FILE)
         added_tokens_file = os.path.join(save_directory, ADDED_TOKENS_FILE)
-        tokenzier_config_file = os.path.join(save_directory, CONFIG_FILE)
+        config_file = os.path.join(save_directory, CONFIG_FILE)
 
         with open(special_tokens_map_file, 'w', encoding='utf-8') as f:
             f.write(json.dumps(self.special_tokens_map, ensure_ascii=False))
@@ -194,7 +194,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
                 out_str = u"{}"
             f.write(out_str)
 
-        with open(tokenzier_config_file, 'w', encoding='utf-8') as f:
+        with open(config_file, 'w', encoding='utf-8') as f:
             if self.config:
                 out_str = json.dumps(self.config, ensure_ascii=False)
             else:
@@ -203,7 +203,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
 
         vocab_files = self.save_vocabulary(save_directory)
         return vocab_files + (special_tokens_map_file, added_tokens_file,
-                              tokenzier_config_file)
+                              config_file)
 
     def save_vocabulary(self, save_directory):
         r"""Save the tokenizer vocabulary to a directory. This method doesn't
@@ -239,8 +239,10 @@ class PretrainedTokenizerBase(PretrainedMixin):
 
         to_add_tokens = []
         for token in new_tokens:
-            if (self.convert_tokens_to_ids(token) ==
-                    self.convert_tokens_to_ids(self.unk_token)):
+            assert isinstance(token, str)
+            if token != self.unk_token and \
+                    (self.convert_tokens_to_ids(token) ==
+                     self.convert_tokens_to_ids(self.unk_token)):
                 to_add_tokens.append(token)
 
         added_tok_encoder = dict((tok, len(self) + i) for i, tok in
@@ -270,12 +272,19 @@ class PretrainedTokenizerBase(PretrainedMixin):
         if not special_tokens_dict:
             return 0
 
-        added_special_tokens = self.add_tokens(
-            list(special_tokens_dict.values()))
+        added_tokens = 0
         for key, value in special_tokens_dict.items():
+            assert key in self._SPECIAL_TOKENS_ATTRIBUTES
+            if key == 'additional_special_tokens':
+                assert isinstance(value, (list, tuple)) and all(
+                    isinstance(t, str) for t in value)
+                added_tokens += self.add_tokens(value)
+            else:
+                assert isinstance(value, str)
+                added_tokens += self.add_tokens([value])
             setattr(self, key, value)
 
-        return added_special_tokens
+        return added_tokens
 
     def tokenize(self, text: Optional[str], **kwargs) -> List[Optional[str]]:
         r"""Converts a string in a sequence of tokens (string), using the
@@ -339,12 +348,12 @@ class PretrainedTokenizerBase(PretrainedMixin):
         tokenizer and vocabulary. Same as
         `self.convert_tokens_to_ids(self.tokenize(text))`.
         """
-        return self.convert_tokens_to_ids(self.tokenize(text))
+        return self.convert_tokens_to_ids(self.tokenize(text))  # type: ignore
 
     def convert_ids_to_tokens(self,
                               token_ids: MaybeList[int],
                               skip_special_tokens: bool = False) -> \
-            MaybeList[int]:
+            MaybeList[str]:
         r"""Converts a single index or a sequence of indices (integers) in a
         token (resp.) a sequence of tokens (str/unicode), using the vocabulary
         and added tokens.
@@ -377,7 +386,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
         The most simple way to do it is `' '.join(tokens)`, but we often want
         to remove sub-word tokenization artifacts at the same time.
         """
-        return ' '.join(tokens)
+        raise NotImplementedError
 
     def decode(self, token_ids: List[int],
                skip_special_tokens: bool = False,
@@ -388,7 +397,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
         """
         filtered_tokens = self.convert_ids_to_tokens(
             token_ids, skip_special_tokens=skip_special_tokens)
-        text = self.convert_tokens_to_string(filtered_tokens)
+        text = self.convert_tokens_to_string(filtered_tokens)  # type: ignore
         if clean_up_tokenization_spaces:
             text = self.clean_up_tokenization(text)
         return text
@@ -410,7 +419,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
         r"""List all the special tokens (`<unk>`, `<cls>`, ...) mapped to class
         attributes (`cls_token`, `unk_token`, ...).
         """
-        all_toks = []
+        all_toks: List[str] = []
         set_attr = self.special_tokens_map
         for attr_value in set_attr.values():
             all_toks = all_toks + (
@@ -427,7 +436,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
         """
         all_toks = self.all_special_tokens
         all_ids = list(self.convert_tokens_to_ids(t) for t in all_toks)
-        return all_ids
+        return all_ids  # type: ignore
 
     @staticmethod
     def clean_up_tokenization(out_string: str) -> str:

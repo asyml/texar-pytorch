@@ -22,15 +22,12 @@ import os
 from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
 from texar.torch.modules.tokenizers.pretrained_tokenizer_base import \
     PretrainedTokenizerBase
-from texar.torch.modules.tokenizers.bert_tokenizer_utils import \
+from texar.torch.modules.tokenizers.pretrained_bert_tokenizer_utils import \
     load_vocab, BasicTokenizer, WordpieceTokenizer
 
 __all__ = [
     'BERTTokenizer',
 ]
-
-
-_BERT_PATH = "https://storage.googleapis.com/bert_models/"
 
 
 class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
@@ -80,6 +77,7 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
         if self.pretrained_model_dir is not None:
             vocab_file = os.path.join(self.pretrained_model_dir,
                                       self._VOCAB_FILE_NAMES['vocab_file'])
+            assert pretrained_model_name is not None
             if self._MAX_INPUT_SIZE.get(pretrained_model_name):
                 self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
         else:
@@ -102,34 +100,35 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab,
                                                       unk_token=self.unk_token)
 
-    def forward(self, inputs, job_type, **kwargs):
-        if job_type == 'text-to-token':
+    def forward(self, inputs, task, **kwargs):
+        if task == 'text-to-token':
             return self.tokenize(inputs)
-        elif job_type == 'token-to-text':
+        elif task == 'token-to-text':
             return self.convert_tokens_to_string(inputs)
-        elif job_type == 'text-to-id':
+        elif task == 'text-to-id':
             return self.encode(inputs)
-        elif job_type == 'id-to-text':
+        elif task == 'id-to-text':
             skip_special_tokens = kwargs.get('skip_special_tokens', False)
             clean_up_tokenization_spaces = kwargs.get(
                 'clean_up_tokenization_spaces', True)
             return self.decode(
                 inputs, skip_special_tokens=skip_special_tokens,
                 clean_up_tokenization_spaces=clean_up_tokenization_spaces)
-        elif job_type == 'token-to-id':
+        elif task == 'token-to-id':
             return self.convert_tokens_to_ids(inputs)
-        elif job_type == 'id-to-token':
+        elif task == 'id-to-token':
             skip_special_tokens = kwargs.get('skip_special_tokens', False)
             return self.convert_ids_to_tokens(
                 inputs, skip_special_tokens=skip_special_tokens)
         else:
-            raise ValueError("Unrecognized job type.")
+            raise ValueError("Unrecognized task.")
 
-    def _tokenize(self, text: str) -> List[str]:
+    def _tokenize(self, text: str) -> List[str]:  # type: ignore
         split_tokens = []
         if self.do_basic_tokenize:
             for token in self.basic_tokenizer.tokenize(
                     text, never_split=self.all_special_tokens):
+                assert token is not None
                 for sub_token in self.wordpiece_tokenizer.tokenize(token):
                     split_tokens.append(sub_token)
         else:
@@ -161,7 +160,9 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
 
     def _convert_token_to_id(self, token: str) -> int:
         r"""Converts a token (str/unicode) in an id using the vocab."""
-        return self.vocab.get(token, self.vocab.get(self.unk_token))
+        unk_id = self.vocab.get(self.unk_token)
+        assert unk_id is not None
+        return self.vocab.get(token, unk_id)
 
     def _convert_id_to_token(self, index: int) -> str:
         r"""Converts an index (integer) in a token (string/unicode) using
@@ -191,3 +192,8 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
             'never_split': None,
             '@no_typecheck': ['pretrained_model_name'],
         }
+
+    @classmethod
+    def _transform_config(cls, pretrained_model_name: str,
+                          cache_dir: str):
+        return

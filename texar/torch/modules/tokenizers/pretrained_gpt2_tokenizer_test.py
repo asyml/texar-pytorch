@@ -1,5 +1,5 @@
 """
-Unit tests for pre-trained BERT tokenizer.
+Unit tests for pre-trained GPT2 tokenizer.
 """
 
 import unittest
@@ -10,11 +10,11 @@ import pickle
 import tempfile
 
 from texar.torch.modules.tokenizers.pretrained_gpt2_tokenizer import \
-    PretrainedGPT2Tokenizer
+    GPT2Tokenizer
 from texar.torch.utils.test import pretrained_test
 
 
-class PretrainedGPT2TokenizerTest(unittest.TestCase):
+class GPT2TokenizerTest(unittest.TestCase):
 
     def setUp(self):
         vocab = ["l", "o", "w", "e", "r", "s", "t", "i", "d", "n",
@@ -22,6 +22,7 @@ class PretrainedGPT2TokenizerTest(unittest.TestCase):
                  "low", "lowest", "newer", "wider", "<unk>"]
         vocab_tokens = dict(zip(vocab, range(len(vocab))))
         merges = ["#version: 0.2", "l o", "lo w", "e r", ""]
+        self.special_tokens_map = {"unk_token": "<unk>"}
 
         self.tmp_dir = tempfile.TemporaryDirectory()
         self.vocab_file = os.path.join(self.tmp_dir.name, 'vocab.json')
@@ -38,30 +39,34 @@ class PretrainedGPT2TokenizerTest(unittest.TestCase):
     @pretrained_test
     def test_model_loading(self):
         for pretrained_model_name in \
-                PretrainedGPT2Tokenizer.available_checkpoints():
-            tokenizer = PretrainedGPT2Tokenizer(
+                GPT2Tokenizer.available_checkpoints():
+            tokenizer = GPT2Tokenizer(
                 pretrained_model_name=pretrained_model_name)
-            _ = tokenizer.tokenize(u"Munich and Berlin are nice cities")
+            _ = tokenizer(inputs=u"Munich and Berlin are nice cities",
+                          task='text-to-token')
 
     def test_tokenize(self):
-        tokenizer = PretrainedGPT2Tokenizer.from_pretrained(self.tmp_dir.name)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
 
         text = "lower"
         bpe_tokens = ["low", "er"]
-        tokens = tokenizer.tokenize(text)
+        tokens = tokenizer(inputs=text, task='text-to-token')
         self.assertListEqual(tokens, bpe_tokens)
 
         input_tokens = tokens + [tokenizer.unk_token]
         input_bpe_tokens = [13, 12, 17]
         self.assertListEqual(
-            tokenizer.convert_tokens_to_ids(input_tokens), input_bpe_tokens)
+            tokenizer(inputs=input_tokens, task='token-to-id'),
+            input_bpe_tokens)
 
     def test_pickle(self):
-        tokenizer = PretrainedGPT2Tokenizer.from_pretrained(self.tmp_dir.name)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
         self.assertIsNotNone(tokenizer)
 
         text = u"Munich and Berlin are nice cities"
-        subwords = tokenizer.tokenize(text)
+        subwords = tokenizer(inputs=text, task='text-to-token')
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             filename = os.path.join(tmpdirname, u"tokenizer.bin")
@@ -75,38 +80,42 @@ class PretrainedGPT2TokenizerTest(unittest.TestCase):
         self.assertListEqual(subwords, subwords_loaded)
 
     def test_save_load(self):
-        tokenizer = PretrainedGPT2Tokenizer.from_pretrained(self.tmp_dir.name)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
 
-        before_tokens = tokenizer.encode(
-            u"He is very happy, UNwant\u00E9d,running")
+        before_tokens = tokenizer(
+            inputs=u"He is very happy, UNwant\u00E9d,running",
+            task='text-to-id')
 
         with tempfile.TemporaryDirectory() as tmpdirname:
-            tokenizer.save_pretrained(tmpdirname)
-            tokenizer = tokenizer.from_pretrained(tmpdirname)
+            tokenizer.save(tmpdirname)
+            tokenizer = tokenizer.load(tmpdirname)
 
-        after_tokens = tokenizer.encode(
-            u"He is very happy, UNwant\u00E9d,running")
+        after_tokens = tokenizer(
+            inputs=u"He is very happy, UNwant\u00E9d,running",
+            task='text-to-id')
         self.assertListEqual(before_tokens, after_tokens)
 
     def test_pretrained_model_list(self):
-        model_list_1 = list(PretrainedGPT2Tokenizer._MODEL2URL.keys())
-        model_list_2 = list(PretrainedGPT2Tokenizer._MAX_INPUT_SIZE.keys())
+        model_list_1 = list(GPT2Tokenizer._MODEL2URL.keys())
+        model_list_2 = list(GPT2Tokenizer._MAX_INPUT_SIZE.keys())
 
         self.assertListEqual(model_list_1, model_list_2)
 
     def test_encode_decode(self):
-        tokenizer = PretrainedGPT2Tokenizer.from_pretrained(self.tmp_dir.name)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
 
         input_text = u"lower newer"
         output_text = u"lower<unk>newer"
 
-        tokens = tokenizer.tokenize(input_text)
-        ids = tokenizer.convert_tokens_to_ids(tokens)
-        ids_2 = tokenizer.encode(input_text)
+        tokens = tokenizer(inputs=input_text, task='text-to-token')
+        ids = tokenizer(inputs=tokens, task='token-to-id')
+        ids_2 = tokenizer(inputs=input_text, task='text-to-id')
         self.assertListEqual(ids, ids_2)
 
-        tokens_2 = tokenizer.convert_ids_to_tokens(ids)
-        text_2 = tokenizer.decode(ids)
+        tokens_2 = tokenizer(inputs=ids, task='id-to-token')
+        text_2 = tokenizer(inputs=ids, task='id-to-text')
 
         self.assertEqual(text_2, output_text)
 
@@ -114,7 +123,8 @@ class PretrainedGPT2TokenizerTest(unittest.TestCase):
         self.assertIsInstance(text_2, str)
 
     def test_add_tokens(self):
-        tokenizer = PretrainedGPT2Tokenizer.from_pretrained(self.tmp_dir.name)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
 
         vocab_size = tokenizer.vocab_size
         all_size = len(tokenizer)

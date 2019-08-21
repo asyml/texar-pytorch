@@ -13,31 +13,27 @@
 # limitations under the License.
 """
 Pre-trained XLNet Tokenizer.
-
-The code structure adapted from:
-    `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_xlnet.py`
 """
 
 from typing import Any, Dict, List, Optional, Tuple
 
 import os
 import unicodedata
-import sentencepiece as spm
 from shutil import copyfile
+import sentencepiece as spm
 
+from texar.torch.modules.pretrained.pretrained_xlnet import PretrainedXLNetMixin
 from texar.torch.modules.tokenizers.pretrained_tokenizer_base import \
     PretrainedTokenizerBase
 
 __all__ = [
-    "PretrainedXLNetTokenizer",
+    "XLNetTokenizer",
 ]
-
-_XLNET_PATH = "https://storage.googleapis.com/xlnet/released_models/"
 
 SPIECE_UNDERLINE = u'▁'
 
 
-class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
+class XLNetTokenizer(PretrainedXLNetMixin, PretrainedTokenizerBase):
     r"""Pre-trained XLNet Tokenizer.
 
     Args:
@@ -55,13 +51,6 @@ class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
             and default values.
     """
 
-    _MODEL_NAME = "XLNet"
-    _MODEL2URL = {
-        'xlnet-base-cased':
-            _XLNET_PATH + "cased_L-12_H-768_A-12.zip",
-        'xlnet-large-cased':
-            _XLNET_PATH + "cased_L-24_H-1024_A-16.zip",
-    }
     _MAX_INPUT_SIZE = {
         'xlnet-base-cased': None,
         'xlnet-large-cased': None,
@@ -74,11 +63,20 @@ class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
                  hparams=None):
         super().__init__(hparams=hparams)
 
-        self.load_pretrained_tokenizer(pretrained_model_name, cache_dir)
+        self.__dict__: Dict
+
+        self.config = {
+            'do_lower_case': self.hparams['do_lower_case'],
+            'remove_space': self.hparams['remove_space'],
+            'keep_accents': self.hparams['keep_accents'],
+        }
+
+        self.load_pretrained_config(pretrained_model_name, cache_dir)
 
         if self.pretrained_model_dir is not None:
             vocab_file = os.path.join(self.pretrained_model_dir,
                                       self._VOCAB_FILE_NAMES['vocab_file'])
+            assert pretrained_model_name is not None
             if self._MAX_INPUT_SIZE.get(pretrained_model_name):
                 self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
         else:
@@ -98,24 +96,24 @@ class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
         self.sp_model = spm.SentencePieceProcessor()
         self.sp_model.Load(self.vocab_file)
 
-    def forward(self, inputs, job_type, **kwargs):
-        if job_type == 'text-to-token':
+    def forward(self, inputs, task, **kwargs):
+        if task == 'text-to-token':
             sample = kwargs.get('sample', False)
             return self.tokenize(inputs, sample=sample)
-        elif job_type == 'token-to-text':
+        elif task == 'token-to-text':
             return self.convert_tokens_to_string(inputs)
-        elif job_type == 'text-to-id':
+        elif task == 'text-to-id':
             return self.encode(inputs)
-        elif job_type == 'id-to-text':
+        elif task == 'id-to-text':
             skip_special_tokens = kwargs.get('skip_special_tokens', False)
             clean_up_tokenization_spaces = kwargs.get(
                 'clean_up_tokenization_spaces', True)
             return self.decode(
                 inputs, skip_special_tokens=skip_special_tokens,
                 clean_up_tokenization_spaces=clean_up_tokenization_spaces)
-        elif job_type == 'token-to-id':
+        elif task == 'token-to-id':
             return self.convert_tokens_to_ids(inputs)
-        elif job_type == 'id-to-token':
+        elif task == 'id-to-token':
             skip_special_tokens = kwargs.get('skip_special_tokens', False)
             return self.convert_ids_to_tokens(
                 inputs, skip_special_tokens=skip_special_tokens)
@@ -148,14 +146,15 @@ class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
 
         return outputs
 
-    def _tokenize(self, text: str, sample: bool = False) -> List[str]:
+    def _tokenize(self, text: str,  # type: ignore
+                  sample: bool = False) -> List[str]:
         text = self.preprocess_text(text)
         if not sample:
             pieces = self.sp_model.EncodeAsPieces(text)
         else:
             pieces = self.sp_model.SampleEncodeAsPieces(text, 64, 0.1)
 
-        new_pieces = []
+        new_pieces: List[str] = []
         for piece in pieces:
             if len(piece) > 1 and piece[-1] == ',' and piece[-2].isdigit():
                 cur_pieces = self.sp_model.EncodeAsPieces(
@@ -222,3 +221,8 @@ class PretrainedXLNetTokenizer(PretrainedTokenizerBase):
             'keep_accents': False,
             '@no_typecheck': ['pretrained_model_name'],
         }
+
+    @classmethod
+    def _transform_config(cls, pretrained_model_name: str,
+                          cache_dir: str):
+        return

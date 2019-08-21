@@ -26,8 +26,8 @@ import time
 import numpy as np
 import torch
 import torch.nn.functional as F
-import tqdm
 import sentencepiece as spm
+import tqdm
 
 import texar.torch as tx
 

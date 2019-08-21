@@ -4,7 +4,7 @@ Unit tests for pre-trained BERT tokenizer utils.
 
 import unittest
 
-from texar.torch.modules.tokenizers.bert_tokenizer_utils import (
+from texar.torch.modules.tokenizers.pretrained_bert_tokenizer_utils import (
     BasicTokenizer, WordpieceTokenizer, _is_control,
     _is_punctuation, _is_whitespace)
 

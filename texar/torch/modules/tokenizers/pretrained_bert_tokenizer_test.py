@@ -8,7 +8,8 @@ import os
 import pickle
 import tempfile
 
-from texar.torch.modules.tokenizers.bert_tokenizer import BERTTokenizer
+from texar.torch.modules.tokenizers.pretrained_bert_tokenizer import \
+    BERTTokenizer
 from texar.torch.utils.test import pretrained_test
 
 
@@ -34,15 +35,17 @@ class BERTTokenizerTest(unittest.TestCase):
         for pretrained_model_name in BERTTokenizer.available_checkpoints():
             tokenizer = BERTTokenizer(
                 pretrained_model_name=pretrained_model_name)
-            _ = tokenizer.tokenize(u"UNwant\u00E9d,running")
+            _ = tokenizer(inputs=u"UNwant\u00E9d,running",
+                          task='text-to-token')
 
     def test_tokenize(self):
         tokenizer = BERTTokenizer.load(self.vocab_file)
 
-        tokens = tokenizer.tokenize(u"UNwant\u00E9d,running")
+        tokens = tokenizer(inputs=u"UNwant\u00E9d,running",
+                           task='text-to-token')
         self.assertListEqual(tokens,
                              ["un", "##want", "##ed", ",", "runn", "##ing"])
-        self.assertListEqual(tokenizer.convert_tokens_to_ids(tokens),
+        self.assertListEqual(tokenizer(inputs=tokens, task='token-to-id'),
                              [7, 4, 5, 10, 8, 9])
 
     def test_pickle(self):
@@ -50,7 +53,7 @@ class BERTTokenizerTest(unittest.TestCase):
         self.assertIsNotNone(tokenizer)
 
         text = u"Munich and Berlin are nice cities"
-        subwords = tokenizer.tokenize(text)
+        subwords = tokenizer(inputs=text, task='text-to-token')
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             filename = os.path.join(tmpdirname, u"tokenizer.bin")
@@ -59,22 +62,24 @@ class BERTTokenizerTest(unittest.TestCase):
             with open(filename, "rb") as f:
                 tokenizer_new = pickle.load(f)
 
-        subwords_loaded = tokenizer_new.tokenize(text)
+        subwords_loaded = tokenizer_new(inputs=text, task='text-to-token')
 
         self.assertListEqual(subwords, subwords_loaded)
 
     def test_save_load(self):
         tokenizer = BERTTokenizer.load(self.vocab_file)
 
-        before_tokens = tokenizer.encode(
-            u"He is very happy, UNwant\u00E9d,running")
+        before_tokens = tokenizer(
+            inputs=u"He is very happy, UNwant\u00E9d,running",
+            task='text-to-id')
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             tokenizer.save(tmpdirname)
             tokenizer = tokenizer.load(tmpdirname)
 
-        after_tokens = tokenizer.encode(
-            u"He is very happy, UNwant\u00E9d,running")
+        after_tokens = tokenizer(
+            inputs=u"He is very happy, UNwant\u00E9d,running",
+            task='text-to-id')
         self.assertListEqual(before_tokens, after_tokens)
 
     def test_pretrained_model_list(self):
@@ -89,13 +94,13 @@ class BERTTokenizerTest(unittest.TestCase):
         input_text = u"UNwant\u00E9d,running"
         output_text = u"unwanted, running"
 
-        tokens = tokenizer.tokenize(input_text)
-        ids = tokenizer.convert_tokens_to_ids(tokens)
-        ids_2 = tokenizer.encode(input_text)
+        tokens = tokenizer(inputs=input_text, task='text-to-token')
+        ids = tokenizer(inputs=tokens, task='token-to-id')
+        ids_2 = tokenizer(inputs=input_text, task='text-to-id')
         self.assertListEqual(ids, ids_2)
 
-        tokens_2 = tokenizer.convert_ids_to_tokens(ids)
-        text_2 = tokenizer.decode(ids)
+        tokens_2 = tokenizer(inputs=ids, task='id-to-token')
+        text_2 = tokenizer(inputs=ids, task='id-to-text')
 
         self.assertEqual(text_2, output_text)
 

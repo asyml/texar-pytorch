@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Pre-trained GPT-2 Tokenizer.
-
-The code structure adapted from:
-    `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_gpt2.py`
+Pre-trained GPT-2 tokenizer.
 """
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -24,23 +21,19 @@ import os
 import json
 import regex as re
 
+from texar.torch.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
 from texar.torch.modules.tokenizers.pretrained_tokenizer_base import \
     PretrainedTokenizerBase
 from texar.torch.modules.tokenizers.pretrained_gpt2_tokenizer_utils import \
     bytes_to_unicode, get_pairs
 
 __all__ = [
-    'PretrainedGPT2Tokenizer',
+    'GPT2Tokenizer',
 ]
 
-_GPT2_PATH = "https://storage.googleapis.com/gpt-2/models/"
-_CHECKPOINT_FILES = [
-    "checkpoint", "encoder.json", "hparams.json", "vocab.bpe",
-    "model.ckpt.data-00000-of-00001", "model.ckpt.index", "model.ckpt.meta"]
 
-
-class PretrainedGPT2Tokenizer(PretrainedTokenizerBase):
-    r"""Pre-trained BERT Tokenizer.
+class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
+    r"""Pre-trained GPT2 Tokenizer.
 
     Args:
         pretrained_model_name (optional): a `str`, the name of
@@ -56,11 +49,7 @@ class PretrainedGPT2Tokenizer(PretrainedTokenizerBase):
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
-    _MODEL_NAME = "GPT2"
-    _MODEL2URL = {
-        '117M': [_GPT2_PATH + f"117M/{file}" for file in _CHECKPOINT_FILES],
-        '345M': [_GPT2_PATH + f"345M/{file}" for file in _CHECKPOINT_FILES],
-    }
+
     _MAX_INPUT_SIZE = {
         '117M': 1024,
         '345M': 1024,
@@ -76,13 +65,16 @@ class PretrainedGPT2Tokenizer(PretrainedTokenizerBase):
                  hparams=None):
         super().__init__(hparams=hparams)
 
-        self.load_pretrained_tokenizer(pretrained_model_name, cache_dir)
+        self.config = {
+            'errors': self.hparams['errors']
+        }
+
+        self.load_pretrained_config(pretrained_model_name, cache_dir)
 
         if self.pretrained_model_dir is not None:
-            vocab_file = os.path.join(self.pretrained_model_dir,
-                                      self._VOCAB_FILE_NAMES['vocab_file'])
-            merges_file = os.path.join(self.pretrained_model_dir,
-                                       self._VOCAB_FILE_NAMES['merges_file'])
+            vocab_file = os.path.join(self.pretrained_model_dir, 'encoder.json')
+            merges_file = os.path.join(self.pretrained_model_dir, 'vocab.bpe')
+            assert pretrained_model_name is not None
             if self._MAX_INPUT_SIZE.get(pretrained_model_name):
                 self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
         else:
@@ -99,47 +91,50 @@ class PretrainedGPT2Tokenizer(PretrainedTokenizerBase):
             raise ValueError("Can't find a merges file at path "
                              "'{}".format(merges_file))
 
-        self.encoder = json.load(open(vocab_file))
+        with open(vocab_file) as fp:
+            self.encoder = json.load(fp)
         self.decoder = {v: k for k, v in self.encoder.items()}
         self.errors = self.hparams["errors"]  # how to handle errors in decoding
         self.byte_encoder = bytes_to_unicode()
         self.byte_decoder = {v: k for k, v in self.byte_encoder.items()}
-        bpe_data = open(merges_file, encoding='utf-8').read().split('\n')[1:-1]
+        with open(merges_file, encoding='utf-8') as fp:
+            bpe_data = fp.read().split('\n')[1:-1]
         bpe_merges = [tuple(merge.split()) for merge in bpe_data]
         self.bpe_ranks = dict(zip(bpe_merges, range(len(bpe_merges))))
-        self.cache = {}
+        self.cache: Dict[str, str] = {}
 
         # Should haved added re.IGNORECASE so BPE merges can happen for
         # capitalized versions of contractions
         self.pat = re.compile(
-            r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| 
-            ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
+            r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?
+            [^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
-    def forward(self, inputs, job_type, **kwargs):
-        if job_type == 'text-to-token':
+    def forward(self, inputs, task, **kwargs):
+        if task == 'text-to-token':
             return self.tokenize(inputs)
-        elif job_type == 'token-to-text':
+        elif task == 'token-to-text':
             return self.convert_tokens_to_string(inputs)
-        elif job_type == 'text-to-id':
+        elif task == 'text-to-id':
             return self.encode(inputs)
-        elif job_type == 'id-to-text':
+        elif task == 'id-to-text':
             skip_special_tokens = kwargs.get('skip_special_tokens', False)
             clean_up_tokenization_spaces = kwargs.get(
                 'clean_up_tokenization_spaces', True)
             return self.decode(
                 inputs, skip_special_tokens=skip_special_tokens,
                 clean_up_tokenization_spaces=clean_up_tokenization_spaces)
-        elif job_type == 'token-to-id':
+        elif task == 'token-to-id':
             return self.convert_tokens_to_ids(inputs)
-        elif job_type == 'id-to-token':
+        elif task == 'id-to-token':
             skip_special_tokens = kwargs.get('skip_special_tokens', False)
             return self.convert_ids_to_tokens(
                 inputs, skip_special_tokens=skip_special_tokens)
         else:
             raise ValueError("Unrecognized job type.")
 
-    def _tokenize(self, text: str) -> List[str]:
-        bpe_tokens = []
+    def _tokenize(self, text: str) -> List[str]:  # type: ignore
+        r"""Tokenize a string. """
+        bpe_tokens: List[str] = []
         for token in re.findall(self.pat, text):
             token = ''.join(self.byte_encoder[b] for b in token.encode('utf-8'))
             bpe_tokens.extend(
@@ -190,19 +185,20 @@ class PretrainedGPT2Tokenizer(PretrainedTokenizerBase):
             if bigram not in self.bpe_ranks:
                 break
             first, second = bigram
-            new_word = []
+            new_word: List[str] = []
             i = 0
             while i < len(word):
                 try:
                     j = word.index(first, i)
                     new_word.extend(word[i:j])
                     i = j
-                except:
+                except ValueError:
                     new_word.extend(word[i:])
                     break
 
-                if word[i] == first and i < len(word)-1 and word[i+1] == second:
-                    new_word.append(first+second)
+                if word[i] == first and i < len(word) - 1 \
+                        and word[i + 1] == second:
+                    new_word.append(first + second)
                     i += 2
                 else:
                     new_word.append(word[i])
@@ -223,15 +219,15 @@ class PretrainedGPT2Tokenizer(PretrainedTokenizerBase):
 
     def _convert_token_to_id(self, token: str) -> int:
         r"""Converts a token (str/unicode) in an id using the vocab."""
-        if token in self.encoder:
-            return self.encoder.get(token)
-        return self.encoder.get(self.unk_token)
+        return self.encoder.get(token, self.encoder.get(self.unk_token))
 
     def _convert_id_to_token(self, index: int) -> str:
         r"""Converts an index (integer) in a token (string/unicode) using
         the vocab.
         """
-        return self.decoder.get(index)
+        token = self.decoder.get(index)
+        assert isinstance(token, str)
+        return token
 
     def convert_tokens_to_string(self, tokens: List[str]) -> str:
         r"""Converts a sequence of tokens (string) in a single string."""
@@ -249,7 +245,12 @@ class PretrainedGPT2Tokenizer(PretrainedTokenizerBase):
             'max_len': 1024,
             'bos_token': '<|endoftext|>',
             'eos_token': '<|endoftext|>',
-            'unk_token': '<unk>',
+            'unk_token': '<|endoftext|>',
             'errors': 'replace',
             '@no_typecheck': ['pretrained_model_name'],
         }
+
+    @classmethod
+    def _transform_config(cls, pretrained_model_name: str,
+                          cache_dir: str):
+        return

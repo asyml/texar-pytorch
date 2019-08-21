@@ -9,46 +9,44 @@ import pickle
 import tempfile
 
 from texar.torch.modules.tokenizers.pretrained_xlnet_tokenizer import \
-    PretrainedXLNetTokenizer, SPIECE_UNDERLINE
+    XLNetTokenizer, SPIECE_UNDERLINE
 from texar.torch.utils.test import pretrained_test
 
-
 SAMPLE_VOCAB = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            'pretrained_test_utils/test_sentencepiece.model')
-
-import ssl
-ssl._create_default_https_context = ssl._create_unverified_context
+                            'pretrained_tokenizer_test_utils/'
+                            'test_sentencepiece.model')
 
 
-class PretrainedXLNetTokenizerTest(unittest.TestCase):
+class XLNetTokenizerTest(unittest.TestCase):
 
     def setUp(self):
-        self.tokenizer = PretrainedXLNetTokenizer.from_pretrained(
+        self.tokenizer = XLNetTokenizer.load(
             SAMPLE_VOCAB, hparams={'keep_accents': True})
         self.tmp_dir = tempfile.TemporaryDirectory()
-        self.tokenizer.save_pretrained(self.tmp_dir.name)
+        self.tokenizer.save(self.tmp_dir.name)
 
     def tearDown(self):
         self.tmp_dir.cleanup()
 
-    # @pretrained_test
+    @pretrained_test
     def test_model_loading(self):
         for pretrained_model_name in \
-                PretrainedXLNetTokenizer.available_checkpoints():
-            tokenizer = PretrainedXLNetTokenizer(
+                XLNetTokenizer.available_checkpoints():
+            tokenizer = XLNetTokenizer(
                 pretrained_model_name=pretrained_model_name)
-            _ = tokenizer.tokenize(u"This is a test")
+            _ = tokenizer(inputs=u"This is a test", task='text-to-token')
 
     def test_tokenize(self):
-        tokens = self.tokenizer.tokenize(u'This is a test')
+        tokens = self.tokenizer(inputs=u'This is a test', task='text-to-token')
         self.assertListEqual(tokens, [u'▁This', u'▁is', u'▁a', u'▁t', u'est'])
 
         self.assertListEqual(
-            self.tokenizer.convert_tokens_to_ids(tokens),
+            self.tokenizer(inputs=tokens, task='token-to-id'),
             [285, 46, 10, 170, 382])
 
-        tokens = self.tokenizer.tokenize(
-            u"I was born in 92000, and this is falsé.")
+        tokens = self.tokenizer(
+            inputs=u"I was born in 92000, and this is falsé.",
+            task='text-to-token')
         self.assertListEqual(tokens, [SPIECE_UNDERLINE + u'I',
                                       SPIECE_UNDERLINE + u'was',
                                       SPIECE_UNDERLINE + u'b',
@@ -60,13 +58,13 @@ class PretrainedXLNetTokenizerTest(unittest.TestCase):
                                       SPIECE_UNDERLINE + u'is',
                                       SPIECE_UNDERLINE + u'f', u'al', u's',
                                       u'é', u'.'])
-        ids = self.tokenizer.convert_tokens_to_ids(tokens)
+        ids = self.tokenizer(inputs=tokens, task='token-to-id')
         self.assertListEqual(
             ids, [8, 21, 84, 55, 24, 19, 7, 0,
                   602, 347, 347, 347, 3, 12, 66,
                   46, 72, 80, 6, 0, 4])
 
-        back_tokens = self.tokenizer.convert_ids_to_tokens(ids)
+        back_tokens = self.tokenizer(inputs=ids, task='id-to-token')
         self.assertListEqual(back_tokens, [SPIECE_UNDERLINE + u'I',
                                            SPIECE_UNDERLINE + u'was',
                                            SPIECE_UNDERLINE + u'b',
@@ -81,11 +79,11 @@ class PretrainedXLNetTokenizerTest(unittest.TestCase):
                                            u'<unk>', u'.'])
 
     def test_pickle(self):
-        tokenizer = PretrainedXLNetTokenizer.from_pretrained(self.tmp_dir.name)
+        tokenizer = XLNetTokenizer.load(self.tmp_dir.name)
         self.assertIsNotNone(tokenizer)
 
         text = u"Munich and Berlin are nice cities"
-        subwords = tokenizer.tokenize(text)
+        subwords = tokenizer(inputs=text, task='text-to-token')
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             filename = os.path.join(tmpdirname, u"tokenizer.bin")
@@ -94,43 +92,45 @@ class PretrainedXLNetTokenizerTest(unittest.TestCase):
             with open(filename, "rb") as f:
                 tokenizer_new = pickle.load(f)
 
-        subwords_loaded = tokenizer_new.tokenize(text)
+        subwords_loaded = tokenizer_new(inputs=text, task='text-to-token')
 
         self.assertListEqual(subwords, subwords_loaded)
 
     def test_save_load(self):
-        tokenizer = PretrainedXLNetTokenizer.from_pretrained(self.tmp_dir.name)
+        tokenizer = XLNetTokenizer.load(self.tmp_dir.name)
 
-        before_tokens = tokenizer.encode(
-            u"He is very happy, UNwant\u00E9d,running")
+        before_tokens = tokenizer(
+            inputs=u"He is very happy, UNwant\u00E9d,running",
+            task='text-to-id')
 
         with tempfile.TemporaryDirectory() as tmpdirname:
-            tokenizer.save_pretrained(tmpdirname)
-            tokenizer = tokenizer.from_pretrained(tmpdirname)
+            tokenizer.save(tmpdirname)
+            tokenizer = tokenizer.load(tmpdirname)
 
-        after_tokens = tokenizer.encode(
-            u"He is very happy, UNwant\u00E9d,running")
+        after_tokens = tokenizer(
+            inputs=u"He is very happy, UNwant\u00E9d,running",
+            task='text-to-id')
         self.assertListEqual(before_tokens, after_tokens)
 
     def test_pretrained_model_list(self):
-        model_list_1 = list(PretrainedXLNetTokenizer._MODEL2URL.keys())
-        model_list_2 = list(PretrainedXLNetTokenizer._MAX_INPUT_SIZE.keys())
+        model_list_1 = list(XLNetTokenizer._MODEL2URL.keys())
+        model_list_2 = list(XLNetTokenizer._MAX_INPUT_SIZE.keys())
 
         self.assertListEqual(model_list_1, model_list_2)
 
     def test_encode_decode(self):
-        tokenizer = PretrainedXLNetTokenizer.from_pretrained(self.tmp_dir.name)
+        tokenizer = XLNetTokenizer.load(self.tmp_dir.name)
 
         input_text = u"This is a test"
         output_text = u"This is a test"
 
-        tokens = tokenizer.tokenize(input_text)
-        ids = tokenizer.convert_tokens_to_ids(tokens)
-        ids_2 = tokenizer.encode(input_text)
+        tokens = tokenizer(inputs=input_text, task='text-to-token')
+        ids = tokenizer(inputs=tokens, task='token-to-id')
+        ids_2 = tokenizer(inputs=input_text, task='text-to-id')
         self.assertListEqual(ids, ids_2)
 
-        tokens_2 = tokenizer.convert_ids_to_tokens(ids)
-        text_2 = tokenizer.decode(ids)
+        tokens_2 = tokenizer(inputs=ids, task='id-to-token')
+        text_2 = tokenizer(inputs=ids, task='id-to-text')
 
         self.assertEqual(text_2, output_text)
 
@@ -138,7 +138,7 @@ class PretrainedXLNetTokenizerTest(unittest.TestCase):
         self.assertIsInstance(text_2, str)
 
     def test_add_tokens(self):
-        tokenizer = PretrainedXLNetTokenizer.from_pretrained(self.tmp_dir.name)
+        tokenizer = XLNetTokenizer.load(self.tmp_dir.name)
 
         vocab_size = tokenizer.vocab_size
         all_size = len(tokenizer)
@@ -187,9 +187,10 @@ class PretrainedXLNetTokenizerTest(unittest.TestCase):
                          tokenizer.convert_tokens_to_ids(tokenizer.pad_token))
 
     def test_tokenizer_lower(self):
-        tokenizer = PretrainedXLNetTokenizer.from_pretrained(
+        tokenizer = XLNetTokenizer.load(
             SAMPLE_VOCAB, hparams={'do_lower_case': True})
-        tokens = tokenizer.tokenize(u"I was born in 92000, and this is falsé.")
+        tokens = tokenizer(inputs=u"I was born in 92000, and this is falsé.",
+                           task='text-to-token')
         self.assertListEqual(tokens, [SPIECE_UNDERLINE + u'', u'i',
                                       SPIECE_UNDERLINE + u'was',
                                       SPIECE_UNDERLINE + u'b',
@@ -201,13 +202,15 @@ class PretrainedXLNetTokenizerTest(unittest.TestCase):
                                       SPIECE_UNDERLINE + u'is',
                                       SPIECE_UNDERLINE + u'f', u'al', u'se',
                                       u'.'])
-        self.assertListEqual(tokenizer.tokenize(u"H\u00E9llo"),
+        self.assertListEqual(tokenizer(inputs=u"H\u00E9llo",
+                                       task='text-to-token'),
                              [u"▁he", u"ll", u"o"])
 
     def test_tokenizer_no_lower(self):
-        tokenizer = PretrainedXLNetTokenizer.from_pretrained(
+        tokenizer = XLNetTokenizer.load(
             SAMPLE_VOCAB, hparams={'do_lower_case': False})
-        tokens = tokenizer.tokenize(u"I was born in 92000, and this is falsé.")
+        tokens = tokenizer(inputs=u"I was born in 92000, and this is falsé.",
+                           task='text-to-token')
         self.assertListEqual(tokens, [SPIECE_UNDERLINE + u'I',
                                       SPIECE_UNDERLINE + u'was',
                                       SPIECE_UNDERLINE + u'b', u'or',
