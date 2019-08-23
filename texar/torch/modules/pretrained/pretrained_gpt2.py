@@ -63,6 +63,19 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
                        for file in _CHECKPOINT_FILES],
     }
 
+    # Raise warning for the deprecated pre-trained model names
+    class MyDict(dict):
+        def __contains__(self, key):
+            if key == '117M':
+                raise KeyError("Pre-trained model name '117M' is deprecated, "
+                               "use 'gpt2-small' instead.")
+            elif key == '345M':
+                raise KeyError("Pre-trained model name '345M' is deprecated, "
+                               "use 'gpt2-medium' instead.")
+            else:
+                return super().__contains__(key)
+    _MODEL2URL = MyDict(_MODEL2URL)
+
     @classmethod
     def _transform_config(cls, pretrained_model_name: str,
                           cache_dir: str) -> Dict[str, Any]:
