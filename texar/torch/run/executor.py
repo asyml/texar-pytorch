@@ -1717,7 +1717,7 @@ class Executor:
             to compute metrics.
         """
         if self.validate_mode == 'predict':
-            return_dict = self.model.predict(batch)
+            return_dict = self.model.predict(batch)  # type: ignore
         else:
             return_dict = self.model(batch)
         return return_dict
@@ -1734,7 +1734,7 @@ class Executor:
             to compute metrics.
         """
         if self.test_mode == 'predict':
-            return_dict = self.model.predict(batch)
+            return_dict = self.model.predict(batch)  # type: ignore
         else:
             return_dict = self.model(batch)
         return return_dict

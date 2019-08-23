@@ -143,8 +143,7 @@ class TrainingHelper(Helper[torch.LongTensor]):
         next_inputs = inputs[0] if not all_finished else self._zero_inputs
         return (finished, next_inputs)
 
-    def sample(self,  # pylint: disable=no-self-use
-               time: int, outputs: torch.Tensor) -> torch.LongTensor:
+    def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
         del time
         sample_ids = torch.argmax(outputs, dim=-1)
         return sample_ids
@@ -269,8 +268,7 @@ class GreedyEmbeddingHelper(SingleEmbeddingHelper):
             :attr:`end_token` is not a scalar.
     """
 
-    def sample(self,  # pylint: disable=no-self-use
-               time: int, outputs: torch.Tensor) -> torch.LongTensor:
+    def sample(self, time: int, outputs: torch.Tensor) -> torch.LongTensor:
         del time  # unused by sample_fn
         # Outputs are logits, use argmax to get the most probable id
         if not torch.is_tensor(outputs):

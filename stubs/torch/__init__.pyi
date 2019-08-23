@@ -10,7 +10,7 @@ from .tensor import Tensor as TensorBase
 from .utils.hooks import RemovableHandle
 
 
-def manual_seed(seed: int): ...
+def manual_seed(seed: builtins.int): ...
 
 
 def load(f: Union[str, IO],

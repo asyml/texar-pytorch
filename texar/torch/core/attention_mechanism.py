@@ -182,7 +182,7 @@ class AttentionMechanism(ModuleBase, ABC):
         self._values = None
         self._keys = None
 
-    def initial_alignments(self,  # pylint: disable=no-self-use
+    def initial_alignments(self,
                            batch_size: int,
                            max_time: int,
                            dtype: torch.dtype,

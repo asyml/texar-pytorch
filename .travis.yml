@@ -24,15 +24,15 @@ install:
   - pip install --upgrade pip
   - pip install --progress-bar off torch==$TORCH_VER
   - pip install --progress-bar off .[extras]
-  - pip install pylint==2.3.1 flake8==3.7.7
-  - pip install mypy==0.720
+  - "if [[ $TORCH_VER == '1.2.0' ]]; then pip install pylint==2.3.1 flake8==3.7.7; fi"
+  - "if [[ $TORCH_VER != '1.0.1' ]]; then pip install mypy==0.720; fi"
   - pip install pytest
 
 script:
-  # linting
-  - pylint texar/ examples/
-  - flake8 texar/ examples/
-  # type-checking (only for PyTorch version 1.2.0)
+  # linting (only for PyTorch version 1.2.0 to save time)
+  - "if [[ $TORCH_VER == '1.2.0' ]]; then pylint texar/ examples/; fi"
+  - "if [[ $TORCH_VER == '1.2.0' ]]; then flake8 texar/ examples/; fi"
+  # type-checking (only for PyTorch version 1.1.0 & 1.2.0)
   - "if [[ $TORCH_VER != '1.0.1' ]]; then mypy .; fi"
   - "if [[ $TORCH_VER != '1.0.1' ]]; then for dir in `echo examples/**/`; do mypy $dir; done; fi"
   # unit tests
