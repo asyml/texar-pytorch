@@ -153,7 +153,7 @@ class FileBLEU(metric.SimpleMetric[List[int], float], DecodeMixin):
     def metric_name(self) -> str:
         return "BLEU"
 
-    def value(self) -> float:
+    def _value(self) -> float:
         if len(self.predicted) == 0:
             return 0.0
         path = self.file_path or tempfile.mktemp()

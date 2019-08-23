@@ -150,10 +150,12 @@ class SimpleMetric(Metric[Input, Value], ABC):
     """
     labels: List[Input]
     predicted: List[Input]
+    _cached_value: Optional[Value]
 
     def reset(self) -> None:
         self.labels = []
         self.predicted = []
+        self._cached_value = None
 
     def add(self, predicted: Sequence[Input], labels: Sequence[Input]):
         if len(predicted) != len(labels):
@@ -161,6 +163,16 @@ class SimpleMetric(Metric[Input, Value], ABC):
                 "Lists `predicted` and `labels` should have the same length")
         self.predicted.extend(predicted)
         self.labels.extend(labels)
+        self._cached_value = None
+
+    def value(self):
+        if self._cached_value is not None:
+            return self._cached_value
+        self._cached_value = self._value()
+        return self._cached_value
+
+    def _value(self) -> Value:
+        raise NotImplementedError
 
 
 class StreamingMetric(Metric[Input, Value], ABC):

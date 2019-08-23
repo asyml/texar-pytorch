@@ -332,6 +332,17 @@ class Executor:
         The device on which the model and data should be placed. Defaults to
         `None`, in which case GPUs will be used if available.
 
+    .. _executor-tbx-logging-args:
+
+    **Arguments for tensorboardX logging:**
+
+    `tbx_logging_dir`: str
+        Path to the directory for storing tensorboard logs.
+
+    `tbx_log_every`: |Condition|
+        Conditions that, when triggered, saves the tensorboard logs for train
+        metrics.
+
     .. _executor-checkpoint-args:
 
     **Arguments for checkpoint management:**
@@ -750,13 +761,7 @@ class Executor:
                  test_log_format: Optional[str] = None,
                  valid_progress_log_format: Optional[str] = None,
                  test_progress_log_format: Optional[str] = None,
-                 show_live_progress: Union[bool, MaybeList[str]] = False,
-                 # Tensorboard
-                 # pylint: disable=unused-argument
-                 tensorboard_log_dir: Optional[str] = None,
-                 write_summary_every: OptionalList[Condition] = None
-                 # pylint: enable=unused-argument
-                 ):
+                 show_live_progress: Union[bool, MaybeList[str]] = False):
 
         try:
             from tqdm._utils import _environ_cols_wrapper, _term_move_up
@@ -908,7 +913,8 @@ class Executor:
         # tbx logging
         if tbx_logging_dir is not None:
             self.summary_writer = SummaryWriter(logdir=tbx_logging_dir)
-            self._tbx_logging_conditions = utils.to_list(tbx_log_every)
+            self._tbx_logging_conditions = utils.to_list(
+                tbx_log_every if tbx_log_every is not None else log_every)
             self._register_tbx_logging_actions()
 
         # Register other events and actions.
@@ -1497,7 +1503,6 @@ class Executor:
 
         # Register logging actions.
         Points = Sequence[Union[Condition, Event]]
-        LogFn = Callable[['Executor'], str]
 
         def _register(points: Points, fn: ActionFn):
             for cond_or_event in points:
@@ -1514,7 +1519,7 @@ class Executor:
                 self.summary_writer.add_scalar(
                     f"train/{key}", value.value(), executor.status["iteration"])
 
-        def tbx_eval_log_fn(executor: 'Executor'):
+        def tbx_valid_log_fn(executor: 'Executor'):
             valid_metrics = executor.valid_metrics
 
             for key, value in valid_metrics.items():
@@ -1522,7 +1527,7 @@ class Executor:
                     f"eval/{key}", value.value(), executor.status["epoch"])
 
         _register(self._tbx_logging_conditions, tbx_train_log_fn)
-        _register([Event.Epoch], tbx_eval_log_fn)
+        _register([Event.Epoch], tbx_valid_log_fn)
 
     def _write_log(self, log_str: str,
                    skip_tty: bool = False, skip_non_tty: bool = False,
