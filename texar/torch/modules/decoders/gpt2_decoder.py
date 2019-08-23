@@ -41,7 +41,7 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
 
     Args:
         pretrained_model_name (optional): a `str`, the name
-            of pre-trained model (e.g., ``117M``). Please refer to
+            of pre-trained model (e.g., ``gpt2-small``). Please refer to
             :class:`~texar.torch.modules.pretrained.PretrainedGPT2Mixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.
@@ -104,7 +104,7 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
 
             {
                 "name": "gpt2_decoder",
-                "pretrained_model_name": "117M",
+                "pretrained_model_name": "gpt2-small",
                 "vocab_size": 50257,
                 "context_size": 1024,
                 "embedding_size": 768,
@@ -170,7 +170,7 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
 
         Here:
 
-        The default parameters are values for 117M GPT2 model.
+        The default parameters are values for 124M GPT2 model.
 
         `"pretrained_model_name"`: str or None
             The name of the pre-trained GPT2 model. If None, the model
@@ -239,7 +239,7 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
                 'name': 'ffn'
             },
 
-            'pretrained_model_name': '117M',
+            'pretrained_model_name': 'gpt2-small',
             'vocab_size': 50257,
             'context_size': 1024,
             'embedding_size': 768,

@@ -41,7 +41,7 @@ pip install -r requirements.txt
 
 This mode will initialize an interactive interface, which allows users to type in the context sentence. The model then
 generates continuation of the context. The example supports both Top-K and Top-P sample decoding. By default, the GPT-2
-`117M` model with Top-K sample decoding is used.
+`gpt2-small` model with Top-K sample decoding is used.
 
 ```bash
 python gpt2_generate_main.py --interactive \
@@ -68,20 +68,18 @@ For *top-p decoding*:
 - `--top-p`: Select tokens with cumulative probability of at most `p` as candidates for sampling. Do not specify it
   if you want to use top-k decoding. 
 
-To use the GPT-2 `345M` model, specify `--pretrained-model-name`:
+To use the GPT-2 `gpt2-medium` or `gpt2-large` model, specify `--pretrained-model-name`:
 
 ```bash
 python gpt2_generate_main.py --interactive \
     --max-decoding-length=100 \
     --temperature=0.7 \
     --top-k=40 \
-    --pretrained-model-name=345M 
+    --pretrained-model-name=gpt2-medium
 ```
-
 Here:
 
-- `pretrained-model-name`: Name of the pre-trained checkpoint to load. Available options are: `117M` and `345M`.
-  Defaults to `345M`. 
+- `pretrained-model-name`: Name of the pre-trained checkpoint to load. Available options are: `gpt2-small`, `gpt2-medium`, and `gpt2-large`. Defaults to `gpt2-small`. 
 
 To use Top-P sample decoding, specify `--top-p`:
 
@@ -90,7 +88,7 @@ python gpt2_generate_main.py --interactive \
     --max-decoding-length=100 \
     --temperature=0.7 \
     --top-p=40 \
-    --pretrained-model-name=345M 
+    --pretrained-model-name=gpt2-medium 
 ```
 
 Here:
@@ -102,7 +100,7 @@ Here:
 **Example input:**
 
 ```
-Model input >>> Micheal Jordan is the greatest player in history !
+Model input >>> Michael Jordan is the greatest player in history !
 ```
 
 **Example output:**
@@ -138,7 +136,7 @@ Here:
 - `--nsamples`: Total number of samples to generate, must be divisible by the batch size.
 - `--batch-size`: The batch size. Each iteration generates this many samples.
 
-To use GPT-2 `345M` model, `--pretrained-model-name` as above.
+To use GPT-2 `gpt2-medium` or `gpt2-large` model, specify `--pretrained-model-name` as above.
 
 **Example output:**
 
@@ -170,7 +168,7 @@ perform processing such as truncation, BPE encoding, adding special tokens, etc:
 python prepare_data.py --data-dir data/toy \
     --max-seq-length=128 \
     --output-dir=data/toy \
-    --pretrained-model-name=117M
+    --pretrained-model-name=gpt2-small
 ```
 
 - `--data-dir`: The directory of raw data, wherein data files must be named as 'train.txt', 'dev.txt', or 'test.txt'. It
@@ -179,7 +177,7 @@ python prepare_data.py --data-dir data/toy \
   automatically added. Longer sequence will be trimmed. 
 - `--output-dir`: The output path where the resulting pickled files will be put in. Be default, it is set to be the same
   as `--data-dir`. 
-- `--pretrained-model-name`: The name of a pre-trained model to load selected in the list of: `117M`, `345M`.
+- `--pretrained-model-name`: The name of a pre-trained model to load selected in the list of: `gpt2-small`, `gpt2-medium`, and `gpt2-large`.
 
 The above command will output pickled files in the specified output directory. E.g., if `train.txt` is provided under
 `data_dir`, the output file `train.pkl` will be produced under `output_dir`.
@@ -202,11 +200,11 @@ Here:
   using your own data.
 - `--output-dir`: The output path where checkpoints are saved.
 
-By default, the GPT-2 `117M` model is used. To use the GPT-2 `345M` model instead, specify relevant arguments as below:
+By default, the GPT-2 `gpt2-small` model is used. To use the GPT-2 `gpt2-medium` or `gpt2-large` model instead, specify relevant arguments as below:
 
 ```bash
 python gpt2_train_main.py --do-train --do-eval \
-    --pretrained-model-name=345M \
+    --pretrained-model-name=gpt2-medium \
     --config-train=configs.config_train \
     --output-dir=output
 ```

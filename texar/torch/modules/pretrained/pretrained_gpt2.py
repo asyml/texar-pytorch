@@ -46,16 +46,21 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
 
     The available GPT2 models are as follows:
 
-      * ``117M``: Small version of GPT-2, 117M parameters.
-      * ``345M``: Medium version of GPT-2, 345M parameters.
+      * ``gpt2-small``: Small version of GPT-2, 124M parameters.
+      * ``gpt2-medium``: Medium version of GPT-2, 355M parameters.
+      * ``gpt2-large``: Large version of GPT-2, 774M parameters.
 
     .. _`Language Models are Unsupervised Multitask Learners`:
         https://openai.com/blog/better-language-models/
     """
     _MODEL_NAME = "GPT2"
     _MODEL2URL = {
-        '117M': [_GPT2_PATH + f"117M/{file}" for file in _CHECKPOINT_FILES],
-        '345M': [_GPT2_PATH + f"345M/{file}" for file in _CHECKPOINT_FILES],
+        'gpt2-small': [_GPT2_PATH + f"124M/{file}"
+                       for file in _CHECKPOINT_FILES],
+        'gpt2-medium': [_GPT2_PATH + f"355M/{file}"
+                        for file in _CHECKPOINT_FILES],
+        'gpt2-large': [_GPT2_PATH + f"774M/{file}"
+                       for file in _CHECKPOINT_FILES],
     }
 
     @classmethod
