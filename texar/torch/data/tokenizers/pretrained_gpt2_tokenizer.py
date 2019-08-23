@@ -13,6 +13,9 @@
 # limitations under the License.
 """
 Pre-trained GPT-2 tokenizer.
+
+Code structure adapted from:
+    `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_gpt2.py`
 """
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -22,9 +25,9 @@ import json
 import regex as re
 
 from texar.torch.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
-from texar.torch.modules.tokenizers.pretrained_tokenizer_base import \
+from texar.torch.data.tokenizers.pretrained_tokenizer_base import \
     PretrainedTokenizerBase
-from texar.torch.modules.tokenizers.pretrained_gpt2_tokenizer_utils import \
+from texar.torch.data.tokenizers.pretrained_gpt2_tokenizer_utils import \
     bytes_to_unicode, get_pairs
 
 __all__ = [
@@ -40,10 +43,10 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
             pre-trained model (e.g., `117M`). Please refer to
             :class:`~texar.torch.modules.pretrained.PretrainedGPT2Mixin` for
             all supported models.
-            If None, the model name in :attr:hparams is used.
+            If None, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
-            a default directory will be used.
+            a default directory (user's home directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
@@ -55,25 +58,27 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
         '345M': 1024,
     }
     _VOCAB_FILE_NAMES = {
-        'vocab_file': 'vocab.json',
-        'merges_file': 'merges.txt',
+        'vocab_file': 'encoder.json',
+        'merges_file': 'vocab.bpe',
     }
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None):
-        super().__init__(hparams=hparams)
+        self.load_pretrained_config(pretrained_model_name, cache_dir, hparams)
+
+        super().__init__(hparams=None)
 
         self.config = {
             'errors': self.hparams['errors']
         }
 
-        self.load_pretrained_config(pretrained_model_name, cache_dir)
-
         if self.pretrained_model_dir is not None:
-            vocab_file = os.path.join(self.pretrained_model_dir, 'encoder.json')
-            merges_file = os.path.join(self.pretrained_model_dir, 'vocab.bpe')
+            vocab_file = os.path.join(self.pretrained_model_dir,
+                                      self._VOCAB_FILE_NAMES['vocab_file'])
+            merges_file = os.path.join(self.pretrained_model_dir,
+                                       self._VOCAB_FILE_NAMES['merges_file'])
             assert pretrained_model_name is not None
             if self._MAX_INPUT_SIZE.get(pretrained_model_name):
                 self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
@@ -109,39 +114,16 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
             r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?
             [^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
-    def forward(self, inputs, task, **kwargs):
-        if task == 'text-to-token':
-            return self.tokenize(inputs)
-        elif task == 'token-to-text':
-            return self.convert_tokens_to_string(inputs)
-        elif task == 'text-to-id':
-            return self.encode(inputs)
-        elif task == 'id-to-text':
-            skip_special_tokens = kwargs.get('skip_special_tokens', False)
-            clean_up_tokenization_spaces = kwargs.get(
-                'clean_up_tokenization_spaces', True)
-            return self.decode(
-                inputs, skip_special_tokens=skip_special_tokens,
-                clean_up_tokenization_spaces=clean_up_tokenization_spaces)
-        elif task == 'token-to-id':
-            return self.convert_tokens_to_ids(inputs)
-        elif task == 'id-to-token':
-            skip_special_tokens = kwargs.get('skip_special_tokens', False)
-            return self.convert_ids_to_tokens(
-                inputs, skip_special_tokens=skip_special_tokens)
-        else:
-            raise ValueError("Unrecognized job type.")
-
-    def _tokenize(self, text: str) -> List[str]:  # type: ignore
+    def _map_text_to_token(self, text: str) -> List[str]:  # type: ignore
         r"""Tokenize a string. """
         bpe_tokens: List[str] = []
         for token in re.findall(self.pat, text):
             token = ''.join(self.byte_encoder[b] for b in token.encode('utf-8'))
             bpe_tokens.extend(
-                bpe_token for bpe_token in self.bpe(token).split(' '))
+                bpe_token for bpe_token in self._bpe(token).split(' '))
         return bpe_tokens
 
-    def save_vocabulary(self, save_directory: str) -> Tuple[str, str]:
+    def save_vocab(self, save_directory: str) -> Tuple[str, str]:
         r"""Save the tokenizer vocabulary and merge files to a directory."""
         if not os.path.isdir(save_directory):
             raise ValueError("Vocabulary path ({}) should be a "
@@ -170,7 +152,7 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
 
         return (vocab_file, merge_file)
 
-    def bpe(self, token: str) -> str:
+    def _bpe(self, token: str) -> str:
         if token in self.cache:
             return self.cache[token]
         word = tuple(token)
@@ -217,20 +199,18 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
     def vocab_size(self) -> int:
         return len(self.encoder)
 
-    def _convert_token_to_id(self, token: str) -> int:
-        r"""Converts a token (str/unicode) in an id using the vocab."""
+    def _map_token_to_id(self, token: str) -> int:
+        r"""Maps a token to an id using the vocabulary."""
         return self.encoder.get(token, self.encoder.get(self.unk_token))
 
-    def _convert_id_to_token(self, index: int) -> str:
-        r"""Converts an index (integer) in a token (string/unicode) using
-        the vocab.
-        """
+    def _map_id_to_token(self, index: int) -> str:
+        r"""Maps an id to a token using the vocabulary."""
         token = self.decoder.get(index)
         assert isinstance(token, str)
         return token
 
-    def convert_tokens_to_string(self, tokens: List[str]) -> str:
-        r"""Converts a sequence of tokens (string) in a single string."""
+    def map_token_to_text(self, tokens: List[str]) -> str:
+        r"""Maps a sequence of tokens (string) in a single string."""
         text = ''.join(tokens)
         text = bytearray([self.byte_decoder[c] for c in text]).decode(
             'utf-8', errors=self.errors)
@@ -238,6 +218,57 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
+        r"""Returns a dictionary of hyperparameters with default values.
+
+        * The tokenizer is determined by the constructor argument
+          :attr:`pretrained_model_name` if it's specified. In this case,
+          `hparams` are ignored.
+        * Otherwise, the tokenizer is determined by
+          `hparams['pretrained_model_name']` if it's specified. All other
+          configurations in `hparams` are ignored.
+        * If the above two are `None`, the tokenizer is defined by the
+          configurations in `hparams`.
+
+        .. code-block:: python
+
+            {
+                "pretrained_model_name": "117M",
+                "vocab_file": None,
+                "merges_file": None,
+                "max_len": 1024,
+                "bos_token": "<|endoftext|>",
+                "eos_token": "<|endoftext|>",
+                "unk_token": "<|endoftext|>",
+                "errors": "replace",
+            }
+
+        Here:
+
+        `"pretrained_model_name"`: str or None
+            The name of the pre-trained GPT2 model.
+
+        `"vocab_file"`: str or None
+            The path to a vocabulary json file mapping tokens to ids.
+
+        `"merges_file"`: str or None
+            The path to a merges file.
+
+        `"max_len"`: int
+            The maximum sequence length that this model might ever be used with.
+
+        `"bos_token"`: str
+            Beginning of sentence token
+
+        `"eos_token"`: str
+            End of sentence token
+
+        `"unk_token"`: str
+            Unknown token
+
+        `"errors"`: str
+            Response when mapping tokens to text fails. The possible values are
+            `ignore`, `replace`, and `strict`.
+        """
         return {
             'pretrained_model_name': '117M',
             'vocab_file': None,
@@ -253,4 +284,13 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
     @classmethod
     def _transform_config(cls, pretrained_model_name: str,
                           cache_dir: str):
-        return
+        r"""Returns the configuration of the pre-trained GPT2 tokenizer."""
+        return {
+            'vocab_file': None,
+            'merges_file': None,
+            'max_len': 1024,
+            'bos_token': '<|endoftext|>',
+            'eos_token': '<|endoftext|>',
+            'unk_token': '<|endoftext|>',
+            'errors': 'replace',
+        }

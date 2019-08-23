@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utils of pre-trained GPT2 tokenizer.
+
+Code structure adapted from:
+    `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_gpt2.py`
 """
 
 from functools import lru_cache
@@ -33,7 +36,6 @@ def bytes_to_unicode():
     utf-8 bytes and unicode strings. And avoids mapping to whitespace/control
     characters the bpe code barfs on.
     """
-    _chr = chr
     bs = list(range(ord("!"), ord("~") + 1)) + list(
         range(ord("¡"), ord("¬") + 1)) + list(range(ord("®"), ord("ÿ") + 1))
     cs = bs[:]
@@ -43,13 +45,18 @@ def bytes_to_unicode():
             bs.append(b)
             cs.append(2**8 + n)
             n += 1
-    cs = [_chr(n) for n in cs]
+    cs = [chr(n) for n in cs]
     return dict(zip(bs, cs))
 
 
 def get_pairs(word):
     r"""Return set of symbol pairs in a word. Word is represented as tuple of
     symbols (symbols being variable-length strings).
+
+    Example:
+        word = "texar"
+        get_pairs(word)
+        # {('t', 'e'), ('e', 'x'), ('x', 'a'), ('a', 'r')}
     """
     pairs = set()
     prev_char = word[0]

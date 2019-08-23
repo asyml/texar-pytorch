@@ -23,4 +23,3 @@ from texar.torch.modules.encoders import *
 from texar.torch.modules.networks import *
 from texar.torch.modules.pretrained import *
 from texar.torch.modules.regressors import *
-from texar.torch.modules.tokenizers import *

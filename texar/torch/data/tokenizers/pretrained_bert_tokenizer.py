@@ -13,6 +13,9 @@
 # limitations under the License.
 """
 Pre-trained BERT tokenizer.
+
+Code structure adapted from:
+    `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_bert.py`
 """
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -20,9 +23,9 @@ from typing import Any, Dict, List, Optional, Tuple
 import os
 
 from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
-from texar.torch.modules.tokenizers.pretrained_tokenizer_base import \
+from texar.torch.data.tokenizers.pretrained_tokenizer_base import \
     PretrainedTokenizerBase
-from texar.torch.modules.tokenizers.pretrained_bert_tokenizer_utils import \
+from texar.torch.data.tokenizers.pretrained_bert_tokenizer_utils import \
     load_vocab, BasicTokenizer, WordpieceTokenizer
 
 __all__ = [
@@ -38,10 +41,10 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
             pre-trained model (e.g., `bert-base-uncased`). Please refer to
             :class:`~texar.torch.modules.pretrained.PretrainedBERTMixin` for
             all supported models.
-            If None, the model name in :attr:hparams is used.
+            If None, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
-            a default directory will be used.
+            a default directory (user's home directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
@@ -63,7 +66,9 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None):
-        super().__init__(hparams=hparams)
+        self.load_pretrained_config(pretrained_model_name, cache_dir, hparams)
+
+        super().__init__(hparams=None)
 
         self.config = {
             'tokenize_chinese_chars': self.hparams['tokenize_chinese_chars'],
@@ -72,14 +77,12 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
             'never_split': self.hparams['never_split'],
         }
 
-        self.load_pretrained_config(pretrained_model_name, cache_dir)
-
         if self.pretrained_model_dir is not None:
             vocab_file = os.path.join(self.pretrained_model_dir,
                                       self._VOCAB_FILE_NAMES['vocab_file'])
-            assert pretrained_model_name is not None
-            if self._MAX_INPUT_SIZE.get(pretrained_model_name):
-                self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
+            assert self.pretrained_model_name is not None
+            if self._MAX_INPUT_SIZE.get(self.pretrained_model_name):
+                self.max_len = self._MAX_INPUT_SIZE[self.pretrained_model_name]
         else:
             vocab_file = self.hparams['vocab_file']
             if self.hparams.get('max_len'):
@@ -100,30 +103,7 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab,
                                                       unk_token=self.unk_token)
 
-    def forward(self, inputs, task, **kwargs):
-        if task == 'text-to-token':
-            return self.tokenize(inputs)
-        elif task == 'token-to-text':
-            return self.convert_tokens_to_string(inputs)
-        elif task == 'text-to-id':
-            return self.encode(inputs)
-        elif task == 'id-to-text':
-            skip_special_tokens = kwargs.get('skip_special_tokens', False)
-            clean_up_tokenization_spaces = kwargs.get(
-                'clean_up_tokenization_spaces', True)
-            return self.decode(
-                inputs, skip_special_tokens=skip_special_tokens,
-                clean_up_tokenization_spaces=clean_up_tokenization_spaces)
-        elif task == 'token-to-id':
-            return self.convert_tokens_to_ids(inputs)
-        elif task == 'id-to-token':
-            skip_special_tokens = kwargs.get('skip_special_tokens', False)
-            return self.convert_ids_to_tokens(
-                inputs, skip_special_tokens=skip_special_tokens)
-        else:
-            raise ValueError("Unrecognized task.")
-
-    def _tokenize(self, text: str) -> List[str]:  # type: ignore
+    def _map_text_to_token(self, text: str) -> List[str]:  # type: ignore
         split_tokens = []
         if self.do_basic_tokenize:
             for token in self.basic_tokenizer.tokenize(
@@ -135,7 +115,7 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
             split_tokens = self.wordpiece_tokenizer.tokenize(text)
         return split_tokens
 
-    def save_vocabulary(self, save_directory: str) -> Tuple[str]:
+    def save_vocab(self, save_directory: str) -> Tuple[str]:
         r"""Save the tokenizer vocabulary to a directory or file."""
         index = 0
         if os.path.isdir(save_directory):
@@ -158,25 +138,97 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
     def vocab_size(self) -> int:
         return len(self.vocab)
 
-    def _convert_token_to_id(self, token: str) -> int:
-        r"""Converts a token (str/unicode) in an id using the vocab."""
+    def _map_token_to_id(self, token: str) -> int:
+        r"""Maps a token to an id using the vocabulary."""
         unk_id = self.vocab.get(self.unk_token)
         assert unk_id is not None
         return self.vocab.get(token, unk_id)
 
-    def _convert_id_to_token(self, index: int) -> str:
-        r"""Converts an index (integer) in a token (string/unicode) using
-        the vocab.
+    def _map_id_to_token(self, index: int) -> str:
+        r"""Maps an id to a token using the vocabulary.
         """
         return self.ids_to_tokens.get(index, self.unk_token)
 
-    def convert_tokens_to_string(self, tokens: List[str]) -> str:
-        r"""Converts a sequence of tokens (string) in a single string."""
+    def map_token_to_text(self, tokens: List[str]) -> str:
+        r"""Maps a sequence of tokens (string) to a single string."""
         out_string = ' '.join(tokens).replace(' ##', '').strip()
         return out_string
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
+        r"""Returns a dictionary of hyperparameters with default values.
+
+        * The tokenizer is determined by the constructor argument
+          :attr:`pretrained_model_name` if it's specified. In this case,
+          `hparams` are ignored.
+        * Otherwise, the tokenizer is determined by
+          `hparams['pretrained_model_name']` if it's specified. All other
+          configurations in `hparams` are ignored.
+        * If the above two are `None`, the tokenizer is defined by the
+          configurations in `hparams`.
+
+        .. code-block:: python
+
+            {
+                "pretrained_model_name": "bert-base-uncased",
+                "vocab_file": None,
+                "max_len": 512,
+                "unk_token": "[UNK]",
+                "sep_token": "[SEP]",
+                "pad_token": "[PAD]",
+                "cls_token": "[CLS]",
+                "mask_token": "[MASK]",
+                "tokenize_chinese_chars": True,
+                "do_lower_case": True,
+                "do_basic_tokenize": True,
+                "never_split": None,
+                "name": "bert_tokenizer",
+            }
+
+        Here:
+
+        `"pretrained_model_name"`: str or None
+            The name of the pre-trained BERT model.
+
+        `"vocab_file"`: str or None
+            The path to a one-wordpiece-per-line vocabulary file.
+
+        `"max_len"`: int
+            The maximum sequence length that this model might ever be used with.
+
+        `"unk_token"`: str
+            Unknown token.
+
+        `"sep_token"`: str
+            Separation token.
+
+        `"pad_token"`: str
+            Padding token.
+
+        `"cls_token"`: str
+            Classification token.
+
+        `"mask_token"`: str
+            Masking token.
+
+        `"tokenize_chinese_chars"`: bool
+            Whether to tokenize Chinese characters.
+
+        `"do_lower_case"`: bool
+            Whether to lower case the input
+            Only has an effect when `do_basic_tokenize=True`
+
+        `"do_basic_tokenize"`: bool
+            Whether to do basic tokenization before wordpiece.
+
+        `"never_split"`: list
+            List of tokens which will never be split during tokenization.
+            Only has an effect when `do_basic_tokenize=True`
+
+        `"name"`: str
+            Name of the tokenizer.
+
+        """
         return {
             'pretrained_model_name': 'bert-base-uncased',
             'vocab_file': None,
@@ -190,10 +242,24 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
             'do_lower_case': True,
             'do_basic_tokenize': True,
             'never_split': None,
+            'name': 'bert_tokenizer',
             '@no_typecheck': ['pretrained_model_name'],
         }
 
     @classmethod
     def _transform_config(cls, pretrained_model_name: str,
                           cache_dir: str):
-        return
+        r"""Returns the configuration of the pre-trained BERT tokenizer."""
+        return {
+            'vocab_file': None,
+            'max_len': 512,
+            'unk_token': '[UNK]',
+            'sep_token': '[SEP]',
+            'pad_token': '[PAD]',
+            'cls_token': '[CLS]',
+            'mask_token': '[MASK]',
+            'tokenize_chinese_chars': True,
+            'do_lower_case': True,
+            'do_basic_tokenize': True,
+            'never_split': None,
+        }

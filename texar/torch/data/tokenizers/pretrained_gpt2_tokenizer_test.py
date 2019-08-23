@@ -1,5 +1,5 @@
 """
-Unit tests for pre-trained RoBERTa tokenizer.
+Unit tests for pre-trained GPT2 tokenizer.
 """
 
 import unittest
@@ -9,12 +9,12 @@ import os
 import pickle
 import tempfile
 
-from texar.torch.modules.tokenizers.pretrained_roberta_tokenizer import \
-    RoBERTaTokenizer
+from texar.torch.data.tokenizers.pretrained_gpt2_tokenizer import \
+    GPT2Tokenizer
 from texar.torch.utils.test import pretrained_test
 
 
-class RoBERTaTokenizerTest(unittest.TestCase):
+class GPT2TokenizerTest(unittest.TestCase):
 
     def setUp(self):
         vocab = ["l", "o", "w", "e", "r", "s", "t", "i", "d", "n",
@@ -25,8 +25,8 @@ class RoBERTaTokenizerTest(unittest.TestCase):
         self.special_tokens_map = {"unk_token": "<unk>"}
 
         self.tmp_dir = tempfile.TemporaryDirectory()
-        self.vocab_file = os.path.join(self.tmp_dir.name, 'vocab.json')
-        self.merges_file = os.path.join(self.tmp_dir.name, 'merges.txt')
+        self.vocab_file = os.path.join(self.tmp_dir.name, 'encoder.json')
+        self.merges_file = os.path.join(self.tmp_dir.name, 'vocab.bpe')
 
         with open(self.vocab_file, "w") as fp:
             fp.write(json.dumps(vocab_tokens))
@@ -39,34 +39,34 @@ class RoBERTaTokenizerTest(unittest.TestCase):
     @pretrained_test
     def test_model_loading(self):
         for pretrained_model_name in \
-                RoBERTaTokenizer.available_checkpoints():
-            tokenizer = RoBERTaTokenizer(
+                GPT2Tokenizer.available_checkpoints():
+            tokenizer = GPT2Tokenizer(
                 pretrained_model_name=pretrained_model_name)
-            _ = tokenizer(inputs=u"Munich and Berlin are nice cities",
-                          task='text-to-token')
+            _ = tokenizer.map_text_to_token(
+                u"Munich and Berlin are nice cities")
 
     def test_tokenize(self):
-        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
-                                          self.special_tokens_map)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
 
         text = "lower"
         bpe_tokens = ["low", "er"]
-        tokens = tokenizer(inputs=text, task='text-to-token')
+        tokens = tokenizer.map_text_to_token(text)
         self.assertListEqual(tokens, bpe_tokens)
 
         input_tokens = tokens + [tokenizer.unk_token]
         input_bpe_tokens = [13, 12, 17]
         self.assertListEqual(
-            tokenizer(inputs=input_tokens, task='token-to-id'),
+            tokenizer.map_token_to_id(input_tokens),
             input_bpe_tokens)
 
     def test_pickle(self):
-        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
-                                          self.special_tokens_map)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
         self.assertIsNotNone(tokenizer)
 
         text = u"Munich and Berlin are nice cities"
-        subwords = tokenizer(inputs=text, task='text-to-token')
+        subwords = tokenizer.map_text_to_token(text)
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             filename = os.path.join(tmpdirname, u"tokenizer.bin")
@@ -75,47 +75,45 @@ class RoBERTaTokenizerTest(unittest.TestCase):
             with open(filename, "rb") as f:
                 tokenizer_new = pickle.load(f)
 
-        subwords_loaded = tokenizer_new.tokenize(text)
+        subwords_loaded = tokenizer_new.map_text_to_token(text)
 
         self.assertListEqual(subwords, subwords_loaded)
 
     def test_save_load(self):
-        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
-                                          self.special_tokens_map)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
 
-        before_tokens = tokenizer(
-            inputs=u"He is very happy, UNwant\u00E9d,running",
-            task='text-to-id')
+        before_tokens = tokenizer.map_text_to_id(
+            u"He is very happy, UNwant\u00E9d,running")
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             tokenizer.save(tmpdirname)
             tokenizer = tokenizer.load(tmpdirname)
 
-        after_tokens = tokenizer(
-            inputs=u"He is very happy, UNwant\u00E9d,running",
-            task='text-to-id')
+        after_tokens = tokenizer.map_text_to_id(
+            u"He is very happy, UNwant\u00E9d,running")
         self.assertListEqual(before_tokens, after_tokens)
 
     def test_pretrained_model_list(self):
-        model_list_1 = list(RoBERTaTokenizer._MODEL2URL.keys())
-        model_list_2 = list(RoBERTaTokenizer._MAX_INPUT_SIZE.keys())
+        model_list_1 = list(GPT2Tokenizer._MODEL2URL.keys())
+        model_list_2 = list(GPT2Tokenizer._MAX_INPUT_SIZE.keys())
 
         self.assertListEqual(model_list_1, model_list_2)
 
     def test_encode_decode(self):
-        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
-                                          self.special_tokens_map)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
 
         input_text = u"lower newer"
         output_text = u"lower<unk>newer"
 
-        tokens = tokenizer(inputs=input_text, task='text-to-token')
-        ids = tokenizer(inputs=tokens, task='token-to-id')
-        ids_2 = tokenizer(inputs=input_text, task='text-to-id')
+        tokens = tokenizer.map_text_to_token(input_text)
+        ids = tokenizer.map_token_to_id(tokens)
+        ids_2 = tokenizer.map_text_to_id(input_text)
         self.assertListEqual(ids, ids_2)
 
-        tokens_2 = tokenizer(inputs=ids, task='id-to-token')
-        text_2 = tokenizer(inputs=ids, task='id-to-text')
+        tokens_2 = tokenizer.map_id_to_token(ids)
+        text_2 = tokenizer.map_id_to_text(ids)
 
         self.assertEqual(text_2, output_text)
 
@@ -123,8 +121,8 @@ class RoBERTaTokenizerTest(unittest.TestCase):
         self.assertIsInstance(text_2, str)
 
     def test_add_tokens(self):
-        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
-                                          self.special_tokens_map)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
 
         vocab_size = tokenizer.vocab_size
         all_size = len(tokenizer)
@@ -142,7 +140,7 @@ class RoBERTaTokenizerTest(unittest.TestCase):
         self.assertEqual(added_toks, len(new_toks))
         self.assertEqual(all_size_2, all_size + len(new_toks))
 
-        tokens = tokenizer.encode("aaaaabbbbbb low cccccccccdddddddd l")
+        tokens = tokenizer.map_text_to_id("aaaaabbbbbb low cccccccccdddddddd l")
         self.assertGreaterEqual(len(tokens), 4)
         self.assertGreater(tokens[0], tokenizer.vocab_size - 1)
         self.assertGreater(tokens[-2], tokenizer.vocab_size - 1)
@@ -158,7 +156,7 @@ class RoBERTaTokenizerTest(unittest.TestCase):
         self.assertEqual(added_toks_2, len(new_toks_2))
         self.assertEqual(all_size_3, all_size_2 + len(new_toks_2))
 
-        tokens = tokenizer.encode(
+        tokens = tokenizer.map_text_to_id(
             ">>>>|||<||<<|<< aaaaabbbbbb low cccccccccdddddddd "
             "<<<<<|||>|>>>>|> l")
 
@@ -168,9 +166,9 @@ class RoBERTaTokenizerTest(unittest.TestCase):
         self.assertGreater(tokens[-2], tokenizer.vocab_size - 1)
         self.assertGreater(tokens[-2], tokens[-3])
         self.assertEqual(tokens[0],
-                         tokenizer.convert_tokens_to_ids(tokenizer.eos_token))
+                         tokenizer.map_token_to_id(tokenizer.eos_token))
         self.assertEqual(tokens[-2],
-                         tokenizer.convert_tokens_to_ids(tokenizer.pad_token))
+                         tokenizer.map_token_to_id(tokenizer.pad_token))
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ import os
 import pickle
 import tempfile
 
-from texar.torch.modules.tokenizers.pretrained_bert_tokenizer import \
+from texar.torch.data.tokenizers.pretrained_bert_tokenizer import \
     BERTTokenizer
 from texar.torch.utils.test import pretrained_test
 
@@ -35,25 +35,24 @@ class BERTTokenizerTest(unittest.TestCase):
         for pretrained_model_name in BERTTokenizer.available_checkpoints():
             tokenizer = BERTTokenizer(
                 pretrained_model_name=pretrained_model_name)
-            _ = tokenizer(inputs=u"UNwant\u00E9d,running",
-                          task='text-to-token')
+            _ = tokenizer.map_text_to_token(u"UNwant\u00E9d,running")
 
     def test_tokenize(self):
         tokenizer = BERTTokenizer.load(self.vocab_file)
 
-        tokens = tokenizer(inputs=u"UNwant\u00E9d,running",
-                           task='text-to-token')
+        tokens = tokenizer.map_text_to_token(u"UNwant\u00E9d,running")
         self.assertListEqual(tokens,
                              ["un", "##want", "##ed", ",", "runn", "##ing"])
-        self.assertListEqual(tokenizer(inputs=tokens, task='token-to-id'),
-                             [7, 4, 5, 10, 8, 9])
+
+        ids = tokenizer.map_token_to_id(tokens)
+        self.assertListEqual(ids, [7, 4, 5, 10, 8, 9])
 
     def test_pickle(self):
         tokenizer = BERTTokenizer.load(self.vocab_file)
         self.assertIsNotNone(tokenizer)
 
         text = u"Munich and Berlin are nice cities"
-        subwords = tokenizer(inputs=text, task='text-to-token')
+        subwords = tokenizer.map_text_to_token(text)
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             filename = os.path.join(tmpdirname, u"tokenizer.bin")
@@ -62,24 +61,22 @@ class BERTTokenizerTest(unittest.TestCase):
             with open(filename, "rb") as f:
                 tokenizer_new = pickle.load(f)
 
-        subwords_loaded = tokenizer_new(inputs=text, task='text-to-token')
+        subwords_loaded = tokenizer_new.map_text_to_token(text)
 
         self.assertListEqual(subwords, subwords_loaded)
 
     def test_save_load(self):
         tokenizer = BERTTokenizer.load(self.vocab_file)
 
-        before_tokens = tokenizer(
-            inputs=u"He is very happy, UNwant\u00E9d,running",
-            task='text-to-id')
+        before_tokens = tokenizer.map_text_to_id(
+            u"He is very happy, UNwant\u00E9d,running")
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             tokenizer.save(tmpdirname)
             tokenizer = tokenizer.load(tmpdirname)
 
-        after_tokens = tokenizer(
-            inputs=u"He is very happy, UNwant\u00E9d,running",
-            task='text-to-id')
+        after_tokens = tokenizer.map_text_to_id(
+            u"He is very happy, UNwant\u00E9d,running")
         self.assertListEqual(before_tokens, after_tokens)
 
     def test_pretrained_model_list(self):
@@ -94,13 +91,13 @@ class BERTTokenizerTest(unittest.TestCase):
         input_text = u"UNwant\u00E9d,running"
         output_text = u"unwanted, running"
 
-        tokens = tokenizer(inputs=input_text, task='text-to-token')
-        ids = tokenizer(inputs=tokens, task='token-to-id')
-        ids_2 = tokenizer(inputs=input_text, task='text-to-id')
+        tokens = tokenizer.map_text_to_token(input_text)
+        ids = tokenizer.map_token_to_id(tokens)
+        ids_2 = tokenizer.map_text_to_id(input_text)
         self.assertListEqual(ids, ids_2)
 
-        tokens_2 = tokenizer(inputs=ids, task='id-to-token')
-        text_2 = tokenizer(inputs=ids, task='id-to-text')
+        tokens_2 = tokenizer.map_id_to_token(ids)
+        text_2 = tokenizer.map_id_to_text(ids)
 
         self.assertEqual(text_2, output_text)
 
@@ -126,7 +123,7 @@ class BERTTokenizerTest(unittest.TestCase):
         self.assertEqual(added_toks, len(new_toks))
         self.assertEqual(all_size_2, all_size + len(new_toks))
 
-        tokens = tokenizer.encode("aaaaabbbbbb low cccccccccdddddddd l")
+        tokens = tokenizer.map_text_to_id("aaaaabbbbbb low cccccccccdddddddd l")
         self.assertGreaterEqual(len(tokens), 4)
         self.assertGreater(tokens[0], tokenizer.vocab_size - 1)
         self.assertGreater(tokens[-2], tokenizer.vocab_size - 1)
@@ -142,7 +139,7 @@ class BERTTokenizerTest(unittest.TestCase):
         self.assertEqual(added_toks_2, len(new_toks_2))
         self.assertEqual(all_size_3, all_size_2 + len(new_toks_2))
 
-        tokens = tokenizer.encode(
+        tokens = tokenizer.map_text_to_id(
             ">>>>|||<||<<|<< aaaaabbbbbb low cccccccccdddddddd "
             "<<<<<|||>|>>>>|> l")
 
@@ -152,9 +149,9 @@ class BERTTokenizerTest(unittest.TestCase):
         self.assertGreater(tokens[-2], tokenizer.vocab_size - 1)
         self.assertGreater(tokens[-2], tokens[-3])
         self.assertEqual(tokens[0],
-                         tokenizer.convert_tokens_to_ids(tokenizer.eos_token))
+                         tokenizer.map_token_to_id(tokenizer.eos_token))
         self.assertEqual(tokens[-2],
-                         tokenizer.convert_tokens_to_ids(tokenizer.pad_token))
+                         tokenizer.map_token_to_id(tokenizer.pad_token))
 
 
 if __name__ == "__main__":

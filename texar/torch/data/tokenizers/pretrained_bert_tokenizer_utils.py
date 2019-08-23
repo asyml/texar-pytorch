@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utils of pre-trained BERT tokenizer.
+
+Code structure adapted from:
+    `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_bert.py`
 """
 
 from typing import Dict, List, Optional
@@ -43,13 +46,11 @@ class BasicTokenizer:
 
     Args:
         do_lower_case: Whether to lower case the input.
-        never_split: (`optional`) list of str
-            Kept for backward compatibility purposes.
-            Now implemented directly at the base class level
-            List of token not to split.
-        tokenize_chinese_chars: (`optional`) boolean (default True)
-            Whether to tokenize Chinese characters.
+        never_split: A list of tokens not to split.
+        tokenize_chinese_chars: Whether to tokenize Chinese characters.
             This should likely be deactivated for Japanese:
+            see:
+            `https://github.com/huggingface/pytorch-pretrained-BERT/issues/328`
     """
 
     def __init__(self, do_lower_case: bool = True,
@@ -63,21 +64,20 @@ class BasicTokenizer:
 
     def tokenize(self, text: str,
                  never_split: Optional[List[str]] = None) -> \
-            List[Optional[str]]:
-        r"""Basic Tokenization of a piece of text.
+            List[str]:
+        r"""Basic tokenization of a piece of text.
 
-        Split on "white spaces" only, for sub-word tokenization, see
+        Split on white spaces only, for sub-word tokenization, see
         WordPieceTokenizer.
 
         Args:
-            never_split: (`optional`) list of str
-                Kept for backward compatibility purposes.
-                Now implemented directly at the base class level
-                List of token not to split.
+            text: An input string.
+            never_split: A list of tokens not to split.
         """
         never_split = self.never_split + (never_split
                                           if never_split is not None else [])
         text = self._clean_text(text)
+
         # This was added on November 1st, 2018 for the multilingual and Chinese
         # models. This is also applied to the English models now, but it doesn't
         # matter since the English models were not trained on any Chinese data
@@ -86,10 +86,12 @@ class BasicTokenizer:
         # words in the English Wikipedia.).
         if self.tokenize_chinese_chars:
             text = self._tokenize_chinese_chars(text)
+        # see: https://github.com/google-research/bert/blob/master/
+        # tokenization.py#L201
+
         orig_tokens = whitespace_tokenize(text)
         split_tokens = []
         for token in orig_tokens:
-            assert token is not None
             if self.do_lower_case and token not in never_split:
                 token = token.lower()
                 token = self._run_strip_accents(token)
@@ -100,7 +102,12 @@ class BasicTokenizer:
 
     @classmethod
     def _run_strip_accents(cls, text: str) -> str:
-        r"""Strips accents from a piece of text."""
+        r"""Strips accents from a piece of text.
+
+        Example:
+            accented_string = 'Málaga'
+            _run_strip_accents(accented_string)  # 'Malaga'
+        """
         text = unicodedata.normalize("NFD", text)
         output = []
         for char in text:
@@ -114,7 +121,14 @@ class BasicTokenizer:
     def _run_split_on_punc(cls, text: str,
                            never_split: Optional[List[str]] = None) -> \
             List[str]:
-        r"""Splits punctuation on a piece of text."""
+        r"""Splits punctuation on a piece of text.
+
+        Example:
+            text = 'Texar-PyTorch is an open-source toolkit based on PyTorch.'
+            _run_split_on_punc(text)
+            # ['Texar', '-', 'PyTorch is an open', '-',
+            # 'source toolkit based on PyTorch', '.']
+        """
         if never_split is not None and text in never_split:
             return [text]
         chars = list(text)
@@ -136,7 +150,13 @@ class BasicTokenizer:
         return ["".join(x) for x in output]
 
     def _tokenize_chinese_chars(self, text: str) -> str:
-        r"""Adds whitespace around any CJK character."""
+        r"""Adds whitespace around any CJK character.
+
+        Example:
+            text = '今天天气不错'
+            _tokenize_chinese_chars(text)
+            # ' 今  天  天  气  不  错 '
+        """
         output = []
         for char in text:
             cp = ord(char)
@@ -175,6 +195,11 @@ class BasicTokenizer:
     @classmethod
     def _clean_text(cls, text: str) -> str:
         r"""Performs invalid character removal and whitespace cleanup on text.
+
+        Example:
+            text = 'Texar-PyTorch\tis an open-source\ntoolkit based on PyTorch.'
+            _clean_text(text)
+            # 'Texar-PyTorch is an open-source toolkit based on PyTorch.'
         """
         output = []
         for char in text:
@@ -250,13 +275,13 @@ class WordpieceTokenizer:
         return output_tokens
 
 
-def whitespace_tokenize(text: str) -> List[Optional[str]]:
+def whitespace_tokenize(text: str) -> List[str]:
     r"""Runs basic whitespace cleaning and splitting on a piece of text."""
     text = text.strip()
     if not text:
         return []
     tokens: List[str] = text.split()
-    return tokens  # type: ignore
+    return tokens
 
 
 def _is_whitespace(char: str) -> bool:

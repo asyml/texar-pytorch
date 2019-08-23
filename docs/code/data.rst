@@ -4,6 +4,15 @@
 Data
 *******
 
+Tokenizer
+==========
+
+:hidden:`PretrainedTokenizerBase`
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.data.PretrainedTokenizerBase
+    :members:
+
+
 Vocabulary
 ==========
 

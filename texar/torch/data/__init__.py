@@ -15,6 +15,7 @@
 Modules of Texar library data.
 """
 from texar.torch.data.data import *
+from texar.torch.data.tokenizers import *
 from texar.torch.data.data_utils import *
 from texar.torch.data.embedding import *
 from texar.torch.data.vocabulary import *

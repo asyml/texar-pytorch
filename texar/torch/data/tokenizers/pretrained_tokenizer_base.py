@@ -13,6 +13,9 @@
 # limitations under the License.
 """
 Base class for Pre-trained tokenizers.
+
+The code structure adapted from:
+    `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_utils.py`
 """
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -46,8 +49,6 @@ class PretrainedTokenizerBase(PretrainedMixin):
     the various underlying dictionary structures (`BPE`, `sentencepiece` ...).
     """
 
-    _MODEL_NAME: str
-    _MODEL2URL: Dict[str, Any]
     _MAX_INPUT_SIZE: Dict[str, Optional[int]]
     _VOCAB_FILE_NAMES: Dict[str, str]
     _SPECIAL_TOKENS_ATTRIBUTES = ["bos_token", "eos_token", "unk_token",
@@ -82,9 +83,19 @@ class PretrainedTokenizerBase(PretrainedMixin):
                 setattr(self, key, value)
 
     @classmethod
-    def load(cls, pretrained_model_path: str, hparams=None):
-        r"""Instantiate a pre-trained tokenizer from pre-trained vocabulary
+    def load(cls, pretrained_model_path: str, configs: Optional[Dict] = None):
+        r"""Instantiate a pre-trained tokenizer from the pre-trained vocabulary
         files.
+
+        Args:
+            pretrained_model_path: The path to a vocabulary file or a folder
+                that contains the saved pre-trained tokenizer files.
+            configs: Tokenizer configurations. You can overwrite the original
+                tokenizer configurations saved in the configuration file
+                by this dictionary.
+
+        Returns:
+            A pre-trained tokenizer instance.
         """
         vocab_files = {}
         # Look for the tokenizer main vocabulary files
@@ -153,8 +164,8 @@ class PretrainedTokenizerBase(PretrainedMixin):
                 if key not in kwargs:
                     kwargs[key] = value
 
-        if hparams is not None:
-            for key, value in hparams.items():
+        if configs is not None:
+            for key, value in configs.items():
                 kwargs[key] = value
 
         tokenizer = cls(hparams=kwargs)
@@ -170,9 +181,19 @@ class PretrainedTokenizerBase(PretrainedMixin):
         return tokenizer
 
     def save(self, save_directory: str) -> Tuple[str]:
-        r"""Save the tokenizer vocabulary files (with added tokens) and the
-        `special-tokens-to-class-attributes-mapping` to a directory, so that it
-        can be re-loaded using the :meth:`~from_pretrained`.
+        r"""Save the tokenizer vocabulary files (with added tokens), tokenizer
+        configuration file and a dictionary mapping special token class
+        attributes (:attr:`cls_token`, :attr:`unk_token`, ...) to their values
+        (`<unk>`, `<cls>`, ...) to a directory, so that it can be re-loaded
+        using the :meth:`~load`.
+
+        Args:
+            save_directory: The path to a folder in which the pre-trained
+                tokenizer files will be saved.
+
+        Return:
+            The paths to the vocabulary file, added token file, special token
+            mapping file, and the configuration file.
         """
         if not os.path.isdir(save_directory):
             raise ValueError("Saving directory ({}) should be a "
@@ -201,16 +222,16 @@ class PretrainedTokenizerBase(PretrainedMixin):
                 out_str = u"{}"
             f.write(out_str)
 
-        vocab_files = self.save_vocabulary(save_directory)
+        vocab_files = self.save_vocab(save_directory)
         return vocab_files + (special_tokens_map_file, added_tokens_file,
                               config_file)
 
-    def save_vocabulary(self, save_directory):
+    def save_vocab(self, save_directory):
         r"""Save the tokenizer vocabulary to a directory. This method doesn't
-        save added tokens and special token mappings.
+        save added tokens, special token mappings, and the configuration file.
 
-        Please use :meth:`~save_pretrained` to save the full tokenizer state so
-        that it can be reloaded using :meth:`~from_pretrained`.
+        Please use :meth:`~save` to save the full tokenizer state so
+        that it can be reloaded using :meth:`~load`.
         """
         raise NotImplementedError
 
@@ -223,8 +244,9 @@ class PretrainedTokenizerBase(PretrainedMixin):
 
     def add_tokens(self, new_tokens: List[Optional[str]]) -> int:
         r"""Add a list of new tokens to the tokenizer class. If the new tokens
-        are not in the vocabulary, they are added to the `added_tokens_encoder`
-        with indices starting from the last index of the current vocabulary.
+        are not in the vocabulary, they are added to the
+        :attr:`added_tokens_encoder` with indices starting from the last index
+        of the current vocabulary.
 
         Args:
             new_tokens: A list of new tokens.
@@ -241,8 +263,8 @@ class PretrainedTokenizerBase(PretrainedMixin):
         for token in new_tokens:
             assert isinstance(token, str)
             if token != self.unk_token and \
-                    (self.convert_tokens_to_ids(token) ==
-                     self.convert_tokens_to_ids(self.unk_token)):
+                    (self.map_token_to_id(token) ==
+                     self.map_token_to_id(self.unk_token)):
                 to_add_tokens.append(token)
 
         added_tok_encoder = dict((tok, len(self) + i) for i, tok in
@@ -253,16 +275,16 @@ class PretrainedTokenizerBase(PretrainedMixin):
 
         return len(to_add_tokens)
 
-    def add_special_tokens(self,
-                           special_tokens_dict: Dict[str, str]) -> \
-            int:
-        r"""Add a dictionary of special tokens (eos, pad, cls...) to the
-        encoder and link them to class attributes. If the special tokens are
-        not in the vocabulary, they are added to it and indexed starting from
-        the last index of the current vocabulary.
+    def add_special_tokens(self, special_tokens_dict: Dict[str, str]) -> int:
+        r"""Add a dictionary of special tokens to the encoder and link them to
+        class attributes. If the special tokens are not in the vocabulary, they
+        are added to it and indexed starting from the last index of the
+        current vocabulary.
 
         Args:
-            special_tokens_dict: A dictionary of special tokens.
+            special_tokens_dict: A dictionary mapping special token class
+                attributes (:attr:`cls_token`, :attr:`unk_token`, ...) to their
+                values (`<unk>`, `<cls>`, ...).
 
         Returns:
             Number of tokens added to the vocabulary which can be used to
@@ -286,18 +308,24 @@ class PretrainedTokenizerBase(PretrainedMixin):
 
         return added_tokens
 
-    def tokenize(self, text: Optional[str], **kwargs) -> List[Optional[str]]:
-        r"""Converts a string in a sequence of tokens (string), using the
+    def map_text_to_token(self, text: Optional[str],
+                          **kwargs) -> List[str]:
+        r"""Maps a string to a sequence of tokens (string), using the
         tokenizer. Split in words for word-based vocabulary or sub-words for
         sub-word-based vocabularies (BPE/SentencePieces/WordPieces).
+        This function also takes care of the added tokens.
 
-        Take care of added tokens.
+        Args:
+            text: A input string.
+
+        Return:
+            A list of tokens.
         """
         def split_on_tokens(tok_list, string):
             if not string:
                 return []
             if not tok_list:
-                return self._tokenize(string, **kwargs)
+                return self._map_text_to_token(string, **kwargs)
             tok = tok_list[0]
             split_text = string.split(tok)
             return sum((split_on_tokens(tok_list[1:], sub_text.strip()) + [tok]
@@ -308,25 +336,30 @@ class PretrainedTokenizerBase(PretrainedMixin):
         tokenized_text = split_on_tokens(added_tokens, text)
         return tokenized_text
 
-    def _tokenize(self, text: str, **kwargs) -> List[str]:
-        r"""Converts a string in a sequence of tokens (string), using the
+    def _map_text_to_token(self, text: str, **kwargs) -> List[str]:
+        r"""Maps a string to a sequence of tokens (string), using the
         tokenizer. Split in words for word-based vocabulary or sub-words for
         sub-word-based vocabularies (BPE/SentencePieces/WordPieces).
-
-        Don't take care of added tokens.
+        This function does not take care of the added tokens.
         """
         raise NotImplementedError
 
-    def convert_tokens_to_ids(self, tokens: MaybeList[str]) -> MaybeList[int]:
-        r"""Converts a single token or a sequence of tokens (str/unicode) in
-        a integer id (resp.) a sequence of ids, using the vocabulary.
+    def map_token_to_id(self, tokens: MaybeList[str]) -> MaybeList[int]:
+        r"""Maps a single token or a sequence of tokens to a integer id
+        (resp.) a sequence of ids, using the vocabulary.
+
+        Args:
+            tokens: A single token or a list of tokens.
+
+        Returns:
+            A single token id or a list of token ids.
         """
         if isinstance(tokens, str):
-            return self._convert_token_to_id_with_added_voc(tokens)
+            return self._map_token_to_id_with_added_voc(tokens)
 
         ids = []
         for token in tokens:
-            ids.append(self._convert_token_to_id_with_added_voc(token))
+            ids.append(self._map_token_to_id_with_added_voc(token))
         if len(ids) > self.max_len:
             raise ValueError(
                 "Token indices sequence length is longer than the specified "
@@ -335,39 +368,45 @@ class PretrainedTokenizerBase(PretrainedMixin):
                 "errors".format(len(ids), self.max_len))
         return ids
 
-    def _convert_token_to_id_with_added_voc(self, token: str) -> int:
+    def _map_token_to_id_with_added_voc(self, token: str) -> int:
         if token in self.added_tokens_encoder:
             return self.added_tokens_encoder[token]
-        return self._convert_token_to_id(token)
+        return self._map_token_to_id(token)
 
-    def _convert_token_to_id(self, token: str) -> int:
+    def _map_token_to_id(self, token: str) -> int:
         raise NotImplementedError
 
-    def encode(self, text: str) -> MaybeList[int]:
-        r"""Converts a string in a sequence of ids (integer), using the
+    def map_text_to_id(self, text: str) -> MaybeList[int]:
+        r"""Maps a string to a sequence of ids (integer), using the
         tokenizer and vocabulary. Same as
-        `self.convert_tokens_to_ids(self.tokenize(text))`.
-        """
-        return self.convert_tokens_to_ids(self.tokenize(text))  # type: ignore
-
-    def convert_ids_to_tokens(self,
-                              token_ids: MaybeList[int],
-                              skip_special_tokens: bool = False) -> \
-            MaybeList[str]:
-        r"""Converts a single index or a sequence of indices (integers) in a
-        token (resp.) a sequence of tokens (str/unicode), using the vocabulary
-        and added tokens.
+        `self.map_token_to_id(self.map_text_to_token(text))`.
 
         Args:
-            token_ids: A list of token ids.
-            skip_special_tokens: Don't decode special tokens
-                (`self.all_special_tokens`). Default: False
+            text: A input string.
+
+        Returns:
+            A single token id or a list of token ids.
+        """
+        return self.map_token_to_id(self.map_text_to_token(text))
+
+    def map_id_to_token(self,
+                        token_ids: MaybeList[int],
+                        skip_special_tokens: bool = False) -> MaybeList[str]:
+        r"""Maps a single id or a sequence of ids to a token (resp.) a
+        sequence of tokens, using the vocabulary and added tokens.
+
+        Args:
+            token_ids: A single token id or a list of token ids.
+            skip_special_tokens: Whether to skip the special tokens.
+
+        Returns:
+            A single token or a list of tokens.
         """
         if isinstance(token_ids, int):
             if token_ids in self.added_tokens_decoder:
                 return self.added_tokens_decoder[token_ids]
             else:
-                return self._convert_id_to_token(token_ids)
+                return self._map_id_to_token(token_ids)
         tokens = []
         for index in token_ids:
             if index in self.all_special_ids and skip_special_tokens:
@@ -375,37 +414,45 @@ class PretrainedTokenizerBase(PretrainedMixin):
             if index in self.added_tokens_decoder:
                 tokens.append(self.added_tokens_decoder[index])
             else:
-                tokens.append(self._convert_id_to_token(index))
+                tokens.append(self._map_id_to_token(index))
         return tokens
 
-    def _convert_id_to_token(self, token_id: int) -> str:
+    def _map_id_to_token(self, token_id: int) -> str:
         raise NotImplementedError
 
-    def convert_tokens_to_string(self, tokens: List[str]) -> str:
-        r"""Converts a sequence of tokens (string) in a single string.
+    def map_token_to_text(self, tokens: List[str]) -> str:
+        r"""Maps a sequence of tokens (string) in a single string.
         The most simple way to do it is `' '.join(tokens)`, but we often want
         to remove sub-word tokenization artifacts at the same time.
         """
         raise NotImplementedError
 
-    def decode(self, token_ids: List[int],
-               skip_special_tokens: bool = False,
-               clean_up_tokenization_spaces: bool = True) -> str:
-        r"""Converts a sequence of ids (integer) in a string, using the
+    def map_id_to_text(self, token_ids: List[int],
+                       skip_special_tokens: bool = False,
+                       clean_up_tokenization_spaces: bool = True) -> str:
+        r"""Maps a sequence of ids (integer) to a string, using the
         tokenizer and vocabulary with options to remove special tokens and
         clean up tokenization spaces.
+
+        Args:
+            token_ids: A list of token ids.
+            skip_special_tokens: Whether to skip the special tokens.
+            clean_up_tokenization_spaces: Whether to clean up a list of simple
+                English tokenization artifacts like spaces before punctuations
+                and abbreviated forms.
         """
-        filtered_tokens = self.convert_ids_to_tokens(
+        filtered_tokens = self.map_id_to_token(
             token_ids, skip_special_tokens=skip_special_tokens)
-        text = self.convert_tokens_to_string(filtered_tokens)  # type: ignore
+        text = self.map_token_to_text(filtered_tokens)  # type: ignore
         if clean_up_tokenization_spaces:
             text = self.clean_up_tokenization(text)
         return text
 
     @property
     def special_tokens_map(self) -> Dict[str, str]:
-        r"""A dictionary mapping special token class attribute
-        (`cls_token`, `unk_token` ...) to their values (`<unk>`, `<cls>`, ...)
+        r"""A dictionary mapping special token class attributes
+        (:attr:`cls_token`, :attr:`unk_token`, ...) to their values
+        (`<unk>`, `<cls>`, ...)
         """
         set_attr = {}
         for attr in self._SPECIAL_TOKENS_ATTRIBUTES:
@@ -417,7 +464,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
     @property
     def all_special_tokens(self) -> List[str]:
         r"""List all the special tokens (`<unk>`, `<cls>`, ...) mapped to class
-        attributes (`cls_token`, `unk_token`, ...).
+        attributes (:attr:`cls_token`, :attr:`unk_token`, ...).
         """
         all_toks: List[str] = []
         set_attr = self.special_tokens_map
@@ -432,11 +479,12 @@ class PretrainedTokenizerBase(PretrainedMixin):
     def all_special_ids(self) -> List[int]:
         r"""List the vocabulary indices of the special tokens
         (`<unk>`, `<cls>`, ...) mapped to class attributes
-        (`cls_token`, `unk_token` ...).
+        (:attr:`cls_token`, :attr:`unk_token`, ...).
         """
         all_toks = self.all_special_tokens
-        all_ids = list(self.convert_tokens_to_ids(t) for t in all_toks)
-        return all_ids  # type: ignore
+        all_ids: List[int] = list(
+            self.map_token_to_id(t) for t in all_toks)  # type: ignore
+        return all_ids
 
     @staticmethod
     def clean_up_tokenization(out_string: str) -> str:
