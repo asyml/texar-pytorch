@@ -34,6 +34,8 @@ from torch import nn
 from torch.optim.lr_scheduler import _LRScheduler as LRScheduler
 from torch.optim.optimizer import Optimizer
 
+from tensorboardX import SummaryWriter
+
 from texar.torch.data.data.data_base import DataBase
 from texar.torch.data.data.data_iterators import BatchingStrategy, DataIterator
 from texar.torch.data.data.dataset_utils import Batch
@@ -714,6 +716,9 @@ class Executor:
                  test_data: OptionalDict[DataBase] = None,
                  batching_strategy: Optional[BatchingStrategy] = None,
                  device: Optional[torch.device] = None,
+                 # tbX logging
+                 tbx_logging_dir: Optional[str] = None,
+                 tbx_log_every: Optional[Condition] = None,
                  # Checkpoint
                  checkpoint_dir: Optional[str] = None,
                  max_to_keep: Optional[int] = None,
@@ -760,7 +765,6 @@ class Executor:
         except ImportError:
             self._tty_ncols = None
 
-        # TODO: Add support for Tensorboard.
         # Meta variables
         self._should_terminate = False  # .terminate()
         self._should_remove_current_action = False  # .remove_action()
@@ -900,6 +904,12 @@ class Executor:
                for stage in show_live_progress):
             raise ValueError("Invalid value for `show_live_progress`")
         self._register_logging_actions(show_live_progress)
+
+        # tbx logging
+        if tbx_logging_dir is not None:
+            self.summary_writer = SummaryWriter(logdir=tbx_logging_dir)
+            self._tbx_logging_conditions = utils.to_list(tbx_log_every)
+            self._register_tbx_logging_actions()
 
         # Register other events and actions.
         for cond in self._valid_conditions:
@@ -1483,6 +1493,37 @@ class Executor:
             self.test_log_format, self.test_progress_log_format,
             Event.TestingIteration, Event.Testing)
 
+    def _register_tbx_logging_actions(self):
+
+        # Register logging actions.
+        Points = Sequence[Union[Condition, Event]]
+        LogFn = Callable[['Executor'], str]
+
+        def _register(points: Points, fn: ActionFn):
+            for cond_or_event in points:
+                if isinstance(cond_or_event, Condition):
+                    self._register_action(cond_or_event, fn)
+                else:
+                    self._register_hook((cond_or_event, True), fn)
+
+        def tbx_train_log_fn(executor: 'Executor'):
+            train_metrics = executor.train_metrics
+
+            # log the metrics here
+            for key, value in train_metrics.items():
+                self.summary_writer.add_scalar(
+                    f"train/{key}", value.value(), executor.status["iteration"])
+
+        def tbx_eval_log_fn(executor: 'Executor'):
+            valid_metrics = executor.valid_metrics
+
+            for key, value in valid_metrics.items():
+                self.summary_writer.add_scalar(
+                    f"eval/{key}", value.value(), executor.status["epoch"])
+
+        _register(self._tbx_logging_conditions, tbx_train_log_fn)
+        _register([Event.Epoch], tbx_eval_log_fn)
+
     def _write_log(self, log_str: str,
                    skip_tty: bool = False, skip_non_tty: bool = False,
                    newline: bool = True, clear_line: bool = False):
@@ -1656,6 +1697,9 @@ class Executor:
     def _close_files(self):
         for file in self._opened_files:
             file.close()
+
+        if hasattr(self, 'summary_writer'):
+            self.summary_writer.close()
 
     def _fire_event(self, event: Event, end: bool):
         r"""Signal the beginning or end of an event. Internally, this is where
