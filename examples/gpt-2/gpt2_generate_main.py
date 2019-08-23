@@ -27,7 +27,7 @@ parser.add_argument(
     '--checkpoint', type=str, default=None,
     help="Model checkpoint to load model weights from.")
 parser.add_argument(
-    "--pretrained-model-name", type=str, default="117M",
+    "--pretrained-model-name", type=str, default="gpt2-small",
     choices=tx.modules.GPT2Decoder.available_checkpoints(),
     help="Name of the pre-trained checkpoint to load.")
 parser.add_argument(
