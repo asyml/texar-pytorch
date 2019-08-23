@@ -18,6 +18,7 @@ Utils of GPT2 Modules.
 import json
 import os
 import sys
+import warnings
 from abc import ABC
 from typing import Any, Dict
 
@@ -67,11 +68,11 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
     class MyDict(dict):
         def __contains__(self, key):
             if key == '117M':
-                raise UserWarning("Pre-trained model name '117M' is "
-                                  "deprecated, use 'gpt2-small' instead.")
+                warnings.warn("Pre-trained model name '117M' is deprecated, "
+                              "use 'gpt2-small' instead.", UserWarning)
             elif key == '345M':
-                raise UserWarning("Pre-trained model name '345M' is "
-                                  "deprecated, use 'gpt2-medium' instead.")
+                warnings.warn("Pre-trained model name '345M' is deprecated, "
+                              "use 'gpt2-medium' instead.", UserWarning)
             else:
                 return super().__contains__(key)
     _MODEL2URL = MyDict(_MODEL2URL)  # type: ignore
