@@ -70,11 +70,18 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
             if key == '117M':
                 warnings.warn("Pre-trained model name '117M' is deprecated, "
                               "use 'gpt2-small' instead.", UserWarning)
+                return True
             elif key == '345M':
                 warnings.warn("Pre-trained model name '345M' is deprecated, "
                               "use 'gpt2-medium' instead.", UserWarning)
+                return True
             else:
                 return super().__contains__(key)
+    _DEPRECATED_MODEL2URL = {
+        '117M': [_GPT2_PATH + f"124M/{file}" for file in _CHECKPOINT_FILES],
+        '345M': [_GPT2_PATH + f"355M/{file}" for file in _CHECKPOINT_FILES],
+    }
+    _MODEL2URL.update(_DEPRECATED_MODEL2URL)
     _MODEL2URL = MyDict(_MODEL2URL)  # type: ignore
 
     @classmethod
