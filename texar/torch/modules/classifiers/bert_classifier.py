@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-BERT classifiers.
+BERT classifier.
 """
 from typing import Optional, Tuple
 
@@ -23,7 +23,7 @@ from torch.nn import functional as F
 from texar.torch.core.layers import get_initializer
 from texar.torch.hyperparams import HParams
 from texar.torch.modules.classifiers.classifier_base import ClassifierBase
-from texar.torch.modules.encoders.bert_encoders import BERTEncoder
+from texar.torch.modules.encoders.bert_encoder import BERTEncoder
 from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
 from texar.torch.utils.utils import dict_fetch
 
@@ -47,8 +47,7 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
         pretrained_model_name (optional): a `str`, the name
             of pre-trained model (e.g., ``bert-base-uncased``). Please refer to
             :class:`~texar.torch.modules.PretrainedBERTMixin` for
-            all supported models (including the standard BERT models and
-            variants like RoBERTa).
+            all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
@@ -60,6 +59,7 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
 
     .. document private functions
     """
+    _ENCODER_CLASS = BERTEncoder
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
@@ -69,11 +69,13 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
         super().__init__(hparams=hparams)
 
         # Create the underlying encoder
-        encoder_hparams = dict_fetch(hparams, BERTEncoder.default_hparams())
+        encoder_hparams = dict_fetch(hparams,
+                                     self._ENCODER_CLASS.default_hparams())
 
-        self._encoder = BERTEncoder(pretrained_model_name=pretrained_model_name,
-                                    cache_dir=cache_dir,
-                                    hparams=encoder_hparams)
+        self._encoder = self._ENCODER_CLASS(
+            pretrained_model_name=pretrained_model_name,
+            cache_dir=cache_dir,
+            hparams=encoder_hparams)
 
         # Create a dropout layer
         self._dropout_layer = nn.Dropout(self._hparams.dropout)

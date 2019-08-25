@@ -64,6 +64,11 @@ Encoders
 .. autoclass:: texar.torch.modules.BERTEncoder
     :members:
 
+:hidden:`RoBERTaEncoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.RoBERTaEncoder
+    :members:
+
 :hidden:`GPT2Encoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.GPT2Encoder
@@ -219,6 +224,11 @@ Classifiers
 .. autoclass:: texar.torch.modules.BERTClassifier
     :members:
 
+:hidden:`RoBERTaClassifier`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.RoBERTaClassifier
+    :members:
+
 :hidden:`GPT2Classifier`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.GPT2Classifier
@@ -268,6 +278,11 @@ Pre-trained
 :hidden:`PretrainedBERTMixin`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.PretrainedBERTMixin
+    :members:
+
+:hidden:`PretrainedRoBERTaMixin`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.PretrainedRoBERTaMixin
     :members:
 
 :hidden:`PretrainedGPT2Mixin`

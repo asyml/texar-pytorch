@@ -45,7 +45,7 @@ class GPT2Classifier(ClassifierBase, PretrainedGPT2Mixin):
 
     Args:
         pretrained_model_name (optional): a `str`, the name
-            of pre-trained model (e.g., ``117M``). Please refer to
+            of pre-trained model (e.g., ``gpt2-small``). Please refer to
             :class:`~texar.torch.modules.PretrainedGPT2Mixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.

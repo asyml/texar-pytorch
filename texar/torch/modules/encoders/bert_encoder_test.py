@@ -6,7 +6,7 @@ import unittest
 
 import torch
 
-from texar.torch.modules.encoders.bert_encoders import BERTEncoder
+from texar.torch.modules.encoders.bert_encoder import BERTEncoder
 from texar.torch.utils.test import pretrained_test
 
 
