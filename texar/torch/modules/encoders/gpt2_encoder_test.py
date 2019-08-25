@@ -31,16 +31,16 @@ class GPT2EncoderTest(unittest.TestCase):
         """
         # case 1: set "pretrained_mode_name" by constructor argument
         hparams = {
-            "pretrained_model_name": "345M",
+            "pretrained_model_name": "gpt2-medium",
         }
-        encoder = GPT2Encoder(pretrained_model_name="117M",
+        encoder = GPT2Encoder(pretrained_model_name="gpt2-small",
                               hparams=hparams)
         self.assertEqual(encoder.hparams.num_blocks, 12)
         _ = encoder(self.inputs)
 
         # case 2: set "pretrained_mode_name" by hparams
         hparams = {
-            "pretrained_model_name": "117M",
+            "pretrained_model_name": "gpt2-small",
             "num_blocks": 6,
         }
         encoder = GPT2Encoder(hparams=hparams)
@@ -70,17 +70,25 @@ class GPT2EncoderTest(unittest.TestCase):
         def get_variable_num(n_layers: int) -> int:
             return 1 + 1 + n_layers * 16 + 2
 
-        # case 1: GPT2 117M
+        # case 1: GPT2 small
         encoder = GPT2Encoder()
         self.assertEqual(len(encoder.trainable_variables), get_variable_num(12))
         _ = encoder(self.inputs)
 
-        # case 2: GPT2 345M
+        # case 2: GPT2 medium
         hparams = {
-            "pretrained_model_name": "345M",
+            "pretrained_model_name": "gpt2-medium",
         }
         encoder = GPT2Encoder(hparams=hparams)
         self.assertEqual(len(encoder.trainable_variables), get_variable_num(24))
+        _ = encoder(self.inputs)
+
+        # case 2: GPT2 large
+        hparams = {
+            "pretrained_model_name": "gpt2-large",
+        }
+        encoder = GPT2Encoder(hparams=hparams)
+        self.assertEqual(len(encoder.trainable_variables), get_variable_num(36))
         _ = encoder(self.inputs)
 
         # case 3: self-designed GPT2
@@ -95,7 +103,7 @@ class GPT2EncoderTest(unittest.TestCase):
     def test_encode(self):
         r"""Tests encoding.
         """
-        # case 1: GPT2 117M
+        # case 1: GPT2 small
         hparams = {
             "pretrained_model_name": None,
         }
