@@ -54,9 +54,16 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
     """
 
     _MAX_INPUT_SIZE = {
+        'gpt2-small': 1024,
+        'gpt2-medium': 1024,
+        'gpt2-large': 1024,
+    }
+    _DEPRECATED_MAX_INPUT_SIZE = {
         '117M': 1024,
         '345M': 1024,
     }
+    _MAX_INPUT_SIZE.update(_DEPRECATED_MAX_INPUT_SIZE)
+
     _VOCAB_FILE_NAMES = {
         'vocab_file': 'encoder.json',
         'merges_file': 'vocab.bpe',
