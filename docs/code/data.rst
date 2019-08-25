@@ -8,10 +8,29 @@ Tokenizer
 ==========
 
 :hidden:`PretrainedTokenizerBase`
-~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.data.PretrainedTokenizerBase
     :members:
 
+:hidden:`BERTTokenizer`
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.data.BERTTokenizer
+    :members:
+
+:hidden:`GPT2Tokenizer`
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.data.GPT2Tokenizer
+    :members:
+
+:hidden:`RoBERTaTokenizer`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.data.RoBERTaTokenizer
+    :members:
+
+:hidden:`XLNetTokenizer`
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.data.XLNetTokenizer
+    :members:
 
 Vocabulary
 ==========

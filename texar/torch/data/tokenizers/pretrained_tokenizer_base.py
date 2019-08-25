@@ -41,12 +41,14 @@ class PretrainedTokenizerBase(PretrainedMixin):
     the vocabulary.
 
     Derived class can set up a few special tokens to be used in common scripts
-    and internals: `bos_token`, `eos_token`, `unk_token`, `sep_token`,
-    `pad_token`, `cls_token`, `mask_token`, and `additional_special_tokens`.
+    and internals: :attr:`bos_token`, :attr:`eos_token`, :attr:`unk_token`,
+    :attr:`sep_token`, :attr:`pad_token`, :attr:`cls_token`,
+    :attr:`mask_token`, and :attr:`additional_special_tokens`.
 
-    We defined an `added_tokens_encoder` to add new tokens to the vocabulary
-    without having to handle the specific vocabulary augmentation methods of
-    the various underlying dictionary structures (`BPE`, `sentencepiece` ...).
+    We defined an :attr:`added_tokens_encoder` to add new tokens to the
+    vocabulary without having to handle the specific vocabulary augmentation
+    methods of the various underlying dictionary structures (`BPE`,
+    `sentencepiece` ...).
     """
 
     _MAX_INPUT_SIZE: Dict[str, Optional[int]]
@@ -227,7 +229,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
                               config_file)
 
     def save_vocab(self, save_directory):
-        r"""Save the tokenizer vocabulary to a directory. This method doesn't
+        r"""Save the tokenizer vocabulary to a directory. This method does not
         save added tokens, special token mappings, and the configuration file.
 
         Please use :meth:`~save` to save the full tokenizer state so
@@ -312,7 +314,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
                           **kwargs) -> List[str]:
         r"""Maps a string to a sequence of tokens (string), using the
         tokenizer. Split in words for word-based vocabulary or sub-words for
-        sub-word-based vocabularies (BPE/SentencePieces/WordPieces).
+        sub-word-based vocabularies (`BPE`/`SentencePiece`/`WordPiece`).
         This function also takes care of the added tokens.
 
         Args:
@@ -339,7 +341,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
     def _map_text_to_token(self, text: str, **kwargs) -> List[str]:
         r"""Maps a string to a sequence of tokens (string), using the
         tokenizer. Split in words for word-based vocabulary or sub-words for
-        sub-word-based vocabularies (BPE/SentencePieces/WordPieces).
+        sub-word-based vocabularies (`BPE`/`SentencePiece`/`WordPiece`).
         This function does not take care of the added tokens.
         """
         raise NotImplementedError
@@ -422,8 +424,8 @@ class PretrainedTokenizerBase(PretrainedMixin):
 
     def map_token_to_text(self, tokens: List[str]) -> str:
         r"""Maps a sequence of tokens (string) in a single string.
-        The most simple way to do it is `' '.join(tokens)`, but we often want
-        to remove sub-word tokenization artifacts at the same time.
+        The most simple way to do it is :python:`' '.join(tokens)`, but we
+        often want to remove sub-word tokenization artifacts at the same time.
         """
         raise NotImplementedError
 

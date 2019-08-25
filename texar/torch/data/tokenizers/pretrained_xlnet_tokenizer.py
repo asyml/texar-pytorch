@@ -42,9 +42,9 @@ class XLNetTokenizer(PretrainedXLNetMixin, PretrainedTokenizerBase):
     Args:
         pretrained_model_name (optional): a `str`, the name of
             pre-trained model (e.g., `xlnet-base-uncased`). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedXLNetMixin` for
+            :class:`~texar.torch.modules.PretrainedXLNetMixin` for
             all supported models.
-            If None, the model name in :attr:hparams is used.
+            If None, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
             a default directory (user's home directory) will be used.
@@ -254,7 +254,7 @@ class XLNetTokenizer(PretrainedXLNetMixin, PretrainedTokenizerBase):
         `"mask_token"`: str
             Masking token.
 
-        `"additional_special_tokens"`: list[str]
+        `"additional_special_tokens"`: list
             A list of additional special tokens.
 
         `"do_lower_case"`: bool
