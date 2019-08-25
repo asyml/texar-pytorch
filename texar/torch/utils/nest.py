@@ -31,22 +31,25 @@ def is_sequence(seq: Any) -> bool:
 def flatten(structure: NestedStructure) -> List[Any]:
     r"""Returns a flat list from a given nested structure.
     If nest is not a sequence, tuple, or dict, then returns a single-element
-    list:[nest].
+    `list:[nest]`.
     In the case of dict instances, the sequence consists of the values,
     sorted by key to ensure deterministic behavior. This is true also for
-    OrderedDict instances: their sequence order is ignored, the sorting order
+    `OrderedDict` instances: their sequence order is ignored, the sorting order
     of keys is used instead. The same convention is followed in
-    pack_sequence_as. This correctly repacks dicts and OrderedDicts after
-    they have been flattened, and also allows flattening an OrderedDict
-    and then repacking it back using a corresponding plain dict,
-    or vice-versa. Dictionaries with non-sortable keys cannot be flattened.
-    Users must not modify any collections used in nest while this function is
-    running.
+    :func:`~texar.torch.utils.nest.pack_sequence_as`. This correctly repacks
+    `dicts` and `OrderedDict`s after they have been flattened, and also allows
+    flattening an `OrderedDict` and then repacking it back using a
+    corresponding plain dict, or vice-versa. Dictionaries with non-sortable
+    keys cannot be flattened. Users must not modify any collections used in
+    nest while this function is running.
+
     Args:
         structure: an arbitrarily nested structure or a scalar object. Note,
-        numpy arrays are considered scalars.
+            numpy arrays are considered scalars.
+
     Returns:
         A Python list, the flattened version of the input.
+
     Raises:
         TypeError: The nest is or contains a dict with non-sortable keys.
     """
@@ -67,28 +70,32 @@ def pack_sequence_as(structure: NestedStructure,
                      flat_sequence: Union[List, Tuple]
                      ) -> NestedStructure:
     r"""Returns a given flattened sequence packed into a given structure.
-    If `structure` is a scalar, `flat_sequence` must be a single-element list;
-    in this case the return value is `flat_sequence[0]`.
-    If `structure` is or contains a dict instance, the keys will be sorted to
+    If ``structure`` is a scalar, ``flat_sequence`` must be a single-element
+    list; in this case the return value is ``flat_sequence[0]``.
+    If ``structure`` is or contains a dict instance, the keys will be sorted to
     pack the flat sequence in deterministic order. This is true also for
     `OrderedDict` instances: their sequence order is ignored, the sorting
     order of keys is used instead. The same convention is followed in
-    `flatten`. This correctly repacks dicts and `OrderedDict`s after they
-    have been flattened, and also allows flattening an `OrderedDict` and
-    then repacking it back using a corresponding plain dict, or vice-versa.
-    Dictionaries with non-sortable keys cannot be flattened.
+    :func:`~texar.torch.utils.nest.flatten`. This correctly repacks `dicts` and
+    `OrderedDicts` after they have been flattened, and also allows flattening
+    an `OrderedDict` and then repacking it back using a corresponding plain
+    dict, or vice-versa. Dictionaries with non-sortable keys cannot be
+    flattened.
+
     Args:
         structure: Nested structure, whose structure is given by nested lists,
-            tuples, and dicts. Note: numpy arrays and strings are considered
+            tuples, and `dicts`. Note: numpy arrays and strings are considered
             scalars.
         flat_sequence: flat sequence to pack.
+
     Returns:
-        packed: `flat_sequence` converted to have the same recursive
-        structure as `structure`.
+        packed: ``flat_sequence`` converted to have the same recursive
+        structure as ``structure``.
+
     Raises:
-        ValueError: If `flat_sequence` and `structure` have different
-        element counts.
-        TypeError: `structure` is or contains a dict with non-sortable keys.
+        ValueError: If ``flat_sequence`` and ``structure`` have different
+            element counts.
+        TypeError: ``structure`` is or contains a dict with non-sortable keys.
     """
     if not is_sequence(flat_sequence):
         raise TypeError("flat_sequence must be a sequence")

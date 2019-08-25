@@ -302,7 +302,7 @@ class ForwardConnector(ConnectorBase):
     :attr:`output_size`, or must have the same number of elements and be
     re-packable into the structure of :attr:`output_size`. Note that if input
     is or contains a ``dict`` instance, the keys will be sorted to pack in
-    deterministic order.
+    deterministic order (See :func:`~texar.torch.utils.nest.pack_sequence_as`).
     """
 
     def __init__(self,
