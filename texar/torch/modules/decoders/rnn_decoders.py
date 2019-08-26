@@ -121,8 +121,8 @@ class BasicRNNDecoder(RNNDecoderBase[HiddenState, BasicRNNDecoderOutput]):
                 specified, you must subclass :class:`BasicRNNDecoder` and
                 override :meth:`embed_tokens`.
         cell (RNNCellBase, optional): An instance of
-            :class:`~texar.torch.core.RNNCellBase`. If `None` (default), a cell
-            is created as specified in :attr:`hparams`.
+            :class:`~texar.torch.core.cell_wrappers.RNNCellBase`. If `None`
+            (default), a cell is created as specified in :attr:`hparams`.
         output_layer (optional): An instance of :torch_nn:`Module`. Apply to
             the RNN cell output to get logits. If `None`, a :torch_nn:`Linear`
             layer is used with output dimension set to :attr:`vocab_size`.
@@ -280,8 +280,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                 specified, you must subclass :class:`AttentionRNNDecoder` and
                 override :meth:`embed_tokens`.
         cell (RNNCellBase, optional): An instance of
-            :class:`~texar.torch.core.RNNCellBase`. If `None`, a cell
-            is created as specified in :attr:`hparams`.
+            :class:`~texar.torch.core.cell_wrappers.RNNCellBase`. If `None`,
+            a cell is created as specified in :attr:`hparams`.
         output_layer (optional): An output layer that transforms cell output
             to logits. This can be:
 
@@ -469,9 +469,10 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             `"type"`: str or class or instance
                 The attention type. Can be an attention class, its name or
                 module path, or a class instance. The class must be a subclass
-                of :class:`~texar.torch.core.AttentionMechanism`. If class name
-                is given, the class must be from modules :mod:`texar.torch.core`
-                or :mod:`texar.torch.custom`.
+                of ``AttentionMechanism``. See :ref:`attention-mechanism` for
+                all supported attention mechanisms. If class name is given,
+                the class must be from modules
+                :mod:`texar.torch.core` or :mod:`texar.torch.custom`.
 
                 Example:
 
@@ -635,7 +636,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             initial_state (optional): Initial state of decoding.
                 If `None` (default), zero state is used.
             helper (optional): An instance of
-                :class:`texar.torch.modules.decoders.Helper`
+                :class:`~texar.torch.modules.Helper`
                 that defines the decoding strategy. If given,
                 ``decoding_strategy`` and helper configurations in
                 :attr:`hparams` are ignored.

@@ -51,7 +51,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
     Args:
         pretrained_model_name (optional): a `str`, the name
             of pre-trained model (e.g., ``xlnet-based-cased``). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedXLNetMixin` for
+            :class:`~texar.torch.modules.PretrainedXLNetMixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
@@ -318,7 +318,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
                 more expensive. Defaults to `True`.
             print_steps (bool): If `True`, will print decoding progress.
             helper: Type (or name of the type) of any sub-class of
-                :class:`~texar.torch.modules.decoders.Helper`.
+                :class:`~texar.torch.modules.Helper`.
             helper_kwargs: The keyword arguments to pass to constructor of
                 the specific helper type.
 

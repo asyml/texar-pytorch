@@ -33,14 +33,14 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
     r"""Raw GPT2 Transformer for encoding sequences.
 
     This module basically stacks
-    :class:`~texar.torch.modules.embedders.WordEmbedder`,
-    :class:`~texar.torch.modules.embedders.PositionEmbedder`,
-    :class:`~texar.torch.modules.encoders.TransformerEncoder`.
+    :class:`~texar.torch.modules.WordEmbedder`,
+    :class:`~texar.torch.modules.PositionEmbedder`,
+    :class:`~texar.torch.modules.TransformerEncoder`.
 
     Args:
         pretrained_model_name (optional): a `str`, the name
             of pre-trained model (e.g., ``gpt2-small``). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedGPT2Mixin` for
+            :class:`~texar.torch.modules.PretrainedGPT2Mixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
@@ -179,7 +179,7 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
 
         `"decoder"`: dict
             Hyperparameters for the TransformerDecoder.
-            See :func:`~texar.torch.modules.TransformerDecoder.default_harams`
+            See :func:`~texar.torch.modules.TransformerDecoder.default_hparams`
             for details.
 
         `"initializer"`: dict, optional
