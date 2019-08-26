@@ -37,8 +37,8 @@ def flatten(structure: NestedStructure) -> List[Any]:
     `OrderedDict` instances: their sequence order is ignored, the sorting order
     of keys is used instead. The same convention is followed in
     :func:`~texar.torch.utils.nest.pack_sequence_as`. This correctly repacks
-    `dicts` and `OrderedDict`s after they have been flattened, and also allows
-    flattening an `OrderedDict` and then repacking it back using a
+    dictionaries and `OrderedDict`s after they have been flattened, and also
+    allows flattening an `OrderedDict` and then repacking it back using a
     corresponding plain dict, or vice-versa. Dictionaries with non-sortable
     keys cannot be flattened. Users must not modify any collections used in
     nest while this function is running.
@@ -76,16 +76,16 @@ def pack_sequence_as(structure: NestedStructure,
     pack the flat sequence in deterministic order. This is true also for
     `OrderedDict` instances: their sequence order is ignored, the sorting
     order of keys is used instead. The same convention is followed in
-    :func:`~texar.torch.utils.nest.flatten`. This correctly repacks `dicts` and
-    `OrderedDicts` after they have been flattened, and also allows flattening
-    an `OrderedDict` and then repacking it back using a corresponding plain
-    dict, or vice-versa. Dictionaries with non-sortable keys cannot be
-    flattened.
+    :func:`~texar.torch.utils.nest.flatten`. This correctly repacks dictionaries
+    and `OrderedDicts` after they have been flattened, and also allows
+    flattening an `OrderedDict` and then repacking it back using a
+    corresponding plain dict, or vice-versa. Dictionaries with non-sortable
+    keys cannot be flattened.
 
     Args:
         structure: Nested structure, whose structure is given by nested lists,
-            tuples, and `dicts`. Note: numpy arrays and strings are considered
-            scalars.
+            tuples, and dictionaries. Note: numpy arrays and strings are
+            considered scalars.
         flat_sequence: flat sequence to pack.
 
     Returns:
