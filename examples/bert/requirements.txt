@@ -1,2 +1,2 @@
 tensorflow
-tensorboard>=1.8
+tensorboardX>=1.8
