@@ -1524,7 +1524,7 @@ class Executor:
 
             for key, value in valid_metrics.items():
                 self.summary_writer.add_scalar(
-                    f"eval/{key}", value.value(), executor.status["epoch"])
+                    f"valid/{key}", value.value(), executor.status["epoch"])
 
         _register(self._tbx_logging_conditions, tbx_train_log_fn)
         _register([Event.Epoch], tbx_valid_log_fn)

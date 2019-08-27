@@ -425,7 +425,7 @@ def file_based_convert_examples_to_features(
                 "input_ids": feature.input_ids,
                 "input_mask": feature.input_mask,
                 "segment_ids": feature.segment_ids,
-                "label_ids": [feature.label_id]
+                "label_ids": feature.label_id
             }
             writer.write(features)
 
