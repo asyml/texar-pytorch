@@ -106,25 +106,31 @@ def convert_single_example(example, label_list: List[str], max_seq_length: int,
     tokens_b = None
     if example.text_b:
         tokens_b = tokenizer.map_text_to_id(example.text_b)
+    assert isinstance(tokens_a, list)
 
     if tokens_b:
         # Modifies `tokens_a` and `tokens_b` in place so that the total
         # length is less than the specified length.
         # Account for two [SEP] & one [CLS] with "- 3"
+        assert isinstance(tokens_b, list)
         _truncate_seq_pair(tokens_a, tokens_b, max_seq_length - 3)
     else:
         # Account for one [SEP] & one [CLS] with "- 2"
         if len(tokens_a) > max_seq_length - 2:
             tokens_a = tokens_a[:max_seq_length - 2]
 
-    tokens = tokens_a + [tokenizer.map_token_to_id(tokenizer.sep_token)]
+    tokens = tokens_a + [tokenizer.map_token_to_id(  # type: ignore
+        tokenizer.sep_token)]
     segment_ids = [SEG_ID_A] * (len(tokens_a) + 1)
 
     if tokens_b:
-        tokens += tokens_b + [tokenizer.map_token_to_id(tokenizer.sep_token)]
+        assert isinstance(tokens_b, list)
+        tokens += tokens_b + [tokenizer.map_token_to_id(  # type: ignore
+            tokenizer.sep_token)]
         segment_ids += [SEG_ID_B] * (len(tokens_b) + 1)
 
-    tokens.append(tokenizer.map_token_to_id(tokenizer.cls_token))
+    tokens.append(  # type: ignore
+        tokenizer.map_token_to_id(tokenizer.cls_token))
     segment_ids.append(SEG_ID_CLS)
 
     input_ids = tokens

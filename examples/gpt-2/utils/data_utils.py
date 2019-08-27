@@ -40,19 +40,22 @@ def process_single_text(raw_text: str,
         max_len -= 1
     if EOS_token is not None and len(EOS_token) > 0:
         max_len -= 1
+    assert isinstance(tokens, list)
     tokens = tokens[:max_len]
 
     # Append special tokens
     if BOS_token is not None and len(BOS_token) > 0:
-        tokens = [encoder.map_token_to_id(BOS_token)] + tokens
+        tokens = [encoder.map_token_to_id(BOS_token)] + tokens  # type: ignore
     if EOS_token is not None and len(EOS_token) > 0:
-        tokens = tokens + [encoder.map_token_to_id(EOS_token)]
+        tokens = tokens + [encoder.map_token_to_id(EOS_token)]  # type: ignore
 
     token_length = len(tokens)
 
     # Pad
+    assert PAD_token is not None
     PAD_token_id = encoder.map_token_to_id(PAD_token)
     while len(tokens) < max_seq_length:
+        assert isinstance(PAD_token_id, int)
         tokens.append(PAD_token_id)
 
     assert len(tokens) == max_seq_length
