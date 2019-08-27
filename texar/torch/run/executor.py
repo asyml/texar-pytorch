@@ -916,7 +916,7 @@ class Executor:
                 from torch.utils.tensorboard import SummaryWriter
             else:
                 try:
-                    from tensorboardX import SummaryWriter
+                    from tensorboardX import SummaryWriter  # type: ignore
                 except ImportError:
                     print(
                         "To use tensorboard support with Executor, please "
@@ -924,7 +924,7 @@ class Executor:
                         "https://tensorboardx.readthedocs.io for further "
                         "details")
                     raise
-            self.summary_writer = SummaryWriter(logdir=tbx_logging_dir)
+            self.summary_writer = SummaryWriter(tbx_logging_dir)
             self._tbx_logging_conditions = utils.to_list(
                 tbx_log_every if tbx_log_every is not None else log_every)
             self._register_tbx_logging_actions()
