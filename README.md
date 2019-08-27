@@ -98,6 +98,11 @@ cd texar-pytorch
 pip install -e .
 ```
 
+To use tensorboard support with `Executor`, please install `tensorboardX` with the following command
+
+```commandline
+pip install tensorboardX
+```
 
 ### Getting Started
 * [Examples](./examples)

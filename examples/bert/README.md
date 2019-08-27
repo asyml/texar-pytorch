@@ -14,6 +14,7 @@ To summarize, this example showcases:
 * Use of pre-trained Google BERT models in Texar
 * Building and fine-tuning on downstream tasks
 * Use of Texar `RecordData` module for data loading and processing
+* Use of Texar `Executor` module for simplified training loops and TensorBoard visualization
 
 Future work:
 
@@ -150,3 +151,30 @@ python data/download_glue_data.py --tasks=SST
 python prepare_data.py --task=SST
 python bert_classifier_main.py --do-train --do-eval --config-data=<config_data>
 ```
+
+## Using Executor Module
+To use this feature, please install `tensorboardX` by issuing the following command
+
+```commandline
+pip install tensorboardX
+```
+
+`bert_classifier_using_executor_main.py` shows how to use `Executor` module for a typical
+`train-eval-test` loop. We initialize an `Executor` object with all the required properties like
+datasets, logging, metrics etc. Executor is also integrated with tensorboardX (tbX) to help
+visualize the training process. To use tBX support, provide `tbx_logging_dir` indicating the
+directory to save the logs and `tbx_log_every` for frequency of logging to the Executor object. All
+the `train_metrics` and `valid_metrics` will be logged into tensorboard. To run
+`bert_classifier_using_executor_main.py`, run the following command
+
+```commandline
+python bert_classifier_using_executor_main.py --do-train --do-test
+``` 
+
+If the logs are in `runs/` folder, the tensorboard server can be started by the following command
+
+```commandline
+tensorboard --logdir runs/
+```
+
+![Visualizing loss/accuarcy on Tensorboard](tbx.png)

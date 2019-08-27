@@ -35,11 +35,12 @@ setuptools.setup(
         'requests',
         'funcsigs',
         'mypy_extensions',
+        'packaging>=19.0'
     ],
     extras_require={
         'torch': ['torch>=1.0'],
         'examples': [],
-        'extras': ['Pillow>=3.0'],
+        'extras': ['Pillow>=3.0', 'tensorboardX>=1.8'],
     },
     package_data={
         "texar.torch": [
