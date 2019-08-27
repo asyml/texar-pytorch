@@ -518,7 +518,7 @@ class MaxReducePool1d(nn.Module):
     the pooling dimension is entirely reduced (i.e., `pool_size=input_length`).
     """
 
-    def forward(self,  # type: ignore  # pylint: disable=no-self-use
+    def forward(self,  # type: ignore
                 input: torch.Tensor) -> torch.Tensor:
         output, _ = torch.max(input, dim=2)
         return output
@@ -530,7 +530,7 @@ class AvgReducePool1d(nn.Module):
     the pooling dimension is entirely reduced (i.e., `pool_size=input_length`).
     """
 
-    def forward(self,  # type: ignore  # pylint: disable=no-self-use
+    def forward(self,  # type: ignore
                 input: torch.Tensor) -> torch.Tensor:
         return torch.mean(input, dim=2)
 
@@ -695,7 +695,7 @@ class MergeLayer(nn.Module):
 class Flatten(nn.Module):
     r"""Flatten layer to flatten a tensor after convolution."""
 
-    def forward(self,  # type: ignore  # pylint: disable=no-self-use
+    def forward(self,  # type: ignore
                 input: torch.Tensor) -> torch.Tensor:
         return input.view(input.size()[0], -1)
 
@@ -703,6 +703,6 @@ class Flatten(nn.Module):
 class Identity(nn.Module):
     r"""Identity activation layer."""
 
-    def forward(self,  # type: ignore  # pylint: disable=no-self-use
+    def forward(self,  # type: ignore
                 input: torch.Tensor) -> torch.Tensor:
         return input

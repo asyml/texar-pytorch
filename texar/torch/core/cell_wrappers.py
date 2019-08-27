@@ -27,6 +27,8 @@ from texar.torch.utils import utils
 from texar.torch.utils.types import MaybeList
 
 __all__ = [
+    'RNNState',
+    'LSTMState',
     'HiddenState',
     'wrap_builtin_cell',
     'RNNCellBase',
