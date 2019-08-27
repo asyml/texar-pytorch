@@ -115,10 +115,10 @@ class SSTProcessor(DataProcessor):
                 if i == 0:
                     continue
                 guid = f"{set_type}-{i}"
-                text_a = convert_to_unicode(line[0])
+                text_a = tx.utils.compat_as_text(line[0])
                 # Single sentence classification, text_b doesn't exist
                 text_b = None
-                label = convert_to_unicode(line[1])
+                label = tx.utils.compat_as_text(line[1])
                 examples.append(InputExample(guid=guid, text_a=text_a,
                                              text_b=text_b, label=label))
         if set_type == 'test':
@@ -126,7 +126,7 @@ class SSTProcessor(DataProcessor):
                 if i == 0:
                     continue
                 guid = f"{set_type}-{i}"
-                text_a = convert_to_unicode(line[1])
+                text_a = tx.utils.compat_as_text(line[1])
                 # Single sentence classification, text_b doesn't exist
                 text_b = None
                 label = '0'  # arbitrary set as 0
@@ -151,11 +151,11 @@ class XnliProcessor(DataProcessor):
             if i == 0:
                 continue
             guid = f"train-{i}"
-            text_a = convert_to_unicode(line[0])
-            text_b = convert_to_unicode(line[1])
-            label = convert_to_unicode(line[2])
-            if label == convert_to_unicode("contradictory"):
-                label = convert_to_unicode("contradiction")
+            text_a = tx.utils.compat_as_text(line[0])
+            text_b = tx.utils.compat_as_text(line[1])
+            label = tx.utils.compat_as_text(line[2])
+            if label == tx.utils.compat_as_text("contradictory"):
+                label = tx.utils.compat_as_text("contradiction")
             examples.append(InputExample(guid=guid, text_a=text_a,
                                          text_b=text_b, label=label))
         return examples
@@ -168,12 +168,12 @@ class XnliProcessor(DataProcessor):
             if i == 0:
                 continue
             guid = f"dev-{i}"
-            language = convert_to_unicode(line[0])
-            if language != convert_to_unicode(self.language):
+            language = tx.utils.compat_as_text(line[0])
+            if language != tx.utils.compat_as_text(self.language):
                 continue
-            text_a = convert_to_unicode(line[6])
-            text_b = convert_to_unicode(line[7])
-            label = convert_to_unicode(line[1])
+            text_a = tx.utils.compat_as_text(line[6])
+            text_b = tx.utils.compat_as_text(line[7])
+            label = tx.utils.compat_as_text(line[1])
             examples.append(InputExample(guid=guid, text_a=text_a,
                                          text_b=text_b, label=label))
         return examples
@@ -214,13 +214,13 @@ class MnliProcessor(DataProcessor):
         for (i, line) in enumerate(lines):
             if i == 0:
                 continue
-            guid = f"{set_type}-{convert_to_unicode(line[0])}"
-            text_a = convert_to_unicode(line[8])
-            text_b = convert_to_unicode(line[9])
+            guid = f"{set_type}-{tx.utils.compat_as_text(line[0])}"
+            text_a = tx.utils.compat_as_text(line[8])
+            text_b = tx.utils.compat_as_text(line[9])
             if set_type == "test":
                 label = "contradiction"
             else:
-                label = convert_to_unicode(line[-1])
+                label = tx.utils.compat_as_text(line[-1])
             examples.append(InputExample(guid=guid, text_a=text_a,
                                          text_b=text_b, label=label))
         return examples
@@ -259,12 +259,12 @@ class MrpcProcessor(DataProcessor):
             if i == 0:
                 continue
             guid = f"{set_type}-{i}"
-            text_a = convert_to_unicode(line[3])
-            text_b = convert_to_unicode(line[4])
+            text_a = tx.utils.compat_as_text(line[3])
+            text_b = tx.utils.compat_as_text(line[4])
             if set_type == "test":
                 label = "0"
             else:
-                label = convert_to_unicode(line[0])
+                label = tx.utils.compat_as_text(line[0])
             examples.append(InputExample(guid=guid, text_a=text_a,
                                          text_b=text_b, label=label))
         return examples
@@ -305,11 +305,11 @@ class ColaProcessor(DataProcessor):
                 continue
             guid = f"{set_type}-{i}"
             if set_type == "test":
-                text_a = convert_to_unicode(line[1])
+                text_a = tx.utils.compat_as_text(line[1])
                 label = "0"
             else:
-                text_a = convert_to_unicode(line[3])
-                label = convert_to_unicode(line[1])
+                text_a = tx.utils.compat_as_text(line[3])
+                label = tx.utils.compat_as_text(line[1])
             examples.append(InputExample(guid=guid, text_a=text_a,
                                          text_b=None, label=label))
         return examples
@@ -395,7 +395,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
         logging.info("*** Example ***")
         logging.info("guid: %s", example.guid)
         logging.info("tokens: %s", " ".join(
-            [printable_text(x) for x in tokens]))
+            [tx.utils.compat_as_text(x) for x in tokens]))
         logging.info("input_ids: %s", " ".join([str(x) for x in input_ids]))
         logging.info("input_ids length: %d", len(input_ids))
         logging.info("input_mask: %s", " ".join([str(x) for x in input_mask]))
@@ -480,19 +480,3 @@ def prepare_record_data(processor, tokenizer,
     file_based_convert_examples_to_features(
         test_examples, label_list,
         max_seq_length, tokenizer, test_file, feature_original_types)
-
-
-def convert_to_unicode(text):
-    r"""Returns the given argument as a unicode string."""
-    if isinstance(text, bytes):
-        return text.decode('utf-8')
-    if isinstance(text, str):
-        return text
-    raise TypeError(f"`text` should be of type `bytes` or `str`.")
-
-
-def printable_text(text):
-    r"""Returns text encoded in a way suitable for print or `tf.logging`."""
-    if isinstance(text, bytes):
-        return text.decode('utf-8')
-    return str(text)

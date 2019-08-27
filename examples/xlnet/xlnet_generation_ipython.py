@@ -51,6 +51,12 @@ def main():
     pad_ids.append(eod_id)
 
     def split_by(xs, y):
+        r"""Splits list `xs` by value `y`.
+
+        Example:
+            list(split_by([1,2,4,5,6,4,7,4], 4))
+            # [[1, 2], [5, 6], [7]]
+        """
         p = 0
         for idx, x in enumerate(xs):
             if x == y:
