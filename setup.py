@@ -35,6 +35,7 @@ setuptools.setup(
         'requests',
         'funcsigs',
         'mypy_extensions',
+        'packaging>=19.0'
     ],
     extras_require={
         'torch': ['torch>=1.0'],
