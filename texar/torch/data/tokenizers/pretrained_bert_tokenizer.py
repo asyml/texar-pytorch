@@ -74,7 +74,7 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
             'tokenize_chinese_chars': self.hparams['tokenize_chinese_chars'],
             'do_lower_case': self.hparams['do_lower_case'],
             'do_basic_tokenize': self.hparams['do_basic_tokenize'],
-            'never_split': self.hparams['never_split'],
+            'non_split_tokens': self.hparams['non_split_tokens'],
         }
 
         if self.pretrained_model_dir is not None:
@@ -98,7 +98,7 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
         if self.do_basic_tokenize:
             self.basic_tokenizer = BasicTokenizer(
                 do_lower_case=self.hparams["do_lower_case"],
-                never_split=self.hparams["never_split"],
+                never_split=self.hparams["non_split_tokens"],
                 tokenize_chinese_chars=self.hparams["tokenize_chinese_chars"])
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab,
                                                       unk_token=self.unk_token)
@@ -181,7 +181,7 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
                 "tokenize_chinese_chars": True,
                 "do_lower_case": True,
                 "do_basic_tokenize": True,
-                "never_split": None,
+                "non_split_tokens": None,
                 "name": "bert_tokenizer",
             }
 
@@ -221,7 +221,7 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
         `"do_basic_tokenize"`: bool
             Whether to do basic tokenization before wordpiece.
 
-        `"never_split"`: list
+        `"non_split_tokens"`: list
             List of tokens which will never be split during tokenization.
             Only has an effect when `do_basic_tokenize=True`
 
@@ -241,7 +241,7 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
             'tokenize_chinese_chars': True,
             'do_lower_case': True,
             'do_basic_tokenize': True,
-            'never_split': None,
+            'non_split_tokens': None,
             'name': 'bert_tokenizer',
             '@no_typecheck': ['pretrained_model_name'],
         }
@@ -261,5 +261,5 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
             'tokenize_chinese_chars': True,
             'do_lower_case': True,
             'do_basic_tokenize': True,
-            'never_split': None,
+            'non_split_tokens': None,
         }

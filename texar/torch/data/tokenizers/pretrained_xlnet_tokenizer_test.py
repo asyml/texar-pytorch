@@ -8,21 +8,23 @@ import os
 import pickle
 import tempfile
 
+from texar.torch.data.data_utils import maybe_download
 from texar.torch.data.tokenizers.pretrained_xlnet_tokenizer import \
     XLNetTokenizer, SPIECE_UNDERLINE
 from texar.torch.utils.test import pretrained_test
-
-SAMPLE_VOCAB = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            'pretrained_tokenizer_test_utils/'
-                            'test_sentencepiece.model')
 
 
 class XLNetTokenizerTest(unittest.TestCase):
 
     def setUp(self):
-        self.tokenizer = XLNetTokenizer.load(
-            SAMPLE_VOCAB, configs={'keep_accents': True})
         self.tmp_dir = tempfile.TemporaryDirectory()
+        self.SAMPLE_VOCAB = maybe_download(
+            'https://github.com/gpengzhi/pytorch-transformers/blob/master/'
+            'pytorch_transformers/tests/fixtures/test_sentencepiece.model'
+            '?raw=true', self.tmp_dir.name)
+
+        self.tokenizer = XLNetTokenizer.load(
+            self.SAMPLE_VOCAB, configs={'keep_accents': True})
         self.tokenizer.save(self.tmp_dir.name)
 
     def tearDown(self):
@@ -185,7 +187,8 @@ class XLNetTokenizerTest(unittest.TestCase):
 
     def test_tokenizer_lower(self):
         tokenizer = XLNetTokenizer.load(
-            SAMPLE_VOCAB, configs={'do_lower_case': True})
+            self.SAMPLE_VOCAB, configs={'do_lower_case': True,
+                                        'keep_accents': False})
         tokens = tokenizer.map_text_to_token(
             u"I was born in 92000, and this is falsé.")
         self.assertListEqual(tokens, [SPIECE_UNDERLINE + u'', u'i',
@@ -204,7 +207,8 @@ class XLNetTokenizerTest(unittest.TestCase):
 
     def test_tokenizer_no_lower(self):
         tokenizer = XLNetTokenizer.load(
-            SAMPLE_VOCAB, configs={'do_lower_case': False})
+            self.SAMPLE_VOCAB, configs={'do_lower_case': False,
+                                        'keep_accents': False})
         tokens = tokenizer.map_text_to_token(
             u"I was born in 92000, and this is falsé.")
         self.assertListEqual(tokens, [SPIECE_UNDERLINE + u'I',
