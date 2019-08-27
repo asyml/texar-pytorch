@@ -20,7 +20,7 @@ To run:
 $ python clas_main.py --config=config_kim
 """
 
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 import argparse
 import importlib
@@ -44,7 +44,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class SentenceClassifier(nn.Module):
 
-    def __init__(self, vocab_size, max_seq_length, emb_dim, hparams):
+    def __init__(self, vocab_size: int, max_seq_length: int,
+                 emb_dim: int, hparams: Dict[str, Any]):
         super().__init__()
 
         self.embedder = tx.modules.WordEmbedder(
