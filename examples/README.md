@@ -25,6 +25,7 @@ More examples are continuously added...
 ### Classifier / Sequence Prediction ###
 
 * [bert](./bert): Pre-trained BERT model for text representation
+* [sentence_classifier](./sentence_classifier): Basic CNN-based sentence classifier
 * [xlnet](./xlnet): Pre-trained XLNet model for text classification/regression
 
 ---
@@ -45,5 +46,6 @@ More examples are continuously added...
 ### Classification ###
 
 * [bert](./bert): Pre-trained BERT model for text representation
+* [sentence_classifier](./sentence_classifier): Basic CNN-based sentence classifier
 * [xlnet](./xlnet): Pre-trained XLNet model for text classification/regression
 
