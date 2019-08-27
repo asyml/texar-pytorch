@@ -88,9 +88,7 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
                  data_source: Optional[DataSource] = None):
         self._hparams = HParams(hparams, self.default_hparams())
         self._other_transforms = self._hparams.dataset.other_transformations
-        data_type = self._hparams.dataset["data_type"]
-        self._typecast_func = get_numpy_dtype(data_type)
-        self._to_data_type = self._typecast_func
+        self._data_type = get_numpy_dtype(self._hparams.dataset["data_type"])
         if data_source is None:
             data_source = TextLineDataSource(
                 self._hparams.dataset.files,
@@ -140,7 +138,7 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
 
             `"data_type"`: str
                 The scalar type. Types defined in
-                :meth:`texar.torch.utils.dtypes.get_numpy_dtype` are supported.
+                :meth:`~texar.torch.utils.dtypes.get_numpy_dtype` are supported.
 
             `"other_transformations"`: list
                 A list of transformation functions or function names/paths to
@@ -164,7 +162,7 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
 
     def process(self, raw_example: List[str]) -> Union[int, float]:
         assert len(raw_example) == 1
-        example: Union[int, float] = self._typecast_func(raw_example[0])
+        example: Union[int, float] = self._data_type(raw_example[0])
 
         for transform in self._other_transforms:
             example = transform(example)
@@ -172,7 +170,7 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
 
     def collate(self, examples: List[Union[int, float]]) -> Batch:
         # convert the list of strings into appropriate tensors here
-        examples_np = np.array(examples, dtype=self._to_data_type)
+        examples_np = np.array(examples, dtype=self._data_type)
         collated_examples = torch.from_numpy(examples_np).to(device=self.device)
         return Batch(len(examples),
                      batch={self.data_name: collated_examples})

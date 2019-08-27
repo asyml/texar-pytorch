@@ -37,18 +37,16 @@ class Conv1DClassifier(ClassifierBase):
 
     Args:
         in_channels (int): Number of channels in the input tensor.
-
         in_features (int): Size of the feature dimension in the input tensor.
-
         hparams (dict, optional): Hyperparameters. Missing
             hyperparameters will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
-    See :meth:`forward` for the inputs and outputs. If "data_format" is set to
-    "channels_first" (this is the default), inputs must be a tensor of shape
-    `[batch_size, channels, length]`. If "data_format" is set to
-    "channels_last", inputs must be a tensor of shape
+    See :meth:`forward` for the inputs and outputs. If :attr:`"data_format"` is
+    set to ``"channels_first"`` (this is the default), inputs must be a tensor
+    of shape `[batch_size, channels, length]`. If :attr:`"data_format"` is set
+    to ``"channels_last"``, inputs must be a tensor of shape
     `[batch_size, length, channels]`. For example, for sequence classification,
     `length` corresponds to time steps, and `channels` corresponds to embedding
     dim.
