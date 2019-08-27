@@ -44,14 +44,14 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class SentenceClassifier(nn.Module):
 
-    def __init__(self, train_data: tx.data.MultiAlignedData):
+    def __init__(self, vocab_size, max_seq_length, emb_dim, hparams):
         super().__init__()
 
         self.embedder = tx.modules.WordEmbedder(
-            vocab_size=train_data.vocab('sentence').size, hparams=config.emb)
+            vocab_size=vocab_size, hparams=hparams['embedder'])
         self.classifier = tx.modules.Conv1DClassifier(
-            in_channels=config.max_seq_length,
-            in_features=config.emb_dim, hparams=config.clas)
+            in_channels=max_seq_length,
+            in_features=emb_dim, hparams=hparams['classifier'])
 
     def forward(self, batch: tx.data.Batch) -> \
             Tuple[torch.Tensor, torch.Tensor]:
@@ -68,7 +68,15 @@ def main():
     test_data = tx.data.MultiAlignedData(config.test_data, device=device)
     data_iterator = tx.data.TrainTestDataIterator(
         train=train_data, val=val_data, test=test_data)
-    model = SentenceClassifier(train_data)
+
+    hparams = {
+        'embedder': config.emb,
+        'classifier': config.clas
+    }
+    model = SentenceClassifier(vocab_size=train_data.vocab('sentence').size,
+                               max_seq_length=config.max_seq_length,
+                               emb_dim=config.emb_dim,
+                               hparams=hparams)
     model.to(device)
     train_op = tx.core.get_train_op(params=model.parameters(),
                                     hparams=config.opt)

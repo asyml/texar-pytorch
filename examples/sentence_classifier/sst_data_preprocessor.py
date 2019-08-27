@@ -38,16 +38,16 @@ def clean_sst_text(text: str) -> str:
     return text.strip().lower()
 
 
-def transform_raw_sst(data_path: str, raw_fn: str, new_fn: str) -> \
+def transform_raw_sst(data_path: str, raw_filename: str, new_filename: str) -> \
         Tuple[str, str]:
     """Transforms the raw data format to a new format.
     """
-    fout_x_name = os.path.join(data_path, new_fn + '.sentences.txt')
+    fout_x_name = os.path.join(data_path, new_filename + '.sentences.txt')
     fout_x = open(fout_x_name, 'w', encoding='utf-8')
-    fout_y_name = os.path.join(data_path, new_fn + '.labels.txt')
+    fout_y_name = os.path.join(data_path, new_filename + '.labels.txt')
     fout_y = open(fout_y_name, 'w', encoding='utf-8')
 
-    fin_name = os.path.join(data_path, raw_fn)
+    fin_name = os.path.join(data_path, raw_filename)
     with open(fin_name, 'r', encoding='utf-8') as fin:
         for line in fin:
             parts = line.strip().split()
