@@ -153,6 +153,11 @@ python bert_classifier_main.py --do-train --do-eval --config-data=<config_data>
 ```
 
 ## Using Executor Module
+To use this feature, please install `tensorboardX` by issuing the following command
+
+```commandline
+pip install tensorboardX
+```
 
 `bert_classifier_using_executor_main.py` shows how to use `Executor` module for a typical
 `train-eval-test` loop. We initialize an `Executor` object with all the required properties like

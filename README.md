@@ -104,9 +104,6 @@ To use tensorboard support with `Executor`, please install `tensorboardX` with t
 pip install tensorboardX
 ```
 
-**Note**: PyTorch >= 1.2.0 comes with build-in support for `tensorboard`. There is no need to
-install `tensorboardX` separately.
-
 ### Getting Started
 * [Examples](./examples)
 * [Documentation](https://texar-pytorch.readthedocs.io)

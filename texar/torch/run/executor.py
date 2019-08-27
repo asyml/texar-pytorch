@@ -911,19 +911,15 @@ class Executor:
 
         # tbx logging
         if tbx_logging_dir is not None:
-            from packaging import version
-            if version.parse(torch.__version__) >= version.parse('1.2.0'):
-                from torch.utils.tensorboard import SummaryWriter
-            else:
-                try:
-                    from tensorboardX import SummaryWriter  # type: ignore
-                except ImportError:
-                    print(
-                        "To use tensorboard support with Executor, please "
-                        "install tensorboardX. Please see "
-                        "https://tensorboardx.readthedocs.io for further "
-                        "details")
-                    raise
+            try:
+                from tensorboardX import SummaryWriter
+            except ImportError:
+                print(
+                    "To use tensorboard support with Executor, please "
+                    "install tensorboardX. Please see "
+                    "https://tensorboardx.readthedocs.io for further "
+                    "details")
+                raise
             self.summary_writer = SummaryWriter(tbx_logging_dir)
             self._tbx_logging_conditions = utils.to_list(
                 tbx_log_every if tbx_log_every is not None else log_every)
