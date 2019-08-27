@@ -54,26 +54,33 @@ class Conv1DNetwork(FeedForwardNetworkBase):
     layers followed with a sequence of dense layers.
 
     Args:
+        in_channels (int): Number of channels in the input tensor.
+
+        in_features (int): Size of the feature dimension in the input tensor.
+
         hparams (dict, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
-    See :meth:`forward` for the inputs and outputs. The inputs must be a
-    3D Tensor of shape `[batch_size, channels, length]`. For example, for
-    sequence classification, `length` corresponds to time steps, and `channels`
-    corresponds to embedding dim.
+    See :meth:`forward` for the inputs and outputs. If "data_format" is set to
+    "channels_first" (this is the default), inputs must be a tensor of shape
+    `[batch_size, channels, length]`. If "data_format" is set to
+    "channels_last", inputs must be a tensor of shape
+    `[batch_size, length, channels]`. For example, for sequence classification,
+    `length` corresponds to time steps, and `channels` corresponds to embedding
+    dim.
 
     Example:
 
     .. code-block:: python
 
-        nn = Conv1DNetwork() # Use the default structure
+        nn = Conv1DNetwork(in_channels=20, in_features=256) # Use the default
 
-        inputs = tf.random_uniform([64, 20, 256])
+        inputs = torch.randn([64, 20, 256])
         outputs = nn(inputs)
-        # outputs == Tensor of shape [64, 128], because the final dense layer
-        # has size 128.
+        # outputs == Tensor of shape [64, 256], because the final dense layer
+        # has size 256.
 
     .. document private functions
     """
