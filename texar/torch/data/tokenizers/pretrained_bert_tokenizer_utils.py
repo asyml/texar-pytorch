@@ -285,7 +285,11 @@ def whitespace_tokenize(text: str) -> List[str]:
 
 
 def _is_whitespace(char: str) -> bool:
-    r"""Checks whether `char` is a whitespace character."""
+    r"""Checks whether `char` is a whitespace character.
+
+    Note: this function is not standard and should be considered for BERT
+    tokenization only. See the comments for more details.
+    """
     # \t, \n, and \r are technically control characters but we treat them
     # as whitespace since they are generally considered as such.
     if char in (" ", "\t", "\n", "\r"):
@@ -297,7 +301,11 @@ def _is_whitespace(char: str) -> bool:
 
 
 def _is_control(char: str) -> bool:
-    r"""Checks whether `char` is a control character."""
+    r"""Checks whether `char` is a control character.
+
+    Note: this function is not standard and should be considered for BERT
+    tokenization only. See the comments for more details.
+    """
     # These are technically control characters but we count them as whitespace
     # characters.
     if char in ("\t", "\n", "\r"):
@@ -309,7 +317,11 @@ def _is_control(char: str) -> bool:
 
 
 def _is_punctuation(char: str) -> bool:
-    r"""Checks whether `char` is a punctuation character."""
+    r"""Checks whether `char` is a punctuation character.
+
+    Note: this function is not standard and should be considered for BERT
+    tokenization only. See the comments for more details.
+    """
     cp = ord(char)
     # We treat all non-letter/number ASCII as punctuation.
     # Characters such as "^", "$", and "`" are not in the Unicode
