@@ -43,7 +43,7 @@ class Average(StreamingMetric[float, float]):
             key to the dictionary returned by the model. Defaults to ``"loss"``.
         higher_is_better (bool, optional): If specified, the
             :attr:`higher_is_better` attribute for the instance is overwritten
-            by the specified value.
+            by the specified value. Defaults to `False`.
     """
     higher_is_better = False
     requires_label = False

@@ -32,13 +32,13 @@ class ClassificationMetricTest(unittest.TestCase):
 
     def test_accuracy(self):
         from sklearn.metrics import accuracy_score
-        metric = Accuracy(pred_name=None)
+        metric = Accuracy(pred_name="")
         self._test_metric(metric, accuracy_score)
 
     def test_precision(self):
         from sklearn.metrics import precision_score
         for mode in Precision._valid_modes:
-            metric = Precision(mode=mode, pos_label=1, pred_name=None)
+            metric = Precision(mode=mode, pos_label=1, pred_name="")
             self._test_metric(
                 metric, functools.partial(precision_score, average=mode),
                 binary=(mode == 'binary'))
@@ -46,7 +46,7 @@ class ClassificationMetricTest(unittest.TestCase):
     def test_recall(self):
         from sklearn.metrics import recall_score
         for mode in Recall._valid_modes:
-            metric = Recall(mode=mode, pos_label=1, pred_name=None)
+            metric = Recall(mode=mode, pos_label=1, pred_name="")
             self._test_metric(
                 metric, functools.partial(recall_score, average=mode),
                 binary=(mode == 'binary'))
@@ -54,7 +54,7 @@ class ClassificationMetricTest(unittest.TestCase):
     def test_f1(self):
         from sklearn.metrics import f1_score
         for mode in F1._valid_modes:
-            metric = F1(mode=mode, pos_label=1, pred_name=None)
+            metric = F1(mode=mode, pos_label=1, pred_name="")
             self._test_metric(
                 metric, functools.partial(f1_score, average=mode),
                 binary=(mode == 'binary'))

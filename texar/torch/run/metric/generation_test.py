@@ -18,7 +18,7 @@ class GenerationMetricTest(unittest.TestCase):
         ]
 
     def test_bleu(self):
-        metric = BLEU(pred_name=None)
+        metric = BLEU(pred_name="", label_name="")
         for idx, (hyp, ref) in enumerate(zip(self.hypotheses, self.references)):
             metric.add([hyp], [ref])
             value = metric.value()

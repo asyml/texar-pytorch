@@ -143,7 +143,7 @@ class ConfusionMatrix(_ConfusionMatrix[Input, Optional[np.ndarray]]):
 class _MicroMacro(_ConfusionMatrix[Input, float], ABC):
     _valid_modes = ['binary', 'micro', 'macro', 'weighted']
 
-    def __init__(self, mode: str = 'binary', pos_label: Optional[str] = None,
+    def __init__(self, mode: str = 'binary', pos_label: Optional[Input] = None,
                  *, pred_name: str, label_name: str = "label"):
         super().__init__(pred_name=pred_name, label_name=label_name)
         self.mode = mode
@@ -153,7 +153,8 @@ class _MicroMacro(_ConfusionMatrix[Input, float], ABC):
         if self.mode == 'binary' and pos_label is None:
             raise ValueError("`pos_label` must not be none when `mode` is "
                              "set to 'binary'")
-        self.pos_label = pos_label
+        if pos_label is not None:
+            self.pos_label = pos_label
 
     def _safe_divide(self, numerator: np.ndarray, denominator: np.ndarray) \
             -> np.ndarray:

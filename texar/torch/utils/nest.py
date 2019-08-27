@@ -168,7 +168,7 @@ def _yield_sorted_items(iterable):
     Yields:
         The iterable's (key, value) pairs, in order of sorted keys.
     """
-    if isinstance(iterable, collections.Mapping):
+    if isinstance(iterable, collections.abc.Mapping):
         for key in _sorted(iterable):
             yield key, iterable[key]
 
@@ -227,7 +227,7 @@ def _sequence_like(instance: InstanceType,
     Returns:
         `args` with the type of `instance`.
     """
-    if isinstance(instance, collections.Mapping):
+    if isinstance(instance, collections.abc.Mapping):
         result: Mapping[Any, Any] = dict(zip(_sorted(instance), args))
         generator = ((key, result[key]) for key in instance)
         return type(instance)(generator)  # type: ignore
