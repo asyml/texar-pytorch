@@ -21,12 +21,10 @@ import os
 
 import texar.torch as tx
 
-from utils import processor
-
 
 def process_single_text(raw_text: str,
                         max_seq_length: int,
-                        encoder: processor.Encoder,
+                        encoder: tx.data.GPT2Tokenizer,
                         BOS_token: Optional[str],
                         EOS_token: Optional[str],
                         PAD_token: Optional[str]):
@@ -34,7 +32,7 @@ def process_single_text(raw_text: str,
     converting to indexes, truncation, and padding, etc.
     """
     # BPE
-    tokens = encoder.encode(raw_text)
+    tokens = encoder.map_text_to_id(raw_text)
 
     # Truncate
     max_len = max_seq_length
@@ -46,14 +44,14 @@ def process_single_text(raw_text: str,
 
     # Append special tokens
     if BOS_token is not None and len(BOS_token) > 0:
-        tokens = [encoder.encoder[BOS_token]] + tokens
+        tokens = [encoder.map_token_to_id(BOS_token)] + tokens
     if EOS_token is not None and len(EOS_token) > 0:
-        tokens = tokens + [encoder.encoder[EOS_token]]
+        tokens = tokens + [encoder.map_token_to_id(EOS_token)]
 
     token_length = len(tokens)
 
     # Pad
-    PAD_token_id = encoder.encoder[PAD_token]
+    PAD_token_id = encoder.map_token_to_id(PAD_token)
     while len(tokens) < max_seq_length:
         tokens.append(PAD_token_id)
 
@@ -76,7 +74,7 @@ def read_raw_data(data_fn: str):
 def file_based_convert_examples_to_features(
         examples: List[str],
         max_seq_length: int,
-        encoder: processor.Encoder,
+        encoder: tx.data.GPT2Tokenizer,
         output_file: str,
         feature_original_types: Dict[str, Any],
         BOS_token: Optional[str] = "<|endoftext|>",
@@ -102,14 +100,14 @@ def file_based_convert_examples_to_features(
 
 def prepare_pickle_data(data_dir: str,
                         max_seq_length: int,
-                        encoder: processor.Encoder,
+                        encoder: tx.data.GPT2Tokenizer,
                         output_dir: str,
                         feature_original_types: Dict[str, Any]):
     r"""Prepare the `pickle` dataset.
     Args:
         data_dir: The input data directory.
         max_seq_length: Max sequence length.
-        encoder: The data pre-processor.
+        encoder: The GPT-2 tokenizer.
         output_dir: The directory to save the pickled files in.
         feature_original_types: The original type of the feature.
     """

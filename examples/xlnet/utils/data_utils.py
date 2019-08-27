@@ -18,15 +18,12 @@ https://github.com/zihangdai/xlnet/blob/master/classifier_utils.py
 https://github.com/zihangdai/xlnet/blob/master/prepro_utils.py
 """
 
-import unicodedata
-from typing import Callable, Iterator, List, TypeVar, Union
+from typing import Callable, Iterator, List, TypeVar
 
-import sentencepiece as spm
+import texar.torch as tx
 
 __all__ = [
     "repeat",
-    "TokenizeFn",
-    "create_tokenize_fn",
     "convert_single_example",
 ]
 
@@ -36,72 +33,6 @@ T = TypeVar('T')
 def repeat(fn: Callable[[], Iterator[T]]) -> Iterator[T]:
     while True:
         yield from fn()
-
-
-def preprocess_text(inputs: Union[str, bytes], lower: bool = False,
-                    remove_space: bool = True,
-                    keep_accents: bool = False) -> str:
-    if isinstance(inputs, bytes):
-        inputs = inputs.decode('utf-8')
-
-    if remove_space:
-        outputs = ' '.join(inputs.strip().split())
-    else:
-        outputs = inputs
-    outputs = outputs.replace("``", '"').replace("''", '"')
-
-    if not keep_accents:
-        outputs = unicodedata.normalize('NFKD', outputs)
-        outputs = ''.join([c for c in outputs if not unicodedata.combining(c)])
-    if lower:
-        outputs = outputs.lower()
-
-    return outputs
-
-
-SPIECE_UNDERLINE = '▁'
-
-
-def encode_pieces(sp_model, text, sample: bool = False):
-    if not sample:
-        pieces = sp_model.EncodeAsPieces(text)
-    else:
-        pieces = sp_model.SampleEncodeAsPieces(text, 64, 0.1)
-    new_pieces: List[str] = []
-    for piece in pieces:
-        if len(piece) > 1 and piece[-1] == ',' and piece[-2].isdigit():
-            cur_pieces = sp_model.EncodeAsPieces(
-                piece[:-1].replace(SPIECE_UNDERLINE, ''))
-            if (piece[0] != SPIECE_UNDERLINE and
-                    cur_pieces[0][0] == SPIECE_UNDERLINE):
-                if len(cur_pieces[0]) == 1:
-                    cur_pieces = cur_pieces[1:]
-                else:
-                    cur_pieces[0] = cur_pieces[0][1:]
-            cur_pieces.append(piece[-1])
-            new_pieces.extend(cur_pieces)
-        else:
-            new_pieces.append(piece)
-
-    return new_pieces
-
-
-def encode_ids(sp_model: spm.SentencePieceProcessor,
-               text: str, sample: bool = False) -> List[int]:
-    pieces = encode_pieces(sp_model, text, sample=sample)
-    ids = [sp_model.PieceToId(piece) for piece in pieces]
-    return ids
-
-
-TokenizeFn = Callable[[str], List[int]]
-
-
-def create_tokenize_fn(sp_model, uncased: bool = False) -> TokenizeFn:
-    def tokenize_fn(text: Union[str, bytes]) -> List[int]:
-        text = preprocess_text(text, lower=uncased)
-        return encode_ids(sp_model, text)
-
-    return tokenize_fn
 
 
 class PaddingInputExample:
@@ -150,24 +81,7 @@ def _truncate_seq_pair(tokens_a: List[int], tokens_b: List[int],
             tokens_b.pop()
 
 
-special_symbols = {
-    "<unk>": 0,
-    "<s>": 1,
-    "</s>": 2,
-    "<cls>": 3,
-    "<sep>": 4,
-    "<pad>": 5,
-    "<mask>": 6,
-    "<eod>": 7,
-    "<eop>": 8,
-}
-
 VOCAB_SIZE = 32000
-UNK_ID = special_symbols["<unk>"]
-CLS_ID = special_symbols["<cls>"]
-SEP_ID = special_symbols["<sep>"]
-MASK_ID = special_symbols["<mask>"]
-EOD_ID = special_symbols["<eod>"]
 
 SEG_ID_A = 0
 SEG_ID_B = 1
@@ -177,7 +91,7 @@ SEG_ID_PAD = 4
 
 
 def convert_single_example(example, label_list: List[str], max_seq_length: int,
-                           tokenize_fn: TokenizeFn) -> InputFeatures:
+                           tokenizer: tx.data.XLNetTokenizer) -> InputFeatures:
     r"""Converts a single `InputExample` into a single `InputFeatures`."""
 
     if isinstance(example, PaddingInputExample):
@@ -188,10 +102,10 @@ def convert_single_example(example, label_list: List[str], max_seq_length: int,
             label_id=0,
             is_real_example=False)
 
-    tokens_a = tokenize_fn(example.text_a)
+    tokens_a = tokenizer.map_text_to_id(example.text_a)
     tokens_b = None
     if example.text_b:
-        tokens_b = tokenize_fn(example.text_b)
+        tokens_b = tokenizer.map_text_to_id(example.text_b)
 
     if tokens_b:
         # Modifies `tokens_a` and `tokens_b` in place so that the total
@@ -203,14 +117,14 @@ def convert_single_example(example, label_list: List[str], max_seq_length: int,
         if len(tokens_a) > max_seq_length - 2:
             tokens_a = tokens_a[:max_seq_length - 2]
 
-    tokens = tokens_a + [SEP_ID]
+    tokens = tokens_a + [tokenizer.map_token_to_id(tokenizer.sep_token)]
     segment_ids = [SEG_ID_A] * (len(tokens_a) + 1)
 
     if tokens_b:
-        tokens += tokens_b + [SEP_ID]
+        tokens += tokens_b + [tokenizer.map_token_to_id(tokenizer.sep_token)]
         segment_ids += [SEG_ID_B] * (len(tokens_b) + 1)
 
-    tokens.append(CLS_ID)
+    tokens.append(tokenizer.map_token_to_id(tokenizer.cls_token))
     segment_ids.append(SEG_ID_CLS)
 
     input_ids = tokens

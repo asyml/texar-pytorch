@@ -20,7 +20,6 @@ import numpy as np
 import torch
 import texar.torch as tx
 
-from utils import processor
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -82,9 +81,10 @@ def main():
         raise ValueError(
             "max_decoding_length should not be greater than position size")
 
-    # Create a data pre-processor for, e.g., BPE encoding
-    proc = processor.get_encoder(model.pretrained_model_dir)
-    end_token = proc.encoder['<|endoftext|>']
+    # Create a GPT-2 tokenizer (BPE encoding)
+    tokenizer = tx.data.GPT2Tokenizer(
+        pretrained_model_name=args.pretrained_model_name)
+    end_token = tokenizer.map_token_to_id('<|endoftext|>')
 
     print("\nFinished loading\n")
 
@@ -116,7 +116,7 @@ def main():
                 print("EOF entered, quitting.")
                 exit(0)
 
-            context_tokens = proc.encode(raw_text)
+            context_tokens = tokenizer.map_text_to_id(raw_text)
             context = torch.tensor(
                 [context_tokens for _ in range(batch_size)],
                 device=device)
@@ -142,7 +142,7 @@ def main():
                     print("=" * 40 +
                           " SAMPLE " + str(generated) + " " + "=" * 40)
                     si = sample_id[i][len(context_tokens):]
-                    print(proc.decode(si.tolist()))
+                    print(tokenizer.map_id_to_text(si.tolist()))
 
             print("=" * 80)
     else:
@@ -161,7 +161,7 @@ def main():
             sample_id = output.sample_id
             for i in range(batch_size):
                 generated += batch_size
-                text = proc.decode(sample_id[i].tolist())
+                text = tokenizer.map_id_to_text(sample_id[i].tolist())
                 print("=" * 40 +
                       " SAMPLE " + str(generated) + " " + "=" * 40)
                 print(text)

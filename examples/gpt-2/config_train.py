@@ -41,7 +41,7 @@ train_hparam = {
     "dataset": {
         "data_name": "data",
         "feature_original_types": feature_original_types,
-        "files": "{}/train.pickle".format(pickle_data_dir)
+        "files": "{}/train.pkl".format(pickle_data_dir)
     },
     "shuffle": True,
     "shuffle_buffer_size": 10000
@@ -53,7 +53,7 @@ eval_hparam = {
     "dataset": {
         "data_name": "data",
         "feature_original_types": feature_original_types,
-        "files": "{}/dev.pickle".format(pickle_data_dir)
+        "files": "{}/dev.pkl".format(pickle_data_dir)
     },
     "shuffle": False
 }
@@ -66,7 +66,7 @@ test_hparam = {
     "dataset": {
         "data_name": "data",
         "feature_original_types": feature_original_types,
-        "files": "{}/test.pickle".format(pickle_data_dir)
+        "files": "{}/test.pkl".format(pickle_data_dir)
     },
     "shuffle": False
 }

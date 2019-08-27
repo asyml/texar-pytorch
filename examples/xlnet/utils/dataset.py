@@ -49,7 +49,7 @@ def get_record_feature_types(seq_length: int, is_regression: bool):
 
 
 def construct_dataset(processor: DataProcessor, output_dir: str,
-                      max_seq_length: int, tokenize_fn: data_utils.TokenizeFn,
+                      max_seq_length: int, tokenizer: tx.data.XLNetTokenizer,
                       file_prefix: Optional[str] = None,
                       overwrite_data: bool = False):
     """Convert a set of `InputExample`s to a TFRecord file."""
@@ -83,7 +83,7 @@ def construct_dataset(processor: DataProcessor, output_dir: str,
         writer = tx.data.RecordData.writer(output_file, feature_types)
         for example in tqdm.tqdm(examples, ncols=80):
             feature = data_utils.convert_single_example(
-                example, processor.labels, max_seq_length, tokenize_fn)
+                example, processor.labels, max_seq_length, tokenizer)
 
             features: Dict[str, Any] = collections.OrderedDict()
             features["input_ids"] = feature.input_ids

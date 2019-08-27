@@ -14,14 +14,10 @@
 """Example of building XLNet language model for sample generation.
 """
 
-import os
 import argparse
 import torch
-import sentencepiece as spm
 
 import texar.torch as tx
-
-from utils import data_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', type=str, default=None,
@@ -69,10 +65,8 @@ def main():
         print(f"Loaded checkpoint from {args.checkpoint}")
     model = model.to(device)
 
-    spm_model_path = os.path.join(model.pretrained_model_dir, "spiece.model")
-    sp_model = spm.SentencePieceProcessor()
-    sp_model.Load(spm_model_path)
-    tokenize_fn = data_utils.create_tokenize_fn(sp_model, False)
+    tokenizer = tx.data.XLNetTokenizer(
+        pretrained_model_name=args.pretrained_model_name)
 
     # A lengthy padding text used to workaround lack of context for short
     # prompts. Refer to https://github.com/rusiaaman/XLNet-gen for the rationale
@@ -89,8 +83,9 @@ def main():
         and methodologies, creates a library of highly reusable modules and
         functionalities, and facilitates arbitrary model architectures and
         algorithmic paradigms. """
-    pad_ids = tokenize_fn(pad_txt)
-    pad_ids.append(data_utils.EOD_ID)
+    pad_ids = tokenizer.map_text_to_id(pad_txt)
+    eod_id = tokenizer.map_token_to_id("<eod>")
+    pad_ids.append(eod_id)
 
     def split_by(xs, y):
         p = 0
@@ -106,13 +101,13 @@ def main():
     def sample(text: str, length: int = 100, n_samples=3, **kwargs):
         model.eval()
         text = text.replace("\n", "<eop>")
-        tokens = pad_ids + tokenize_fn(text)
+        tokens = pad_ids + tokenizer.map_text_to_id(text)
         tokens = torch.tensor(tokens, device=device).expand(n_samples, -1)
         if args.top_p:
             kwargs["p"] = args.top_p
             decode_output, _ = model(
                 start_tokens=tokens,
-                end_token=data_utils.EOD_ID,
+                end_token=eod_id,
                 max_decoding_length=length,
                 print_steps=True,
                 helper_type=tx.modules.TopPSampleEmbeddingHelper,
@@ -121,7 +116,7 @@ def main():
             kwargs["top_k"] = args.top_k
             decode_output, _ = model(
                 start_tokens=tokens,
-                end_token=data_utils.EOD_ID,
+                end_token=eod_id,
                 max_decoding_length=length,
                 print_steps=True,
                 helper_type=tx.modules.TopKSampleEmbeddingHelper,
@@ -129,8 +124,8 @@ def main():
         decode_samples = decode_output.sample_id.tolist()
         for idx, sample_tokens in enumerate(decode_samples):
             print(f"=== Sample {idx} ===")
-            output = "\n".join(sp_model.DecodeIds(xs) for xs in split_by(
-                sample_tokens, data_utils.special_symbols["<eop>"]))
+            output = "\n".join(tokenizer.map_id_to_text(xs) for xs in split_by(
+                sample_tokens, tokenizer.map_token_to_id("<eop>")))
             print(output)
 
     nsamples = args.nsamples
