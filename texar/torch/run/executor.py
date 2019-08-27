@@ -257,6 +257,7 @@ class Executor:
 
     - :ref:`General arguments <executor-general-args>`
     - :ref:`Arguments for checkpoint management <executor-checkpoint-args>`
+    - :ref:`Arguments for tensorboard logging <executor-tbx-logging-args>`
     - :ref:`Arguments for training <executor-train-args>`
     - :ref:`Arguments for validation <executor-valid-args>`
     - :ref:`Arguments for testing <executor-test-args>`
@@ -334,14 +335,14 @@ class Executor:
 
     .. _executor-tbx-logging-args:
 
-    **Arguments for tensorboardX logging:**
+    **Arguments for tensorboard logging:**
 
     `tbx_logging_dir`: str
         Path to the directory for storing tensorboard logs.
 
     `tbx_log_every`: |Condition|
         Conditions that, when triggered, saves the tensorboard logs for train
-        metrics.
+        metrics. If None, :ref:`log_every <executor-log-args>` will be used.
 
     .. _executor-checkpoint-args:
 
@@ -1524,10 +1525,10 @@ class Executor:
 
             for key, value in valid_metrics.items():
                 self.summary_writer.add_scalar(
-                    f"valid/{key}", value.value(), executor.status["epoch"])
+                    f"valid/{key}", value.value(), executor.status["iteration"])
 
         _register(self._tbx_logging_conditions, tbx_train_log_fn)
-        _register([Event.Epoch], tbx_valid_log_fn)
+        _register(self._valid_conditions, tbx_valid_log_fn)
 
     def _write_log(self, log_str: str,
                    skip_tty: bool = False, skip_non_tty: bool = False,

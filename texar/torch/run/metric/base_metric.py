@@ -175,6 +175,14 @@ class SimpleMetric(Metric[Input, Value], ABC):
         return self._cached_value
 
     def _value(self) -> Value:
+        r"""Compute the metric value. This function is called in
+        :meth:`texar.torch.run.metric.SimpleMetric.value` and the output is
+        cached. This prevents recalculation of metrics which may be time
+        consuming.
+
+        Returns:
+            The metric value.
+        """
         raise NotImplementedError
 
 
