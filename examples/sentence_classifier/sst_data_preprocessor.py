@@ -14,6 +14,8 @@
 """Preparing the SST2 dataset.
 """
 
+from typing import Tuple
+
 import argparse
 import os
 import re
@@ -28,7 +30,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-def clean_sst_text(text):
+def clean_sst_text(text: str) -> str:
     """Cleans tokens in the SST data, which has already been tokenized.
     """
     text = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", text)
@@ -36,7 +38,8 @@ def clean_sst_text(text):
     return text.strip().lower()
 
 
-def transform_raw_sst(data_path, raw_fn, new_fn):
+def transform_raw_sst(data_path: str, raw_fn: str, new_fn: str) -> \
+        Tuple[str, str]:
     """Transforms the raw data format to a new format.
     """
     fout_x_name = os.path.join(data_path, new_fn + '.sentences.txt')

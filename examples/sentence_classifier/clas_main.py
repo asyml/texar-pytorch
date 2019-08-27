@@ -20,6 +20,8 @@ To run:
 $ python clas_main.py --config=config_kim
 """
 
+from typing import Tuple
+
 import argparse
 import importlib
 
@@ -42,7 +44,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class SentenceClassifier(nn.Module):
 
-    def __init__(self, train_data):
+    def __init__(self, train_data: tx.data.MultiAlignedData):
         super().__init__()
 
         self.embedder = tx.modules.WordEmbedder(
@@ -51,14 +53,12 @@ class SentenceClassifier(nn.Module):
             in_channels=config.max_seq_length,
             in_features=config.emb_dim, hparams=config.clas)
 
-    def forward(self, batch, mode):
+    def forward(self, batch: tx.data.Batch) -> \
+            Tuple[torch.Tensor, torch.Tensor]:
         logits, pred = self.classifier(
             self.embedder(batch['sentence_text_ids']))
-        if mode == "train":
-            loss = F.cross_entropy(logits, batch['label'].long())
-            return pred, loss
-        else:
-            return pred
+        loss = F.cross_entropy(logits, batch['label'].long())
+        return pred, loss
 
 
 def main():
@@ -66,9 +66,8 @@ def main():
     train_data = tx.data.MultiAlignedData(config.train_data, device=device)
     val_data = tx.data.MultiAlignedData(config.val_data, device=device)
     test_data = tx.data.MultiAlignedData(config.test_data, device=device)
-    data_iterator = tx.data.TrainTestDataIterator(train=train_data,
-                                                  val=val_data,
-                                                  test=test_data)
+    data_iterator = tx.data.TrainTestDataIterator(
+        train=train_data, val=val_data, test=test_data)
     model = SentenceClassifier(train_data)
     model.to(device)
     train_op = tx.core.get_train_op(params=model.parameters(),
@@ -79,19 +78,16 @@ def main():
         step = 0
         avg_rec = tx.utils.AverageRecorder()
         for batch in data_iterator:
+            pred, loss = model(batch)
             if mode == "train":
-                pred, loss = model(batch, mode)
                 loss.backward()
                 train_op()
-            else:
-                pred = model(batch, mode)
             accu = tx.evals.accuracy(batch['label'], pred)
             step += 1
             if step == 1 or step % 100 == 0:
-                print("epoch: {0:2} step: {1:4} accu: {2:.4f}"
-                      .format(epoch, step, accu))
+                print(f"epoch: {epoch:2} step: {step:4} accu: {accu:.4f}")
 
-            batch_size = batch['label'].size()[0]
+            batch_size = batch['label'].size(0)
             avg_rec.add([accu], batch_size)
 
         return avg_rec.avg(0)
@@ -107,8 +103,8 @@ def main():
         data_iterator.switch_to_val_data()
         model.eval()
         val_accu = _run_epoch("val", epoch)
-        print('epoch: {0:2} train accu: {1:.4f} val accu: {2:.4f}'
-              .format(epoch + 1, train_accu, val_accu))
+        print(f'epoch: {epoch:2} train accu: {train_accu:.4f} '
+              f'val accu: {val_accu:.4f}')
 
         # Test
         if val_accu > best_val_accu:
@@ -116,7 +112,7 @@ def main():
             data_iterator.switch_to_test_data()
             model.eval()
             test_accu = _run_epoch("test", epoch)
-            print('test accu: {0:.4f}'.format(test_accu))
+            print(f'test accu: {test_accu:.4f}')
 
 
 if __name__ == '__main__':

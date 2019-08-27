@@ -18,8 +18,6 @@ This is (approximately) the config of the paper:
   https://arxiv.org/pdf/1408.5882.pdf
 """
 
-# pylint: disable=invalid-name, too-few-public-methods, missing-docstring
-
 import copy
 
 num_epochs = 15
