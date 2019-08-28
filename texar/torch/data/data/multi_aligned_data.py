@@ -236,10 +236,11 @@ class MultiAlignedData(
                     compression_type=hparams_i.compression_type)
                 sources.append(source_i)
                 filters.append(None)
-                self._names.append({"label": hparams_i.data_name})
+                self._names.append({"data": hparams_i.data_name})
 
                 dataset_hparams = dict_fetch(
                     hparams_i, ScalarData.default_hparams()["dataset"])
+                dataset_hparams["data_name"] = "data"
                 self._databases.append(ScalarData(
                     hparams={"dataset": dataset_hparams}, device=device,
                     data_source=dummy_source))

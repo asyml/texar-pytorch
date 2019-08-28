@@ -32,22 +32,34 @@ __all__ = [
 
 class Conv1DClassifier(ClassifierBase):
     r"""Simple `Conv-1D` classifier.
-    This is a combination of the
-    :class:`~texar.torch.modules.Conv1DEncoder` with a classification layer.
+    This is a combination of the :class:`~texar.torch.modules.Conv1DEncoder`
+    with a classification layer.
 
     Args:
+        in_channels (int): Number of channels in the input tensor.
+        in_features (int): Size of the feature dimension in the input tensor.
         hparams (dict, optional): Hyperparameters. Missing
             hyperparameters will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure and
             default values.
 
+    See :meth:`forward` for the inputs and outputs. If :attr:`"data_format"` is
+    set to ``"channels_first"`` (this is the default), inputs must be a tensor
+    of shape `[batch_size, channels, length]`. If :attr:`"data_format"` is set
+    to ``"channels_last"``, inputs must be a tensor of shape
+    `[batch_size, length, channels]`. For example, for sequence classification,
+    `length` corresponds to time steps, and `channels` corresponds to embedding
+    dim.
+
     Example:
 
     .. code-block:: python
 
-        clas = Conv1DClassifier(hparams={'num_classes': 10})
-
         inputs = torch.randn([64, 20, 256])
+
+        clas = Conv1DClassifier(in_channels=20, in_features=256,
+                                hparams={'num_classes': 10})
+
         logits, pred = clas(inputs)
         # logits == Tensor of shape [64, 10]
         # pred   == Tensor of shape [64]
