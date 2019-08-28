@@ -28,12 +28,19 @@ import sentencepiece as spm
 from texar.torch.modules.pretrained.pretrained_xlnet import PretrainedXLNetMixin
 from texar.torch.data.tokenizers.pretrained_tokenizer_base import \
     PretrainedTokenizerBase
+from texar.torch.utils.utils import truncate_seq_pair
 
 __all__ = [
     "XLNetTokenizer",
 ]
 
 SPIECE_UNDERLINE = u'▁'
+
+SEG_ID_A = 0
+SEG_ID_B = 1
+SEG_ID_CLS = 2
+SEG_ID_SEP = 3
+SEG_ID_PAD = 4
 
 
 class XLNetTokenizer(PretrainedXLNetMixin, PretrainedTokenizerBase):
@@ -189,6 +196,115 @@ class XLNetTokenizer(PretrainedXLNetMixin, PretrainedTokenizerBase):
         r"""Maps a sequence of tokens (string) in a single string."""
         out_string = ''.join(tokens).replace(SPIECE_UNDERLINE, ' ').strip()
         return out_string
+
+    def add_special_tokens_single_sequence(
+            self,
+            text: str,
+            max_length: Optional[int] = None) -> \
+            Tuple[List[int], List[int], List[int]]:
+        r"""Adds special tokens to a sequence for XLNet specific tasks. The
+        sequence will be truncated if its length is larger than `max_length`.
+        A BERT sequence has the following format: X [SEP] [CLS]
+
+        Args:
+            text: Input text.
+            max_length: Maximum sequence length.
+
+        Returns:
+            A tuple of `(input_ids, segment_ids, input_mask)`, where
+
+            - ``input_ids``: A list of input token ids.
+            - ``segment_ids``: A list of segment ids.
+            - ``input_mask``: A list of mask ids.
+        """
+        if max_length is None:
+            max_length = self.max_len
+
+        token_ids = self.map_text_to_id(text)
+
+        if len(token_ids) > max_length - 2:
+            # Account for [CLS] and [SEP] with "- 2"
+            token_ids = token_ids[:max_length - 2]
+
+        cls_token_id = self._map_token_to_id(self.cls_token)
+        sep_token_id = self._map_token_to_id(self.sep_token)
+
+        input_ids = token_ids + [sep_token_id] + [cls_token_id]
+        segment_ids = [SEG_ID_A] * (len(input_ids) - 1) + [SEG_ID_CLS]
+
+        # The mask has 0 for real tokens and 1 for padding tokens. Only real
+        # tokens are attended to.
+        input_mask = [0] * len(input_ids)
+
+        # Zero-pad up to the maximum sequence length.
+        input_ids = [0] * (max_length - len(input_ids)) + input_ids
+        input_mask = [1] * (max_length - len(input_mask)) + input_mask
+        segment_ids = ([SEG_ID_PAD] * (max_length - len(segment_ids)) +
+                       segment_ids)
+
+        assert len(input_ids) == max_length
+        assert len(input_mask) == max_length
+        assert len(segment_ids) == max_length
+
+        return input_ids, segment_ids, input_mask
+
+    def add_special_tokens_sequence_pair(
+            self,
+            text_0: str,
+            text_1: str,
+            max_length: Optional[int] = None) -> \
+            Tuple[List[int], List[int], List[int]]:
+        r"""Adds special tokens to a sequence pair for BERT specific tasks. The
+        sequence will be truncated if its length is larger than `max_length`.
+        A BERT sequence pair has the following format: [CLS] A [SEP] B [SEP]
+
+        Args:
+            text_0: The first input text.
+            text_1: The second input text.
+            max_length: Maximum sequence length.
+
+        Returns:
+            A tuple of `(input_ids, segment_ids, input_mask)`, where
+
+            - ``input_ids``: A list of input token ids.
+            - ``segment_ids``: A list of segment ids.
+            - ``input_mask``: A list of mask ids.
+        """
+
+        if max_length is None:
+            max_length = self.max_len
+
+        token_ids_0 = self.map_text_to_id(text_0)
+        token_ids_1 = self.map_text_to_id(text_1)
+
+        # Modifies `token_ids_0` and `token_ids_1` in place so that the total
+        # length is less than the specified length.
+        # Account for [CLS], [SEP], [SEP] with "- 3"
+        truncate_seq_pair(token_ids_0, token_ids_1, max_length - 3)
+
+        cls_token_id = self._map_token_to_id(self.cls_token)
+        sep_token_id = self._map_token_to_id(self.sep_token)
+
+        input_ids = (token_ids_0 + [sep_token_id] + token_ids_1 +
+                     [sep_token_id] + [cls_token_id])
+        segment_ids = [SEG_ID_A] * (len(token_ids_0) + 1) + \
+                      [SEG_ID_B] * (len(token_ids_1) + 1) + [SEG_ID_CLS]
+
+        # The mask has 0 for real tokens and 1 for padding tokens. Only real
+        # tokens are attended to.
+        input_mask = [0] * len(input_ids)
+
+        # Zero-pad up to the maximum sequence length.
+        input_ids = [0] * (max_length - len(input_ids)) + input_ids
+        input_mask = [1] * (max_length - len(input_mask)) + input_mask
+        segment_ids = ([SEG_ID_PAD] * (max_length - len(segment_ids)) +
+                       segment_ids)
+
+        assert len(input_ids) == max_length
+        assert len(input_mask) == max_length
+        assert len(segment_ids) == max_length
+
+        return input_ids, segment_ids, input_mask
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:

@@ -153,6 +153,34 @@ class BERTTokenizerTest(unittest.TestCase):
         self.assertEqual(tokens[-2],
                          tokenizer.map_token_to_id(tokenizer.pad_token))
 
+    def test_add_special_tokens_sequence(self):
+        tokenizer = BERTTokenizer.load(self.vocab_file)
+
+        text_1 = u"He is very happy"
+        text_2 = u"unwanted, running"
+
+        text_1_ids = tokenizer.map_text_to_id(text_1)
+        text_2_ids = tokenizer.map_text_to_id(text_2)
+
+        cls_token_id = tokenizer.map_token_to_id(tokenizer.cls_token)
+        sep_token_id = tokenizer.map_token_to_id(tokenizer.sep_token)
+
+        input_ids, segment_ids, input_mask = \
+            tokenizer.add_special_tokens_single_sequence(text_1, 4)
+
+        self.assertListEqual(input_ids,
+                             [cls_token_id] + text_1_ids[:2] + [sep_token_id])
+        self.assertListEqual(segment_ids, [0, 0, 0, 0])
+        self.assertListEqual(input_mask, [1, 1, 1, 1])
+
+        input_ids, segment_ids, input_mask = \
+            tokenizer.add_special_tokens_sequence_pair(text_1, text_2, 7)
+
+        self.assertListEqual(input_ids, [cls_token_id] + text_1_ids[:2] +
+                             [sep_token_id] + text_2_ids[:2] + [sep_token_id])
+        self.assertListEqual(segment_ids, [0, 0, 0, 0, 1, 1, 1])
+        self.assertListEqual(input_mask, [1, 1, 1, 1, 1, 1, 1])
+
 
 if __name__ == "__main__":
     unittest.main()

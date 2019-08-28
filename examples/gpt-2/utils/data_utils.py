@@ -31,36 +31,12 @@ def process_single_text(raw_text: str,
     """Processes a single piece of text. Performs BPE encoding,
     converting to indexes, truncation, and padding, etc.
     """
-    # BPE
-    tokens = encoder.map_text_to_id(raw_text)
+    input_ids, input_mask = encoder.add_special_tokens_single_sequence(
+        text=raw_text, bos_token=BOS_token, eos_token=EOS_token,
+        pad_token=PAD_token, max_length=max_seq_length)
+    token_length = sum(input_mask)
 
-    # Truncate
-    max_len = max_seq_length
-    if BOS_token is not None and len(BOS_token) > 0:
-        max_len -= 1
-    if EOS_token is not None and len(EOS_token) > 0:
-        max_len -= 1
-    assert isinstance(tokens, list)
-    tokens = tokens[:max_len]
-
-    # Append special tokens
-    if BOS_token is not None and len(BOS_token) > 0:
-        tokens = [encoder.map_token_to_id(BOS_token)] + tokens  # type: ignore
-    if EOS_token is not None and len(EOS_token) > 0:
-        tokens = tokens + [encoder.map_token_to_id(EOS_token)]  # type: ignore
-
-    token_length = len(tokens)
-
-    # Pad
-    assert PAD_token is not None
-    PAD_token_id = encoder.map_token_to_id(PAD_token)
-    while len(tokens) < max_seq_length:
-        assert isinstance(PAD_token_id, int)
-        tokens.append(PAD_token_id)
-
-    assert len(tokens) == max_seq_length
-
-    return tokens, token_length
+    return input_ids, token_length
 
 
 def read_raw_data(data_fn: str):

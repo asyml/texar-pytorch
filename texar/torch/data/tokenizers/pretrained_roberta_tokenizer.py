@@ -15,9 +15,10 @@
 Pre-trained RoBERTa tokenizer.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional, Tuple
 
 from texar.torch.data.tokenizers.pretrained_gpt2_tokenizer import GPT2Tokenizer
+from texar.torch.utils.utils import truncate_seq_pair
 
 __all__ = [
     'RoBERTaTokenizer',
@@ -53,6 +54,102 @@ class RoBERTaTokenizer(GPT2Tokenizer):
         'roberta-base': 512,
         'roberta-large': 512,
     }
+
+    def add_special_tokens_single_sequence(
+            self,
+            text: str,
+            max_length: Optional[int] = None) -> \
+            Tuple[List[int], List[int]]:
+        r"""Adds special tokens to a sequence for RoBERTa specific tasks. The
+        sequence will be truncated if its length is larger than `max_length`.
+        A RoBERTa sequence has the following format: <s> X </s>
+
+        Args:
+            text: Input text.
+            max_length: Maximum sequence length.
+
+        Returns:
+            A tuple of `(input_ids, segment_ids, input_mask)`, where
+
+            - ``input_ids``: A list of input token ids.
+            - ``input_mask``: A list of mask ids.
+        """
+        if max_length is None:
+            max_length = self.max_len
+
+        token_ids = self.map_text_to_id(text)
+
+        if len(token_ids) > max_length - 2:
+            # Account for <s> and </s> with "- 2"
+            token_ids = token_ids[0:max_length-2]
+
+        cls_token_id = self._map_token_to_id(self.cls_token)
+        sep_token_id = self._map_token_to_id(self.sep_token)
+
+        input_ids = [cls_token_id] + token_ids + [sep_token_id]
+
+        # The mask has 1 for real tokens and 0 for padding tokens. Only real
+        # tokens are attended to.
+        input_mask = [1] * len(input_ids)
+
+        # Zero-pad up to the maximum sequence length.
+        input_ids = input_ids + [0] * (max_length - len(input_ids))
+        input_mask = input_mask + [0] * (max_length - len(input_mask))
+
+        assert len(input_ids) == max_length
+        assert len(input_mask) == max_length
+
+        return input_ids, input_mask
+
+    def add_special_tokens_sequence_pair(
+            self,
+            text_0: str,
+            text_1: str,
+            max_length: Optional[int] = None) -> \
+            Tuple[List[int], List[int]]:
+        r"""Adds special tokens to a sequence pair for RoBERTa specific tasks.
+        The sequence will be truncated if its length is larger than
+        `max_length`. A RoBERTa sequence pair has the following format:
+        <s> A </s> </s> B </s>
+
+        Args:
+            text_0: The first input text.
+            text_1: The second input text.
+            max_length: Maximum sequence length.
+
+        Returns:
+            A tuple of `(input_ids, segment_ids, input_mask)`, where
+
+            - ``input_ids``: A list of input token ids.
+            - ``input_mask``: A list of mask ids.
+        """
+
+        if max_length is None:
+            max_length = self.max_len
+
+        token_ids_0 = self.map_text_to_id(text_0)
+        token_ids_1 = self.map_text_to_id(text_1)
+
+        # Modifies `token_ids_0` and `token_ids_1` in place so that the total
+        # length is less than the specified length.
+        # Account for <s>, </s>, </s>, </s> with "- 4"
+        truncate_seq_pair(token_ids_0, token_ids_1, max_length - 4)
+
+        cls_token_id = self._map_token_to_id(self.cls_token)
+        sep_token_id = self._map_token_to_id(self.sep_token)
+
+        input_ids = ([cls_token_id] + token_ids_0 + [sep_token_id] +
+                     [sep_token_id] + token_ids_1 + [sep_token_id])
+
+        input_mask = [1] * len(input_ids)
+
+        input_ids = input_ids + [0] * (max_length - len(input_ids))
+        input_mask = input_mask + [0] * (max_length - len(input_mask))
+
+        assert len(input_ids) == max_length
+        assert len(input_mask) == max_length
+
+        return input_ids, input_mask
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
@@ -150,7 +247,7 @@ class RoBERTaTokenizer(GPT2Tokenizer):
             'bos_token': '<s>',
             'eos_token': '</s>',
             'sep_token': '</s>',
-            'cls_token': '</s>',
+            'cls_token': '<s>',
             'unk_token': '<unk>',
             'pad_token': '<pad>',
             'mask_token': '<mask>',

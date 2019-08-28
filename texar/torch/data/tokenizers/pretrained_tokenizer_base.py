@@ -450,6 +450,16 @@ class PretrainedTokenizerBase(PretrainedMixin):
             text = self.clean_up_tokenization(text)
         return text
 
+    def add_special_tokens_single_sequence(self, token_ids: List[int]) -> \
+            List[int]:
+        r"""Adds special tokens to a sequence for specific tasks."""
+        raise NotImplementedError
+
+    def add_special_tokens_sequence_pair(self, token_ids_0: List[int],
+                                         token_ids_1: List[int]) -> List[int]:
+        r"""Adds special tokens to a sequence pair for specific tasks."""
+        raise NotImplementedError
+
     @property
     def special_tokens_map(self) -> Dict[str, str]:
         r"""A dictionary mapping special token class attributes

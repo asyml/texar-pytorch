@@ -1164,3 +1164,28 @@ def sum_tensors(xs: List[Optional[torch.Tensor]]) -> Optional[torch.Tensor]:
         if tensor is not None:
             ret = ret + tensor
     return ret
+
+
+def truncate_seq_pair(tokens_a: List[int], tokens_b: List[int],
+                      max_length: int):
+    r"""Truncates a sequence pair in place to the maximum length.
+
+    This is a simple heuristic which will always truncate the longer sequence
+    one token at a time. This makes more sense than truncating an equal
+    percent of tokens from each, since if one sequence is very short then
+    each token that's truncated likely contains more information than a
+    longer sequence.
+
+    Args:
+        tokens_a: A list of token ids.
+        tokens_b: A list of token ids.
+        max_length: maximum sequence length.
+    """
+    while True:
+        total_length = len(tokens_a) + len(tokens_b)
+        if total_length <= max_length:
+            break
+        if len(tokens_a) > len(tokens_b):
+            tokens_a.pop()
+        else:
+            tokens_b.pop()

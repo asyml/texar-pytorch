@@ -62,34 +62,6 @@ class InputFeatures:
         self.is_real_example = is_real_example
 
 
-def _truncate_seq_pair(tokens_a: List[int], tokens_b: List[int],
-                       max_length: int):
-    r"""Truncates a sequence pair in place to the maximum length."""
-
-    # This is a simple heuristic which will always truncate the longer sequence
-    # one token at a time. This makes more sense than truncating an equal
-    # percent of tokens from each, since if one sequence is very short then each
-    # token that's truncated likely contains more information than a longer
-    # sequence.
-    while True:
-        total_length = len(tokens_a) + len(tokens_b)
-        if total_length <= max_length:
-            break
-        if len(tokens_a) > len(tokens_b):
-            tokens_a.pop()
-        else:
-            tokens_b.pop()
-
-
-VOCAB_SIZE = 32000
-
-SEG_ID_A = 0
-SEG_ID_B = 1
-SEG_ID_CLS = 2
-SEG_ID_SEP = 3
-SEG_ID_PAD = 4
-
-
 def convert_single_example(example, label_list: List[str], max_seq_length: int,
                            tokenizer: tx.data.XLNetTokenizer) -> InputFeatures:
     r"""Converts a single `InputExample` into a single `InputFeatures`."""
@@ -102,53 +74,15 @@ def convert_single_example(example, label_list: List[str], max_seq_length: int,
             label_id=0,
             is_real_example=False)
 
-    tokens_a = tokenizer.map_text_to_id(example.text_a)
-    tokens_b = None
     if example.text_b:
-        tokens_b = tokenizer.map_text_to_id(example.text_b)
-    assert isinstance(tokens_a, list)
-
-    if tokens_b:
-        # Modifies `tokens_a` and `tokens_b` in place so that the total
-        # length is less than the specified length.
-        # Account for two [SEP] & one [CLS] with "- 3"
-        assert isinstance(tokens_b, list)
-        _truncate_seq_pair(tokens_a, tokens_b, max_seq_length - 3)
+        input_ids, segment_ids, input_mask = \
+            tokenizer.add_special_tokens_sequence_pair(
+                text_0=example.text_a, text_1=example.text_b,
+                max_length=max_seq_length)
     else:
-        # Account for one [SEP] & one [CLS] with "- 2"
-        if len(tokens_a) > max_seq_length - 2:
-            tokens_a = tokens_a[:max_seq_length - 2]
-
-    tokens = tokens_a + [tokenizer.map_token_to_id(  # type: ignore
-        tokenizer.sep_token)]
-    segment_ids = [SEG_ID_A] * (len(tokens_a) + 1)
-
-    if tokens_b:
-        assert isinstance(tokens_b, list)
-        tokens += tokens_b + [tokenizer.map_token_to_id(  # type: ignore
-            tokenizer.sep_token)]
-        segment_ids += [SEG_ID_B] * (len(tokens_b) + 1)
-
-    tokens.append(  # type: ignore
-        tokenizer.map_token_to_id(tokenizer.cls_token))
-    segment_ids.append(SEG_ID_CLS)
-
-    input_ids = tokens
-
-    # The mask has 0 for real tokens and 1 for padding tokens. Only real
-    # tokens are attended to.
-    input_mask = [0] * len(input_ids)
-
-    # Zero-pad up to the sequence length.
-    if len(input_ids) < max_seq_length:
-        delta_len = max_seq_length - len(input_ids)
-        input_ids = [0] * delta_len + input_ids
-        input_mask = [1] * delta_len + input_mask
-        segment_ids = [SEG_ID_PAD] * delta_len + segment_ids
-
-    assert len(input_ids) == max_seq_length
-    assert len(input_mask) == max_seq_length
-    assert len(segment_ids) == max_seq_length
+        input_ids, segment_ids, input_mask = \
+            tokenizer.add_special_tokens_single_sequence(
+                text=example.text_a, max_length=max_seq_length)
 
     if len(label_list) > 0:
         label_id = label_list.index(example.label)

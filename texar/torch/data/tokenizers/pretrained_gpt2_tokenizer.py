@@ -223,6 +223,53 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
             'utf-8', errors=self.errors)
         return text
 
+    def add_special_tokens_single_sequence(  # type: ignore
+            self,
+            text: str,
+            max_length: Optional[int] = None) -> \
+            Tuple[List[int], List[int]]:
+        r"""Adds special tokens to a sequence for GPT2 specific tasks. The
+        sequence will be truncated if its length is larger than `max_length`.
+        A GPT2 sequence has the following format:
+        [bos_token] X [eos_token] [pad_token]
+
+        Args:
+            text: Input text.
+            max_length: Maximum sequence length.
+
+        Returns:
+            A tuple of `(input_ids, segment_ids, input_mask)`, where
+
+            - ``input_ids``: A list of input token ids.
+            - ``segment_ids``: A list of segment ids.
+            - ``input_mask``: A list of mask ids.
+        """
+        if max_length is None:
+            max_length = self.max_len
+
+        token_ids = self.map_text_to_id(text)
+
+        bos_token_id = self._map_token_to_id(self.bos_token)
+        eos_token_id = self._map_token_to_id(self.eos_token)
+        pad_token_id = self._map_token_to_id(self.pad_token)
+
+        input_ids = token_ids[:max_length-2]
+
+        input_ids = [bos_token_id] + input_ids + [eos_token_id]
+
+        # The mask has 1 for real tokens and 0 for padding tokens. Only real
+        # tokens are attended to.
+        input_mask = [1] * len(input_ids)
+
+        # Zero-pad up to the maximum sequence length.
+        input_ids = input_ids + [pad_token_id] * (max_length - len(input_ids))
+        input_mask = input_mask + [0] * (max_length - len(input_mask))
+
+        assert len(input_ids) == max_length
+        assert len(input_mask) == max_length
+
+        return input_ids, input_mask
+
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
         r"""Returns a dictionary of hyperparameters with default values.
@@ -246,6 +293,7 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
                 "bos_token": "<|endoftext|>",
                 "eos_token": "<|endoftext|>",
                 "unk_token": "<|endoftext|>",
+                "pad_token": "<|endoftext|>",
                 "errors": "replace",
             }
 
@@ -272,6 +320,9 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
         `"unk_token"`: str
             Unknown token
 
+        `"pad_token"`: str
+            Padding token
+
         `"errors"`: str
             Response when mapping tokens to text fails. The possible values are
             `ignore`, `replace`, and `strict`.
@@ -284,6 +335,7 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
             'bos_token': '<|endoftext|>',
             'eos_token': '<|endoftext|>',
             'unk_token': '<|endoftext|>',
+            'pad_token': '<|endoftext|>',
             'errors': 'replace',
             '@no_typecheck': ['pretrained_model_name'],
         }
@@ -299,5 +351,6 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
             'bos_token': '<|endoftext|>',
             'eos_token': '<|endoftext|>',
             'unk_token': '<|endoftext|>',
+            'pad_token': '<|endoftext|>',
             'errors': 'replace',
         }
