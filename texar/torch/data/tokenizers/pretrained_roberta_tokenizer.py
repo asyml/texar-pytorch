@@ -55,33 +55,38 @@ class RoBERTaTokenizer(GPT2Tokenizer):
         'roberta-large': 512,
     }
 
-    def add_special_tokens_single_sequence(
+    def add_special_tokens_single_sequence(  # type: ignore
             self,
             text: str,
             max_length: Optional[int] = None) -> \
             Tuple[List[int], List[int]]:
         r"""Adds special tokens to a sequence for RoBERTa specific tasks. The
-        sequence will be truncated if its length is larger than `max_length`.
-        A RoBERTa sequence has the following format: <s> X </s>
+        sequence will be truncated if its length is larger than ``max_length``.
+        A RoBERTa sequence has the following format:
+        `[cls_token]` X `[sep_token]`
 
         Args:
             text: Input text.
             max_length: Maximum sequence length.
 
         Returns:
-            A tuple of `(input_ids, segment_ids, input_mask)`, where
+            A tuple of `(input_ids, input_mask)`, where
 
-            - ``input_ids``: A list of input token ids.
-            - ``input_mask``: A list of mask ids.
+            - ``input_ids``: A list of input token ids with added
+              special token ids.
+            - ``input_mask``: A list of mask ids. The mask has 1 for real
+              tokens and 0 for padding tokens. Only real tokens
+              are attended to.
         """
         if max_length is None:
             max_length = self.max_len
 
         token_ids = self.map_text_to_id(text)
+        assert isinstance(token_ids, list)
 
         if len(token_ids) > max_length - 2:
             # Account for <s> and </s> with "- 2"
-            token_ids = token_ids[0:max_length-2]
+            token_ids = token_ids[0:max_length - 2]
 
         cls_token_id = self._map_token_to_id(self.cls_token)
         sep_token_id = self._map_token_to_id(self.sep_token)
@@ -109,8 +114,8 @@ class RoBERTaTokenizer(GPT2Tokenizer):
             Tuple[List[int], List[int]]:
         r"""Adds special tokens to a sequence pair for RoBERTa specific tasks.
         The sequence will be truncated if its length is larger than
-        `max_length`. A RoBERTa sequence pair has the following format:
-        <s> A </s> </s> B </s>
+        ``max_length``. A RoBERTa sequence pair has the following format:
+        `[cls_token]` A `[spe_token]` `[sep_token]` B `[sep_token]`
 
         Args:
             text_0: The first input text.
@@ -118,10 +123,13 @@ class RoBERTaTokenizer(GPT2Tokenizer):
             max_length: Maximum sequence length.
 
         Returns:
-            A tuple of `(input_ids, segment_ids, input_mask)`, where
+            A tuple of `(input_ids, input_mask)`, where
 
-            - ``input_ids``: A list of input token ids.
-            - ``input_mask``: A list of mask ids.
+            - ``input_ids``: A list of input token ids with added
+              special token ids.
+            - ``input_mask``: A list of mask ids. The mask has 1 for real
+              tokens and 0 for padding tokens. Only real tokens
+              are attended to.
         """
 
         if max_length is None:
@@ -129,6 +137,8 @@ class RoBERTaTokenizer(GPT2Tokenizer):
 
         token_ids_0 = self.map_text_to_id(text_0)
         token_ids_1 = self.map_text_to_id(text_1)
+        assert isinstance(token_ids_0, list)
+        assert isinstance(token_ids_1, list)
 
         # Modifies `token_ids_0` and `token_ids_1` in place so that the total
         # length is less than the specified length.

@@ -25,15 +25,12 @@ import texar.torch as tx
 def process_single_text(raw_text: str,
                         max_seq_length: int,
                         encoder: tx.data.GPT2Tokenizer,
-                        BOS_token: Optional[str],
-                        EOS_token: Optional[str],
-                        PAD_token: Optional[str]):
+                        use_eos_token: Optional[bool]):
     """Processes a single piece of text. Performs BPE encoding,
     converting to indexes, truncation, and padding, etc.
     """
     input_ids, input_mask = encoder.add_special_tokens_single_sequence(
-        text=raw_text, bos_token=BOS_token, eos_token=EOS_token,
-        pad_token=PAD_token, max_length=max_seq_length)
+        text=raw_text, max_length=max_seq_length, use_eos_token=use_eos_token)
     token_length = sum(input_mask)
 
     return input_ids, token_length
@@ -56,9 +53,7 @@ def file_based_convert_examples_to_features(
         encoder: tx.data.GPT2Tokenizer,
         output_file: str,
         feature_original_types: Dict[str, Any],
-        BOS_token: Optional[str] = "<|endoftext|>",
-        EOS_token: Optional[str] = "<|endoftext|>",
-        PAD_token: Optional[str] = "<|endoftext|>"):
+        use_eos_token: Optional[bool] = True):
     r"""Converts a set of examples to a `pickle` file."""
 
     with tx.data.RecordData.writer(
@@ -67,8 +62,7 @@ def file_based_convert_examples_to_features(
         for (_, example) in enumerate(examples):
 
             text_ids, length = process_single_text(
-                example, max_seq_length, encoder, BOS_token, EOS_token,
-                PAD_token)
+                example, max_seq_length, encoder, use_eos_token)
 
             features = {
                 "text_ids": text_ids,
@@ -115,4 +109,4 @@ def prepare_pickle_data(data_dir: str,
         test_file = os.path.join(output_dir, "test.pkl")
         file_based_convert_examples_to_features(
             test_examples, max_seq_length, encoder, test_file,
-            feature_original_types, EOS_token=None)
+            feature_original_types, use_eos_token=False)

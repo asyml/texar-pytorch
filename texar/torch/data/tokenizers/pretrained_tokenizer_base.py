@@ -450,13 +450,13 @@ class PretrainedTokenizerBase(PretrainedMixin):
             text = self.clean_up_tokenization(text)
         return text
 
-    def add_special_tokens_single_sequence(self, token_ids: List[int]) -> \
-            List[int]:
+    def add_special_tokens_single_sequence(self, text: str,
+                                           max_length: Optional[int] = None):
         r"""Adds special tokens to a sequence for specific tasks."""
         raise NotImplementedError
 
-    def add_special_tokens_sequence_pair(self, token_ids_0: List[int],
-                                         token_ids_1: List[int]) -> List[int]:
+    def add_special_tokens_sequence_pair(self, text_0: str, text_1: str,
+                                         max_length: Optional[int] = None):
         r"""Adds special tokens to a sequence pair for specific tasks."""
         raise NotImplementedError
 

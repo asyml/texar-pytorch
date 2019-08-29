@@ -226,36 +226,44 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
     def add_special_tokens_single_sequence(  # type: ignore
             self,
             text: str,
+            use_eos_token: bool = True,
             max_length: Optional[int] = None) -> \
             Tuple[List[int], List[int]]:
         r"""Adds special tokens to a sequence for GPT2 specific tasks. The
-        sequence will be truncated if its length is larger than `max_length`.
+        sequence will be truncated if its length is larger than ``max_length``.
         A GPT2 sequence has the following format:
-        [bos_token] X [eos_token] [pad_token]
+        `[bos_token]` X `[eos_token]` `[pad_token]`
 
         Args:
             text: Input text.
+            use_eos_token: Whether to append ``eos_token`` after the sequence.
             max_length: Maximum sequence length.
 
         Returns:
-            A tuple of `(input_ids, segment_ids, input_mask)`, where
+            A tuple of `(input_ids, input_mask)`, where
 
-            - ``input_ids``: A list of input token ids.
-            - ``segment_ids``: A list of segment ids.
-            - ``input_mask``: A list of mask ids.
+            - ``input_ids``: A list of input token ids with added
+              special tokens.
+            - ``input_mask``: A list of mask ids. The mask has 1 for real
+              tokens and 0 for padding tokens. Only real tokens are
+              attended to.
         """
         if max_length is None:
             max_length = self.max_len
 
         token_ids = self.map_text_to_id(text)
+        assert isinstance(token_ids, list)
 
         bos_token_id = self._map_token_to_id(self.bos_token)
         eos_token_id = self._map_token_to_id(self.eos_token)
         pad_token_id = self._map_token_to_id(self.pad_token)
 
-        input_ids = token_ids[:max_length-2]
+        input_ids = token_ids[:max_length - 2]
 
-        input_ids = [bos_token_id] + input_ids + [eos_token_id]
+        if use_eos_token:
+            input_ids = [bos_token_id] + input_ids + [eos_token_id]
+        else:
+            input_ids = [bos_token_id] + input_ids
 
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
         # tokens are attended to.

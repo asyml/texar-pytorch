@@ -203,8 +203,9 @@ class XLNetTokenizer(PretrainedXLNetMixin, PretrainedTokenizerBase):
             max_length: Optional[int] = None) -> \
             Tuple[List[int], List[int], List[int]]:
         r"""Adds special tokens to a sequence for XLNet specific tasks. The
-        sequence will be truncated if its length is larger than `max_length`.
-        A BERT sequence has the following format: X [SEP] [CLS]
+        sequence will be truncated if its length is larger than ``max_length``.
+        A XLNet sequence has the following format:
+        X `[sep_token]` `[cls_token]`
 
         Args:
             text: Input text.
@@ -213,14 +214,19 @@ class XLNetTokenizer(PretrainedXLNetMixin, PretrainedTokenizerBase):
         Returns:
             A tuple of `(input_ids, segment_ids, input_mask)`, where
 
-            - ``input_ids``: A list of input token ids.
+            - ``input_ids``: A list of input token ids with added
+              special token ids.
             - ``segment_ids``: A list of segment ids.
-            - ``input_mask``: A list of mask ids.
+            - ``input_mask``: A list of mask ids. The mask has 0 for real
+              tokens and 1 for padding tokens. Only real tokens are
+              attended to.
         """
         if max_length is None:
             max_length = self.max_len
 
         token_ids = self.map_text_to_id(text)
+
+        assert isinstance(token_ids, list)
 
         if len(token_ids) > max_length - 2:
             # Account for [CLS] and [SEP] with "- 2"
@@ -254,9 +260,10 @@ class XLNetTokenizer(PretrainedXLNetMixin, PretrainedTokenizerBase):
             text_1: str,
             max_length: Optional[int] = None) -> \
             Tuple[List[int], List[int], List[int]]:
-        r"""Adds special tokens to a sequence pair for BERT specific tasks. The
-        sequence will be truncated if its length is larger than `max_length`.
-        A BERT sequence pair has the following format: [CLS] A [SEP] B [SEP]
+        r"""Adds special tokens to a sequence pair for XLNet specific tasks. The
+        sequence will be truncated if its length is larger than ``max_length``.
+        A XLNet sequence pair has the following format:
+        `[cls_token]` A `[sep_token]` B `[sep_token]`
 
         Args:
             text_0: The first input text.
@@ -266,9 +273,12 @@ class XLNetTokenizer(PretrainedXLNetMixin, PretrainedTokenizerBase):
         Returns:
             A tuple of `(input_ids, segment_ids, input_mask)`, where
 
-            - ``input_ids``: A list of input token ids.
+            - ``input_ids``: A list of input token ids with added
+              special token ids.
             - ``segment_ids``: A list of segment ids.
-            - ``input_mask``: A list of mask ids.
+            - ``input_mask``: A list of mask ids. The mask has 0 for real
+              tokens and 1 for padding tokens. Only real tokens are
+              attended to.
         """
 
         if max_length is None:
@@ -276,6 +286,9 @@ class XLNetTokenizer(PretrainedXLNetMixin, PretrainedTokenizerBase):
 
         token_ids_0 = self.map_text_to_id(text_0)
         token_ids_1 = self.map_text_to_id(text_1)
+
+        assert isinstance(token_ids_0, list)
+        assert isinstance(token_ids_1, list)
 
         # Modifies `token_ids_0` and `token_ids_1` in place so that the total
         # length is less than the specified length.
