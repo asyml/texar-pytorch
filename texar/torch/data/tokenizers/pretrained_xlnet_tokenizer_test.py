@@ -13,9 +13,6 @@ from texar.torch.data.tokenizers.pretrained_xlnet_tokenizer import \
     XLNetTokenizer, SPIECE_UNDERLINE
 from texar.torch.utils.test import pretrained_test
 
-import ssl
-ssl._create_default_https_context = ssl._create_unverified_context
-
 
 class XLNetTokenizerTest(unittest.TestCase):
 
