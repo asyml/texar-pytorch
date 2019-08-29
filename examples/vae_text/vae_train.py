@@ -78,7 +78,6 @@ class VAE(nn.Module):
         self.encoder_w_embedder = tx.modules.WordEmbedder(
             vocab_size=vocab_size, hparams=config_model.enc_emb_hparams)
 
-        self.encoder: tx.modules.UnidirectionalRNNEncoder
         self.encoder = tx.modules.UnidirectionalRNNEncoder(
             input_size=self.encoder_w_embedder.dim,
             hparams={
@@ -103,7 +102,7 @@ class VAE(nn.Module):
                 position_size=config_model.max_pos,
                 hparams=config_model.dec_pos_emb_hparams)
             # decoder
-            self.decoder = tx.modules.TransformerDecoder(  # type: ignore
+            self.decoder = tx.modules.TransformerDecoder(
                 # tie word embedding with output layer
                 output_layer=self.decoder_w_embedder.embedding,
                 token_pos_embedder=self._embed_fn_transformer,
@@ -121,7 +120,7 @@ class VAE(nn.Module):
             config_model.latent_dims,
             sum_state_size)
 
-    def forward(self, data_batch: tx.data.Batch,  # type: ignore
+    def forward(self, data_batch: tx.data.Batch,
                 kl_weight: float, start_tokens: torch.LongTensor,
                 end_token: int) -> Dict[str, Tensor]:
         # encoder -> connector -> decoder
@@ -139,12 +138,13 @@ class VAE(nn.Module):
             scale_diag=torch.exp(0.5 * logvar))
 
         latent_z = dst.rsample()
-        helper = None
         if self._config.decoder_type == "lstm":
             helper = self.decoder.create_helper(
                 decoding_strategy="train_greedy",
                 start_tokens=start_tokens,
                 end_token=end_token)
+        else:
+            helper = None
 
         seq_lengths = data_batch["length"] - 1
         # decode
@@ -181,7 +181,7 @@ class VAE(nn.Module):
         latent_z = self._latent_z
         if len(embedding.size()) > 2:
             latent_z = torch.unsqueeze(latent_z, 0)
-            latent_z = latent_z.repeat(tokens.size(0), 1, 1)
+            latent_z = latent_z.repeat([tokens.size(0), 1, 1])
         return torch.cat([embedding, latent_z], dim=-1)
 
     def _embed_fn_transformer(self,
@@ -210,7 +210,7 @@ class VAE(nn.Module):
         if self._config.decoder_type == "lstm":
             decoder_initial_state_size = (self.decoder.cell.hidden_size,) * 2
             decoder_states = torch.split(
-                fc_output, list(decoder_initial_state_size), dim=1)
+                fc_output, decoder_initial_state_size, dim=1)
             outputs, _, _ = self.decoder(
                 initial_state=decoder_states,
                 inputs=text_ids,
@@ -222,7 +222,6 @@ class VAE(nn.Module):
                 [1, self._config.dec_emb_hparams["dim"]])
             decoder_states = torch.reshape(
                 fc_output, (-1,) + decoder_initial_state_size)
-            assert decoder_states is not None
             outputs = self.decoder(
                 inputs=text_ids,
                 memory=decoder_states,
@@ -285,7 +284,7 @@ def main():
     scheduler = ExponentialLR(optimizer, decay_factor)
 
     def _run_epoch(epoch: int, mode: str, display: int = 10) \
-            -> Tuple[float, float]:
+            -> Tuple[Tensor, float]:
         iterator.switch_to_dataset(mode)
 
         if mode == 'train':
@@ -344,7 +343,7 @@ def main():
         ppl = np.exp(log_ppl)
         print(f"\n{mode}: epoch {epoch}, nll {nll:.4f}, KL {KL:.4f}, "
               f"rc {rc:.4f}, log_ppl {log_ppl:.4f}, ppl {ppl:.4f}")
-        return nll, ppl  # type: ignore
+        return nll, ppl
 
     @torch.no_grad()
     def _generate(start_tokens: torch.LongTensor,
@@ -357,8 +356,8 @@ def main():
         batch_size = train_data.batch_size
 
         dst = custom.MultivariateNormalDiag(
-            loc=torch.zeros(batch_size, config.latent_dims),
-            scale_diag=torch.ones(batch_size, config.latent_dims))
+            loc=torch.zeros([batch_size, config.latent_dims]),
+            scale_diag=torch.ones([batch_size, config.latent_dims]))
 
         latent_z = dst.rsample().to(device)
 

@@ -450,10 +450,10 @@ class PretrainedTokenizerBase(PretrainedMixin):
             text = self.clean_up_tokenization(text)
         return text
 
-    def encode_text_to_id(self,
-                          text_a: str,
-                          text_b: Optional[str] = None,
-                          max_seq_length: Optional[int] = None):
+    def encode_text(self,
+                    text_a: str,
+                    text_b: Optional[str] = None,
+                    max_seq_length: Optional[int] = None):
         r"""Adds special tokens to a sequence or sequence pair and computes
         other information such as segment ids, input mask, and sequence length
         for specific tasks.
