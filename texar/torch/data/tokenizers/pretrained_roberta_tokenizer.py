@@ -55,10 +55,10 @@ class RoBERTaTokenizer(GPT2Tokenizer):
         'roberta-large': 512,
     }
 
-    def encode_text_to_id(self,  # type: ignore
-                          text_a: str,
-                          text_b: Optional[str] = None,
-                          max_seq_length: Optional[int] = None) -> \
+    def encode_text(self,  # type: ignore
+                    text_a: str,
+                    text_b: Optional[str] = None,
+                    max_seq_length: Optional[int] = None) -> \
             Tuple[List[int], List[int]]:
         r"""Adds special tokens to a sequence or sequence pair and computes the
         corresponding input mask for RoBERTa specific tasks.

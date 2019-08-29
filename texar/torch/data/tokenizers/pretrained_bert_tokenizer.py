@@ -155,10 +155,10 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
         out_string = ' '.join(tokens).replace(' ##', '').strip()
         return out_string
 
-    def encode_text_to_id(self,
-                          text_a: str,
-                          text_b: Optional[str] = None,
-                          max_seq_length: Optional[int] = None) -> \
+    def encode_text(self,
+                    text_a: str,
+                    text_b: Optional[str] = None,
+                    max_seq_length: Optional[int] = None) -> \
             Tuple[List[int], List[int], List[int]]:
         r"""Adds special tokens to a sequence or sequence pair and computes the
         corresponding segment ids and input mask for BERT specific tasks.

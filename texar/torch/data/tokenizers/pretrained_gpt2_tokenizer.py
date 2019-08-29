@@ -223,7 +223,7 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
             'utf-8', errors=self.errors)
         return text
 
-    def encode_text_to_id(  # type: ignore
+    def encode_text(  # type: ignore
             self,
             text: str,
             max_seq_length: Optional[int] = None,

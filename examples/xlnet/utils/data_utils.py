@@ -75,9 +75,9 @@ def convert_single_example(example, label_list: List[str], max_seq_length: int,
             is_real_example=False)
 
     input_ids, segment_ids, input_mask = \
-        tokenizer.encode_text_to_id(text_a=example.text_a,
-                                    text_b=example.text_b,
-                                    max_seq_length=max_seq_length)
+        tokenizer.encode_text(text_a=example.text_a,
+                              text_b=example.text_b,
+                              max_seq_length=max_seq_length)
 
     if len(label_list) > 0:
         label_id = label_list.index(example.label)

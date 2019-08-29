@@ -170,7 +170,7 @@ class RoBERTaTokenizerTest(unittest.TestCase):
         self.assertEqual(tokens[-2],
                          tokenizer.map_token_to_id(tokenizer.pad_token))
 
-    def test_encode_text_to_id(self):
+    def test_encode_text(self):
         tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
                                           self.special_tokens_map)
 
@@ -184,14 +184,14 @@ class RoBERTaTokenizerTest(unittest.TestCase):
         sep_token_id = tokenizer.map_token_to_id(tokenizer.sep_token)
 
         input_ids, input_mask = \
-            tokenizer.encode_text_to_id(text_1, None, 4)
+            tokenizer.encode_text(text_1, None, 4)
 
         self.assertListEqual(input_ids,
                              [cls_token_id] + text_1_ids[:2] + [sep_token_id])
         self.assertListEqual(input_mask, [1, 1, 1, 1])
 
         input_ids, input_mask = \
-            tokenizer.encode_text_to_id(text_1, text_2, 7)
+            tokenizer.encode_text(text_1, text_2, 7)
 
         self.assertListEqual(input_ids, [cls_token_id] + text_1_ids[:2] +
                              [sep_token_id] + [sep_token_id] + text_2_ids[:1]

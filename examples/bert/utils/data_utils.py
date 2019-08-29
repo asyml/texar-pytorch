@@ -323,9 +323,9 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
         label_map[label] = i
 
     input_ids, segment_ids, input_mask = \
-        tokenizer.encode_text_to_id(text_a=example.text_a,
-                                    text_b=example.text_b,
-                                    max_seq_length=max_seq_length)
+        tokenizer.encode_text(text_a=example.text_a,
+                              text_b=example.text_b,
+                              max_seq_length=max_seq_length)
 
     label_id = label_map[example.label]
 

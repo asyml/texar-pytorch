@@ -47,7 +47,7 @@ def convert_examples_to_features_and_output_to_files(
 
         for (_, example) in enumerate(examples):
 
-            text_ids, length = tokenizer.encode_text_to_id(
+            text_ids, length = tokenizer.encode_text(
                 text=example, max_seq_length=max_seq_length,
                 append_eos_token=append_eos_token)
 
