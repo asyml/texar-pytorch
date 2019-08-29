@@ -181,8 +181,7 @@ class PretrainedMixin(ModuleBase, ABC):
         Args:
             pretrained_model_name (str): Name of the model checkpoint.
             cache_dir (str, optional): Path to the cache directory. If `None`,
-                uses the default directory given by
-                :meth:`~default_download_dir`.
+                uses the default directory (user's home directory).
 
         Returns:
             Path to the cache directory.

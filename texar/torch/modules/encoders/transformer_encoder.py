@@ -123,7 +123,7 @@ class TransformerEncoder(EncoderBase):
     sequences.
 
     This module basically stacks
-    :class:`~texar.torch.modules.encoders.MultiheadAttentionEncoder`,
+    :class:`~texar.torch.modules.MultiheadAttentionEncoder`,
     :class:`~texar.torch.modules.FeedForwardNetwork` and residual connections.
     This module supports two types of architectures, namely, the standard
     Transformer Encoder architecture first proposed in

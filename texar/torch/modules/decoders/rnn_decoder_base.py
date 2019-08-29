@@ -139,7 +139,7 @@ class RNNDecoderBase(DecoderBase[State, Output]):
                 and outputs have the correct values and that backprop ignores
                 time steps that were marked as finished.
             helper (optional): An instance of
-                :class:`texar.torch.modules.decoders.Helper`
+                :class:`~texar.torch.modules.Helper`
                 that defines the decoding strategy. If given,
                 ``decoding_strategy`` and helper configurations in
                 :attr:`hparams` are ignored.

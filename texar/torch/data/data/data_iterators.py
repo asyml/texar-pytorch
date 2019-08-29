@@ -133,7 +133,7 @@ class SequentialSampler(SamplerBase[Example]):
     <data.html#torch.utils.data.SequentialSampler>`
     """
 
-    def _iterator_given_size(self, size: int) -> Iterator[int]:  # pylint: disable=no-self-use
+    def _iterator_given_size(self, size: int) -> Iterator[int]:
         return iter(range(size))
 
     def _iterator_unknown_size(self) -> Iterator[int]:
@@ -173,7 +173,7 @@ class RandomSampler(SamplerBase[Example]):
         del size  # not used
         return iter(self._sampler)
 
-    def _iterator_unknown_size(self) -> Iterator[int]:  # pylint: disable=no-self-use
+    def _iterator_unknown_size(self) -> Iterator[int]:
         raise TypeError(
             "RandomSampler does not support lazy data loading. To perform "
             "shuffling with lazy loading, use BufferShuffleSampler.")

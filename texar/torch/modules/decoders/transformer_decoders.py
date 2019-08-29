@@ -60,7 +60,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
     sequence decoding.
 
     It is a stack of
-    :class:`~texar.torch.modules.encoders.MultiheadAttentionEncoder`,
+    :class:`~texar.torch.modules.MultiheadAttentionEncoder`,
     :class:`~texar.torch.modules.FeedForwardNetwork`, and residual connections.
 
     Args:
@@ -334,7 +334,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         r"""Performs decoding.
 
         The interface is very similar to that of RNN decoders
-        (:class:`texar.torch.modules.RNNDecoderBase`). In particular,
+        (:class:`~texar.torch.modules.RNNDecoderBase`). In particular,
         the function provides **3 ways** to specify the decoding method, with
         varying flexibility:
 
@@ -360,14 +360,14 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
           :attr:`beam_width` are both `None`.
 
         2. The :attr:`helper` argument: An instance of subclass of
-           :class:`texar.torch.modules.decoders.Helper`.
+           :class:`~texar.torch.modules.Helper`.
            This provides a superset of decoding strategies than above.
            The interface is the same as in RNN decoders.
            Please refer to :meth:`texar.torch.modules.RNNDecoderBase.forward`
            for detailed usage and examples.
 
            Note that, here, though using a
-           :class:`~texar.torch.decoder.TrainingHelper` corresponding to the
+           :class:`~texar.torch.modules.TrainingHelper` corresponding to the
            ``"train_greedy"`` strategy above, the implementation is *slower*
            than directly setting ``decoding_strategy="train_greedy"`` (though
            output results are the same).
@@ -439,7 +439,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 time steps that were marked as finished. Ignored in
                 ``"train_greedy"`` decoding.
             helper (optional): An instance of
-                :class:`texar.torch.modules.decoders.Helper`
+                :class:`~texar.torch.modules.Helper`
                 that defines the decoding strategy. If given,
                 ``decoding_strategy`` and helper configurations in
                 :attr:`hparams` are ignored.

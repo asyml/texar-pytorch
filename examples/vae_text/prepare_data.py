@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities for downloading and preprocessing the PTB and Yohoo data.
+"""Utilities for downloading and preprocessing the PTB and Yahoo data.
 """
-import os
 import argparse
+import os
 
 import texar.torch as tx
 
@@ -46,7 +46,7 @@ def prepare_data(data_name):
         data_path = "./data/yahoo"
         train_path = os.path.join(data_path, "yahoo.train.txt")
         if not os.path.exists(train_path):
-            url = 'https://drive.google.com/file/d/'\
+            url = 'https://drive.google.com/file/d/' \
                   '13IsiffVjcQ-wrrbBGMwiG3sYf-DFxtXH/view?usp=sharing'
             tx.data.maybe_download(url, path='./', filenames='yahoo.zip',
                                    extract=True)

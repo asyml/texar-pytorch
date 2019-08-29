@@ -4,6 +4,7 @@
 Core
 ****
 
+.. _attention-mechanism:
 
 Attention Mechanism
 ===================
