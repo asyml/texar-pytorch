@@ -39,7 +39,7 @@ setuptools.setup(
     extras_require={
         'torch': ['torch>=1.0'],
         'examples': [],
-        'extras': ['Pillow>=3.0'],
+        'extras': ['Pillow>=3.0', 'regex', 'sentencepiece'],
     },
     package_data={
         "texar.torch": [

@@ -27,7 +27,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import tqdm
-import sentencepiece as spm
 
 import texar.torch as tx
 
@@ -120,23 +119,20 @@ def evaluate(model, iterator, is_regression: bool = False, print_fn=None,
 
 def construct_datasets(args, device: Optional[torch.device] = None) \
         -> Dict[str, tx.data.RecordData]:
-    sp_model = spm.SentencePieceProcessor()
-
-    pretrained_model_dir = tx.modules.XLNetEncoder.download_checkpoint(
-        pretrained_model_name=args.pretrained_model_name)
-
-    spm_model_path = os.path.join(pretrained_model_dir, "spiece.model")
-    sp_model.Load(spm_model_path)
 
     cache_prefix = f"length{args.max_seq_len}"
-    tokenize_fn = data_utils.create_tokenize_fn(sp_model, args.uncased)
+
+    tokenizer = tx.data.XLNetTokenizer(
+        pretrained_model_name=args.pretrained_model_name)
+    tokenizer.do_lower_case = args.uncased
+
     processor_class = get_processor_class(args.task)
     data_dir = args.data_dir or f"data/{processor_class.task_name}"
     cache_dir = args.cache_dir or f"processed_data/{processor_class.task_name}"
     task_processor = processor_class(data_dir)
     dataset.construct_dataset(
         task_processor, cache_dir, args.max_seq_len,
-        tokenize_fn, file_prefix=cache_prefix)
+        tokenizer, file_prefix=cache_prefix)
 
     datasets = dataset.load_datasets(
         args.task, cache_dir, args.max_seq_len, args.batch_size,

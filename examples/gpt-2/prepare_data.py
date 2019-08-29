@@ -19,7 +19,7 @@ import importlib
 
 import texar.torch as tx
 
-from utils import data_utils, processor
+from utils import data_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -38,7 +38,7 @@ parser.add_argument(
     choices=tx.modules.GPT2Decoder.available_checkpoints(),
     help="Name of the pre-trained checkpoint to load.")
 parser.add_argument(
-    '--config-train', type=str, default="configs.config_train",
+    '--config-train', type=str, default="config_train",
     help="Configurations of GPT-2 training, including data and "
          "optimization hyperparameters.")
 
@@ -55,12 +55,9 @@ def main():
 
     tx.utils.maybe_create_dir(pickle_output_dir)
 
-    pretrained_model_dir = \
-        tx.modules.PretrainedGPT2Mixin.download_checkpoint(
-            pretrained_model_name=args.pretrained_model_name)
-
-    # Creates a data pre-processor for, e.g., BPE encoding
-    proc = processor.get_encoder(pretrained_model_dir)
+    # Create a GPT-2 tokenizer (BPE encoding)
+    tokenizer = tx.data.GPT2Tokenizer(
+        pretrained_model_name=args.pretrained_model_name)
 
     config_train = importlib.import_module(args.config_train)
 
@@ -68,7 +65,7 @@ def main():
     data_utils.prepare_pickle_data(
         data_dir=data_dir,
         max_seq_length=args.max_seq_length,
-        encoder=proc,
+        tokenizer=tokenizer,
         output_dir=pickle_output_dir,
         feature_original_types=config_train.feature_original_types)
 

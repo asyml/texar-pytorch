@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Modules of Texar library data.
+Tokenizer modules of Texar library.
 """
-from texar.torch.data.data import *
-from texar.torch.data.tokenizers import *
-from texar.torch.data.data_utils import *
-from texar.torch.data.embedding import *
-from texar.torch.data.vocabulary import *
+
+from texar.torch.data.tokenizers.pretrained_bert_tokenizer import *
+from texar.torch.data.tokenizers.pretrained_gpt2_tokenizer import *
+from texar.torch.data.tokenizers.pretrained_roberta_tokenizer import *
+from texar.torch.data.tokenizers.pretrained_tokenizer_base import *
+from texar.torch.data.tokenizers.pretrained_xlnet_tokenizer import *
