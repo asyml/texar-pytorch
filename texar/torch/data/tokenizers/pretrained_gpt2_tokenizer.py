@@ -223,33 +223,33 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
             'utf-8', errors=self.errors)
         return text
 
-    def add_special_tokens_single_sequence(  # type: ignore
+    def encode_text_to_id(  # type: ignore
             self,
             text: str,
-            use_eos_token: bool = True,
-            max_length: Optional[int] = None) -> \
-            Tuple[List[int], List[int]]:
-        r"""Adds special tokens to a sequence for GPT2 specific tasks. The
-        sequence will be truncated if its length is larger than ``max_length``.
+            max_seq_length: Optional[int] = None,
+            append_eos_token: bool = True) -> Tuple[List[int], int]:
+        r"""Adds special tokens to a sequence and computes the corresponding
+        sequence length for GPT2 specific tasks. The sequence will be truncated
+        if its length is larger than ``max_seq_length``.
+
         A GPT2 sequence has the following format:
         `[bos_token]` X `[eos_token]` `[pad_token]`
 
         Args:
             text: Input text.
-            use_eos_token: Whether to append ``eos_token`` after the sequence.
-            max_length: Maximum sequence length.
+            max_seq_length: Maximum sequence length.
+            append_eos_token: Whether to append ``eos_token`` after the
+                sequence.
 
         Returns:
-            A tuple of `(input_ids, input_mask)`, where
+            A tuple of `(input_ids, seq_len)`, where
 
             - ``input_ids``: A list of input token ids with added
               special tokens.
-            - ``input_mask``: A list of mask ids. The mask has 1 for real
-              tokens and 0 for padding tokens. Only real tokens are
-              attended to.
+            - ``seq_len``: The sequence length.
         """
-        if max_length is None:
-            max_length = self.max_len
+        if max_seq_length is None:
+            max_seq_length = self.max_len
 
         token_ids = self.map_text_to_id(text)
         assert isinstance(token_ids, list)
@@ -258,25 +258,21 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
         eos_token_id = self._map_token_to_id(self.eos_token)
         pad_token_id = self._map_token_to_id(self.pad_token)
 
-        input_ids = token_ids[:max_length - 2]
-
-        if use_eos_token:
+        if append_eos_token:
+            input_ids = token_ids[:max_seq_length - 2]
             input_ids = [bos_token_id] + input_ids + [eos_token_id]
         else:
+            input_ids = token_ids[:max_seq_length - 1]
             input_ids = [bos_token_id] + input_ids
 
-        # The mask has 1 for real tokens and 0 for padding tokens. Only real
-        # tokens are attended to.
-        input_mask = [1] * len(input_ids)
+        seq_len = len(input_ids)
 
-        # Zero-pad up to the maximum sequence length.
-        input_ids = input_ids + [pad_token_id] * (max_length - len(input_ids))
-        input_mask = input_mask + [0] * (max_length - len(input_mask))
+        # Pad up to the maximum sequence length.
+        input_ids = input_ids + [pad_token_id] * (max_seq_length - seq_len)
 
-        assert len(input_ids) == max_length
-        assert len(input_mask) == max_length
+        assert len(input_ids) == max_seq_length
 
-        return input_ids, input_mask
+        return input_ids, seq_len
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:

@@ -322,15 +322,10 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     for (i, label) in enumerate(label_list):
         label_map[label] = i
 
-    if example.text_b:
-        input_ids, segment_ids, input_mask = \
-            tokenizer.add_special_tokens_sequence_pair(
-                text_0=example.text_a, text_1=example.text_b,
-                max_length=max_seq_length)
-    else:
-        input_ids, segment_ids, input_mask = \
-            tokenizer.add_special_tokens_single_sequence(
-                text=example.text_a, max_length=max_seq_length)
+    input_ids, segment_ids, input_mask = \
+        tokenizer.encode_text_to_id(text_a=example.text_a,
+                                    text_b=example.text_b,
+                                    max_seq_length=max_seq_length)
 
     label_id = label_map[example.label]
 
@@ -351,7 +346,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     return feature
 
 
-def file_based_convert_examples_to_features(
+def convert_examples_to_features_and_output_to_files(
         examples, label_list, max_seq_length, tokenizer, output_file,
         feature_original_types):
     r"""Convert a set of `InputExample`s to a pickled file."""
@@ -389,18 +384,18 @@ def prepare_record_data(processor, tokenizer,
 
     train_examples = processor.get_train_examples(data_dir)
     train_file = os.path.join(output_dir, "train.pkl")
-    file_based_convert_examples_to_features(
+    convert_examples_to_features_and_output_to_files(
         train_examples, label_list, max_seq_length,
         tokenizer, train_file, feature_original_types)
 
     eval_examples = processor.get_dev_examples(data_dir)
     eval_file = os.path.join(output_dir, "eval.pkl")
-    file_based_convert_examples_to_features(
+    convert_examples_to_features_and_output_to_files(
         eval_examples, label_list,
         max_seq_length, tokenizer, eval_file, feature_original_types)
 
     test_examples = processor.get_test_examples(data_dir)
     test_file = os.path.join(output_dir, "predict.pkl")
-    file_based_convert_examples_to_features(
+    convert_examples_to_features_and_output_to_files(
         test_examples, label_list,
         max_seq_length, tokenizer, test_file, feature_original_types)

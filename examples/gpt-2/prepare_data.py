@@ -65,7 +65,7 @@ def main():
     data_utils.prepare_pickle_data(
         data_dir=data_dir,
         max_seq_length=args.max_seq_length,
-        encoder=tokenizer,
+        tokenizer=tokenizer,
         output_dir=pickle_output_dir,
         feature_original_types=config_train.feature_original_types)
 

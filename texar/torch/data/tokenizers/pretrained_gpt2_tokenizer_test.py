@@ -170,7 +170,7 @@ class GPT2TokenizerTest(unittest.TestCase):
         self.assertEqual(tokens[-2],
                          tokenizer.map_token_to_id(tokenizer.pad_token))
 
-    def test_add_special_tokens_sequence(self):
+    def test_encode_text_to_id(self):
         tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
                                        self.special_tokens_map)
 
@@ -178,9 +178,8 @@ class GPT2TokenizerTest(unittest.TestCase):
 
         text_1_ids = tokenizer.map_text_to_id(text_1)
 
-        input_ids, input_mask = \
-            tokenizer.add_special_tokens_single_sequence(
-                text=text_1, max_length=10)
+        input_ids, seq_len = \
+            tokenizer.encode_text_to_id(text=text_1, max_seq_length=10)
 
         bos_token_id = tokenizer.map_token_to_id(tokenizer.bos_token)
         eos_token_id = tokenizer.map_token_to_id(tokenizer.eos_token)
@@ -189,7 +188,7 @@ class GPT2TokenizerTest(unittest.TestCase):
         self.assertListEqual(input_ids,
                              [bos_token_id] + text_1_ids + [eos_token_id] +
                              [pad_token_id])
-        self.assertListEqual(input_mask, [1, 1, 1, 1, 1, 1, 1, 1, 1, 0])
+        self.assertEqual(seq_len, 9)
 
 
 if __name__ == "__main__":

@@ -55,109 +55,72 @@ class RoBERTaTokenizer(GPT2Tokenizer):
         'roberta-large': 512,
     }
 
-    def add_special_tokens_single_sequence(  # type: ignore
-            self,
-            text: str,
-            max_length: Optional[int] = None) -> \
+    def encode_text_to_id(self,  # type: ignore
+                          text_a: str,
+                          text_b: Optional[str] = None,
+                          max_seq_length: Optional[int] = None) -> \
             Tuple[List[int], List[int]]:
-        r"""Adds special tokens to a sequence for RoBERTa specific tasks. The
-        sequence will be truncated if its length is larger than ``max_length``.
+        r"""Adds special tokens to a sequence or sequence pair and computes the
+        corresponding input mask for RoBERTa specific tasks.
+        The sequence will be truncated if its length is larger than
+        ``max_seq_length``.
+
         A RoBERTa sequence has the following format:
         `[cls_token]` X `[sep_token]`
 
-        Args:
-            text: Input text.
-            max_length: Maximum sequence length.
-
-        Returns:
-            A tuple of `(input_ids, input_mask)`, where
-
-            - ``input_ids``: A list of input token ids with added
-              special token ids.
-            - ``input_mask``: A list of mask ids. The mask has 1 for real
-              tokens and 0 for padding tokens. Only real tokens
-              are attended to.
-        """
-        if max_length is None:
-            max_length = self.max_len
-
-        token_ids = self.map_text_to_id(text)
-        assert isinstance(token_ids, list)
-
-        if len(token_ids) > max_length - 2:
-            # Account for <s> and </s> with "- 2"
-            token_ids = token_ids[0:max_length - 2]
-
-        cls_token_id = self._map_token_to_id(self.cls_token)
-        sep_token_id = self._map_token_to_id(self.sep_token)
-
-        input_ids = [cls_token_id] + token_ids + [sep_token_id]
-
-        # The mask has 1 for real tokens and 0 for padding tokens. Only real
-        # tokens are attended to.
-        input_mask = [1] * len(input_ids)
-
-        # Zero-pad up to the maximum sequence length.
-        input_ids = input_ids + [0] * (max_length - len(input_ids))
-        input_mask = input_mask + [0] * (max_length - len(input_mask))
-
-        assert len(input_ids) == max_length
-        assert len(input_mask) == max_length
-
-        return input_ids, input_mask
-
-    def add_special_tokens_sequence_pair(
-            self,
-            text_0: str,
-            text_1: str,
-            max_length: Optional[int] = None) -> \
-            Tuple[List[int], List[int]]:
-        r"""Adds special tokens to a sequence pair for RoBERTa specific tasks.
-        The sequence will be truncated if its length is larger than
-        ``max_length``. A RoBERTa sequence pair has the following format:
+        A RoBERTa sequence pair has the following format:
         `[cls_token]` A `[spe_token]` `[sep_token]` B `[sep_token]`
 
         Args:
-            text_0: The first input text.
-            text_1: The second input text.
-            max_length: Maximum sequence length.
+            text_a: The first input text.
+            text_b: The second input text.
+            max_seq_length: Maximum sequence length.
 
         Returns:
-            A tuple of `(input_ids, input_mask)`, where
+            A tuple of `(input_ids, segment_ids, input_mask)`, where
 
             - ``input_ids``: A list of input token ids with added
               special token ids.
             - ``input_mask``: A list of mask ids. The mask has 1 for real
-              tokens and 0 for padding tokens. Only real tokens
-              are attended to.
+              tokens and 0 for padding tokens. Only real tokens are
+              attended to.
         """
-
-        if max_length is None:
-            max_length = self.max_len
-
-        token_ids_0 = self.map_text_to_id(text_0)
-        token_ids_1 = self.map_text_to_id(text_1)
-        assert isinstance(token_ids_0, list)
-        assert isinstance(token_ids_1, list)
-
-        # Modifies `token_ids_0` and `token_ids_1` in place so that the total
-        # length is less than the specified length.
-        # Account for <s>, </s>, </s>, </s> with "- 4"
-        truncate_seq_pair(token_ids_0, token_ids_1, max_length - 4)
+        if max_seq_length is None:
+            max_seq_length = self.max_len
 
         cls_token_id = self._map_token_to_id(self.cls_token)
         sep_token_id = self._map_token_to_id(self.sep_token)
 
-        input_ids = ([cls_token_id] + token_ids_0 + [sep_token_id] +
-                     [sep_token_id] + token_ids_1 + [sep_token_id])
+        token_ids_a = self.map_text_to_id(text_a)
+        assert isinstance(token_ids_a, list)
+
+        token_ids_b = None
+        if text_b:
+            token_ids_b = self.map_text_to_id(text_b)
+
+        if token_ids_b:
+            assert isinstance(token_ids_b, list)
+            # Modifies `token_ids_a` and `token_ids_b` in place so that the
+            # total length is less than the specified length.
+            # Account for <s>, </s>, </s>, </s> with "- 4"
+            truncate_seq_pair(token_ids_a, token_ids_b, max_seq_length - 4)
+
+            input_ids = ([cls_token_id] + token_ids_a + [sep_token_id] +
+                         [sep_token_id] + token_ids_b + [sep_token_id])
+        else:
+            # Account for <s> and </s> with "- 2"
+            token_ids_a = token_ids_a[:max_seq_length - 2]
+
+            input_ids = [cls_token_id] + token_ids_a + [sep_token_id]
 
         input_mask = [1] * len(input_ids)
 
-        input_ids = input_ids + [0] * (max_length - len(input_ids))
-        input_mask = input_mask + [0] * (max_length - len(input_mask))
+        # Zero-pad up to the maximum sequence length.
+        input_ids = input_ids + [0] * (max_seq_length - len(input_ids))
+        input_mask = input_mask + [0] * (max_seq_length - len(input_mask))
 
-        assert len(input_ids) == max_length
-        assert len(input_mask) == max_length
+        assert len(input_ids) == max_seq_length
+        assert len(input_mask) == max_seq_length
 
         return input_ids, input_mask
 

@@ -74,15 +74,10 @@ def convert_single_example(example, label_list: List[str], max_seq_length: int,
             label_id=0,
             is_real_example=False)
 
-    if example.text_b:
-        input_ids, segment_ids, input_mask = \
-            tokenizer.add_special_tokens_sequence_pair(
-                text_0=example.text_a, text_1=example.text_b,
-                max_length=max_seq_length)
-    else:
-        input_ids, segment_ids, input_mask = \
-            tokenizer.add_special_tokens_single_sequence(
-                text=example.text_a, max_length=max_seq_length)
+    input_ids, segment_ids, input_mask = \
+        tokenizer.encode_text_to_id(text_a=example.text_a,
+                                    text_b=example.text_b,
+                                    max_seq_length=max_seq_length)
 
     if len(label_list) > 0:
         label_id = label_list.index(example.label)

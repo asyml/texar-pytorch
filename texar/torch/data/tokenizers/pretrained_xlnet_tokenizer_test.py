@@ -223,7 +223,7 @@ class XLNetTokenizerTest(unittest.TestCase):
                                       SPIECE_UNDERLINE + u'f', u'al', u'se',
                                       u'.'])
 
-    def test_add_special_tokens_sequence(self):
+    def test_encode_text_to_id(self):
         text_1 = u"He is very happy"
         text_2 = u"unwanted, running"
 
@@ -234,7 +234,7 @@ class XLNetTokenizerTest(unittest.TestCase):
         sep_token_id = self.tokenizer.map_token_to_id(self.tokenizer.sep_token)
 
         input_ids, segment_ids, input_mask = \
-            self.tokenizer.add_special_tokens_single_sequence(text_1, 4)
+            self.tokenizer.encode_text_to_id(text_1, None, 4)
 
         self.assertListEqual(input_ids,
                              text_1_ids[:2] + [sep_token_id] + [cls_token_id])
@@ -242,7 +242,7 @@ class XLNetTokenizerTest(unittest.TestCase):
         self.assertListEqual(input_mask, [0, 0, 0, 0])
 
         input_ids, segment_ids, input_mask = \
-            self.tokenizer.add_special_tokens_sequence_pair(text_1, text_2, 7)
+            self.tokenizer.encode_text_to_id(text_1, text_2, 7)
 
         self.assertListEqual(input_ids, text_1_ids[:2] +
                              [sep_token_id] + text_2_ids[:2] + [sep_token_id] +
