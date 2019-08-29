@@ -54,8 +54,8 @@ class SentenceClassifier(nn.Module):
             in_channels=max_seq_length,
             in_features=emb_dim, hparams=hparams['classifier'])
 
-    def forward(self, batch: tx.data.Batch) -> \
-            Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self,  # type: ignore
+                batch: tx.data.Batch) -> Tuple[torch.Tensor, torch.Tensor]:
         logits, pred = self.classifier(
             self.embedder(batch['sentence_text_ids']))
         loss = F.cross_entropy(logits, batch['label'].long())

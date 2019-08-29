@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Example for building the Variational Autoencoder.
+"""Example for building the Variational Auto-Encoder.
 
-This is an impmentation of Variational Autoencoder for text generation
+This is an implementation of Variational Auto-Encoder for text generation
 
 To run:
 
@@ -23,23 +23,21 @@ Hyperparameters and data path may be specified in config_trans.py
 
 """
 
-
+import argparse
+import importlib
+import math
 import os
 import sys
 import time
-import argparse
-import importlib
-from typing import Optional, Any, Union, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
-import numpy as np
 import torch
-from torch import Tensor
 import torch.nn as nn
+from torch import Tensor
 from torch.optim.lr_scheduler import ExponentialLR
 
 import texar.torch as tx
-import texar.torch.custom as custom
-
+from texar.torch.custom import MultivariateNormalDiag
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -78,7 +76,7 @@ class VAE(nn.Module):
         self.encoder_w_embedder = tx.modules.WordEmbedder(
             vocab_size=vocab_size, hparams=config_model.enc_emb_hparams)
 
-        self.encoder = tx.modules.UnidirectionalRNNEncoder(
+        self.encoder = tx.modules.UnidirectionalRNNEncoder[tx.core.LSTMState](
             input_size=self.encoder_w_embedder.dim,
             hparams={
                 "rnn_cell": config_model.enc_cell_hparams,
@@ -88,13 +86,13 @@ class VAE(nn.Module):
             vocab_size=vocab_size, hparams=config_model.dec_emb_hparams)
 
         if config_model.decoder_type == "lstm":
-            self.decoder = tx.modules.BasicRNNDecoder(
+            self.lstm_decoder = tx.modules.BasicRNNDecoder(
                 input_size=(self.decoder_w_embedder.dim +
-                    config_model.batch_size),
+                            config_model.batch_size),
                 vocab_size=vocab_size,
                 token_embedder=self._embed_fn_rnn,
                 hparams={"rnn_cell": config_model.dec_cell_hparams})
-            sum_state_size = self.decoder.cell.hidden_size * 2
+            sum_state_size = self.lstm_decoder.cell.hidden_size * 2
 
         elif config_model.decoder_type == 'transformer':
             # position embedding
@@ -102,7 +100,7 @@ class VAE(nn.Module):
                 position_size=config_model.max_pos,
                 hparams=config_model.dec_pos_emb_hparams)
             # decoder
-            self.decoder = tx.modules.TransformerDecoder(
+            self.transformer_decoder = tx.modules.TransformerDecoder(
                 # tie word embedding with output layer
                 output_layer=self.decoder_w_embedder.embedding,
                 token_pos_embedder=self._embed_fn_transformer,
@@ -117,10 +115,10 @@ class VAE(nn.Module):
             linear_layer_dim=self.encoder.cell.hidden_size * 2)
 
         self.mlp_linear_layer = nn.Linear(
-            config_model.latent_dims,
-            sum_state_size)
+            config_model.latent_dims, sum_state_size)
 
-    def forward(self, data_batch: tx.data.Batch,
+    def forward(self,  # type: ignore
+                data_batch: tx.data.Batch,
                 kl_weight: float, start_tokens: torch.LongTensor,
                 end_token: int) -> Dict[str, Tensor]:
         # encoder -> connector -> decoder
@@ -133,34 +131,28 @@ class VAE(nn.Module):
         mean_logvar = self.connector_mlp(encoder_states)
         mean, logvar = torch.chunk(mean_logvar, 2, 1)
         kl_loss = kl_divergence(mean, logvar)
-        dst = custom.MultivariateNormalDiag(
-            loc=mean,
-            scale_diag=torch.exp(0.5 * logvar))
+        dst = MultivariateNormalDiag(
+            loc=mean, scale_diag=torch.exp(0.5 * logvar))
 
         latent_z = dst.rsample()
+        helper = None
         if self._config.decoder_type == "lstm":
-            helper = self.decoder.create_helper(
+            helper = self.lstm_decoder.create_helper(
                 decoding_strategy="train_greedy",
                 start_tokens=start_tokens,
                 end_token=end_token)
-        else:
-            helper = None
 
-        seq_lengths = data_batch["length"] - 1
         # decode
+        seq_lengths = data_batch["length"] - 1
         outputs = self.decode(
-            helper=helper,
-            latent_z=latent_z,
-            seq_lengths=seq_lengths,
-            text_ids=text_ids[:, :-1],
-            )
+            helper=helper, latent_z=latent_z,
+            text_ids=text_ids[:, :-1], seq_lengths=seq_lengths)
 
         logits = outputs.logits
 
         # Losses & train ops
         rc_loss = tx.losses.sequence_sparse_softmax_cross_entropy(
-            labels=text_ids[:, 1:],
-            logits=logits,
+            labels=text_ids[:, 1:], logits=logits,
             sequence_length=seq_lengths)
 
         nll = rc_loss + kl_weight * kl_loss
@@ -169,7 +161,7 @@ class VAE(nn.Module):
             "nll": nll,
             "kl_loss": kl_loss,
             "rc_loss": rc_loss,
-            "lengths": seq_lengths
+            "lengths": seq_lengths,
         }
 
         return ret
@@ -180,8 +172,7 @@ class VAE(nn.Module):
         embedding = self.decoder_w_embedder(tokens)
         latent_z = self._latent_z
         if len(embedding.size()) > 2:
-            latent_z = torch.unsqueeze(latent_z, 0)
-            latent_z = latent_z.repeat([tokens.size(0), 1, 1])
+            latent_z = latent_z.unsqueeze(0).repeat(tokens.size(0), 1, 1)
         return torch.cat([embedding, latent_z], dim=-1)
 
     def _embed_fn_transformer(self,
@@ -191,8 +182,7 @@ class VAE(nn.Module):
         """
         output_p_embed = self.decoder_p_embedder(positions)
         output_w_embed = self.decoder_w_embedder(tokens)
-        output_w_embed = output_w_embed * \
-            self._config.hidden_size ** 0.5
+        output_w_embed = output_w_embed * self._config.hidden_size ** 0.5
         output_embed = output_w_embed + output_p_embed
         return output_embed
 
@@ -208,24 +198,19 @@ class VAE(nn.Module):
         fc_output = self.mlp_linear_layer(latent_z)
 
         if self._config.decoder_type == "lstm":
-            decoder_initial_state_size = (self.decoder.cell.hidden_size,) * 2
-            decoder_states = torch.split(
-                fc_output, decoder_initial_state_size, dim=1)
-            outputs, _, _ = self.decoder(
-                initial_state=decoder_states,
+            lstm_states = torch.chunk(fc_output, 2, dim=1)
+            outputs, _, _ = self.lstm_decoder(
+                initial_state=lstm_states,
                 inputs=text_ids,
                 helper=helper,
                 sequence_length=seq_lengths,
                 max_decoding_length=max_decoding_length)
         else:
-            decoder_initial_state_size = torch.Size(
-                [1, self._config.dec_emb_hparams["dim"]])
-            decoder_states = torch.reshape(
-                fc_output, (-1,) + decoder_initial_state_size)
-            outputs = self.decoder(
+            transformer_states = fc_output.unsqueeze(1)
+            outputs = self.transformer_decoder(
                 inputs=text_ids,
-                memory=decoder_states,
-                memory_sequence_length=torch.ones(decoder_states.size(0)),
+                memory=transformer_states,
+                memory_sequence_length=torch.ones(transformer_states.size(0)),
                 helper=helper,
                 max_decoding_length=max_decoding_length)
         return outputs
@@ -267,16 +252,16 @@ def main():
 
     # KL term annealing rate
     anneal_r = 1.0 / (config.kl_anneal_hparams["warm_up"] *
-        (len(train_data) / config.batch_size))
+                      (len(train_data) / config.batch_size))
 
     vocab = train_data.vocab
     model = VAE(train_data.vocab.size, config)
     model.to(device)
 
     start_tokens = torch.full(
-            (config.batch_size,),
-            vocab.bos_token_id,
-            dtype=torch.long).to(device)
+        (config.batch_size,),
+        vocab.bos_token_id,
+        dtype=torch.long).to(device)
     end_token = vocab.eos_token_id
     optimizer = tx.core.get_optimizer(
         params=model.parameters(),
@@ -290,7 +275,7 @@ def main():
         if mode == 'train':
             model.train()
             opt_vars["kl_weight"] = min(
-                    1.0, opt_vars["kl_weight"] + anneal_r)
+                1.0, opt_vars["kl_weight"] + anneal_r)
 
             kl_weight = opt_vars["kl_weight"]
         else:
@@ -326,7 +311,7 @@ def main():
                 KL = avg_rec.avg(1)
                 rc = avg_rec.avg(2)
                 log_ppl = nll_total / num_words
-                ppl = np.exp(log_ppl)
+                ppl = math.exp(log_ppl)
                 time_cost = time.time() - start_time
 
                 print(f"{mode}: epoch {epoch}, step {step}, nll {nll:.4f}, "
@@ -340,10 +325,10 @@ def main():
         KL = avg_rec.avg(1)
         rc = avg_rec.avg(2)
         log_ppl = nll_total / num_words
-        ppl = np.exp(log_ppl)
+        ppl = math.exp(log_ppl)
         print(f"\n{mode}: epoch {epoch}, nll {nll:.4f}, KL {KL:.4f}, "
               f"rc {rc:.4f}, log_ppl {log_ppl:.4f}, ppl {ppl:.4f}")
-        return nll, ppl
+        return nll, ppl  # type: ignore
 
     @torch.no_grad()
     def _generate(start_tokens: torch.LongTensor,
@@ -355,9 +340,9 @@ def main():
 
         batch_size = train_data.batch_size
 
-        dst = custom.MultivariateNormalDiag(
-            loc=torch.zeros([batch_size, config.latent_dims]),
-            scale_diag=torch.ones([batch_size, config.latent_dims]))
+        dst = MultivariateNormalDiag(
+            loc=torch.zeros(batch_size, config.latent_dims),
+            scale_diag=torch.ones(batch_size, config.latent_dims))
 
         latent_z = dst.rsample().to(device)
 
@@ -401,10 +386,7 @@ def main():
         _generate(start_tokens, end_token, args.out)
         return
     # Counts trainable parameters
-    total_parameters = 0
-    for variable in model.parameters():
-        size = variable.size()
-        total_parameters += np.prod(size)
+    total_parameters = sum(param.numel() for param in model.parameters())
     print(f"{total_parameters} total parameters")
 
     best_nll = best_ppl = 0.
