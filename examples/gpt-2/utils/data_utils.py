@@ -15,7 +15,7 @@
 Utils of data preprocessing for GPT2 training.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import os
 
