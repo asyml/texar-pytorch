@@ -51,6 +51,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
     `sentencepiece` ...).
     """
 
+    _IS_PRETRAINED = True
     _MAX_INPUT_SIZE: Dict[str, Optional[int]]
     _VOCAB_FILE_NAMES: Dict[str, str]
     _SPECIAL_TOKENS_ATTRIBUTES = ["bos_token", "eos_token", "unk_token",
@@ -141,7 +142,11 @@ class PretrainedTokenizerBase(PretrainedMixin):
             raise ValueError("Can't find tokenizer files in {}.".format(
                 saved_directory))
 
-        kwargs: Dict[str, Any] = {'pretrained_model_name': None}
+        kwargs: Dict[str, Any]
+        if cls._IS_PRETRAINED:
+            kwargs = {'pretrained_model_name': None}
+        else:
+            kwargs = {}
 
         added_tokens_file = vocab_files.pop('added_tokens_file', None)
         special_tokens_map_file = vocab_files.pop(

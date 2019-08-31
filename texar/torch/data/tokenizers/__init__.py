@@ -20,3 +20,4 @@ from texar.torch.data.tokenizers.pretrained_gpt2_tokenizer import *
 from texar.torch.data.tokenizers.pretrained_roberta_tokenizer import *
 from texar.torch.data.tokenizers.pretrained_tokenizer_base import *
 from texar.torch.data.tokenizers.pretrained_xlnet_tokenizer import *
+from texar.torch.data.tokenizers.sentencepiece_tokenizer import *
