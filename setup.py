@@ -31,15 +31,17 @@ setuptools.setup(
     platforms='any',
 
     install_requires=[
+        'regex',
         'numpy',
         'requests',
         'funcsigs',
+        'sentencepiece',
         'mypy_extensions',
     ],
     extras_require={
         'torch': ['torch>=1.0'],
         'examples': [],
-        'extras': ['Pillow>=3.0', 'regex', 'sentencepiece'],
+        'extras': ['Pillow>=3.0'],
     },
     package_data={
         "texar.torch": [
