@@ -55,6 +55,16 @@ class RoBERTaTokenizer(GPT2Tokenizer):
         'roberta-base': 512,
         'roberta-large': 512,
     }
+    _VOCAB_FILE_MAP = {
+        'vocab_file': {
+            'roberta-base': 'encoder.json',
+            'roberta-large': 'encoder.json',
+        },
+        'merges_file': {
+            'roberta-base': 'vocab.bpe',
+            'roberta-large': 'vocab.bpe',
+        },
+    }
 
     def encode_text(self,  # type: ignore
                     text_a: str,
@@ -153,6 +163,7 @@ class RoBERTaTokenizer(GPT2Tokenizer):
                 "pad_token": "<pad>",
                 "mask_token": "<mask>",
                 "errors": "replace",
+                "name": "roberta_tokenizer",
             }
 
         Here:
@@ -193,6 +204,10 @@ class RoBERTaTokenizer(GPT2Tokenizer):
         `"errors"`: str
             Response when decoding fails. The possible values are
             `ignore`, `replace`, and `strict`.
+
+        `"name"`: str
+            Name of the tokenizer.
+
         """
         return {
             'pretrained_model_name': 'roberta-base',
@@ -207,6 +222,7 @@ class RoBERTaTokenizer(GPT2Tokenizer):
             'pad_token': '<pad>',
             'mask_token': '<mask>',
             'errors': 'replace',
+            'name': 'roberta_tokenizer',
             '@no_typecheck': ['pretrained_model_name'],
         }
 

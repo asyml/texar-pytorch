@@ -17,6 +17,7 @@ Modules of Texar library encoders.
 
 from texar.torch.modules.encoders.bert_encoder import *
 from texar.torch.modules.encoders.conv_encoders import *
+from texar.torch.modules.encoders.distilbert_encoder import *
 from texar.torch.modules.encoders.encoder_base import *
 from texar.torch.modules.encoders.gpt2_encoder import *
 from texar.torch.modules.encoders.multihead_attention import *
