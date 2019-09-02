@@ -279,9 +279,9 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
                 TransformerDecoderOutput,
                 Tuple[TransformerDecoderOutput, torch.LongTensor],
                 Dict[str, torch.Tensor]]:
-        r"""Performs decoding. Has exact the same functionality with
+        r"""Performs decoding. Has exact the same interfaces with
         :meth:`texar.torch.modules.TransformerDecoder.forward`. Please refer to
-        it for the detailed information.
+        it for the detailed usage.
         """
         return super().forward(inputs=inputs,
                                sequence_length=sequence_length,
