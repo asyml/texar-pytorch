@@ -51,6 +51,14 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
       * ``gpt2-medium``: Medium version of GPT-2, 355M parameters.
       * ``gpt2-large``: Large version of GPT-2, 774M parameters.
 
+    We provide the following GPT2 classes:
+
+      * :class:`~texar.torch.modules.GPT2Encoder` for text encoding.
+      * :class:`~texar.torch.modules.GPT2Decoder` for text generation and
+        decoding.
+      * :class:`~texar.torch.modules.GPT2Classifier` for text classification and
+        sequence tagging.
+
     .. _`Language Models are Unsupervised Multitask Learners`:
         https://openai.com/blog/better-language-models/
     """
