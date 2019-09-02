@@ -31,11 +31,11 @@ setuptools.setup(
     platforms='any',
 
     install_requires=[
-        'regex',
+        'regex>=2018.01.10',
         'numpy',
         'requests',
         'funcsigs',
-        'sentencepiece',
+        'sentencepiece>=0.1.8',
         'mypy_extensions',
     ],
     extras_require={
