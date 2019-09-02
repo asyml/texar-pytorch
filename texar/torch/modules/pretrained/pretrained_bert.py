@@ -54,6 +54,12 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
       * ``bert-base-chinese``: Chinese Simplified and Traditional, 12-layer,
         768-hidden, 12-heads, 110M parameters.
 
+    We provide the following BERT classes:
+
+      * :class:`~texar.torch.modules.BERTEncoder` for text encoding.
+      * :class:`~texar.torch.modules.BERTClassifier` for text classification and
+        sequence tagging.
+
     .. _`BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`:
         https://arxiv.org/abs/1810.04805
     """

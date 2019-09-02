@@ -50,6 +50,15 @@ class PretrainedXLNetMixin(PretrainedMixin, ABC):
         trained on full data (different from the one in the paper).
       * ``xlnet-large-cased``: 24-layer, 1024-hidden, 16-heads.
 
+    We provide the following XLNet classes:
+
+      * :class:`~texar.torch.modules.XLNetEncoder` for text encoding.
+      * :class:`~texar.torch.modules.XLNetDecoder` for text generation and
+        decoding.
+      * :class:`~texar.torch.modules.XLNetClassifier` for text classification
+        and sequence tagging.
+      * :class:`~texar.torch.modules.XLNetRegressor` for text regression.
+
     .. _`XLNet: Generalized Autoregressive Pretraining for Language Understanding`:
         http://arxiv.org/abs/1906.08237
     """

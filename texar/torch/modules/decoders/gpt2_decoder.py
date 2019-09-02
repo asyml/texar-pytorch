@@ -15,11 +15,13 @@
 GPT2 decoder.
 """
 
-from typing import Optional
+from typing import Dict, Optional, Tuple, Union
 
 import torch
 
-from texar.torch.modules.decoders.transformer_decoders import TransformerDecoder
+from texar.torch.modules.decoders.decoder_helpers import Helper
+from texar.torch.modules.decoders.transformer_decoders import \
+    TransformerDecoder, TransformerDecoderOutput
 from texar.torch.modules.embedders import PositionEmbedder, WordEmbedder
 from texar.torch.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
 
@@ -256,3 +258,43 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
             'name': 'gpt2_decoder',
             '@no_typecheck': ['pretrained_model_name'],
         }
+
+    def forward(self,  # type: ignore
+                inputs: Optional[torch.Tensor] = None,
+                sequence_length: Optional[torch.LongTensor] = None,
+                memory: Optional[torch.Tensor] = None,
+                memory_sequence_length: Optional[torch.LongTensor] = None,
+                memory_attention_bias: Optional[torch.Tensor] = None,
+                context: Optional[torch.Tensor] = None,
+                context_sequence_length: Optional[torch.LongTensor] = None,
+                helper: Optional[Helper] = None,
+                decoding_strategy: str = 'train_greedy',
+                max_decoding_length: Optional[int] = None,
+                impute_finished: bool = False,
+                infer_mode: Optional[bool] = None,
+                beam_width: Optional[int] = None,
+                length_penalty: float = 0.,
+                **kwargs) \
+            -> Union[
+                TransformerDecoderOutput,
+                Tuple[TransformerDecoderOutput, torch.LongTensor],
+                Dict[str, torch.Tensor]]:
+        r"""Performs decoding. Has exact the same interfaces with
+        :meth:`texar.torch.modules.TransformerDecoder.forward`. Please refer to
+        it for the detailed usage.
+        """
+        return super().forward(inputs=inputs,
+                               sequence_length=sequence_length,
+                               memory=memory,
+                               memory_sequence_length=memory_sequence_length,
+                               memory_attention_bias=memory_attention_bias,
+                               context=context,
+                               context_sequence_length=context_sequence_length,
+                               helper=helper,
+                               decoding_strategy=decoding_strategy,
+                               max_decoding_length=max_decoding_length,
+                               impute_finished=impute_finished,
+                               infer_mode=infer_mode,
+                               beam_width=beam_width,
+                               length_penalty=length_penalty,
+                               **kwargs)

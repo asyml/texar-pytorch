@@ -46,6 +46,12 @@ class PretrainedRoBERTaMixin(PretrainedMixin, ABC):
       * ``roberta-large``: RoBERTa using the BERT-large architecture,
         355M parameters.
 
+    We provide the following RoBERTa classes:
+
+      * :class:`~texar.torch.modules.RoBERTaEncoder` for text encoding.
+      * :class:`~texar.torch.modules.RoBERTaClassifier` for text
+        classification and sequence tagging.
+
     .. _`RoBERTa: A Robustly Optimized BERT Pretraining Approach`:
         https://arxiv.org/abs/1907.11692
     """
