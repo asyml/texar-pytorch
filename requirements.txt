@@ -2,3 +2,5 @@ torch >= 1.0.0
 funcsigs >= 1.0.2
 numpy >= 1.15.4
 mypy_extensions >= 0.4.1
+regex >= 2018.01.10
+sentencepiece >= 0.1.8
