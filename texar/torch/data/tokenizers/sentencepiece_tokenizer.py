@@ -45,7 +45,7 @@ class SentencePieceTokenizer(TokenizerBase):
     Args:
         cache_dir (optional): the path to a folder in which the
             trained `sentencepiece` model will be cached. If `None` (default),
-            a default directory (`texar_pytorch` folder under user's home
+            a default directory (``texar_pytorch`` folder under user's home
             directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
