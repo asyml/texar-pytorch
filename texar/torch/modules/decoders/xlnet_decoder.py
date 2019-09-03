@@ -56,7 +56,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
-            a default directory (``texar_pytorch`` folder under user's home
+            a default directory (``texar_data`` folder under user's home
             directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See

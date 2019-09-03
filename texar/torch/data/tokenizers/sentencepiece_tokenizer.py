@@ -33,7 +33,7 @@ __all__ = [
 
 class SentencePieceTokenizer(TokenizerBase):
     r"""SentencePiece Tokenizer. This class is a wrapper of Google's
-    `SentencePiece` with richer ready-to-use functionalities such as
+    `SentencePiece`_ with richer ready-to-use functionalities such as
     adding tokens and saving/loading.
 
     `SentencePiece` is an unsupervised text tokenizer mainly for Neural
@@ -42,15 +42,20 @@ class SentencePieceTokenizer(TokenizerBase):
     implements sub-word units (e.g., byte-pair-encoding (BPE) and unigram
     language model) with the extension of direct training from raw sentences.
 
+    The supported algorithms in `SentencePiece` are: ``bpe``, ``word``,
+    ``char``, and ``unigram``.
+
     Args:
         cache_dir (optional): the path to a folder in which the
             trained `sentencepiece` model will be cached. If `None` (default),
-            a default directory (``texar_pytorch`` folder under user's home
+            a default directory (``texar_data`` folder under user's home
             directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
+
+    .. _`SentencePiece`: https://github.com/google/sentencepiece
     """
 
     _IS_PRETRAINED = False
@@ -123,7 +128,7 @@ class SentencePieceTokenizer(TokenizerBase):
     def train(cls, cmd: str,  # type: ignore
               cache_dir: Optional[str] = None) -> str:
         r"""Trains the tokenizer from the raw text file. This function is
-        a wrapper of ``sentencepiece.SentencePieceTrainer.Train`` function.
+        a wrapper of `sentencepiece.SentencePieceTrainer.Train`_ function.
 
         Example:
             SentencePieceTokenizer.train('--input=test/botchan.txt
@@ -140,6 +145,9 @@ class SentencePieceTokenizer(TokenizerBase):
 
         Returns:
             Path to the cache directory.
+
+        .. _`sentencepiece.SentencePieceTrainer.Train`:
+            https://github.com/google/sentencepiece/blob/master/python/sentencepiece.py
         """
         if cache_dir is None:
             cache_path = str(default_download_dir('SentencePiece'))
@@ -249,12 +257,13 @@ class SentencePieceTokenizer(TokenizerBase):
             Comma separated list of input sentences.
 
         `"vocab_size"`: int or None
-            Vocabulary size. Note that the vocabulary size is predetermined,
-            and it is used in the tokenizer training procedure.
+            Vocabulary size. The user can specify the vocabulary size, and the
+            tokenizer training procedure will train and yield a vocabulary
+            of the specified size.
 
         `"model_type"`: str
             Model algorithm to train the tokenizer. Available algorithms are:
-            ``unigram``, ``bpe``, ``word``, and ``char``.
+            ``bpe``, ``word``, ``char``, and ``unigram``.
 
         `"bos_token"`: str or None
             Beginning of sentence token. Set None to disable ``bos_token``.
