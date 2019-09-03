@@ -23,8 +23,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import os
 
 from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
-from texar.torch.data.tokenizers.pretrained_tokenizer_base import \
-    PretrainedTokenizerBase
+from texar.torch.data.tokenizers.tokenizer_base import TokenizerBase
 from texar.torch.data.tokenizers.pretrained_bert_tokenizer_utils import \
     load_vocab, BasicTokenizer, WordpieceTokenizer
 from texar.torch.utils.utils import truncate_seq_pair
@@ -34,7 +33,7 @@ __all__ = [
 ]
 
 
-class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
+class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
     r"""Pre-trained BERT Tokenizer.
 
     Args:
@@ -45,13 +44,15 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
             If None, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
-            a default directory (user's home directory) will be used.
+            a default directory (`texar_pytorch` folder under user's home
+            directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
 
+    _IS_PRETRAINED = True
     _MAX_INPUT_SIZE = {
         'bert-base-uncased': 512,
         'bert-large-uncased': 512,
@@ -116,24 +117,24 @@ class BERTTokenizer(PretrainedBERTMixin, PretrainedTokenizerBase):
             split_tokens = self.wordpiece_tokenizer.tokenize(text)
         return split_tokens
 
-    def save_vocab(self, save_directory: str) -> Tuple[str]:
+    def save_vocab(self, save_dir: str) -> Tuple[str]:
         r"""Save the tokenizer vocabulary to a directory or file."""
         index = 0
-        if os.path.isdir(save_directory):
-            save_directory = os.path.join(save_directory,
-                                          self._VOCAB_FILE_NAMES['vocab_file'])
-        with open(save_directory, "w", encoding="utf-8") as writer:
+        if os.path.isdir(save_dir):
+            save_dir = os.path.join(save_dir,
+                                    self._VOCAB_FILE_NAMES['vocab_file'])
+        with open(save_dir, "w", encoding="utf-8") as writer:
             for token, token_index in sorted(self.vocab.items(),
                                              key=lambda kv: kv[1]):
                 if index != token_index:
                     print("Saving vocabulary to {}: vocabulary indices are not "
                           "consecutive. Please check that the vocabulary is "
-                          "not corrupted!".format(save_directory))
+                          "not corrupted!".format(save_dir))
                     index = token_index
                 writer.write(token + u'\n')
                 index += 1
 
-        return (save_directory, )
+        return (save_dir, )
 
     @property
     def vocab_size(self) -> int:

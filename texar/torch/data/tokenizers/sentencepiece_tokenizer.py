@@ -22,8 +22,7 @@ from shutil import copyfile, move
 
 import sentencepiece as spm
 
-from texar.torch.data.tokenizers.pretrained_tokenizer_base import \
-    PretrainedTokenizerBase
+from texar.torch.data.tokenizers.tokenizer_base import TokenizerBase
 from texar.torch.modules.pretrained.pretrained_base import default_download_dir
 from texar.torch.utils.utils_io import maybe_create_dir
 
@@ -32,18 +31,28 @@ __all__ = [
 ]
 
 
-class SentencePieceTokenizer(PretrainedTokenizerBase):
-    r"""SentencePiece Tokenizer.
+class SentencePieceTokenizer(TokenizerBase):
+    r"""SentencePiece Tokenizer. This class is a wrapper of Google's
+    `SentencePiece` with richer ready-to-use functionalities such as
+    adding tokens and saving/loading.
+
+    `SentencePiece` is an unsupervised text tokenizer mainly for Neural
+    Network-based text generation systems where the vocabulary size
+    is predetermined prior to the neural model training. `SentencePiece`
+    implements sub-word units (e.g., byte-pair-encoding (BPE) and unigram
+    language model) with the extension of direct training from raw sentences.
 
     Args:
         cache_dir (optional): the path to a folder in which the
             trained `sentencepiece` model will be cached. If `None` (default),
-            a default directory (user's home directory) will be used.
+            a default directory (`texar_pytorch` folder under user's home
+            directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
+
     _IS_PRETRAINED = False
     _VOCAB_FILE_NAMES = {
         'vocab_file': 'spiece.model',
@@ -95,7 +104,11 @@ class SentencePieceTokenizer(PretrainedTokenizerBase):
             cmd = ['--model_prefix=spiece']
             for arg, val in self.hparams.items():
                 if arg in self._TRAIN_ARG_MAP:
-                    cmd.append('--' + self._TRAIN_ARG_MAP[arg] + '=' + str(val))
+                    if arg in self._SPECIAL_TOKENS_ATTRIBUTES and val is None:
+                        cmd.append('--' + arg.replace('token', 'id') + '=-1')
+                    else:
+                        cmd.append('--' + self._TRAIN_ARG_MAP[arg] + '=' +
+                                   str(val))
 
             cache_path = self.train(" ".join(cmd), cache_dir)
             self.vocab_file = os.path.join(
@@ -109,6 +122,25 @@ class SentencePieceTokenizer(PretrainedTokenizerBase):
     @classmethod
     def train(cls, cmd: str,  # type: ignore
               cache_dir: Optional[str] = None) -> str:
+        r"""Trains the tokenizer from the raw text file. This function is
+        a wrapper of ``sentencepiece.SentencePieceTrainer.Train`` function.
+
+        Example:
+            SentencePieceTokenizer.train('--input=test/botchan.txt
+            --model_prefix=m --vocab_size=1000')
+
+        Args:
+            cmd (str): the command for the tokenizer training procedure.
+                See ``sentencepiece.SentencePieceTrainer.Train`` for the
+                detailed usage.
+            cache_dir (optional): the path to a folder in which the trained
+                `sentencepiece` model will be cached. If `None` (default),
+                a default directory (`texar_pytorch` folder under user's home
+                directory) will be used.
+
+        Returns:
+            Path to the cache directory.
+        """
         if cache_dir is None:
             cache_path = str(default_download_dir('SentencePiece'))
         else:
@@ -150,15 +182,15 @@ class SentencePieceTokenizer(PretrainedTokenizerBase):
         self.sp_model = spm.SentencePieceProcessor()
         self.sp_model.Load(self.vocab_file)
 
-    def save_vocab(self, save_directory: str) -> Tuple[str]:
+    def save_vocab(self, save_dir: str) -> Tuple[str]:
         r"""Save the sentencepiece vocabulary (copy original file) to
         a directory.
         """
-        if not os.path.isdir(save_directory):
+        if not os.path.isdir(save_dir):
             raise ValueError("Vocabulary path ({}) should be a "
-                             "directory".format(save_directory))
+                             "directory".format(save_dir))
         out_vocab_file = os.path.join(
-            save_directory, self._VOCAB_FILE_NAMES['vocab_file'])
+            save_dir, self._VOCAB_FILE_NAMES['vocab_file'])
 
         if os.path.abspath(self.vocab_file) != os.path.abspath(out_vocab_file):
             copyfile(self.vocab_file, out_vocab_file)
@@ -188,12 +220,12 @@ class SentencePieceTokenizer(PretrainedTokenizerBase):
     def default_hparams() -> Dict[str, Any]:
         r"""Returns a dictionary of hyperparameters with default values.
 
-        * The tokenizer is determined by `hparams['vocab_file']` if it's
-          specified. In this case, all other configurations in `hparams`
-          are ignored.
+        * If `hparams['vocab_file']` is specified, the tokenizer is directly
+          loaded from the vocabulary file. In this case, all other
+          configurations in `hparams` are ignored.
         * Otherwise, the tokenizer is trained based on `hparams['text_file']`.
         * `hparams['vocab_file']` and `hparams['text_file']` can not be None
-        at the same time.
+          at the same time.
 
         .. code-block:: python
 
@@ -217,23 +249,24 @@ class SentencePieceTokenizer(PretrainedTokenizerBase):
             Comma separated list of input sentences.
 
         `"vocab_size"`: int or None
-            Vocabulary size.
+            Vocabulary size. Note that the vocabulary size is predetermined,
+            and it is used in the tokenizer training procedure.
 
         `"model_type"`: str
             Model algorithm to train the tokenizer. Available algorithms are:
             ``unigram``, ``bpe``, ``word``, and ``char``.
 
-        `"bos_token"`: str
-            Beginning of sentence token.
+        `"bos_token"`: str or None
+            Beginning of sentence token. Set None to disable ``bos_token``.
 
-        `"eos_token"`: str
-            End of sentence token.
+        `"eos_token"`: str or None
+            End of sentence token. Set None to disable ``eos_token``.
 
-        `"unk_token"`: str
-            Unknown token.
+        `"unk_token"`: str or None
+            Unknown token. Set None to disable ``unk_token``.
 
-        `"pad_token"`: str
-            Padding token.
+        `"pad_token"`: str or None
+            Padding token. Set None to disable ``pad_token``.
         """
         return {
             'vocab_file': None,

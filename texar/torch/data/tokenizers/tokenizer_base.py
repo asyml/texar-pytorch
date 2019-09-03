@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Base class for Pre-trained tokenizers.
+Base class for all tokenizers.
 
 The code structure adapted from:
     `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_utils.py`
@@ -23,11 +23,11 @@ from typing import Any, Dict, List, Optional, Tuple
 import os
 import json
 
-from texar.torch.modules.pretrained.pretrained_base import PretrainedMixin
+from texar.torch.module_base import ModuleBase
 from texar.torch.utils.types import MaybeList
 
 __all__ = [
-    "PretrainedTokenizerBase",
+    "TokenizerBase",
 ]
 
 SPECIAL_TOKENS_MAP_FILE = 'special_tokens_map.json'
@@ -35,8 +35,8 @@ ADDED_TOKENS_FILE = 'added_tokens.json'
 CONFIG_FILE = 'config.json'
 
 
-class PretrainedTokenizerBase(PretrainedMixin):
-    r"""Base class inherited by all pre-trained tokenizer classes. This class
+class TokenizerBase(ModuleBase):
+    r"""Base class inherited by all tokenizer classes. This class
     handles downloading and loading pre-trained tokenizer and adding tokens to
     the vocabulary.
 
@@ -51,7 +51,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
     `sentencepiece` ...).
     """
 
-    _IS_PRETRAINED = True
+    _IS_PRETRAINED: bool
     _MAX_INPUT_SIZE: Dict[str, Optional[int]]
     _VOCAB_FILE_NAMES: Dict[str, str]
     _SPECIAL_TOKENS_ATTRIBUTES = ["bos_token", "eos_token", "unk_token",
@@ -87,8 +87,8 @@ class PretrainedTokenizerBase(PretrainedMixin):
 
     @classmethod
     def load(cls, pretrained_model_path: str, configs: Optional[Dict] = None):
-        r"""Instantiate a pre-trained tokenizer from the pre-trained vocabulary
-        files.
+        r"""Instantiate a tokenizer from the vocabulary files or the saved
+        tokenizer files.
 
         Args:
             pretrained_model_path: The path to a vocabulary file or a folder
@@ -98,7 +98,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
                 by this dictionary.
 
         Returns:
-            A pre-trained tokenizer instance.
+            A tokenizer instance.
         """
         vocab_files = {}
         # Look for the tokenizer main vocabulary files
@@ -187,7 +187,7 @@ class PretrainedTokenizerBase(PretrainedMixin):
 
         return tokenizer
 
-    def save(self, save_directory: str) -> Tuple[str]:
+    def save(self, save_dir: str) -> Tuple[str]:
         r"""Save the tokenizer vocabulary files (with added tokens), tokenizer
         configuration file and a dictionary mapping special token class
         attributes (:attr:`cls_token`, :attr:`unk_token`, ...) to their values
@@ -195,21 +195,21 @@ class PretrainedTokenizerBase(PretrainedMixin):
         using the :meth:`~load`.
 
         Args:
-            save_directory: The path to a folder in which the pre-trained
-                tokenizer files will be saved.
+            save_dir: The path to a folder in which the tokenizer files
+                will be saved.
 
         Return:
             The paths to the vocabulary file, added token file, special token
             mapping file, and the configuration file.
         """
-        if not os.path.isdir(save_directory):
+        if not os.path.isdir(save_dir):
             raise ValueError("Saving directory ({}) should be a "
-                             "directory".format(save_directory))
+                             "directory".format(save_dir))
 
-        special_tokens_map_file = os.path.join(save_directory,
+        special_tokens_map_file = os.path.join(save_dir,
                                                SPECIAL_TOKENS_MAP_FILE)
-        added_tokens_file = os.path.join(save_directory, ADDED_TOKENS_FILE)
-        config_file = os.path.join(save_directory, CONFIG_FILE)
+        added_tokens_file = os.path.join(save_dir, ADDED_TOKENS_FILE)
+        config_file = os.path.join(save_dir, CONFIG_FILE)
 
         with open(special_tokens_map_file, 'w', encoding='utf-8') as f:
             f.write(json.dumps(self.special_tokens_map, ensure_ascii=False))
@@ -229,11 +229,11 @@ class PretrainedTokenizerBase(PretrainedMixin):
                 out_str = u"{}"
             f.write(out_str)
 
-        vocab_files = self.save_vocab(save_directory)
+        vocab_files = self.save_vocab(save_dir)
         return vocab_files + (special_tokens_map_file, added_tokens_file,
                               config_file)
 
-    def save_vocab(self, save_directory):
+    def save_vocab(self, save_dir):
         r"""Save the tokenizer vocabulary to a directory. This method does not
         save added tokens, special token mappings, and the configuration file.
 
