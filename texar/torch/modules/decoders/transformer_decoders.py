@@ -730,9 +730,8 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         state = initial_state or self._state_cache
         return initial_finished, initial_inputs, state
 
-    def compute_output_state(self, helper: Helper, time: int,
-                             inputs: torch.Tensor,
-                             state: Optional[Cache]) -> \
+    def step(self, helper: Helper, time: int, inputs: torch.Tensor,
+             state: Optional[Cache]) -> \
             Tuple[TransformerDecoderOutput, Cache]:
         assert state is not None
         outputs, state = self._inputs_to_outputs(inputs, state)
@@ -749,13 +748,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             logits=outputs,
             sample_id=sample_ids)
         return outputs, next_state
-
-    def compute_next_input(self, helper: Helper, time: int,
-                           outputs: TransformerDecoderOutput) -> \
-            Tuple[torch.Tensor, torch.ByteTensor]:
-        finished, next_inputs = helper.next_inputs(
-            self.embed_tokens, time, outputs.logits, outputs.sample_id)
-        return next_inputs, finished
 
     def finalize(self,  # type: ignore
                  outputs: TransformerDecoderOutput,

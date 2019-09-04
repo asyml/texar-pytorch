@@ -236,9 +236,8 @@ class BasicRNNDecoder(RNNDecoderBase[HiddenState, BasicRNNDecoderOutput]):
         hparams['name'] = 'basic_rnn_decoder'
         return hparams
 
-    def compute_output_state(self, helper: Helper, time: int,
-                             inputs: torch.Tensor,
-                             state: Optional[HiddenState]) \
+    def step(self, helper: Helper, time: int, inputs: torch.Tensor,
+             state: Optional[HiddenState]) \
             -> Tuple[BasicRNNDecoderOutput, HiddenState]:
         cell_outputs, cell_state = self._cell(inputs, state)
         logits = self._output_layer(cell_outputs)
@@ -246,13 +245,6 @@ class BasicRNNDecoder(RNNDecoderBase[HiddenState, BasicRNNDecoderOutput]):
         next_state = cell_state
         outputs = BasicRNNDecoderOutput(logits, sample_ids, cell_outputs)
         return outputs, next_state
-
-    def compute_next_input(self, helper: Helper, time: int,
-                           outputs: BasicRNNDecoderOutput) -> \
-            Tuple[torch.Tensor, torch.ByteTensor]:
-        (finished, next_inputs) = helper.next_inputs(
-            self.embed_tokens, time, outputs.logits, outputs.sample_id)
-        return next_inputs, finished
 
     @property
     def output_size(self):
@@ -570,9 +562,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
 
         return initial_finished, initial_inputs, state
 
-    def compute_output_state(self, helper: Helper, time: int,
-                             inputs: torch.Tensor,
-                             state: Optional[AttentionWrapperState]) -> \
+    def step(self, helper: Helper, time: int, inputs: torch.Tensor,
+             state: Optional[AttentionWrapperState]) -> \
             Tuple[AttentionRNNDecoderOutput, AttentionWrapperState]:
         wrapper_outputs, wrapper_state = self._cell(
             inputs, state, self.memory, self.memory_sequence_length)
@@ -589,15 +580,6 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         next_state = wrapper_state
 
         return outputs, next_state
-
-    def compute_next_input(self, helper: Helper, time: int,
-                           outputs: AttentionRNNDecoderOutput) -> \
-            Tuple[torch.Tensor, torch.ByteTensor]:
-
-        finished, next_inputs = helper.next_inputs(
-            self.embed_tokens, time, outputs.logits, outputs.sample_id)
-
-        return next_inputs, finished
 
     def forward(  # type: ignore
             self,
