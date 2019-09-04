@@ -1348,10 +1348,10 @@ class Executor:
         finally:
             self._train_tracker.stop()
 
+        self._fire_event(Event.Training, True)
+
         # close the log files
         self._close_files()
-
-        self._fire_event(Event.Training, True)
 
     def test(self, dataset: OptionalDict[DataBase] = None):
         r"""Start the test loop.
@@ -1414,10 +1414,10 @@ class Executor:
 
             self._fire_event(Event.Testing, True)
 
+        self.model.train(model_mode)
+
         # close the log files
         self._close_files()
-
-        self.model.train(model_mode)
 
     def _register_logging_actions(self, show_live_progress: List[str]):
         # Register logging actions.
@@ -1701,6 +1701,10 @@ class Executor:
                 f"Specified hook point {event_point} is invalid") from None
 
     def _open_files(self):
+        self._opened_files = []
+        self._log_destination = []
+        self._log_destination_is_tty = []
+
         for dest in utils.to_list(self.log_destination):
             if isinstance(dest, (str, Path)):
                 # Append to the logs to prevent accidentally overwriting

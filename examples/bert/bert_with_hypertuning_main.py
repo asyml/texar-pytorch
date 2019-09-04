@@ -34,7 +34,7 @@ from utils import model_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--config-downstream", default="bert_tpe_config_classifier",
+    "--config-downstream", default="bert_hypertuning_config_classifier",
     help="Configuration of the downstream part of the model")
 parser.add_argument(
     '--pretrained-model-name', type=str, default='bert-base-uncased',
@@ -70,13 +70,21 @@ logging.root.setLevel(logging.INFO)
 
 
 class ModelWrapper(nn.Module):
+    r"""This class wraps a model (in this case a BERT classifier) and implements
+    :meth:`forward` and :meth:`predict` to conform to the requirements of
+    :class:`Executor` class. Particularly, :meth:`forward` returns a dict with
+    keys "loss" and "preds" and :meth:`predict` returns a dict with key "preds".
+
+    Args:
+        `model`: BERTClassifier
+            A BERTClassifier model
+    """
+
     def __init__(self, model: BERTClassifier):
         super().__init__()
         self.model = model
 
     def _compute_loss(self, logits, labels):
-        r"""Compute loss.
-        """
         if self.model.is_binary:
             loss = F.binary_cross_entropy(
                 logits.view(-1), labels.view(-1), reduction='mean')
@@ -88,6 +96,18 @@ class ModelWrapper(nn.Module):
 
     def forward(self,  # type: ignore
                 batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
+        r"""Run forward through the network and return a dict to be consumed
+        by the :class:`Executor`. This method will be called by
+        :class:``Executor` during training.
+
+        Args:
+            `batch`: tx.data.Batch
+                A batch of inputs to be passed through the network
+
+        Returns:
+            A dict with keys "loss" and "preds" containing the loss and
+            predictions on :attr:`batch` respectively.
+        """
         input_ids = batch["input_ids"]
         segment_ids = batch["segment_ids"]
         labels = batch["label_ids"]
@@ -101,6 +121,15 @@ class ModelWrapper(nn.Module):
         return {"loss": loss, "preds": preds}
 
     def predict(self, batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
+        r"""Predict the labels for the :attr:`batch` of examples. This method
+        will be called instead of :meth:`forward` during validation or testing,
+        if :class:`Executor`'s :attr:`validate_mode` or :attr:`test_mode` is set
+        to ``"predict"`` instead of ``"eval"``.
+
+        Args:
+            `batch`: tx.data.Batch
+                A batch of inputs to run prediction on
+        """
         input_ids = batch["input_ids"]
         segment_ids = batch["segment_ids"]
 
@@ -112,10 +141,22 @@ class ModelWrapper(nn.Module):
 
 
 class TPE:
-    def __init__(self, model_config=None):
+    r""":class:`TPE` uses Tree-structured Parzen Estimator algorithm from
+    `hyperopt` for hyperparameter tuning.
+
+    Args:
+        model_config: Dict
+            A conf dict which is passed to BERT classifier
+        output_dir: str
+            A path to store the models
+
+    """
+    def __init__(self, model_config: Dict, output_dir: str = "output/"):
         tx.utils.maybe_create_dir(args.output_dir)
 
         self.model_config = model_config
+
+        self.output_dir = output_dir
 
         # create datasets
         self.train_dataset = tx.data.RecordData(
@@ -150,7 +191,31 @@ class TPE:
         self.optim = tx.core.BertAdam
 
     def objective_func(self, params: Dict):
+        r"""Compute a "loss" for a given hyperparameter values. This function is
+        passed to hyperopt's ``"fmin"`` (see the :meth:`run` method) function
+        and gets repeatedly called to find the best set of hyperparam values.
+        Below is an example of how to use this method
 
+        .. code-block:: python
+
+            import hyperopt as hpo
+
+            trials = hpo.Trials()
+            hpo.fmin(fn=self.objective_func,
+                     space=space,
+                     algo=hpo.tpe.suggest,
+                     max_evals=3,
+                     trials=trials)
+
+        Args:
+            params: Dict
+                A `(key, value)` dict representing the ``"value"`` to try for
+                the hyperparam ``"key"``
+
+        Returns:
+            A dict with keys "loss", "status" and "model" indicating the loss
+            for this trial, the status, and the path to the saved model.
+        """
         print(f"Using {params} for trial {self.exp_number}")
 
         # Loads data
@@ -188,7 +253,7 @@ class TPE:
 
         valid_metric = metric.Accuracy(pred_name="preds",
                                        label_name="label_ids")
-        checkpoint_dir = f"./models/exp{self.exp_number}"
+        checkpoint_dir = f"./{self.output_dir}/exp{self.exp_number}"
 
         executor = Executor(
             # supply executor with the model
@@ -232,6 +297,13 @@ class TPE:
         }
 
     def run(self, hyperparams: Dict):
+        r"""Run the TPE algorithm with hyperparameters  :attr:`hyperparams`
+
+        Args:
+            hyperparams: Dict
+                The `(key, value)` pairs of hyperparameters along their range of
+                values.
+        """
         space = {}
         for k, v in hyperparams.items():
             if isinstance(v, dict):
@@ -258,7 +330,7 @@ class TPE:
 def main():
     model_config = {k: v for k, v in config_downstream.items() if
                     k != "hyperparams"}
-    tpe = TPE(model_config=model_config)
+    tpe = TPE(model_config=model_config, output_dir=args.output_dir)
     hyperparams = config_downstream["hyperparams"]
     tpe.run(hyperparams)
 
