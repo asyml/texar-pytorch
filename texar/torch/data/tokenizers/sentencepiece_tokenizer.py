@@ -43,7 +43,7 @@ class SentencePieceTokenizer(TokenizerBase):
     language model) with the extension of direct training from raw sentences.
 
     The supported algorithms in `SentencePiece` are: ``bpe``, ``word``,
-    ``char``, and ``unigram``.
+    ``char``, and ``unigram``, which is specified in :attr:`hparams`.
 
     Args:
         cache_dir (optional): the path to a folder in which the
