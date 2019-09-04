@@ -32,7 +32,6 @@ from texar.torch.modules.encoders.transformer_encoder import (
 from texar.torch.modules.networks.networks import FeedForwardNetwork
 from texar.torch.utils import transformer_attentions as attn
 from texar.torch.utils.beam_search import beam_search
-from texar.torch.utils.dtypes import torch_bool
 from texar.torch.utils.shapes import mask_sequences
 from texar.torch.utils.utils import sequence_mask
 
@@ -731,10 +730,10 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         state = initial_state or self._state_cache
         return initial_finished, initial_inputs, state
 
-    def step(self, helper: Helper, time: int,
-             inputs: torch.Tensor, state: Optional[Cache]) \
-            -> Tuple[TransformerDecoderOutput, Cache,
-                     torch.Tensor, torch.ByteTensor]:
+    def compute_output_state(self, helper: Helper, time: int,
+                             inputs: torch.Tensor,
+                             state: Optional[Cache]) -> \
+            Tuple[TransformerDecoderOutput, Cache]:
         assert state is not None
         outputs, state = self._inputs_to_outputs(inputs, state)
         sample_ids = helper.sample(time=time, outputs=outputs)
@@ -745,21 +744,18 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 self._state_context[:, time],
                 sample_ids)
 
-        if time + 1 == self._state_max_decoding_length:
-            # Maximum decoding length reached, mark all batches as finished.
-            # This requires special handling because performing lookup on
-            # position embeddings with `time + 1` may result in IndexError.
-            finished = torch.ones_like(sample_ids, dtype=torch_bool)
-            # Since `next_inputs` will not be used, simply create a null tensor.
-            next_inputs = torch.empty(0)
-        else:
-            finished, next_inputs = helper.next_inputs(
-                self.embed_tokens, time, outputs, sample_ids)
         next_state = state
         outputs = TransformerDecoderOutput(
             logits=outputs,
             sample_id=sample_ids)
-        return outputs, next_state, next_inputs, finished
+        return outputs, next_state
+
+    def compute_next_input(self, helper: Helper, time: int,
+                           outputs: TransformerDecoderOutput) -> \
+            Tuple[torch.Tensor, torch.ByteTensor]:
+        finished, next_inputs = helper.next_inputs(
+            self.embed_tokens, time, outputs.logits, outputs.sample_id)
+        return next_inputs, finished
 
     def finalize(self,  # type: ignore
                  outputs: TransformerDecoderOutput,
