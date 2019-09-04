@@ -7,7 +7,7 @@ num_train_data = 3668
 max_batch_tokens = 128
 
 train_batch_size = 32
-max_train_epoch = 5
+max_train_epoch = 3
 display_steps = 50  # Print training loss every display_steps; -1 to disable
 
 # tbx config
