@@ -99,7 +99,7 @@ class Seq2SeqAttn(nn.Module):
 
             infer_outputs = self.decoder(
                 start_tokens=start_tokens,
-                end_token=self.eos_token_id.item(),
+                end_token=self.eos_token_id,
                 memory=memory,
                 memory_sequence_length=batch['source_length'],
                 beam_width=config_model.beam_width)
