@@ -412,8 +412,13 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
 
             if max_decoding_length is not None and \
                     time + 1 == max_decoding_length:
-                next_inputs = torch.empty(0)
+                # Maximum decoding length reached, mark all batches as finished.
+                # This requires special handling because performing lookup on
+                # position embeddings with `time + 1` may result in IndexError.
                 decoder_finished = torch.tensor(1, dtype=torch_bool)
+                # Since `next_inputs` will not be used, simply create a null
+                # tensor.
+                next_inputs = torch.empty(0)
             else:
                 next_inputs, decoder_finished = \
                     self.compute_next_input(helper, time, next_outputs)
