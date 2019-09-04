@@ -25,8 +25,7 @@ import json
 import regex as re
 
 from texar.torch.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
-from texar.torch.data.tokenizers.pretrained_tokenizer_base import \
-    PretrainedTokenizerBase
+from texar.torch.data.tokenizers.tokenizer_base import TokenizerBase
 from texar.torch.data.tokenizers.pretrained_gpt2_tokenizer_utils import \
     bytes_to_unicode, get_pairs
 
@@ -35,7 +34,7 @@ __all__ = [
 ]
 
 
-class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
+class GPT2Tokenizer(PretrainedGPT2Mixin, TokenizerBase):
     r"""Pre-trained GPT2 Tokenizer.
 
     Args:
@@ -46,13 +45,15 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
             If None, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
-            a default directory (user's home directory) will be used.
+            a default directory (``texar_data`` folder under user's home
+            directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
 
+    _IS_PRETRAINED = True
     _MAX_INPUT_SIZE = {
         'gpt2-small': 1024,
         'gpt2-medium': 1024,
@@ -130,15 +131,15 @@ class GPT2Tokenizer(PretrainedGPT2Mixin, PretrainedTokenizerBase):
                 bpe_token for bpe_token in self._bpe(token).split(' '))
         return bpe_tokens
 
-    def save_vocab(self, save_directory: str) -> Tuple[str, str]:
+    def save_vocab(self, save_dir: str) -> Tuple[str, str]:
         r"""Save the tokenizer vocabulary and merge files to a directory."""
-        if not os.path.isdir(save_directory):
+        if not os.path.isdir(save_dir):
             raise ValueError("Vocabulary path ({}) should be a "
-                             "directory".format(save_directory))
+                             "directory".format(save_dir))
 
-        vocab_file = os.path.join(save_directory,
+        vocab_file = os.path.join(save_dir,
                                   self._VOCAB_FILE_NAMES['vocab_file'])
-        merge_file = os.path.join(save_directory,
+        merge_file = os.path.join(save_dir,
                                   self._VOCAB_FILE_NAMES['merges_file'])
 
         with open(vocab_file, 'w', encoding='utf-8') as f:

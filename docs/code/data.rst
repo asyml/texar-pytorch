@@ -7,9 +7,14 @@ Data
 Tokenizer
 ==========
 
-:hidden:`PretrainedTokenizerBase`
+:hidden:`TokenizerBase`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.torch.data.PretrainedTokenizerBase
+.. autoclass:: texar.torch.data.TokenizerBase
+    :members:
+
+:hidden:`SentencePieceTokenizer`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.data.SentencePieceTokenizer
     :members:
 
 :hidden:`BERTTokenizer`

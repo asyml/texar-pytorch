@@ -26,8 +26,7 @@ from shutil import copyfile
 import sentencepiece as spm
 
 from texar.torch.modules.pretrained.pretrained_xlnet import PretrainedXLNetMixin
-from texar.torch.data.tokenizers.pretrained_tokenizer_base import \
-    PretrainedTokenizerBase
+from texar.torch.data.tokenizers.tokenizer_base import TokenizerBase
 from texar.torch.utils.utils import truncate_seq_pair
 
 __all__ = [
@@ -43,7 +42,7 @@ SEG_ID_SEP = 3
 SEG_ID_PAD = 4
 
 
-class XLNetTokenizer(PretrainedXLNetMixin, PretrainedTokenizerBase):
+class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
     r"""Pre-trained XLNet Tokenizer.
 
     Args:
@@ -54,13 +53,15 @@ class XLNetTokenizer(PretrainedXLNetMixin, PretrainedTokenizerBase):
             If None, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
-            a default directory (user's home directory) will be used.
+            a default directory (``texar_data`` folder under user's home
+            directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
 
+    _IS_PRETRAINED = True
     _MAX_INPUT_SIZE = {
         'xlnet-base-cased': None,
         'xlnet-large-cased': None,
@@ -166,14 +167,14 @@ class XLNetTokenizer(PretrainedXLNetMixin, PretrainedTokenizerBase):
 
         return new_pieces
 
-    def save_vocab(self, save_directory: str) -> Tuple[str]:
+    def save_vocab(self, save_dir: str) -> Tuple[str]:
         r"""Save the sentencepiece vocabulary (copy original file) to
         a directory.
         """
-        if not os.path.isdir(save_directory):
+        if not os.path.isdir(save_dir):
             raise ValueError("Vocabulary path ({}) should be a "
-                             "directory".format(save_directory))
-        out_vocab_file = os.path.join(save_directory,
+                             "directory".format(save_dir))
+        out_vocab_file = os.path.join(save_dir,
                                       self._VOCAB_FILE_NAMES['vocab_file'])
 
         if os.path.abspath(self.vocab_file) != os.path.abspath(out_vocab_file):

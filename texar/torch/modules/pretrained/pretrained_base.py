@@ -49,7 +49,7 @@ def default_download_dir(name: str) -> Path:
             home_dir = Path.home()
 
         if os.access(home_dir, os.W_OK):
-            _default_texar_download_dir = home_dir / 'texar_download'
+            _default_texar_download_dir = home_dir / 'texar_data'
         else:
             raise ValueError(f"The path {home_dir} is not writable. Please "
                              f"manually specify the download directory")
