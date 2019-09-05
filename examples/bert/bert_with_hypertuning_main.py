@@ -48,14 +48,6 @@ parser.add_argument(
 parser.add_argument(
     "--checkpoint", type=str, default=None,
     help="Path to a model checkpoint (including bert modules) to restore from.")
-parser.add_argument(
-    "--do-train", action="store_true", help="Whether to run training.")
-parser.add_argument(
-    "--do-eval", action="store_true",
-    help="Whether to run eval on the dev set.")
-parser.add_argument(
-    "--do-test", action="store_true",
-    help="Whether to run test on the test set.")
 args = parser.parse_args()
 
 config_data = importlib.import_module(args.config_data)
@@ -104,7 +96,9 @@ class ModelWrapper(nn.Module):
         for more details.
 
         Args:
-            `batch`: :class:`texar.data.Batch`
+            `batch`: :class:`texar.data.Batch`. (See
+            https://texar-pytorch.readthedocs.io/en/latest/code/data.html#texar.torch.data.Batch
+            for more details)
                 A batch of inputs to be passed through the model
 
         Returns:
@@ -286,6 +280,9 @@ class TPE:
             show_live_progress=True,
             print_model_arch=False
         )
+
+        if args.checkpoint is not None:
+            executor.load(args.checkpoint)
 
         executor.train()
 
