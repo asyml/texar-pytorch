@@ -281,6 +281,13 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
         outputs = XLNetDecoderOutput(logits=logits, sample_id=sample_ids)
         return outputs, memory
 
+    def next_inputs(self, helper: Helper, time: int,
+                    outputs: Output) -> \
+            Tuple[torch.Tensor, torch.ByteTensor]:
+        finished, next_inputs = helper.next_inputs(
+            self.embed_tokens, time, outputs.logits, outputs.sample_id)
+        return next_inputs, finished
+
     def finalize(self, outputs, final_state, sequence_lengths):
         del self._state_cache_len
         del self._state_recompute_memory

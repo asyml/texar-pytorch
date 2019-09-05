@@ -421,10 +421,8 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
                 # tensor.
                 next_inputs = torch.empty(0)
             else:
-                logits = next_outputs.logits  # type: ignore
-                sample_id = next_outputs.sample_id  # type: ignore
-                decoder_finished, next_inputs = helper.next_inputs(
-                    self.embed_tokens, time, logits, sample_id)
+                next_inputs, decoder_finished = self.next_inputs(
+                    helper, time, next_outputs)
 
             if getattr(self, 'tracks_own_finished', False):
                 next_finished = decoder_finished
@@ -515,6 +513,27 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
 
             - ``outputs`` is an object containing the decoder output.
             - ``next_state`` is the decoder state for the next time step.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def next_inputs(self, helper: Helper, time: int, outputs: Output) -> \
+            Tuple[torch.Tensor, torch.ByteTensor]:
+        r"""Compute the input for the next time step.
+        Called per step of decoding (but only once for dynamic decoding).
+
+        Args:
+            helper: The :class:`~texar.torch.modules.Helper` instance to use.
+            time (int): Current step number.
+            outputs: An object containing the decoder output.
+
+        Returns:
+            A tuple ``(next_inputs, finished)``.
+
+            - ``next_inputs`` is the tensor that should be used as input for the
+              next step.
+            - ``finished`` is a :torch:`ByteTensor` tensor telling whether the
+              sequence is complete, for each sequence in the batch.
         """
         raise NotImplementedError
 

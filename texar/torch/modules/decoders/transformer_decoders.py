@@ -749,6 +749,13 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
             sample_id=sample_ids)
         return outputs, next_state
 
+    def next_inputs(self, helper: Helper, time: int,
+                    outputs: TransformerDecoderOutput) -> \
+            Tuple[torch.Tensor, torch.ByteTensor]:
+        finished, next_inputs = helper.next_inputs(
+            self.embed_tokens, time, outputs.logits, outputs.sample_id)
+        return next_inputs, finished
+
     def finalize(self,  # type: ignore
                  outputs: TransformerDecoderOutput,
                  final_state: Optional[Cache],
