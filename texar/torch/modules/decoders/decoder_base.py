@@ -27,6 +27,7 @@ from texar.torch.module_base import ModuleBase
 from texar.torch.modules.decoders import decoder_helpers as helpers
 from texar.torch.modules.decoders.decoder_helpers import Helper
 from texar.torch.utils import utils
+from texar.torch.utils.dtypes import torch_bool
 
 __all__ = [
     '_make_output_layer',
@@ -405,8 +406,23 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
 
         while (not torch.all(finished).item() and
                (max_decoding_length is None or time < max_decoding_length)):
-            (next_outputs, decoder_state, next_inputs,
-             decoder_finished) = self.step(helper, time, step_inputs, state)
+
+            next_outputs, decoder_state = \
+                self.step(helper, time, step_inputs, state)
+
+            if max_decoding_length is not None and \
+                    time + 1 == max_decoding_length:
+                # Maximum decoding length reached, mark all batches as finished.
+                # This requires special handling because performing lookup on
+                # position embeddings with `time + 1` may result in IndexError.
+                decoder_finished = torch.tensor(1, dtype=torch_bool,
+                                                device=finished.device)
+                # Since `next_inputs` will not be used, simply create a null
+                # tensor.
+                next_inputs = torch.empty(0)
+            else:
+                next_inputs, decoder_finished = self.next_inputs(
+                    helper, time, next_outputs)
 
             if getattr(self, 'tracks_own_finished', False):
                 next_finished = decoder_finished
@@ -482,8 +498,9 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
     @abstractmethod
     def step(self, helper: Helper, time: int,
              inputs: torch.Tensor, state: Optional[State]) \
-            -> Tuple[Output, State, torch.Tensor, torch.ByteTensor]:
-        r"""Called per step of decoding (but only once for dynamic decoding).
+            -> Tuple[Output, State]:
+        r"""Compute the output and the state at the current time step.
+        Called per step of decoding (but only once for dynamic decoding).
 
         Args:
             helper: The :class:`~texar.torch.modules.Helper` instance to use.
@@ -492,10 +509,27 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             state: Decoder state from the previous time step.
 
         Returns:
-            A tuple ``(outputs, next_state, next_inputs, finished)``.
+            A tuple ``(outputs, next_state)``.
 
             - ``outputs`` is an object containing the decoder output.
             - ``next_state`` is the decoder state for the next time step.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def next_inputs(self, helper: Helper, time: int, outputs: Output) -> \
+            Tuple[torch.Tensor, torch.ByteTensor]:
+        r"""Compute the input for the next time step.
+        Called per step of decoding (but only once for dynamic decoding).
+
+        Args:
+            helper: The :class:`~texar.torch.modules.Helper` instance to use.
+            time (int): Current step number.
+            outputs: An object containing the decoder output.
+
+        Returns:
+            A tuple ``(next_inputs, finished)``.
+
             - ``next_inputs`` is the tensor that should be used as input for the
               next step.
             - ``finished`` is a :torch:`ByteTensor` tensor telling whether the

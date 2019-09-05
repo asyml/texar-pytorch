@@ -257,12 +257,9 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
             self.embed_tokens, inputs, sequence_length)
         return initial_finished, initial_inputs, initial_state
 
-    def step(self,
-             helper: Helper,
-             time: int,
-             inputs: torch.Tensor,
-             state: Optional[State]) \
-            -> Tuple[Output, Optional[State], torch.Tensor, torch.ByteTensor]:
+    def step(self, helper: Helper, time: int, inputs: torch.Tensor,
+             state: Optional[State]) -> \
+            Tuple[Output, Optional[State]]:
         self._state_previous_inputs.append(inputs)
         if self._state_recompute_memory:
             net_output, memory = self._forward(
@@ -281,10 +278,15 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
         logits = F.linear(net_output, self.word_embed.weight, self.lm_bias)
         logits = logits[:, -1]
         sample_ids = helper.sample(time=time, outputs=logits)
-        (finished, next_inputs) = helper.next_inputs(
-            self.embed_tokens, time, logits, sample_ids)
         outputs = XLNetDecoderOutput(logits=logits, sample_id=sample_ids)
-        return outputs, memory, next_inputs, finished
+        return outputs, memory
+
+    def next_inputs(self, helper: Helper, time: int,
+                    outputs: Output) -> \
+            Tuple[torch.Tensor, torch.ByteTensor]:
+        finished, next_inputs = helper.next_inputs(
+            self.embed_tokens, time, outputs.logits, outputs.sample_id)
+        return next_inputs, finished
 
     def finalize(self, outputs, final_state, sequence_lengths):
         del self._state_cache_len

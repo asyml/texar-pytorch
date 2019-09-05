@@ -209,7 +209,11 @@ class RNNDecoderBase(DecoderBase[State, Output]):
 
     def step(self, helper: Helper, time: int,
              inputs: torch.Tensor, state: Optional[State]) \
-            -> Tuple[Output, State, torch.Tensor, torch.ByteTensor]:
+            -> Tuple[Output, State]:
+        raise NotImplementedError
+
+    def next_inputs(self, helper: Helper, time: int, outputs: Output) -> \
+            Tuple[torch.Tensor, torch.ByteTensor]:
         raise NotImplementedError
 
     @property

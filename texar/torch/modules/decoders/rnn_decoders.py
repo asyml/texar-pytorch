@@ -236,18 +236,22 @@ class BasicRNNDecoder(RNNDecoderBase[HiddenState, BasicRNNDecoderOutput]):
         hparams['name'] = 'basic_rnn_decoder'
         return hparams
 
-    def step(self, helper: Helper, time: int,
-             inputs: torch.Tensor, state: Optional[HiddenState]) \
-            -> Tuple[BasicRNNDecoderOutput, HiddenState,
-                     torch.Tensor, torch.ByteTensor]:
+    def step(self, helper: Helper, time: int, inputs: torch.Tensor,
+             state: Optional[HiddenState]) \
+            -> Tuple[BasicRNNDecoderOutput, HiddenState]:
         cell_outputs, cell_state = self._cell(inputs, state)
         logits = self._output_layer(cell_outputs)
         sample_ids = helper.sample(time=time, outputs=logits)
-        (finished, next_inputs) = helper.next_inputs(
-            self.embed_tokens, time, logits, sample_ids)
         next_state = cell_state
         outputs = BasicRNNDecoderOutput(logits, sample_ids, cell_outputs)
-        return outputs, next_state, next_inputs, finished
+        return outputs, next_state
+
+    def next_inputs(self, helper: Helper, time: int,
+                    outputs: BasicRNNDecoderOutput) -> \
+            Tuple[torch.Tensor, torch.ByteTensor]:
+        finished, next_inputs = helper.next_inputs(
+            self.embed_tokens, time, outputs.logits, outputs.sample_id)
+        return next_inputs, finished
 
     @property
     def output_size(self):
@@ -565,18 +569,15 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
 
         return initial_finished, initial_inputs, state
 
-    def step(self, helper: Helper, time: int,
-             inputs: torch.Tensor, state: Optional[AttentionWrapperState]) -> \
-            Tuple[AttentionRNNDecoderOutput, AttentionWrapperState,
-                  torch.Tensor, torch.ByteTensor]:
+    def step(self, helper: Helper, time: int, inputs: torch.Tensor,
+             state: Optional[AttentionWrapperState]) -> \
+            Tuple[AttentionRNNDecoderOutput, AttentionWrapperState]:
         wrapper_outputs, wrapper_state = self._cell(
             inputs, state, self.memory, self.memory_sequence_length)
         # Essentially the same as in BasicRNNDecoder.step()
 
         logits = self._output_layer(wrapper_outputs)
         sample_ids = helper.sample(time=time, outputs=logits)
-        finished, next_inputs = helper.next_inputs(
-            self.embed_tokens, time, logits, sample_ids)
 
         attention_scores = wrapper_state.alignments
         attention_context = wrapper_state.attention
@@ -585,7 +586,14 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             attention_scores, attention_context)
         next_state = wrapper_state
 
-        return outputs, next_state, next_inputs, finished
+        return outputs, next_state
+
+    def next_inputs(self, helper: Helper, time: int,
+                    outputs: AttentionRNNDecoderOutput) -> \
+            Tuple[torch.Tensor, torch.ByteTensor]:
+        finished, next_inputs = helper.next_inputs(
+            self.embed_tokens, time, outputs.logits, outputs.sample_id)
+        return next_inputs, finished
 
     def forward(  # type: ignore
             self,
