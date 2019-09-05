@@ -57,9 +57,33 @@ def connect_name(lhs_name, rhs_name):
 
 
 class Batch:
-    r"""Wrapper over Python dictionaries representing a batch. This provides a
-    common interface with :class:`~texar.torch.data.data.dataset_utils.Batch`
-    that allows accessing via attributes.
+    r"""Wrapper over Python dictionaries representing a batch. It provides a
+    dictionary-like interface to access its fields. This class can be used in
+    the followed way
+
+    .. code-block:: python
+
+            hparams = {
+                'dataset': { 'files': 'data.txt', 'vocab_file': 'vocab.txt' },
+                'batch_size': 1
+            }
+
+            data = MonoTextData(hparams)
+            iterator = DataIterator(data)
+            model = BERTEncoder(pretrained_model_name="bert-base-uncased")
+
+            for batch in iterator:
+                # batch is Batch object and contains the following fields
+                # batch == {
+                #    'text': [['<BOS>', 'example', 'sequence', '<EOS>']],
+                #    'text_ids': [[1, 5, 10, 2]],
+                #    'length': [4]
+                # }
+
+                input_ids = torch.tensor(batch['text_ids'])
+                input_length = (1 - (input_ids == 0).int()).sum(dim=1)
+
+                bert_embeddings, _ = model(input_ids, input_length)
     """
 
     def __init__(self, batch_size: int, batch: Optional[Dict[str, Any]] = None,
