@@ -46,7 +46,9 @@ class _DataType(Enum):
     """
     TEXT = "text"
     INT = "int"
+    INT64 = "int64"
     FLOAT = "float"
+    FLOAT64 = "float64"
     RECORD = "record"
 
 
@@ -55,7 +57,8 @@ def _is_text_data(data_type):
 
 
 def _is_scalar_data(data_type):
-    return data_type in [_DataType.INT, _DataType.FLOAT]
+    return data_type in [_DataType.INT, _DataType.INT64, _DataType.FLOAT,
+                         _DataType.FLOAT64]
 
 
 def _is_record_data(data_type):

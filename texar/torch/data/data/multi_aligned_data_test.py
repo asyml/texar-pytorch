@@ -203,6 +203,29 @@ class MultiAlignedDataTest(unittest.TestCase):
              "length_filter_mode": "truncate"})
         self._run_and_test(hparams, discard_index=0)
 
+    def test_scalar_types(self):
+        """Tests scalar types supported in MultiAlignedData."""
+        # int64 type
+        hparams = copy.copy(self._hparams)
+        hparams["datasets"][3].update({
+            "data_type": "int64"
+        })
+        self._run_and_test(hparams)
+
+        # float type
+        hparams = copy.copy(self._hparams)
+        hparams["datasets"][3].update({
+            "data_type": "float64"
+        })
+        self._run_and_test(hparams)
+
+        # float64 type
+        hparams = copy.copy(self._hparams)
+        hparams["datasets"][3].update({
+            "data_type": "float64"
+        })
+        self._run_and_test(hparams)
+
 
 if __name__ == "__main__":
     unittest.main()
