@@ -65,7 +65,7 @@ config_data = importlib.import_module(args.config_data)
 config_downstream = importlib.import_module(args.config_downstream)
 config_downstream = {
     k: v for k, v in config_downstream.__dict__.items()
-    if not k.startswith('__')}
+    if not k.startswith('__') and k != "hyperparams"}
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
