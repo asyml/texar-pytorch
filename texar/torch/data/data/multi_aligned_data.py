@@ -14,7 +14,6 @@
 """
 Data consisting of multiple aligned parts.
 """
-from enum import Enum
 from typing import (Any, Callable, Dict, List, Optional, Tuple, Union)
 
 import torch
