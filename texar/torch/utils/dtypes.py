@@ -96,6 +96,21 @@ def is_str(x):
     return isinstance(x, str)
 
 
+def get_supported_scalar_types():
+    r"""Returns a set of scalar types supported.
+    """
+    return {'float32', 'float', 'tf.float32', 'torch.float', 'torch.float32',
+            float, np.float32, torch.float32, 'float64', 'tf.float64',
+            'torch.float64', np.float64, np.float_, torch.float64, 'float16',
+            'tf.float16', 'torch.float16', np.float16, torch.float16, 'int',
+            'int32', 'tf.int32', 'torch.int', 'torch.int32', int, np.int32,
+            torch.int32, 'int64', 'tf.int64', 'torch.int64', np.int64, np.int_,
+            torch.int64, 'int16', 'tf.int16', 'torch.int16', np.int16,
+            torch.int16, 'int8', 'char', 'tf.int8', 'torch.int8', np.int8,
+            torch.int8, 'uint8', 'tf.uint8', 'torch.uint8', np.uint8,
+            torch.uint8}
+
+
 def maybe_hparams_to_dict(hparams: Optional[Union[HParams, Dict[str, Any]]]) \
         -> Optional[Dict[str, Any]]:
     r"""If :attr:`hparams` is an instance of :class:`~texar.torch.HParams`,

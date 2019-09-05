@@ -33,7 +33,7 @@ from texar.torch.data.embedding import Embedding
 from texar.torch.data.vocabulary import SpecialTokens, Vocab
 from texar.torch.hyperparams import HParams
 from texar.torch.utils import utils, dict_fetch
-from texar.torch.utils.dtypes import is_str
+from texar.torch.utils.dtypes import is_str, get_supported_scalar_types
 
 __all__ = [
     "_default_dataset_hparams",
@@ -41,28 +41,16 @@ __all__ = [
 ]
 
 
-class _DataType(Enum):
-    r"""Enumeration of data types.
-    """
-    TEXT = "text"
-    INT = "int"
-    INT64 = "int64"
-    FLOAT = "float"
-    FLOAT64 = "float64"
-    RECORD = "record"
-
-
 def _is_text_data(data_type):
-    return data_type is _DataType.TEXT
+    return data_type == "text"
 
 
 def _is_scalar_data(data_type):
-    return data_type in [_DataType.INT, _DataType.INT64, _DataType.FLOAT,
-                         _DataType.FLOAT64]
+    return data_type in get_supported_scalar_types()
 
 
 def _is_record_data(data_type):
-    return data_type is _DataType.RECORD
+    return data_type == "record"
 
 
 def _default_dataset_hparams(data_type=None):
@@ -71,13 +59,12 @@ def _default_dataset_hparams(data_type=None):
     See :meth:`texar.torch.data.MultiAlignedData.default_hparams` for details.
     """
     if data_type is None:
-        data_type = _DataType.TEXT
-    else:
-        data_type = _DataType(data_type)
+        data_type = "text"
+
     if _is_text_data(data_type):
         hparams = _default_mono_text_dataset_hparams()
         hparams.update({
-            "data_type": _DataType.TEXT,
+            "data_type": "text",
             "vocab_share_with": None,
             "embedding_init_share_with": None,
             "processing_share_with": None,
@@ -87,7 +74,7 @@ def _default_dataset_hparams(data_type=None):
     elif _is_record_data(data_type):
         hparams = _default_record_dataset_hparams()
         hparams.update({
-            "data_type": _DataType.RECORD,
+            "data_type": "record",
         })
     else:
         raise ValueError(f"Invalid data type {data_type}")
@@ -200,7 +187,7 @@ class MultiAlignedData(
         filters: List[Optional[Callable[[str], bool]]] = []
         self._databases: List[DataBase] = []
         for idx, hparams_i in enumerate(self._hparams.datasets):
-            data_type = _DataType(hparams_i.data_type)
+            data_type = hparams_i.data_type
             source_i: DataSource
 
             if _is_text_data(data_type):
