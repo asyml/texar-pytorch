@@ -34,7 +34,7 @@ from utils import model_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--config-downstream", default="bert_hypertuning_config_classifier",
+    "--config-downstream", default="config_classifier",
     help="Configuration of the downstream part of the model")
 parser.add_argument(
     '--pretrained-model-name', type=str, default='bert-base-uncased',
@@ -72,8 +72,9 @@ logging.root.setLevel(logging.INFO)
 class ModelWrapper(nn.Module):
     r"""This class wraps a model (in this case a BERT classifier) and implements
     :meth:`forward` and :meth:`predict` to conform to the requirements of
-    :class:`Executor` class. Particularly, :meth:`forward` returns a dict with
-    keys "loss" and "preds" and :meth:`predict` returns a dict with key "preds".
+    :class:`texar.torch.run.Executor` class. Particularly, :meth:`forward`
+    returns a dict with keys "loss" and "preds" and :meth:`predict` returns a
+    dict with key "preds".
 
     Args:
         `model`: BERTClassifier
@@ -96,13 +97,15 @@ class ModelWrapper(nn.Module):
 
     def forward(self,  # type: ignore
                 batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
-        r"""Run forward through the network and return a dict to be consumed
-        by the :class:`Executor`. This method will be called by
-        :class:``Executor` during training.
+        r"""Run forward through the model and return a dict to be consumed
+        by the :class:`texar.torch.run.Executor`. This method will be called by
+        :class:`texar.torch.run.Executor` during training. See
+        https://texar-pytorch.readthedocs.io/en/latest/code/run.html#executor-general-args
+        for more details.
 
         Args:
-            `batch`: tx.data.Batch
-                A batch of inputs to be passed through the network
+            `batch`: :class:`texar.data.Batch`
+                A batch of inputs to be passed through the model
 
         Returns:
             A dict with keys "loss" and "preds" containing the loss and
@@ -123,8 +126,8 @@ class ModelWrapper(nn.Module):
     def predict(self, batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
         r"""Predict the labels for the :attr:`batch` of examples. This method
         will be called instead of :meth:`forward` during validation or testing,
-        if :class:`Executor`'s :attr:`validate_mode` or :attr:`test_mode` is set
-        to ``"predict"`` instead of ``"eval"``.
+        if :class:`texar.torch.run.Executor`'s :attr:`validate_mode` or
+        :attr:`test_mode` is set to ``"predict"`` instead of ``"eval"``.
 
         Args:
             `batch`: tx.data.Batch
@@ -152,7 +155,7 @@ class TPE:
 
     """
     def __init__(self, model_config: Dict, output_dir: str = "output/"):
-        tx.utils.maybe_create_dir(args.output_dir)
+        tx.utils.maybe_create_dir(output_dir)
 
         self.model_config = model_config
 
@@ -190,8 +193,8 @@ class TPE:
 
         self.optim = tx.core.BertAdam
 
-    def objective_func(self, params: Dict):
-        r"""Compute a "loss" for a given hyperparameter values. This function is
+    def objective_func(self, hyperparams: Dict):
+        r"""Compute "loss" for a given hyperparameter values. This function is
         passed to hyperopt's ``"fmin"`` (see the :meth:`run` method) function
         and gets repeatedly called to find the best set of hyperparam values.
         Below is an example of how to use this method
@@ -208,7 +211,7 @@ class TPE:
                      trials=trials)
 
         Args:
-            params: Dict
+            hyperparams: Dict
                 A `(key, value)` dict representing the ``"value"`` to try for
                 the hyperparam ``"key"``
 
@@ -216,7 +219,7 @@ class TPE:
             A dict with keys "loss", "status" and "model" indicating the loss
             for this trial, the status, and the path to the saved model.
         """
-        print(f"Using {params} for trial {self.exp_number}")
+        print(f"Using {hyperparams} for trial {self.exp_number}")
 
         # Loads data
         num_train_data = config_data.num_train_data
@@ -224,8 +227,8 @@ class TPE:
                               config_data.max_train_epoch)
 
         # hyperparams
-        num_warmup_steps = params["optimizer.warmup_steps"]
-        static_lr = params["optimizer.static_lr"]
+        num_warmup_steps = hyperparams["optimizer.warmup_steps"]
+        static_lr = hyperparams["optimizer.static_lr"]
 
         vars_with_decay = []
         vars_without_decay = []
