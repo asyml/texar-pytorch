@@ -212,10 +212,6 @@ class RNNDecoderBase(DecoderBase[State, Output]):
             -> Tuple[Output, State]:
         raise NotImplementedError
 
-    def next_inputs(self, helper: Helper, time: int, outputs: Output) -> \
-            Tuple[torch.Tensor, torch.ByteTensor]:
-        raise NotImplementedError
-
     @property
     def cell(self):
         r"""The RNN cell.

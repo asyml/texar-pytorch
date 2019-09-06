@@ -516,7 +516,6 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def next_inputs(self, helper: Helper, time: int, outputs: Output) -> \
             Tuple[torch.Tensor, torch.ByteTensor]:
         r"""Compute the input for the next time step.
@@ -535,7 +534,11 @@ class DecoderBase(ModuleBase, Generic[State, Output], ABC):
             - ``finished`` is a :torch:`ByteTensor` tensor telling whether the
               sequence is complete, for each sequence in the batch.
         """
-        raise NotImplementedError
+        logits = outputs.logits  # type: ignore
+        sample_id = outputs.sample_id  # type: ignore
+        finished, next_inputs = helper.next_inputs(
+            self.embed_tokens, time, logits, sample_id)
+        return next_inputs, finished
 
     # TODO: Remove these once pylint supports function stubs.
     # pylint: disable=missing-docstring,unused-argument,no-self-use

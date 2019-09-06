@@ -246,13 +246,6 @@ class BasicRNNDecoder(RNNDecoderBase[HiddenState, BasicRNNDecoderOutput]):
         outputs = BasicRNNDecoderOutput(logits, sample_ids, cell_outputs)
         return outputs, next_state
 
-    def next_inputs(self, helper: Helper, time: int,
-                    outputs: BasicRNNDecoderOutput) -> \
-            Tuple[torch.Tensor, torch.ByteTensor]:
-        finished, next_inputs = helper.next_inputs(
-            self.embed_tokens, time, outputs.logits, outputs.sample_id)
-        return next_inputs, finished
-
     @property
     def output_size(self):
         r"""Output size of one step.
@@ -587,13 +580,6 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         next_state = wrapper_state
 
         return outputs, next_state
-
-    def next_inputs(self, helper: Helper, time: int,
-                    outputs: AttentionRNNDecoderOutput) -> \
-            Tuple[torch.Tensor, torch.ByteTensor]:
-        finished, next_inputs = helper.next_inputs(
-            self.embed_tokens, time, outputs.logits, outputs.sample_id)
-        return next_inputs, finished
 
     def forward(  # type: ignore
             self,
