@@ -96,7 +96,7 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
         # In Pytorch versions < 1.1.0, "torch.uint8" is treated as "bool" type
         # hence we set self.data_type = np.uint8 here
         if data_type == "bool":
-            self._data_type = get_numpy_dtype(torch_bool)
+            self._data_type = get_numpy_dtype(str(torch_bool))
         else:
             self._data_type = get_numpy_dtype(data_type)
 
