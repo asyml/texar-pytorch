@@ -63,7 +63,7 @@ def _default_dataset_hparams(data_type=None):
     if _is_text_data(data_type):
         hparams = _default_mono_text_dataset_hparams()
         hparams.update({
-            "data_type": "text",
+            "data_type": data_type,
             "vocab_share_with": None,
             "embedding_init_share_with": None,
             "processing_share_with": None,
@@ -73,10 +73,10 @@ def _default_dataset_hparams(data_type=None):
     elif _is_record_data(data_type):
         hparams = _default_record_dataset_hparams()
         hparams.update({
-            "data_type": "record",
+            "data_type": data_type,
         })
     else:
-        raise ValueError(f"Invalid data type {data_type}")
+        raise ValueError(f"Invalid data type '{data_type}'")
     return hparams
 
 

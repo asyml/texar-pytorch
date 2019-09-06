@@ -203,7 +203,7 @@ class MultiAlignedDataTest(unittest.TestCase):
              "length_filter_mode": "truncate"})
         self._run_and_test(hparams, discard_index=0)
 
-    def test_scalar_types(self):
+    def test_supported_scalar_types(self):
         """Tests scalar types supported in MultiAlignedData."""
         # int64 type
         hparams = copy.copy(self._hparams)
@@ -215,7 +215,7 @@ class MultiAlignedDataTest(unittest.TestCase):
         # float type
         hparams = copy.copy(self._hparams)
         hparams["datasets"][3].update({
-            "data_type": "float64"
+            "data_type": "float"
         })
         self._run_and_test(hparams)
 
@@ -225,6 +225,31 @@ class MultiAlignedDataTest(unittest.TestCase):
             "data_type": "float64"
         })
         self._run_and_test(hparams)
+
+        # bool type
+        hparams = copy.copy(self._hparams)
+        hparams["datasets"][3].update({
+            "data_type": "bool"
+        })
+        self._run_and_test(hparams)
+
+    def test_unsupported_scalar_types(self):
+        """Tests if exception is thrown for unsupported types."""
+        hparams = copy.copy(self._hparams)
+        hparams["datasets"][3].update({
+            "data_type": "XYZ"
+        })
+
+        with self.assertRaises(ValueError):
+            self._run_and_test(hparams)
+
+        hparams = copy.copy(self._hparams)
+        hparams["datasets"][3].update({
+            "data_type": "str"
+        })
+
+        with self.assertRaises(ValueError):
+            self._run_and_test(hparams)
 
 
 if __name__ == "__main__":

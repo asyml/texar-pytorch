@@ -91,8 +91,9 @@ def get_supported_scalar_types():
     r"""Returns a list of scalar types supported.
     """
     types = []
-    for _, value in DTYPE_MAP.items():
-        types.extend(value)
+    for key, value in DTYPE_MAP.items():
+        if key not in {np.str_, np.bytes_}:
+            types.extend(value)
 
     return types
 

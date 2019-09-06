@@ -24,7 +24,7 @@ from texar.torch.data.data.data_base import DataBase, DataSource
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.data.data.text_data_base import TextLineDataSource
 from texar.torch.hyperparams import HParams
-from texar.torch.utils.dtypes import get_numpy_dtype
+from texar.torch.utils.dtypes import get_numpy_dtype, get_supported_scalar_types
 
 
 __all__ = [
@@ -88,7 +88,10 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
                  data_source: Optional[DataSource] = None):
         self._hparams = HParams(hparams, self.default_hparams())
         self._other_transforms = self._hparams.dataset.other_transformations
-        self._data_type = get_numpy_dtype(self._hparams.dataset["data_type"])
+        data_type = self._hparams.dataset["data_type"]
+        if data_type not in get_supported_scalar_types():
+            raise ValueError(f"Unsupported data type '{data_type}'")
+        self._data_type = get_numpy_dtype(data_type)
         if data_source is None:
             data_source = TextLineDataSource(
                 self._hparams.dataset.files,
@@ -162,7 +165,15 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
 
     def process(self, raw_example: List[str]) -> Union[int, float]:
         assert len(raw_example) == 1
-        example: Union[int, float] = self._data_type(raw_example[0])
+
+        example_: Union[int, str]
+        if self._data_type == np.bool_:
+            example_ = int(raw_example[0])
+
+        else:
+            example_ = raw_example[0]
+
+        example = self._data_type(example_)
 
         for transform in self._other_transforms:
             example = transform(example)
