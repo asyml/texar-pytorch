@@ -24,7 +24,8 @@ from texar.torch.data.data.data_base import DataBase, DataSource
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.data.data.text_data_base import TextLineDataSource
 from texar.torch.hyperparams import HParams
-from texar.torch.utils.dtypes import get_numpy_dtype, get_supported_scalar_types
+from texar.torch.utils.dtypes import get_numpy_dtype, \
+    get_supported_scalar_types, torch_bool
 
 
 __all__ = [
@@ -91,7 +92,14 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
         data_type = self._hparams.dataset["data_type"]
         if data_type not in get_supported_scalar_types():
             raise ValueError(f"Unsupported data type '{data_type}'")
-        self._data_type = get_numpy_dtype(data_type)
+
+        # In Pytorch versions < 1.1.0, "torch.uint8" is treated as "bool" type
+        # hence we set self.data_type = np.uint8 here
+        if data_type == "bool":
+            self._data_type = get_numpy_dtype(torch_bool)
+        else:
+            self._data_type = get_numpy_dtype(data_type)
+
         if data_source is None:
             data_source = TextLineDataSource(
                 self._hparams.dataset.files,

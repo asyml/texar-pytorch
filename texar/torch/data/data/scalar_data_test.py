@@ -12,6 +12,7 @@ import numpy as np
 import unittest
 
 from texar.torch.data import DataIterator, ScalarData
+from texar.torch.utils.dtypes import torch_bool
 
 
 class ScalarDataTest(unittest.TestCase):
@@ -95,7 +96,7 @@ class ScalarDataTest(unittest.TestCase):
                 self.assertEqual(value.dtype, torch.float32)
             elif data_type == "bool":
                 self.assertTrue(isinstance(value, torch.Tensor))
-                self.assertTrue(value.dtype, torch.bool)
+                self.assertTrue(value.dtype, torch_bool)
 
     def test_default_setting(self):
         """Tests the logic of ScalarData.
