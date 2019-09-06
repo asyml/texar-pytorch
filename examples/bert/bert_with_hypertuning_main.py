@@ -15,6 +15,7 @@
 import argparse
 import functools
 import importlib
+import sys
 import logging
 import shutil
 from typing import Dict
@@ -97,8 +98,8 @@ class ModelWrapper(nn.Module):
 
         Args:
             `batch`: :class:`texar.data.Batch`. (See
-            https://texar-pytorch.readthedocs.io/en/latest/code/data.html#texar.torch.data.Batch
-            for more details)
+                https://texar-pytorch.readthedocs.io/en/latest/code/data.html#texar.torch.data.Batch
+                for more details)
                 A batch of inputs to be passed through the model
 
         Returns:
@@ -251,6 +252,7 @@ class TPE:
         valid_metric = metric.Accuracy(pred_name="preds",
                                        label_name="label_ids")
         checkpoint_dir = f"./{self.output_dir}/exp{self.exp_number}"
+        log_file = f"./{self.output_dir}/log.txt"
 
         executor = Executor(
             # supply executor with the model
@@ -266,6 +268,7 @@ class TPE:
             stop_training_on=cond.epoch(config_data.max_train_epoch),
             # logging details
             log_every=[cond.epoch(1)],
+            log_destination=[sys.stdout, log_file],
             # logging format
             log_format=self.log_format,
             # define metrics

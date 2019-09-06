@@ -12,7 +12,6 @@ __all__ = [
     'padded_batch',
     'connect_name',
     'Batch',
-    'FieldBatch',
     '_LazyStrategy',
     '_CacheStrategy',
 ]
@@ -63,27 +62,26 @@ class Batch:
 
     .. code-block:: python
 
-            hparams = {
-                'dataset': { 'files': 'data.txt', 'vocab_file': 'vocab.txt' },
-                'batch_size': 1
-            }
+        hparams = {
+            'dataset': { 'files': 'data.txt', 'vocab_file': 'vocab.txt' },
+            'batch_size': 1
+        }
 
-            data = MonoTextData(hparams)
-            iterator = DataIterator(data)
-            model = BERTEncoder(pretrained_model_name="bert-base-uncased")
+        data = MonoTextData(hparams)
+        iterator = DataIterator(data)
 
-            for batch in iterator:
-                # batch is Batch object and contains the following fields
-                # batch == {
-                #    'text': [['<BOS>', 'example', 'sequence', '<EOS>']],
-                #    'text_ids': [[1, 5, 10, 2]],
-                #    'length': [4]
-                # }
+        for batch in iterator:
+            # batch is Batch object and contains the following fields
+            # batch == {
+            #    'text': [['<BOS>', 'example', 'sequence', '<EOS>']],
+            #    'text_ids': [[1, 5, 10, 2]],
+            #    'length': [4]
+            # }
 
-                input_ids = torch.tensor(batch['text_ids'])
-                input_length = (1 - (input_ids == 0).int()).sum(dim=1)
+            input_ids = torch.tensor(batch['text_ids'])
 
-                bert_embeddings, _ = model(input_ids, input_length)
+            # we can also access the elements using dot notation
+            input_text = batch.text
     """
 
     def __init__(self, batch_size: int, batch: Optional[Dict[str, Any]] = None,
@@ -112,27 +110,6 @@ class Batch:
 
     def items(self) -> ItemsView[str, Any]:
         return self._batch.items()
-
-
-class FieldBatch(Batch):
-    r"""Defines a batch of examples with support for multiple fields. This is
-    a simplified version of `torchtext.data.Batch`, with all the useless stuff
-    removed.
-    """
-
-    def __init__(self, data=None, dataset=None, device=None):
-        r"""Create a Batch from a list of examples.
-        """
-        if data is not None:
-            batch_size = len(data)
-            _batch_dict = {}
-            for (name, field) in dataset.fields.items():
-                if field is not None:
-                    batch = [getattr(x, name) for x in data]
-                    _batch_dict[name] = field.process(batch, device=device)
-            super().__init__(batch_size, _batch_dict)
-        else:
-            super().__init__(0)
 
 
 class _LazyStrategy(Enum):
