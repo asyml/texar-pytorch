@@ -15,7 +15,6 @@
 The Executor module.
 """
 
-import atexit
 import pickle
 import random
 import re
@@ -825,28 +824,8 @@ class Executor:
         self._log_destination: List[IO[str]] = []
         self._log_destination_is_tty: List[bool] = []
         self._opened_files: List[IO[str]] = []
-        log_destination = log_destination or self._defaults["log_destination"]
-        for dest in utils.to_list(log_destination):  # type: ignore
-            if isinstance(dest, (str, Path)):
-                # Append to the logs to prevent accidentally overwriting
-                # previous logs.
-                file = open(dest, "a")
-                self._opened_files.append(file)
-                self._log_destination_is_tty.append(False)
-            else:
-                if not hasattr(dest, "write"):
-                    raise ValueError(f"Log destination {dest} is not a "
-                                     f"file-like object")
-                try:
-                    isatty = dest.isatty()  # type: ignore
-                except AttributeError:
-                    isatty = False
-                file = dest  # type: ignore
-                self._log_destination_is_tty.append(isatty)
-            self._log_destination.append(file)
-
-        # Close files when program exits.
-        atexit.register(self._close_files)
+        self.log_destination = log_destination or \
+                               self._defaults["log_destination"]
 
         # Training loop
         self.train_metrics = utils.to_metric_dict(train_metrics)
@@ -1300,6 +1279,9 @@ class Executor:
     def train(self):
         r"""Start the training loop.
         """
+        # open the log files
+        self._open_files()
+
         if self._directory_exists:
             self.write_log(
                 f"Specified checkpoint directory '{self.checkpoint_dir}' "
@@ -1365,7 +1347,11 @@ class Executor:
             self.write_log("Training terminated", mode='info')
         finally:
             self._train_tracker.stop()
+
         self._fire_event(Event.Training, True)
+
+        # close the log files
+        self._close_files()
 
     def test(self, dataset: OptionalDict[DataBase] = None):
         r"""Start the test loop.
@@ -1382,6 +1368,9 @@ class Executor:
                 If `None`, :attr:`test_data` from the constructor arguments is
                 used. Defaults to `None`.
         """
+        # open the log files
+        self._open_files()
+
         if dataset is None and self.test_data is None:
             raise ValueError("No testing dataset is specified")
         if len(self.test_metrics) == 0:
@@ -1424,7 +1413,11 @@ class Executor:
                 self._test_tracker.stop()
 
             self._fire_event(Event.Testing, True)
+
         self.model.train(model_mode)
+
+        # close the log files
+        self._close_files()
 
     def _register_logging_actions(self, show_live_progress: List[str]):
         # Register logging actions.
@@ -1706,6 +1699,30 @@ class Executor:
         except KeyError:
             raise ValueError(
                 f"Specified hook point {event_point} is invalid") from None
+
+    def _open_files(self):
+        self._opened_files = []
+        self._log_destination = []
+        self._log_destination_is_tty = []
+
+        for dest in utils.to_list(self.log_destination):
+            if isinstance(dest, (str, Path)):
+                # Append to the logs to prevent accidentally overwriting
+                # previous logs.
+                file = open(dest, "a")
+                self._opened_files.append(file)
+                self._log_destination_is_tty.append(False)
+            else:
+                if not hasattr(dest, "write"):
+                    raise ValueError(f"Log destination {dest} is not a "
+                                     f"file-like object")
+                try:
+                    isatty = dest.isatty()
+                except AttributeError:
+                    isatty = False
+                file = dest
+                self._log_destination_is_tty.append(isatty)
+            self._log_destination.append(file)
 
     def _close_files(self):
         for file in self._opened_files:

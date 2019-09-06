@@ -130,6 +130,11 @@ Data Loaders
 Data Iterators
 ===============
 
+:hidden:`Batch`
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.data.Batch
+    :members:
+
 :hidden:`DataIterator`
 ~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.data.DataIterator

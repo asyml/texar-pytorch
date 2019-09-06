@@ -15,6 +15,8 @@ To summarize, this example showcases:
 * Building and fine-tuning on downstream tasks
 * Use of Texar `RecordData` module for data loading and processing
 * Use of Texar `Executor` module for simplified training loops and TensorBoard visualization
+* Use of [Hyperopt]((https://github.com/hyperopt/hyperopt)) library to tune hyperparameters with 
+`Executor` module
 
 Future work:
 
@@ -178,3 +180,25 @@ tensorboard --logdir runs/
 ```
 
 ![Visualizing loss/accuarcy on Tensorboard](tbx.png)
+
+## Hyperparameter tuning with Executor
+
+To run this example, please install `hyperopt` by issuing the following command
+
+```commandline
+pip install hyperopt
+```
+
+`bert_with_hypertuning_main.py` shows an example of how to tune hyperparameters with Executor using `hyperopt`. 
+To run this example, run the following command
+
+```commandline
+python bert_with_hypertuning_main.py
+```
+
+In this simple example, the hyperparameters to be tuned are provided as a `dict` in
+`bert_hypertuning_config_classifier.py` which are fed into `objective_func()` . We use `TPE`
+(Tree-structured Parzen Estimator) algorithm for tuning the hyperparams (provided in `hyperopt`
+library). The example runs for 3 trials to find the best hyperparam settings. The final model is
+saved in `output_dir` provided by the user. More  information about the libary can be 
+found at [Hyperopt](https://github.com/hyperopt/hyperopt)

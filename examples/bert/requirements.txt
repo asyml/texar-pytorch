@@ -1,2 +1,3 @@
-tensorflow
-tensorboardX>=1.8
+tensorflow # used for loading BERT official model checkpoint
+tensorboardX>=1.8 # used only in bert_classifier_using_executor_main.py
+hyperopt # used only in bert_with_hypertuning_main.py
