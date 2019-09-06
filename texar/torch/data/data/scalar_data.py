@@ -149,7 +149,8 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
 
             `"data_type"`: str
                 The scalar type. Types defined in
-                :meth:`~texar.torch.utils.dtypes.get_numpy_dtype` are supported.
+                :meth:`~texar.torch.utils.dtypes.get_supported_scalar_types` are
+                supported.
 
             `"other_transformations"`: list
                 A list of transformation functions or function names/paths to
