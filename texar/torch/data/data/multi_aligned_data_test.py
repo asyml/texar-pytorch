@@ -154,9 +154,9 @@ class MultiAlignedDataTest(unittest.TestCase):
                     self.assertEqual(i3, 1)
                 self.assertEqual(n1, 128)
                 self.assertEqual(n2, 512)
-                self.assertTrue(isinstance(n1, torch.Tensor))
-                self.assertTrue(isinstance(n2, torch.Tensor))
-                self.assertTrue(isinstance(t4, str))
+                self.assertIsInstance(n1, torch.Tensor)
+                self.assertIsInstance(n2, torch.Tensor)
+                self.assertIsInstance(t4, str)
 
             if discard_index is not None:
                 hpms = text_data._hparams.datasets[discard_index]

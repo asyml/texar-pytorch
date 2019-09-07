@@ -138,9 +138,9 @@ class RecordDataTest(unittest.TestCase):
                 dtype = get_numpy_dtype(item)
                 value = data_batch[key][0]
                 if dtype is np.str_:
-                    self.assertTrue(isinstance(value, str))
+                    self.assertIsInstance(value, str)
                 elif dtype is np.bytes_:
-                    self.assertTrue(isinstance(value, bytes))
+                    self.assertIsInstance(value, bytes)
                 else:
                     if isinstance(value, torch.Tensor):
                         value_dtype = get_numpy_dtype(value.dtype)

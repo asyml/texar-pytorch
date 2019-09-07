@@ -17,6 +17,7 @@ preprocessing operations.
 """
 from typing import (List, Optional, Union)
 
+from distutils.util import strtobool
 import numpy as np
 import torch
 
@@ -172,12 +173,12 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
         })
         return hparams
 
-    def process(self, raw_example: List[str]) -> Union[int, float]:
+    def process(self, raw_example: List[str]) -> Union[bool, int, float]:
         assert len(raw_example) == 1
 
         example_: Union[int, str]
         if self._data_type == np.bool_:
-            example_ = int(raw_example[0])
+            example_ = strtobool(raw_example[0])
 
         else:
             example_ = raw_example[0]
@@ -188,7 +189,7 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
             example = transform(example)
         return example
 
-    def collate(self, examples: List[Union[int, float]]) -> Batch:
+    def collate(self, examples: List[Union[bool, int, float]]) -> Batch:
         # convert the list of strings into appropriate tensors here
         examples_np = np.array(examples, dtype=self._data_type)
         collated_examples = torch.from_numpy(examples_np).to(device=self.device)

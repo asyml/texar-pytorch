@@ -89,14 +89,12 @@ class ScalarDataTest(unittest.TestCase):
             i += 1
             data_type = hparams["dataset"]["data_type"]
             if data_type == "int":
-                self.assertTrue(isinstance(value, torch.Tensor))
                 self.assertEqual(value.dtype, torch.int32)
             elif data_type == "float":
-                self.assertTrue(isinstance(value, torch.Tensor))
                 self.assertEqual(value.dtype, torch.float32)
             elif data_type == "bool":
-                self.assertTrue(isinstance(value, torch.Tensor))
                 self.assertTrue(value.dtype, torch_bool)
+            self.assertIsInstance(value, torch.Tensor)
 
     def test_default_setting(self):
         """Tests the logic of ScalarData.
