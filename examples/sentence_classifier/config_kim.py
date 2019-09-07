@@ -42,7 +42,7 @@ train_data = {
         },
         {
             "files": "./data/sst2.train.labels.txt",
-            "data_type": "int",
+            "data_type": "int64",
             "data_name": "label"
         }
     ]

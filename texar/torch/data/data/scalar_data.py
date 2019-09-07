@@ -17,6 +17,7 @@ preprocessing operations.
 """
 from typing import (List, Optional, Union)
 
+from distutils.util import strtobool
 import numpy as np
 import torch
 
@@ -24,7 +25,8 @@ from texar.torch.data.data.data_base import DataBase, DataSource
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.data.data.text_data_base import TextLineDataSource
 from texar.torch.hyperparams import HParams
-from texar.torch.utils.dtypes import get_numpy_dtype
+from texar.torch.utils.dtypes import get_numpy_dtype, \
+    get_supported_scalar_types, torch_bool
 
 
 __all__ = [
@@ -88,7 +90,17 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
                  data_source: Optional[DataSource] = None):
         self._hparams = HParams(hparams, self.default_hparams())
         self._other_transforms = self._hparams.dataset.other_transformations
-        self._data_type = get_numpy_dtype(self._hparams.dataset["data_type"])
+        data_type = self._hparams.dataset["data_type"]
+        if data_type not in get_supported_scalar_types():
+            raise ValueError(f"Unsupported data type '{data_type}'")
+
+        # In Pytorch versions < 1.1.0, "torch.uint8" is treated as "bool" type
+        # hence we set self.data_type = np.uint8 here
+        if data_type == "bool":
+            self._data_type = get_numpy_dtype(str(torch_bool))
+        else:
+            self._data_type = get_numpy_dtype(data_type)
+
         if data_source is None:
             data_source = TextLineDataSource(
                 self._hparams.dataset.files,
@@ -138,7 +150,8 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
 
             `"data_type"`: str
                 The scalar type. Types defined in
-                :meth:`~texar.torch.utils.dtypes.get_numpy_dtype` are supported.
+                :meth:`~texar.torch.utils.dtypes.get_supported_scalar_types` are
+                supported.
 
             `"other_transformations"`: list
                 A list of transformation functions or function names/paths to
@@ -160,15 +173,23 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
         })
         return hparams
 
-    def process(self, raw_example: List[str]) -> Union[int, float]:
+    def process(self, raw_example: List[str]) -> Union[bool, int, float]:
         assert len(raw_example) == 1
-        example: Union[int, float] = self._data_type(raw_example[0])
+
+        example_: Union[int, str]
+        if self._data_type == np.bool_:
+            example_ = strtobool(raw_example[0])
+
+        else:
+            example_ = raw_example[0]
+
+        example = self._data_type(example_)
 
         for transform in self._other_transforms:
             example = transform(example)
         return example
 
-    def collate(self, examples: List[Union[int, float]]) -> Batch:
+    def collate(self, examples: List[Union[bool, int, float]]) -> Batch:
         # convert the list of strings into appropriate tensors here
         examples_np = np.array(examples, dtype=self._data_type)
         collated_examples = torch.from_numpy(examples_np).to(device=self.device)

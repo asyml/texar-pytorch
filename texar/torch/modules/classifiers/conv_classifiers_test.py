@@ -23,7 +23,7 @@ class Conv1DClassifierTest(unittest.TestCase):
                                       in_features=inputs.shape[2])
 
         self.assertEqual(len(classifier.layers), 5)
-        self.assertTrue(isinstance(classifier.layers[-1], nn.Linear))
+        self.assertIsInstance(classifier.layers[-1], nn.Linear)
         logits, pred = classifier(inputs)
         self.assertEqual(logits.shape, torch.Size([128, 2]))
         self.assertEqual(pred.shape, torch.Size([128]))
