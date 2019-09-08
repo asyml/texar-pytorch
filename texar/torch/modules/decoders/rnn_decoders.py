@@ -59,7 +59,9 @@ class BasicRNNDecoderOutput(NamedTuple):
     :class:`~texar.torch.modules.BasicRNNDecoder` with decoding strategy of
     ``"train_greedy"``, this is a :tensor:`LongTensor` of shape
     ``[batch_size, max_time]`` containing the sampled token indices of all
-    steps."""
+    steps. Note that the shape of ``sample_id`` is different for different
+    decoding strategy or helper. Please refer to
+    :class:`~texar.torch.modules.Helper` for the detailed information."""
     cell_output: torch.Tensor
     r"""The output of RNN cell (at each step/of all steps). This contains the
     results prior to the output layer. For example, in
@@ -84,7 +86,9 @@ class AttentionRNNDecoderOutput(NamedTuple):
     :class:`~texar.torch.modules.AttentionRNNDecoder` with decoding strategy of
     ``"train_greedy"``, this is a :tensor:`LongTensor` of shape
     ``[batch_size, max_time]`` containing the sampled token indices of all
-    steps."""
+    steps. Note that the shape of ``sample_id`` is different for different
+    decoding strategy or helper. Please refer to
+    :class:`~texar.torch.modules.Helper` for the detailed information."""
     cell_output: torch.Tensor
     r"""The output of RNN cell (at each step/of all steps). This contains the
     results prior to the output layer. For example, in

@@ -50,8 +50,11 @@ class TransformerDecoderOutput(NamedTuple):
     r"""A :tensor:`Tensor` of shape ``[batch_size, max_time, vocab_size]``
     containing the logits."""
     sample_id: torch.LongTensor
-    r"""A :tensor:`LongTensor` of shape ``[batch_size, max_time]`` containing
-    the sampled token indices."""
+    r"""A :tensor:`LongTensor` of shape ``[batch_size, max_time]``
+    (or ``[batch_size, max_time, vocab_size]``) containing the sampled
+    token indices. Note that the shape of ``sample_id`` is different for
+    different decoding strategy or helper. Please refer to
+    :class:`~texar.torch.modules.Helper` for the detailed information."""
 
 
 class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
