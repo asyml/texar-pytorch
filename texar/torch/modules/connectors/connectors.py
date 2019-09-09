@@ -110,14 +110,9 @@ def _mlp_transform(inputs: TensorStruct,
     the output with specified size.
 
     Args:
-        inputs: A tensor of shape ``[batch_size, d1, ..., dn]``
-            (i.e., batch-major), or a (nested) tuple of such elements.
-            A tensor or a (nested) tuple of tensors with shape
-            ``[max_time, batch_size, ...]`` (i.e., time-major) can
-            be transposed to batch-major using
-            :func:`~texar.torch.utils.transpose_batch_time` prior to this
-            function. The dimensions ``d1, ..., dn`` will be flattened and
-            transformed by a dense layer.
+        inputs: A Tensor of shape `[batch_size, d1, ..., dn]`, or a (nested)
+            tuple of such elements. The dimensions `d1, ..., dn` will be flatten
+            and transformed by a dense layer.
         output_size: Can be an ``int``, a ``torch.Size``, or a (nested)
             tuple of ``int`` or ``torch.Size``.
         activation_fn: Activation function applied to the output.
