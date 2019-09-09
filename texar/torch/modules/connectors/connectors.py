@@ -117,7 +117,7 @@ def _mlp_transform(inputs: TensorStruct,
             tuple of ``int`` or ``torch.Size``.
         activation_fn: Activation function applied to the output.
 
-    Returns:
+    :returns:
         If :attr:`output_size` is an ``int`` or a ``torch.Size``,
         returns a tensor of shape ``[batch_size, *, output_size]``.
         If :attr:`output_size` is a tuple of ``int`` or ``torch.Size``,
@@ -234,7 +234,7 @@ class ConstantConnector(ConnectorBase):
             batch_size: An ``int`` or ``int`` scalar tensor, the
                 batch size.
 
-        Returns:
+        :returns:
             A (structure of) tensor whose structure is the same as
             :attr:`output_size`, with value specified by
             ``value`` or :attr:`hparams`.
@@ -322,7 +322,7 @@ class ForwardConnector(ConnectorBase):
         Args:
             inputs: The input (structure of) tensor to pass forward.
 
-        Returns:
+        :returns:
             A (structure of) tensors that re-packs :attr:`inputs` to have
             the specified structure of :attr:`output_size`.
         """
@@ -423,7 +423,7 @@ class MLPTransformConnector(ConnectorBase):
                 tuple of such Tensors. That is, the first dimension of
                 (each) tensor must be the batch dimension.
 
-        Returns:
+        :returns:
             A tensor or a (nested) tuple of tensors of the same structure of
             :attr:`output_size`.
         """
@@ -562,7 +562,7 @@ class ReparameterizedStochasticConnector(ConnectorBase):
                 sample must match :attr:`output_size`.
 
 
-        Returns:
+        :returns:
             A tuple (:attr:`output`, :attr:`sample`), where
 
             - output: A tensor or a (nested) tuple of Tensors with
@@ -716,7 +716,7 @@ class StochasticConnector(ConnectorBase):
                 distribution samples. If ``False``, the structure/shape of a
                 sample must match :attr:`output_size`.
 
-        Returns:
+        :returns:
             A tuple (:attr:`output`, :attr:`sample`), where
 
             - output: A tensor or a (nested) tuple of Tensors with
