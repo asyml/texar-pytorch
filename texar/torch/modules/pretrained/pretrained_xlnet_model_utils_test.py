@@ -6,7 +6,7 @@ import unittest
 
 import torch
 
-from texar.torch.modules.pretrained.xlnet_model_utils import *
+from texar.torch.modules.pretrained.pretrained_xlnet_model_utils import *
 
 
 class XLNetModelUtilsTest(unittest.TestCase):

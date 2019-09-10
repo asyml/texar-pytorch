@@ -24,7 +24,7 @@ import torch
 from torch import nn
 
 from texar.torch.modules.pretrained.pretrained_base import PretrainedMixin
-from texar.torch.modules.pretrained.xlnet_model_utils import (
+from texar.torch.modules.pretrained.pretrained_xlnet_model_utils import (
     PositionWiseFF, RelativeMultiheadAttention, init_weights)
 
 __all__ = [
