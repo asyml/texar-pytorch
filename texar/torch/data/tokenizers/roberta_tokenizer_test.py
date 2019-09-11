@@ -1,54 +1,68 @@
 """
-Unit tests for pre-trained BERT tokenizer.
+Unit tests for pre-trained RoBERTa tokenizer.
 """
 
 import unittest
 
+import json
 import os
 import pickle
 import tempfile
 
-from texar.torch.data.tokenizers.pretrained_bert_tokenizer import \
-    BERTTokenizer
+from texar.torch.data.tokenizers.roberta_tokenizer import \
+    RoBERTaTokenizer
 from texar.torch.utils.test import pretrained_test
 
 
-class BERTTokenizerTest(unittest.TestCase):
+class RoBERTaTokenizerTest(unittest.TestCase):
 
     def setUp(self):
-        vocab_tokens = [
-            "[UNK]", "[CLS]", "[SEP]", "want", "##want", "##ed", "wa", "un",
-            "runn",
-            "##ing", ",", "low", "lowest",
-        ]
+        vocab = ["l", "o", "w", "e", "r", "s", "t", "i", "d", "n",
+                 "lo", "low", "er",
+                 "low", "lowest", "newer", "wider", "<unk>"]
+        vocab_tokens = dict(zip(vocab, range(len(vocab))))
+        merges = ["#version: 0.2", "l o", "lo w", "e r", ""]
+        self.special_tokens_map = {"unk_token": "<unk>"}
 
         self.tmp_dir = tempfile.TemporaryDirectory()
-        self.vocab_file = os.path.join(self.tmp_dir.name, 'vocab.txt')
-        with open(self.vocab_file, "w", encoding='utf-8') as vocab_writer:
-            vocab_writer.write("".join([x + "\n" for x in vocab_tokens]))
+        self.vocab_file = os.path.join(self.tmp_dir.name, 'encoder.json')
+        self.merges_file = os.path.join(self.tmp_dir.name, 'vocab.bpe')
+
+        with open(self.vocab_file, "w") as fp:
+            fp.write(json.dumps(vocab_tokens))
+        with open(self.merges_file, "w") as fp:
+            fp.write("\n".join(merges))
 
     def tearDown(self):
         self.tmp_dir.cleanup()
 
     @pretrained_test
     def test_model_loading(self):
-        for pretrained_model_name in BERTTokenizer.available_checkpoints():
-            tokenizer = BERTTokenizer(
+        for pretrained_model_name in \
+                RoBERTaTokenizer.available_checkpoints():
+            tokenizer = RoBERTaTokenizer(
                 pretrained_model_name=pretrained_model_name)
-            _ = tokenizer.map_text_to_token(u"UNwant\u00E9d,running")
+            _ = tokenizer.map_text_to_token(
+                u"Munich and Berlin are nice cities")
 
     def test_tokenize(self):
-        tokenizer = BERTTokenizer.load(self.vocab_file)
+        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
+                                          self.special_tokens_map)
 
-        tokens = tokenizer.map_text_to_token(u"UNwant\u00E9d,running")
-        self.assertListEqual(tokens,
-                             ["un", "##want", "##ed", ",", "runn", "##ing"])
+        text = "lower"
+        bpe_tokens = ["low", "er"]
+        tokens = tokenizer.map_text_to_token(text)
+        self.assertListEqual(tokens, bpe_tokens)
 
-        ids = tokenizer.map_token_to_id(tokens)
-        self.assertListEqual(ids, [7, 4, 5, 10, 8, 9])
+        input_tokens = tokens + [tokenizer.unk_token]
+        input_bpe_tokens = [13, 12, 17]
+        self.assertListEqual(
+            tokenizer.map_token_to_id(input_tokens),
+            input_bpe_tokens)
 
     def test_pickle(self):
-        tokenizer = BERTTokenizer.load(self.vocab_file)
+        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
+                                          self.special_tokens_map)
         self.assertIsNotNone(tokenizer)
 
         text = u"Munich and Berlin are nice cities"
@@ -66,7 +80,8 @@ class BERTTokenizerTest(unittest.TestCase):
         self.assertListEqual(subwords, subwords_loaded)
 
     def test_save_load(self):
-        tokenizer = BERTTokenizer.load(self.vocab_file)
+        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
+                                          self.special_tokens_map)
 
         before_tokens = tokenizer.map_text_to_id(
             u"He is very happy, UNwant\u00E9d,running")
@@ -80,16 +95,17 @@ class BERTTokenizerTest(unittest.TestCase):
         self.assertListEqual(before_tokens, after_tokens)
 
     def test_pretrained_model_list(self):
-        model_list_1 = list(BERTTokenizer._MODEL2URL.keys())
-        model_list_2 = list(BERTTokenizer._MAX_INPUT_SIZE.keys())
+        model_list_1 = list(RoBERTaTokenizer._MODEL2URL.keys())
+        model_list_2 = list(RoBERTaTokenizer._MAX_INPUT_SIZE.keys())
 
         self.assertListEqual(model_list_1, model_list_2)
 
     def test_encode_decode(self):
-        tokenizer = BERTTokenizer.load(self.vocab_file)
+        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
+                                          self.special_tokens_map)
 
-        input_text = u"UNwant\u00E9d,running"
-        output_text = u"unwanted, running"
+        input_text = u"lower newer"
+        output_text = u"lower<unk>newer"
 
         tokens = tokenizer.map_text_to_token(input_text)
         ids = tokenizer.map_token_to_id(tokens)
@@ -105,7 +121,8 @@ class BERTTokenizerTest(unittest.TestCase):
         self.assertIsInstance(text_2, str)
 
     def test_add_tokens(self):
-        tokenizer = BERTTokenizer.load(self.vocab_file)
+        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
+                                          self.special_tokens_map)
 
         vocab_size = tokenizer.vocab_size
         all_size = len(tokenizer)
@@ -154,10 +171,11 @@ class BERTTokenizerTest(unittest.TestCase):
                          tokenizer.map_token_to_id(tokenizer.pad_token))
 
     def test_encode_text(self):
-        tokenizer = BERTTokenizer.load(self.vocab_file)
+        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
+                                          self.special_tokens_map)
 
-        text_1 = u"He is very happy"
-        text_2 = u"unwanted, running"
+        text_1 = u"lower newer"
+        text_2 = u"He is very happy"
 
         text_1_ids = tokenizer.map_text_to_id(text_1)
         text_2_ids = tokenizer.map_text_to_id(text_2)
@@ -165,20 +183,19 @@ class BERTTokenizerTest(unittest.TestCase):
         cls_token_id = tokenizer.map_token_to_id(tokenizer.cls_token)
         sep_token_id = tokenizer.map_token_to_id(tokenizer.sep_token)
 
-        input_ids, segment_ids, input_mask = \
+        input_ids, input_mask = \
             tokenizer.encode_text(text_1, None, 4)
 
         self.assertListEqual(input_ids,
                              [cls_token_id] + text_1_ids[:2] + [sep_token_id])
-        self.assertListEqual(segment_ids, [0, 0, 0, 0])
         self.assertListEqual(input_mask, [1, 1, 1, 1])
 
-        input_ids, segment_ids, input_mask = \
+        input_ids, input_mask = \
             tokenizer.encode_text(text_1, text_2, 7)
 
         self.assertListEqual(input_ids, [cls_token_id] + text_1_ids[:2] +
-                             [sep_token_id] + text_2_ids[:2] + [sep_token_id])
-        self.assertListEqual(segment_ids, [0, 0, 0, 0, 1, 1, 1])
+                             [sep_token_id] + [sep_token_id] + text_2_ids[:1]
+                             + [sep_token_id])
         self.assertListEqual(input_mask, [1, 1, 1, 1, 1, 1, 1])
 
 

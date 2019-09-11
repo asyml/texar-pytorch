@@ -25,7 +25,7 @@ from texar.torch.modules.embedders.embedders import WordEmbedder
 from texar.torch.modules.embedders.position_embedders import PositionEmbedder
 from texar.torch.modules.encoders.encoder_base import EncoderBase
 from texar.torch.modules.encoders.transformer_encoder import TransformerEncoder
-from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
+from texar.torch.modules.pretrained.bert import PretrainedBERTMixin
 
 __all__ = [
     "BERTEncoder",

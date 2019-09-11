@@ -17,7 +17,7 @@ Pre-trained RoBERTa tokenizer.
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from texar.torch.data.tokenizers.pretrained_gpt2_tokenizer import GPT2Tokenizer
+from texar.torch.data.tokenizers.gpt2_tokenizer import GPT2Tokenizer
 from texar.torch.utils.utils import truncate_seq_pair
 
 __all__ = [

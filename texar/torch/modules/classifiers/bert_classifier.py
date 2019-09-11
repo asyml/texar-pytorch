@@ -24,7 +24,7 @@ from texar.torch.core.layers import get_initializer
 from texar.torch.hyperparams import HParams
 from texar.torch.modules.classifiers.classifier_base import ClassifierBase
 from texar.torch.modules.encoders.bert_encoder import BERTEncoder
-from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
+from texar.torch.modules.pretrained.bert import PretrainedBERTMixin
 from texar.torch.utils.utils import dict_fetch
 
 __all__ = [

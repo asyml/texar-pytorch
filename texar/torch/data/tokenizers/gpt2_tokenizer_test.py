@@ -1,5 +1,5 @@
 """
-Unit tests for pre-trained RoBERTa tokenizer.
+Unit tests for pre-trained GPT2 tokenizer.
 """
 
 import unittest
@@ -9,12 +9,12 @@ import os
 import pickle
 import tempfile
 
-from texar.torch.data.tokenizers.pretrained_roberta_tokenizer import \
-    RoBERTaTokenizer
+from texar.torch.data.tokenizers.gpt2_tokenizer import \
+    GPT2Tokenizer
 from texar.torch.utils.test import pretrained_test
 
 
-class RoBERTaTokenizerTest(unittest.TestCase):
+class GPT2TokenizerTest(unittest.TestCase):
 
     def setUp(self):
         vocab = ["l", "o", "w", "e", "r", "s", "t", "i", "d", "n",
@@ -39,15 +39,15 @@ class RoBERTaTokenizerTest(unittest.TestCase):
     @pretrained_test
     def test_model_loading(self):
         for pretrained_model_name in \
-                RoBERTaTokenizer.available_checkpoints():
-            tokenizer = RoBERTaTokenizer(
+                GPT2Tokenizer.available_checkpoints():
+            tokenizer = GPT2Tokenizer(
                 pretrained_model_name=pretrained_model_name)
             _ = tokenizer.map_text_to_token(
                 u"Munich and Berlin are nice cities")
 
     def test_tokenize(self):
-        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
-                                          self.special_tokens_map)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
 
         text = "lower"
         bpe_tokens = ["low", "er"]
@@ -61,8 +61,8 @@ class RoBERTaTokenizerTest(unittest.TestCase):
             input_bpe_tokens)
 
     def test_pickle(self):
-        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
-                                          self.special_tokens_map)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
         self.assertIsNotNone(tokenizer)
 
         text = u"Munich and Berlin are nice cities"
@@ -80,8 +80,8 @@ class RoBERTaTokenizerTest(unittest.TestCase):
         self.assertListEqual(subwords, subwords_loaded)
 
     def test_save_load(self):
-        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
-                                          self.special_tokens_map)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
 
         before_tokens = tokenizer.map_text_to_id(
             u"He is very happy, UNwant\u00E9d,running")
@@ -95,14 +95,14 @@ class RoBERTaTokenizerTest(unittest.TestCase):
         self.assertListEqual(before_tokens, after_tokens)
 
     def test_pretrained_model_list(self):
-        model_list_1 = list(RoBERTaTokenizer._MODEL2URL.keys())
-        model_list_2 = list(RoBERTaTokenizer._MAX_INPUT_SIZE.keys())
+        model_list_1 = list(GPT2Tokenizer._MODEL2URL.keys())
+        model_list_2 = list(GPT2Tokenizer._MAX_INPUT_SIZE.keys())
 
         self.assertListEqual(model_list_1, model_list_2)
 
     def test_encode_decode(self):
-        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
-                                          self.special_tokens_map)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
 
         input_text = u"lower newer"
         output_text = u"lower<unk>newer"
@@ -121,8 +121,8 @@ class RoBERTaTokenizerTest(unittest.TestCase):
         self.assertIsInstance(text_2, str)
 
     def test_add_tokens(self):
-        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
-                                          self.special_tokens_map)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
 
         vocab_size = tokenizer.vocab_size
         all_size = len(tokenizer)
@@ -171,32 +171,24 @@ class RoBERTaTokenizerTest(unittest.TestCase):
                          tokenizer.map_token_to_id(tokenizer.pad_token))
 
     def test_encode_text(self):
-        tokenizer = RoBERTaTokenizer.load(self.tmp_dir.name,
-                                          self.special_tokens_map)
+        tokenizer = GPT2Tokenizer.load(self.tmp_dir.name,
+                                       self.special_tokens_map)
 
         text_1 = u"lower newer"
-        text_2 = u"He is very happy"
 
         text_1_ids = tokenizer.map_text_to_id(text_1)
-        text_2_ids = tokenizer.map_text_to_id(text_2)
 
-        cls_token_id = tokenizer.map_token_to_id(tokenizer.cls_token)
-        sep_token_id = tokenizer.map_token_to_id(tokenizer.sep_token)
+        input_ids, seq_len = \
+            tokenizer.encode_text(text=text_1, max_seq_length=10)
 
-        input_ids, input_mask = \
-            tokenizer.encode_text(text_1, None, 4)
+        bos_token_id = tokenizer.map_token_to_id(tokenizer.bos_token)
+        eos_token_id = tokenizer.map_token_to_id(tokenizer.eos_token)
+        pad_token_id = tokenizer.map_token_to_id(tokenizer.pad_token)
 
         self.assertListEqual(input_ids,
-                             [cls_token_id] + text_1_ids[:2] + [sep_token_id])
-        self.assertListEqual(input_mask, [1, 1, 1, 1])
-
-        input_ids, input_mask = \
-            tokenizer.encode_text(text_1, text_2, 7)
-
-        self.assertListEqual(input_ids, [cls_token_id] + text_1_ids[:2] +
-                             [sep_token_id] + [sep_token_id] + text_2_ids[:1]
-                             + [sep_token_id])
-        self.assertListEqual(input_mask, [1, 1, 1, 1, 1, 1, 1])
+                             [bos_token_id] + text_1_ids + [eos_token_id] +
+                             [pad_token_id])
+        self.assertEqual(seq_len, 9)
 
 
 if __name__ == "__main__":

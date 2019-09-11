@@ -22,9 +22,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import os
 
-from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
+from texar.torch.modules.pretrained.bert import PretrainedBERTMixin
 from texar.torch.data.tokenizers.tokenizer_base import TokenizerBase
-from texar.torch.data.tokenizers.pretrained_bert_tokenizer_utils import \
+from texar.torch.data.tokenizers.bert_tokenizer_utils import \
     load_vocab, BasicTokenizer, WordpieceTokenizer
 from texar.torch.utils.utils import truncate_seq_pair
 

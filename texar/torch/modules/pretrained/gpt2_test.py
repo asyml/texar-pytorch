@@ -5,7 +5,7 @@ Unit tests for GPT2 utils.
 import os
 import unittest
 
-from texar.torch.modules.pretrained.pretrained_gpt2 import *
+from texar.torch.modules.pretrained.gpt2 import *
 from texar.torch.utils.test import pretrained_test
 
 

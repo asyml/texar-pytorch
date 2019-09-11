@@ -20,7 +20,7 @@ import torch
 
 from texar.torch.modules.encoders.roberta_encoder import RoBERTaEncoder
 from texar.torch.modules.classifiers.bert_classifier import BERTClassifier
-from texar.torch.modules.pretrained.pretrained_roberta import \
+from texar.torch.modules.pretrained.roberta import \
     PretrainedRoBERTaMixin
 
 __all__ = [

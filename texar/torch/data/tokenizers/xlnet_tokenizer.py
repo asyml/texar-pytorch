@@ -25,7 +25,7 @@ import unicodedata
 from shutil import copyfile
 import sentencepiece as spm
 
-from texar.torch.modules.pretrained.pretrained_xlnet import PretrainedXLNetMixin
+from texar.torch.modules.pretrained.xlnet import PretrainedXLNetMixin
 from texar.torch.data.tokenizers.tokenizer_base import TokenizerBase
 from texar.torch.utils.utils import truncate_seq_pair
 

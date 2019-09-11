@@ -5,7 +5,7 @@ Unit tests for RoBERTa utils.
 import os
 import unittest
 
-from texar.torch.modules.pretrained.pretrained_roberta import *
+from texar.torch.modules.pretrained.roberta import *
 from texar.torch.utils.test import pretrained_test
 
 

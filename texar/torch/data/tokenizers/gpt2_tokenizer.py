@@ -24,9 +24,9 @@ import os
 import json
 import regex as re
 
-from texar.torch.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
+from texar.torch.modules.pretrained.gpt2 import PretrainedGPT2Mixin
 from texar.torch.data.tokenizers.tokenizer_base import TokenizerBase
-from texar.torch.data.tokenizers.pretrained_gpt2_tokenizer_utils import \
+from texar.torch.data.tokenizers.gpt2_tokenizer_utils import \
     bytes_to_unicode, get_pairs
 
 __all__ = [

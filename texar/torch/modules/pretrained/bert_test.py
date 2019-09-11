@@ -5,7 +5,7 @@ Unit tests for BERT utils.
 import os
 import unittest
 
-from texar.torch.modules.pretrained.pretrained_bert import *
+from texar.torch.modules.pretrained.bert import *
 from texar.torch.utils.test import pretrained_test
 
 

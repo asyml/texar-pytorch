@@ -22,8 +22,8 @@ from torch import nn
 from torch.nn import functional as F
 
 from texar.torch.modules.encoders.encoder_base import EncoderBase
-from texar.torch.modules.pretrained.pretrained_xlnet import PretrainedXLNetMixin
-from texar.torch.modules.pretrained.xlnet_model_utils import (
+from texar.torch.modules.pretrained.xlnet import PretrainedXLNetMixin
+from texar.torch.modules.pretrained.xlnet_utils import (
     PositionWiseFF, RelativeMultiheadAttention, RelativePositionalEncoding,
     params_except_in)
 from texar.torch.utils.utils import dict_fetch, sum_tensors
