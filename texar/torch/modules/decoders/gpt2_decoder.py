@@ -23,7 +23,7 @@ from texar.torch.modules.decoders.decoder_helpers import Helper
 from texar.torch.modules.decoders.transformer_decoders import \
     TransformerDecoder, TransformerDecoderOutput
 from texar.torch.modules.embedders import PositionEmbedder, WordEmbedder
-from texar.torch.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
+from texar.torch.modules.pretrained.gpt2 import PretrainedGPT2Mixin
 
 __all__ = [
     "GPT2Decoder",

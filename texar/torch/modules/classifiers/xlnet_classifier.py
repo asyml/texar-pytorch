@@ -25,8 +25,8 @@ from texar.torch.core.layers import get_initializer
 from texar.torch.hyperparams import HParams
 from texar.torch.modules.classifiers.classifier_base import ClassifierBase
 from texar.torch.modules.encoders.xlnet_encoder import XLNetEncoder
-from texar.torch.modules.pretrained.pretrained_xlnet import PretrainedXLNetMixin
-from texar.torch.modules.pretrained.pretrained_xlnet_model_utils import (
+from texar.torch.modules.pretrained.xlnet import PretrainedXLNetMixin
+from texar.torch.modules.pretrained.xlnet_utils import (
     init_weights, params_except_in)
 from texar.torch.utils.utils import dict_fetch
 

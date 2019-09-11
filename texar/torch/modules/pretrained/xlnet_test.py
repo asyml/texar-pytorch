@@ -5,7 +5,7 @@ Unit tests for XLNet utils.
 import os
 import unittest
 
-from texar.torch.modules.pretrained.pretrained_xlnet import *
+from texar.torch.modules.pretrained.xlnet import *
 from texar.torch.utils.test import pretrained_test
 
 

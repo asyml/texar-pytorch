@@ -20,7 +20,7 @@ from typing import Optional
 import torch
 
 from texar.torch.modules.encoders.bert_encoder import BERTEncoder
-from texar.torch.modules.pretrained.pretrained_roberta import \
+from texar.torch.modules.pretrained.roberta import \
     PretrainedRoBERTaMixin
 
 __all__ = [

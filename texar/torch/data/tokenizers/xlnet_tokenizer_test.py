@@ -9,7 +9,7 @@ import pickle
 import tempfile
 
 from texar.torch.data.data_utils import maybe_download
-from texar.torch.data.tokenizers.pretrained_xlnet_tokenizer import \
+from texar.torch.data.tokenizers.xlnet_tokenizer import \
     XLNetTokenizer, SPIECE_UNDERLINE
 from texar.torch.utils.test import pretrained_test
 
