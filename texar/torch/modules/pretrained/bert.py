@@ -37,9 +37,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
     that implement the BERT model.
 
     Both standard BERT models and many domain specific BERT-based models are
-    supported. Usually, you can specify the :attr:`pretrained_model_name`
-    argument to pick which pre-trained BERT model to use. All available
-    categories of pre-trained models (and names) include:
+    supported. You can specify the :attr:`pretrained_model_name` argument to
+    pick which pre-trained BERT model to use. All available categories of
+    pre-trained models (and names) include:
 
     * **Standard BERT**: proposed in (`Devlin et al`. 2018)
       `BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`_
