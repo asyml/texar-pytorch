@@ -22,6 +22,11 @@ Tokenizer
 .. autoclass:: texar.torch.data.BERTTokenizer
     :members:
 
+:hidden:`BioBERTTokenizer`
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.data.BioBERTTokenizer
+    :members:
+
 :hidden:`GPT2Tokenizer`
 ~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.data.GPT2Tokenizer

@@ -81,6 +81,15 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         'bert-base-chinese':
             _BERT_PATH + "2018_11_03/chinese_L-12_H-768_A-12.zip",
     }
+    _MODEL2CKPT = {
+        'bert-base-uncased': 'bert_model.ckpt',
+        'bert-large-uncased': 'bert_model.ckpt',
+        'bert-base-cased': 'bert_model.ckpt',
+        'bert-large-cased': 'bert_model.ckpt',
+        'bert-base-multilingual-uncased': 'bert_model.ckpt',
+        'bert-base-multilingual-cased': 'bert_model.ckpt',
+        'bert-base-chinese': 'bert_model.ckpt',
+    }
 
     @classmethod
     def _transform_config(cls, pretrained_model_name: str,
@@ -90,7 +99,7 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         config_path = None
 
         for file in files:
-            if file.endswith('config.json'):
+            if file == 'bert_config.json':
                 config_path = os.path.join(root, file)
                 with open(config_path) as f:
                     config_ckpt = json.loads(f.read())
@@ -211,7 +220,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
             'bert/pooler/dense/bias': 'pooler.0.bias',
             'bert/pooler/dense/kernel': 'pooler.0.weight'
         }
-        tf_path = os.path.abspath(os.path.join(cache_dir, 'bert_model.ckpt'))
+        tf_path = os.path.abspath(os.path.join(
+            cache_dir, self._MODEL2CKPT[pretrained_model_name]))
+
         # Load weights from TF model
         init_vars = tf.train.list_variables(tf_path)
         tfnames, arrays = [], []
