@@ -16,7 +16,6 @@ Tokenizer modules of Texar library.
 """
 
 from texar.torch.data.tokenizers.bert_tokenizer import *
-from texar.torch.data.tokenizers.biobert_tokenizer import *
 from texar.torch.data.tokenizers.gpt2_tokenizer import *
 from texar.torch.data.tokenizers.roberta_tokenizer import *
 from texar.torch.data.tokenizers.tokenizer_base import *
