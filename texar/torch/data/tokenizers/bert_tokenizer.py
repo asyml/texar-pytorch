@@ -54,6 +54,7 @@ class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
 
     _IS_PRETRAINED = True
     _MAX_INPUT_SIZE = {
+        # Standard BERT
         'bert-base-uncased': 512,
         'bert-large-uncased': 512,
         'bert-base-cased': 512,
@@ -61,6 +62,12 @@ class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
         'bert-base-multilingual-uncased': 512,
         'bert-base-multilingual-cased': 512,
         'bert-base-chinese': 512,
+
+        # BioBERT
+        'biobert-v1.0-pmc': 512,
+        'biobert-v1.0-pubmed-pmc': 512,
+        'biobert-v1.0-pubmed': 512,
+        'biobert-v1.1-pubmed': 512,
     }
     _VOCAB_FILE_NAMES = {'vocab_file': 'vocab.txt'}
 

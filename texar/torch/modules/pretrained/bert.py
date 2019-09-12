@@ -29,30 +29,53 @@ __all__ = [
 ]
 
 _BERT_PATH = "https://storage.googleapis.com/bert_models/"
+_BIOBERT_PATH = "https://github.com/naver/biobert-pretrained/releases/download/"
 
 
 class PretrainedBERTMixin(PretrainedMixin, ABC):
     r"""A mixin class to support loading pre-trained checkpoints for modules
     that implement the BERT model.
 
-    The BERT model was proposed in (`Devlin et al`. 2018)
-    `BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`_
-    . A bidirectional Transformer language model pre-trained on large text
-    corpora. Available model names include:
+    Both standard BERT models and many domain specific BERT-based models are
+    supported. You can specify the :attr:`pretrained_model_name` argument to
+    pick which pre-trained BERT model to use. All available categories of
+    pre-trained models (and names) include:
 
-      * ``bert-base-uncased``: 12-layer, 768-hidden, 12-heads,
-        110M parameters.
-      * ``bert-large-uncased``: 24-layer, 1024-hidden, 16-heads,
-        340M parameters.
-      * ``bert-base-cased``: 12-layer, 768-hidden, 12-heads , 110M parameters.
-      * ``bert-large-cased``: 24-layer, 1024-hidden, 16-heads,
-        340M parameters.
-      * ``bert-base-multilingual-uncased``: 102 languages, 12-layer,
-        768-hidden, 12-heads, 110M parameters.
-      * ``bert-base-multilingual-cased``: 104 languages, 12-layer, 768-hidden,
-        12-heads, 110M parameters.
-      * ``bert-base-chinese``: Chinese Simplified and Traditional, 12-layer,
-        768-hidden, 12-heads, 110M parameters.
+    * **Standard BERT**: proposed in (`Devlin et al`. 2018)
+      `BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`_
+      . A bidirectional Transformer language model pre-trained on large text
+      corpora. Available model names include:
+
+        * ``bert-base-uncased``: 12-layer, 768-hidden, 12-heads,
+          110M parameters.
+        * ``bert-large-uncased``: 24-layer, 1024-hidden, 16-heads,
+          340M parameters.
+        * ``bert-base-cased``: 12-layer, 768-hidden, 12-heads , 110M parameters.
+        * ``bert-large-cased``: 24-layer, 1024-hidden, 16-heads,
+          340M parameters.
+        * ``bert-base-multilingual-uncased``: 102 languages, 12-layer,
+          768-hidden, 12-heads, 110M parameters.
+        * ``bert-base-multilingual-cased``: 104 languages, 12-layer, 768-hidden,
+          12-heads, 110M parameters.
+        * ``bert-base-chinese``: Chinese Simplified and Traditional, 12-layer,
+          768-hidden, 12-heads, 110M parameters.
+
+    * **BioBERT**: proposed in (`Lee et al`. 2019)
+      `BioBERT: a pre-trained biomedical language representation model for biomedical text mining`_
+      . A domain specific language representation model pre-trained on
+      large-scale biomedical corpora. Based on the BERT architecture, BioBERT
+      effectively transfers the knowledge from a large amount of biomedical
+      texts to biomedical text mining models with minimal task-specific
+      architecture modifications. Available model names include:
+
+        * ``biobert-v1.0-pmc``: BioBERT v1.0 (+ PMC 270K) - based on
+          BERT-base-Cased (same vocabulary)
+        * ``biobert-v1.0-pubmed-pmc``: BioBERT v1.0 (+ PubMed 200K + PMC 270K) -
+          based on BERT-base-Cased (same vocabulary)
+        * ``biobert-v1.0-pubmed``: BioBERT v1.0 (+ PubMed 200K) - based on
+          BERT-base-Cased (same vocabulary)
+        * ``biobert-v1.1-pubmed``: BioBERT v1.1 (+ PubMed 1M) - based on
+          BERT-base-Cased (same vocabulary)
 
     We provide the following BERT classes:
 
@@ -62,10 +85,14 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
     .. _`BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`:
         https://arxiv.org/abs/1810.04805
+
+    .. _`BioBERT: a pre-trained biomedical language representation model for biomedical text mining`:
+        https://arxiv.org/abs/1901.08746
     """
 
     _MODEL_NAME = "BERT"
     _MODEL2URL = {
+        # Standard BERT
         'bert-base-uncased':
             _BERT_PATH + "2018_10_18/uncased_L-12_H-768_A-12.zip",
         'bert-large-uncased':
@@ -80,6 +107,32 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
             _BERT_PATH + "2018_11_03/multilingual_L-12_H-768_A-12.zip",
         'bert-base-chinese':
             _BERT_PATH + "2018_11_03/chinese_L-12_H-768_A-12.zip",
+
+        # BioBERT
+        'biobert-v1.0-pmc':
+            _BIOBERT_PATH + 'v1.0-pmc/biobert_v1.0_pmc.tar.gz',
+        'biobert-v1.0-pubmed-pmc':
+            _BIOBERT_PATH + 'v1.0-pubmed-pmc/biobert_v1.0_pubmed_pmc.tar.gz',
+        'biobert-v1.0-pubmed':
+            _BIOBERT_PATH + 'v1.0-pubmed/biobert_v1.0_pubmed.tar.gz',
+        'biobert-v1.1-pubmed':
+            _BIOBERT_PATH + 'v1.1-pubmed/biobert_v1.1_pubmed.tar.gz',
+    }
+    _MODEL2CKPT = {
+        # Standard BERT
+        'bert-base-uncased': 'bert_model.ckpt',
+        'bert-large-uncased': 'bert_model.ckpt',
+        'bert-base-cased': 'bert_model.ckpt',
+        'bert-large-cased': 'bert_model.ckpt',
+        'bert-base-multilingual-uncased': 'bert_model.ckpt',
+        'bert-base-multilingual-cased': 'bert_model.ckpt',
+        'bert-base-chinese': 'bert_model.ckpt',
+
+        # BioBERT
+        'biobert-v1.0-pmc': 'biobert_model.ckpt',
+        'biobert-v1.0-pubmed-pmc': 'biobert_model.ckpt',
+        'biobert-v1.0-pubmed': 'biobert_model.ckpt',
+        'biobert-v1.1-pubmed': 'model.ckpt-1000000',
     }
 
     @classmethod
@@ -90,7 +143,7 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         config_path = None
 
         for file in files:
-            if file.endswith('config.json'):
+            if file == 'bert_config.json':
                 config_path = os.path.join(root, file)
                 with open(config_path) as f:
                     config_ckpt = json.loads(f.read())
@@ -211,7 +264,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
             'bert/pooler/dense/bias': 'pooler.0.bias',
             'bert/pooler/dense/kernel': 'pooler.0.weight'
         }
-        tf_path = os.path.abspath(os.path.join(cache_dir, 'bert_model.ckpt'))
+        tf_path = os.path.abspath(os.path.join(
+            cache_dir, self._MODEL2CKPT[pretrained_model_name]))
+
         # Load weights from TF model
         init_vars = tf.train.list_variables(tf_path)
         tfnames, arrays = [], []
