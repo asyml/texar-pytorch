@@ -23,7 +23,7 @@ Tokenizer
     :members:
 
 :hidden:`BioBERTTokenizer`
-~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.data.BioBERTTokenizer
     :members:
 
