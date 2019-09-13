@@ -68,6 +68,12 @@ class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
         'biobert-v1.0-pubmed-pmc': 512,
         'biobert-v1.0-pubmed': 512,
         'biobert-v1.1-pubmed': 512,
+
+        # SciBERT
+        'scibert-scivocab-uncased': 512,
+        'scibert-scivocab-cased': 512,
+        'scibert-basevocab-uncased': 512,
+        'scibert-basevocab-cased': 512,
     }
     _VOCAB_FILE_NAMES = {'vocab_file': 'vocab.txt'}
 

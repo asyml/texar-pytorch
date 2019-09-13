@@ -15,10 +15,12 @@
 Utils of BERT Modules.
 """
 
+from typing import Any, Dict
+
 import json
 import os
+
 from abc import ABC
-from typing import Any, Dict
 
 import torch
 
@@ -30,6 +32,8 @@ __all__ = [
 
 _BERT_PATH = "https://storage.googleapis.com/bert_models/"
 _BIOBERT_PATH = "https://github.com/naver/biobert-pretrained/releases/download/"
+_SCIBERT_PATH = "https://s3-us-west-2.amazonaws.com/ai2-s2-research/" \
+                "scibert/tensorflow_models/"
 
 
 class PretrainedBERTMixin(PretrainedMixin, ABC):
@@ -69,13 +73,29 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
       architecture modifications. Available model names include:
 
         * ``biobert-v1.0-pmc``: BioBERT v1.0 (+ PMC 270K) - based on
-          BERT-base-Cased (same vocabulary)
+          BERT-base-Cased (same vocabulary).
         * ``biobert-v1.0-pubmed-pmc``: BioBERT v1.0 (+ PubMed 200K + PMC 270K) -
-          based on BERT-base-Cased (same vocabulary)
+          based on BERT-base-Cased (same vocabulary).
         * ``biobert-v1.0-pubmed``: BioBERT v1.0 (+ PubMed 200K) - based on
-          BERT-base-Cased (same vocabulary)
+          BERT-base-Cased (same vocabulary).
         * ``biobert-v1.1-pubmed``: BioBERT v1.1 (+ PubMed 1M) - based on
-          BERT-base-Cased (same vocabulary)
+          BERT-base-Cased (same vocabulary).
+
+    * **SciBERT**: proposed in (`Beltagy et al`. 2019)
+      `SciBERT: A Pretrained Language Model for Scientific Text`_. A BERT model
+      trained on scientific text. SciBERT leverages unsupervised pre-training
+      on a large multi-domain corpus of scientific publications to improve
+      performance on downstream scientific NLP tasks. Available model
+      names include:
+
+        * ``scibert-scivocab-uncased``: Uncased version of the model trained
+          on its own vocabulary.
+        * ``scibert-scivocab-cased``: Cased version of the model trained on
+          its own vocabulary.
+        * ``scibert-basevocab-uncased``: Uncased version of the model trained
+          on the original BERT vocabulary.
+        * ``scibert-basevocab-cased``: Cased version of the model trained on
+          the original BERT vocabulary.
 
     We provide the following BERT classes:
 
@@ -88,6 +108,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
     .. _`BioBERT: a pre-trained biomedical language representation model for biomedical text mining`:
         https://arxiv.org/abs/1901.08746
+
+    .. _`SciBERT: A Pretrained Language Model for Scientific Text`:
+        https://arxiv.org/abs/1903.10676
     """
 
     _MODEL_NAME = "BERT"
@@ -117,6 +140,16 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
             _BIOBERT_PATH + 'v1.0-pubmed/biobert_v1.0_pubmed.tar.gz',
         'biobert-v1.1-pubmed':
             _BIOBERT_PATH + 'v1.1-pubmed/biobert_v1.1_pubmed.tar.gz',
+
+        # SciBERT
+        'scibert-scivocab-uncased':
+            _SCIBERT_PATH + 'scibert_scivocab_uncased.tar.gz',
+        'scibert-scivocab-cased':
+            _SCIBERT_PATH + 'scibert_scivocab_cased.tar.gz',
+        'scibert-basevocab-uncased':
+            _SCIBERT_PATH + 'scibert_basevocab_uncased.tar.gz',
+        'scibert-basevocab-cased':
+            _SCIBERT_PATH + 'scibert_basevocab_cased.tar.gz',
     }
     _MODEL2CKPT = {
         # Standard BERT
@@ -133,6 +166,12 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         'biobert-v1.0-pubmed-pmc': 'biobert_model.ckpt',
         'biobert-v1.0-pubmed': 'biobert_model.ckpt',
         'biobert-v1.1-pubmed': 'model.ckpt-1000000',
+
+        # SciBERT
+        'scibert-scivocab-uncased': 'bert_model.ckpt',
+        'scibert-scivocab-cased': 'bert_model.ckpt',
+        'scibert-basevocab-uncased': 'bert_model.ckpt',
+        'scibert-basevocab-cased': 'bert_model.ckpt',
     }
 
     @classmethod
@@ -278,8 +317,11 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
         idx = 0
         for name, array in zip(tfnames, arrays):
-            if name.startswith('cls'):
+            if name.startswith('cls') or name == 'global_step' or \
+                    name.endswith('adam_m') or name.endswith('adam_v'):
                 # ignore those variables begin with cls
+                # ignore 'global_step' variable
+                # ignore optimizer state variable
                 continue
 
             if name in global_tensor_map:
