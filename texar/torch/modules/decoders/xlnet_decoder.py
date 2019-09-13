@@ -15,7 +15,6 @@
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, Union
 
 import torch
-from torch import nn
 from torch.nn import functional as F
 
 from texar.torch.modules.decoders.decoder_base import DecoderBase
@@ -66,26 +65,12 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
-
+    _IS_DECODE = True
     # Variables persistent during decoding.
     _state_cache_len: int
     _state_recompute_memory: bool
     # required for recomputing memory
     _state_previous_inputs: List[torch.Tensor]
-
-    def __init__(self,
-                 pretrained_model_name: Optional[str] = None,
-                 cache_dir: Optional[str] = None,
-                 hparams=None):
-
-        super().__init__(pretrained_model_name=pretrained_model_name,
-                         cache_dir=cache_dir,
-                         hparams=hparams,
-                         init=False)
-
-        self.lm_bias = nn.Parameter(torch.zeros(self._hparams.vocab_size))
-
-        self.init_pretrained_weights()
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
