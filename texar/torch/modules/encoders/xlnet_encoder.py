@@ -50,14 +50,13 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
-        init (optional): whether to initialize `XLNetEncoder`.
     """
+    _IS_DECODE = False
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
-                 hparams=None,
-                 init=True):
+                 hparams=None):
         super().__init__(hparams=hparams)
         self.load_pretrained_config(pretrained_model_name, cache_dir)
 
@@ -99,8 +98,10 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         self.mask_emb = nn.Parameter(
             torch.Tensor(1, 1, self._hparams.hidden_dim))
 
-        if init:
-            self.init_pretrained_weights()
+        if self._IS_DECODE:
+            self.lm_bias = nn.Parameter(torch.zeros(self._hparams.vocab_size))
+
+        self.init_pretrained_weights()
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
