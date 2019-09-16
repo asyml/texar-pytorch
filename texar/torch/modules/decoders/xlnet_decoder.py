@@ -15,7 +15,6 @@
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, Union
 
 import torch
-from torch import nn
 from torch.nn import functional as F
 
 from texar.torch.modules.decoders.decoder_base import DecoderBase
@@ -37,8 +36,11 @@ class XLNetDecoderOutput(NamedTuple):
     r"""A :tensor:`Tensor` of shape ``[batch_size, max_time, vocab_size]``
     containing the logits."""
     sample_id: torch.LongTensor
-    r"""A :tensor:`LongTensor` of shape ``[batch_size, max_time]`` containing
-    the sampled token indices."""
+    r"""A :tensor:`LongTensor` of shape ``[batch_size, max_time]``
+    (or ``[batch_size, max_time, vocab_size]``) containing the sampled token
+    indices. Note that the shape of ``sample_id`` is different for different
+    decoding strategy or helper. Please refer to
+    :class:`~texar.torch.modules.Helper` for the detailed information."""
 
 
 Output = XLNetDecoderOutput
@@ -51,37 +53,24 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
     Args:
         pretrained_model_name (optional): a `str`, the name
             of pre-trained model (e.g., ``xlnet-based-cased``). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedXLNetMixin` for
+            :class:`~texar.torch.modules.PretrainedXLNetMixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
-            a default directory will be used.
+            a default directory (``texar_data`` folder under user's home
+            directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
-
+    _IS_DECODE = True
     # Variables persistent during decoding.
     _state_cache_len: int
     _state_recompute_memory: bool
     # required for recomputing memory
     _state_previous_inputs: List[torch.Tensor]
-
-    def __init__(self,
-                 pretrained_model_name: Optional[str] = None,
-                 cache_dir: Optional[str] = None,
-                 hparams=None):
-
-        super().__init__(pretrained_model_name=pretrained_model_name,
-                         cache_dir=cache_dir,
-                         hparams=hparams,
-                         init=False)
-
-        self.lm_bias = nn.Parameter(torch.zeros(self._hparams.vocab_size))
-
-        self.init_pretrained_weights()
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
@@ -256,12 +245,9 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
             self.embed_tokens, inputs, sequence_length)
         return initial_finished, initial_inputs, initial_state
 
-    def step(self,
-             helper: Helper,
-             time: int,
-             inputs: torch.Tensor,
-             state: Optional[State]) \
-            -> Tuple[Output, Optional[State], torch.Tensor, torch.ByteTensor]:
+    def step(self, helper: Helper, time: int, inputs: torch.Tensor,
+             state: Optional[State]) -> \
+            Tuple[Output, Optional[State]]:
         self._state_previous_inputs.append(inputs)
         if self._state_recompute_memory:
             net_output, memory = self._forward(
@@ -280,10 +266,15 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
         logits = F.linear(net_output, self.word_embed.weight, self.lm_bias)
         logits = logits[:, -1]
         sample_ids = helper.sample(time=time, outputs=logits)
-        (finished, next_inputs) = helper.next_inputs(
-            self.embed_tokens, time, logits, sample_ids)
         outputs = XLNetDecoderOutput(logits=logits, sample_id=sample_ids)
-        return outputs, memory, next_inputs, finished
+        return outputs, memory
+
+    def next_inputs(self, helper: Helper, time: int,
+                    outputs: Output) -> \
+            Tuple[torch.Tensor, torch.ByteTensor]:
+        finished, next_inputs = helper.next_inputs(
+            self.embed_tokens, time, outputs.logits, outputs.sample_id)
+        return next_inputs, finished
 
     def finalize(self, outputs, final_state, sequence_lengths):
         del self._state_cache_len
@@ -318,7 +309,7 @@ class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
                 more expensive. Defaults to `True`.
             print_steps (bool): If `True`, will print decoding progress.
             helper: Type (or name of the type) of any sub-class of
-                :class:`~texar.torch.modules.decoders.Helper`.
+                :class:`~texar.torch.modules.Helper`.
             helper_kwargs: The keyword arguments to pass to constructor of
                 the specific helper type.
 

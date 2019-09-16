@@ -188,6 +188,15 @@ Misc
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.torch.utils.beam_search.beam_search
 
+:hidden:`flatten`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.torch.utils.nest.flatten
+
+
+:hidden:`pack_sequence_as`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: texar.torch.utils.nest.pack_sequence_as
+
 
 
 AverageRecorder

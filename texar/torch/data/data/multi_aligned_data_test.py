@@ -154,9 +154,9 @@ class MultiAlignedDataTest(unittest.TestCase):
                     self.assertEqual(i3, 1)
                 self.assertEqual(n1, 128)
                 self.assertEqual(n2, 512)
-                self.assertTrue(isinstance(n1, torch.Tensor))
-                self.assertTrue(isinstance(n2, torch.Tensor))
-                self.assertTrue(isinstance(t4, str))
+                self.assertIsInstance(n1, torch.Tensor)
+                self.assertIsInstance(n2, torch.Tensor)
+                self.assertIsInstance(t4, str)
 
             if discard_index is not None:
                 hpms = text_data._hparams.datasets[discard_index]
@@ -202,6 +202,54 @@ class MultiAlignedDataTest(unittest.TestCase):
             {"max_seq_length": 2,
              "length_filter_mode": "truncate"})
         self._run_and_test(hparams, discard_index=0)
+
+    def test_supported_scalar_types(self):
+        """Tests scalar types supported in MultiAlignedData."""
+        # int64 type
+        hparams = copy.copy(self._hparams)
+        hparams["datasets"][3].update({
+            "data_type": "int64"
+        })
+        self._run_and_test(hparams)
+
+        # float type
+        hparams = copy.copy(self._hparams)
+        hparams["datasets"][3].update({
+            "data_type": "float"
+        })
+        self._run_and_test(hparams)
+
+        # float64 type
+        hparams = copy.copy(self._hparams)
+        hparams["datasets"][3].update({
+            "data_type": "float64"
+        })
+        self._run_and_test(hparams)
+
+        # bool type
+        hparams = copy.copy(self._hparams)
+        hparams["datasets"][3].update({
+            "data_type": "bool"
+        })
+        self._run_and_test(hparams)
+
+    def test_unsupported_scalar_types(self):
+        """Tests if exception is thrown for unsupported types."""
+        hparams = copy.copy(self._hparams)
+        hparams["datasets"][3].update({
+            "data_type": "XYZ"
+        })
+
+        with self.assertRaises(ValueError):
+            self._run_and_test(hparams)
+
+        hparams = copy.copy(self._hparams)
+        hparams["datasets"][3].update({
+            "data_type": "str"
+        })
+
+        with self.assertRaises(ValueError):
+            self._run_and_test(hparams)
 
 
 if __name__ == "__main__":

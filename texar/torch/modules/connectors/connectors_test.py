@@ -34,7 +34,7 @@ class TestConnectors(unittest.TestCase):
         :class:`~texar.torch.modules.connectors.ConstantConnector`.
         """
 
-        state_size = namedtuple('LSTMStateTuple', ['c', 'h'])(256, 256)
+        state_size = namedtuple('LSTMStateTuple', ['h', 'c'])(256, 256)
         connector_0 = ConstantConnector(state_size)
         decoder_initial_state_0 = connector_0(self._batch_size)
         connector_1 = ConstantConnector(
@@ -110,7 +110,7 @@ class TestConnectors(unittest.TestCase):
         r"""Tests the logic of
         :class:`~texar.torch.modules.connectors.MLPTransformConnector`.
         """
-        state_size = namedtuple('LSTMStateTuple', ['c', 'h'])(256, 256)
+        state_size = namedtuple('LSTMStateTuple', ['h', 'c'])(256, 256)
         connector = MLPTransformConnector(state_size, linear_layer_dim=10)
         output = connector(torch.zeros(5, 10))
         output_1 = output[0]

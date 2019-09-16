@@ -18,6 +18,7 @@ Utils of GPT2 Modules.
 import json
 import os
 import sys
+import warnings
 from abc import ABC
 from typing import Any, Dict
 
@@ -46,17 +47,50 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
 
     The available GPT2 models are as follows:
 
-      * ``117M``: Small version of GPT-2, 117M parameters.
-      * ``345M``: Medium version of GPT-2, 345M parameters.
+      * ``gpt2-small``: Small version of GPT-2, 124M parameters.
+      * ``gpt2-medium``: Medium version of GPT-2, 355M parameters.
+      * ``gpt2-large``: Large version of GPT-2, 774M parameters.
+
+    We provide the following GPT2 classes:
+
+      * :class:`~texar.torch.modules.GPT2Encoder` for text encoding.
+      * :class:`~texar.torch.modules.GPT2Decoder` for text generation and
+        decoding.
+      * :class:`~texar.torch.modules.GPT2Classifier` for text classification and
+        sequence tagging.
 
     .. _`Language Models are Unsupervised Multitask Learners`:
         https://openai.com/blog/better-language-models/
     """
     _MODEL_NAME = "GPT2"
     _MODEL2URL = {
-        '117M': [_GPT2_PATH + f"117M/{file}" for file in _CHECKPOINT_FILES],
-        '345M': [_GPT2_PATH + f"345M/{file}" for file in _CHECKPOINT_FILES],
+        'gpt2-small': [_GPT2_PATH + f"124M/{file}"
+                       for file in _CHECKPOINT_FILES],
+        'gpt2-medium': [_GPT2_PATH + f"355M/{file}"
+                        for file in _CHECKPOINT_FILES],
+        'gpt2-large': [_GPT2_PATH + f"774M/{file}"
+                       for file in _CHECKPOINT_FILES],
     }
+
+    # Raise warning for the deprecated pre-trained model names
+    class MyDict(dict):
+        def __contains__(self, key):
+            if key == '117M':
+                warnings.warn("Pre-trained model name '117M' is deprecated, "
+                              "use 'gpt2-small' instead.", UserWarning)
+                return True
+            elif key == '345M':
+                warnings.warn("Pre-trained model name '345M' is deprecated, "
+                              "use 'gpt2-medium' instead.", UserWarning)
+                return True
+            else:
+                return super().__contains__(key)
+    _DEPRECATED_MODEL2URL = {
+        '117M': [_GPT2_PATH + f"124M/{file}" for file in _CHECKPOINT_FILES],
+        '345M': [_GPT2_PATH + f"355M/{file}" for file in _CHECKPOINT_FILES],
+    }
+    _MODEL2URL.update(_DEPRECATED_MODEL2URL)
+    _MODEL2URL = MyDict(_MODEL2URL)  # type: ignore
 
     @classmethod
     def _transform_config(cls, pretrained_model_name: str,

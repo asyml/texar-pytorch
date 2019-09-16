@@ -14,23 +14,18 @@
 """Example of building XLNet language model for classification/regression.
 """
 
-from typing import Optional, Dict
-
 import argparse
 import importlib
 import logging
-import os
+from typing import Dict, Optional
 
+import texar.torch as tx
+from texar.torch.run import *  # pylint: disable=wildcard-import
 import torch
 import torch.nn.functional as F
-import sentencepiece as spm
-import texar.torch as tx
-from texar.torch.run import *
 
-# pylint: disable=wildcard-import
-
+from utils import dataset, model_utils
 from utils.processor import get_processor_class
-from utils import data_utils, dataset, model_utils
 
 
 def load_config_into_args(config_path: str, args):
@@ -81,23 +76,19 @@ def parse_args():
 
 
 def construct_datasets(args) -> Dict[str, tx.data.RecordData]:
-    sp_model = spm.SentencePieceProcessor()
+    cache_prefix = f"length{args.max_seq_len}"
 
-    pretrained_model_dir = tx.modules.XLNetEncoder.download_checkpoint(
+    tokenizer = tx.data.XLNetTokenizer(
         pretrained_model_name=args.pretrained_model_name)
+    tokenizer.do_lower_case = args.uncased
 
-    spm_model_path = os.path.join(pretrained_model_dir, "spiece.model")
-    sp_model.Load(spm_model_path)
-
-    cache_prefix = f"{args.pretrained_model_name}.length{args.max_seq_len}"
-    tokenize_fn = data_utils.create_tokenize_fn(sp_model, args.uncased)
     processor_class = get_processor_class(args.task)
     data_dir = args.data_dir or f"data/{processor_class.task_name}"
     cache_dir = args.cache_dir or f"processed_data/{processor_class.task_name}"
     task_processor = processor_class(data_dir)
     dataset.construct_dataset(
         task_processor, cache_dir, args.max_seq_len,
-        tokenize_fn, file_prefix=cache_prefix)
+        tokenizer, file_prefix=cache_prefix)
 
     datasets = dataset.load_datasets(
         args.task, cache_dir, args.max_seq_len, args.batch_size,

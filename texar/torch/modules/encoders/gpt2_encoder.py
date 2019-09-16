@@ -22,7 +22,7 @@ import torch
 from texar.torch.modules.embedders.embedders import WordEmbedder
 from texar.torch.modules.embedders.position_embedders import PositionEmbedder
 from texar.torch.modules.encoders.transformer_encoder import TransformerEncoder
-from texar.torch.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
+from texar.torch.modules.pretrained.gpt2 import PretrainedGPT2Mixin
 
 __all__ = [
     "GPT2Encoder",
@@ -33,19 +33,20 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
     r"""Raw GPT2 Transformer for encoding sequences.
 
     This module basically stacks
-    :class:`~texar.torch.modules.embedders.WordEmbedder`,
-    :class:`~texar.torch.modules.embedders.PositionEmbedder`,
-    :class:`~texar.torch.modules.encoders.TransformerEncoder`.
+    :class:`~texar.torch.modules.WordEmbedder`,
+    :class:`~texar.torch.modules.PositionEmbedder`,
+    :class:`~texar.torch.modules.TransformerEncoder`.
 
     Args:
         pretrained_model_name (optional): a `str`, the name
-            of pre-trained model (e.g., ``117M``). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedGPT2Mixin` for
+            of pre-trained model (e.g., ``gpt2-small``). Please refer to
+            :class:`~texar.torch.modules.PretrainedGPT2Mixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
-            a default directory will be used.
+            a default directory (``texar_data`` folder under user's home
+            directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
@@ -93,7 +94,7 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
         .. code-block:: python
 
             {
-                "pretrained_model_name": "117M",
+                "pretrained_model_name": "gpt2-small",
                 "vocab_size": 50257,
                 "context_size": 1024,
                 "embedding_size": 768,
@@ -159,7 +160,7 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
 
         Here:
 
-        The default parameters are values for 117M GPT2 model.
+        The default parameters are values for 124M GPT2 model.
 
         `"pretrained_model_name"`: str or None
             The name of the pre-trained GPT2 model. If None, the model
@@ -179,7 +180,7 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
 
         `"decoder"`: dict
             Hyperparameters for the TransformerDecoder.
-            See :func:`~texar.torch.modules.TransformerDecoder.default_harams`
+            See :func:`~texar.torch.modules.TransformerDecoder.default_hparams`
             for details.
 
         `"initializer"`: dict, optional
@@ -238,7 +239,7 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
                 'name': 'ffn'
             },
 
-            'pretrained_model_name': '117M',
+            'pretrained_model_name': 'gpt2-small',
             'vocab_size': 50257,
             'context_size': 1024,
             'embedding_size': 768,

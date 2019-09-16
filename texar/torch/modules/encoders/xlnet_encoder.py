@@ -22,8 +22,8 @@ from torch import nn
 from torch.nn import functional as F
 
 from texar.torch.modules.encoders.encoder_base import EncoderBase
-from texar.torch.modules.pretrained.pretrained_xlnet import PretrainedXLNetMixin
-from texar.torch.modules.pretrained.xlnet_model_utils import (
+from texar.torch.modules.pretrained.xlnet import PretrainedXLNetMixin
+from texar.torch.modules.pretrained.xlnet_utils import (
     PositionWiseFF, RelativeMultiheadAttention, RelativePositionalEncoding,
     params_except_in)
 from texar.torch.utils.utils import dict_fetch, sum_tensors
@@ -39,24 +39,24 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
     Args:
         pretrained_model_name (optional): a `str`, the name
             of pre-trained model (e.g., ``xlnet-based-cased``). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedXLNetMixin` for
+            :class:`~texar.torch.modules.PretrainedXLNetMixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
-            a default directory will be used.
+            a default directory (``texar_data`` folder under user's home
+            directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
-        init (optional): whether to initialize `XLNetEncoder`.
     """
+    _IS_DECODE = False
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
-                 hparams=None,
-                 init=True):
+                 hparams=None):
         super().__init__(hparams=hparams)
         self.load_pretrained_config(pretrained_model_name, cache_dir)
 
@@ -98,8 +98,10 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         self.mask_emb = nn.Parameter(
             torch.Tensor(1, 1, self._hparams.hidden_dim))
 
-        if init:
-            self.init_pretrained_weights()
+        if self._IS_DECODE:
+            self.lm_bias = nn.Parameter(torch.zeros(self._hparams.vocab_size))
+
+        self.init_pretrained_weights()
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:

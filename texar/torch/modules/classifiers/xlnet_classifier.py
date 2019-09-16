@@ -25,8 +25,8 @@ from texar.torch.core.layers import get_initializer
 from texar.torch.hyperparams import HParams
 from texar.torch.modules.classifiers.classifier_base import ClassifierBase
 from texar.torch.modules.encoders.xlnet_encoder import XLNetEncoder
-from texar.torch.modules.pretrained.pretrained_xlnet import PretrainedXLNetMixin
-from texar.torch.modules.pretrained.xlnet_model_utils import (
+from texar.torch.modules.pretrained.xlnet import PretrainedXLNetMixin
+from texar.torch.modules.pretrained.xlnet_utils import (
     init_weights, params_except_in)
 from texar.torch.utils.utils import dict_fetch
 
@@ -44,12 +44,13 @@ class XLNetClassifier(ClassifierBase, PretrainedXLNetMixin):
     Args:
         pretrained_model_name (optional): a `str`, the name
             of pre-trained model (e.g., ``xlnet-based-cased``). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedXLNetMixin` for
+            :class:`~texar.torch.modules.PretrainedXLNetMixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
-            a default directory will be used.
+            a default directory (``texar_data`` folder under user's home
+            directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameters will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure

@@ -16,6 +16,7 @@ Pre-trained modules of Texar library.
 """
 
 from texar.torch.modules.pretrained.pretrained_base import *
-from texar.torch.modules.pretrained.pretrained_bert import *
-from texar.torch.modules.pretrained.pretrained_gpt2 import *
-from texar.torch.modules.pretrained.pretrained_xlnet import *
+from texar.torch.modules.pretrained.bert import *
+from texar.torch.modules.pretrained.gpt2 import *
+from texar.torch.modules.pretrained.roberta import *
+from texar.torch.modules.pretrained.xlnet import *

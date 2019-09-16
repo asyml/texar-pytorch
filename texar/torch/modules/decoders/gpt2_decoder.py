@@ -15,13 +15,15 @@
 GPT2 decoder.
 """
 
-from typing import Optional
+from typing import Dict, Optional, Tuple, Union
 
 import torch
 
-from texar.torch.modules.decoders.transformer_decoders import TransformerDecoder
+from texar.torch.modules.decoders.decoder_helpers import Helper
+from texar.torch.modules.decoders.transformer_decoders import \
+    TransformerDecoder, TransformerDecoderOutput
 from texar.torch.modules.embedders import PositionEmbedder, WordEmbedder
-from texar.torch.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
+from texar.torch.modules.pretrained.gpt2 import PretrainedGPT2Mixin
 
 __all__ = [
     "GPT2Decoder",
@@ -32,22 +34,23 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
     r"""Raw GPT2 Transformer for decoding sequences.
 
     This module basically stacks
-    :class:`~texar.torch.modules.embedders.WordEmbedder`,
-    :class:`~texar.torch.modules.embedders.PositionEmbedder`,
-    :class:`~texar.torch.modules.encoders.TransformerDecoder`.
+    :class:`~texar.torch.modules.WordEmbedder`,
+    :class:`~texar.torch.modules.PositionEmbedder`,
+    :class:`~texar.torch.modules.TransformerDecoder`.
 
     This module supports the architecture first proposed
     in `(Radford et al.)` GPT2.
 
     Args:
         pretrained_model_name (optional): a `str`, the name
-            of pre-trained model (e.g., ``117M``). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedGPT2Mixin` for
+            of pre-trained model (e.g., ``gpt2-small``). Please refer to
+            :class:`~texar.torch.modules.PretrainedGPT2Mixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
-            a default directory will be used.
+            a default directory (``texar_data`` folder under user's home
+            directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
@@ -104,7 +107,7 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
 
             {
                 "name": "gpt2_decoder",
-                "pretrained_model_name": "117M",
+                "pretrained_model_name": "gpt2-small",
                 "vocab_size": 50257,
                 "context_size": 1024,
                 "embedding_size": 768,
@@ -170,7 +173,7 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
 
         Here:
 
-        The default parameters are values for 117M GPT2 model.
+        The default parameters are values for 124M GPT2 model.
 
         `"pretrained_model_name"`: str or None
             The name of the pre-trained GPT2 model. If None, the model
@@ -239,7 +242,7 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
                 'name': 'ffn'
             },
 
-            'pretrained_model_name': '117M',
+            'pretrained_model_name': 'gpt2-small',
             'vocab_size': 50257,
             'context_size': 1024,
             'embedding_size': 768,
@@ -256,3 +259,43 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
             'name': 'gpt2_decoder',
             '@no_typecheck': ['pretrained_model_name'],
         }
+
+    def forward(self,  # type: ignore
+                inputs: Optional[torch.Tensor] = None,
+                sequence_length: Optional[torch.LongTensor] = None,
+                memory: Optional[torch.Tensor] = None,
+                memory_sequence_length: Optional[torch.LongTensor] = None,
+                memory_attention_bias: Optional[torch.Tensor] = None,
+                context: Optional[torch.Tensor] = None,
+                context_sequence_length: Optional[torch.LongTensor] = None,
+                helper: Optional[Helper] = None,
+                decoding_strategy: str = 'train_greedy',
+                max_decoding_length: Optional[int] = None,
+                impute_finished: bool = False,
+                infer_mode: Optional[bool] = None,
+                beam_width: Optional[int] = None,
+                length_penalty: float = 0.,
+                **kwargs) \
+            -> Union[
+                TransformerDecoderOutput,
+                Tuple[TransformerDecoderOutput, torch.LongTensor],
+                Dict[str, torch.Tensor]]:
+        r"""Performs decoding. Has exact the same interfaces with
+        :meth:`texar.torch.modules.TransformerDecoder.forward`. Please refer to
+        it for the detailed usage.
+        """
+        return super().forward(inputs=inputs,
+                               sequence_length=sequence_length,
+                               memory=memory,
+                               memory_sequence_length=memory_sequence_length,
+                               memory_attention_bias=memory_attention_bias,
+                               context=context,
+                               context_sequence_length=context_sequence_length,
+                               helper=helper,
+                               decoding_strategy=decoding_strategy,
+                               max_decoding_length=max_decoding_length,
+                               impute_finished=impute_finished,
+                               infer_mode=infer_mode,
+                               beam_width=beam_width,
+                               length_penalty=length_penalty,
+                               **kwargs)

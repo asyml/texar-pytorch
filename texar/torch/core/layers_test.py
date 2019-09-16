@@ -51,7 +51,7 @@ class GetLayerTest(unittest.TestCase):
                    }
 
         layer = layers.get_layer(hparams)
-        self.assertTrue(isinstance(layer, nn.Conv1d))
+        self.assertIsInstance(layer, nn.Conv1d)
 
         hparams = {
             "type": "MergeLayer",
@@ -69,7 +69,7 @@ class GetLayerTest(unittest.TestCase):
             }
         }
         layer = layers.get_layer(hparams)
-        self.assertTrue(isinstance(layer, layers.MergeLayer))
+        self.assertIsInstance(layer, layers.MergeLayer)
 
         hparams = {"type": "Conv1d",
                    "kwargs": {"in_channels": 16,
@@ -77,13 +77,13 @@ class GetLayerTest(unittest.TestCase):
                               "kernel_size": 2}
                    }
         layer = layers.get_layer(hparams)
-        self.assertTrue(isinstance(layer, nn.Conv1d))
+        self.assertIsInstance(layer, nn.Conv1d)
 
         hparams = {
             "type": nn.Conv1d(in_channels=16, out_channels=32, kernel_size=2)
         }
         layer = layers.get_layer(hparams)
-        self.assertTrue(isinstance(layer, nn.Conv1d))
+        self.assertIsInstance(layer, nn.Conv1d)
 
 
 class ReducePoolingLayerTest(unittest.TestCase):

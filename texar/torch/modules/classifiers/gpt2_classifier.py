@@ -24,7 +24,7 @@ from texar.torch.core.layers import get_initializer
 from texar.torch.hyperparams import HParams
 from texar.torch.modules.classifiers.classifier_base import ClassifierBase
 from texar.torch.modules.encoders.gpt2_encoder import GPT2Encoder
-from texar.torch.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
+from texar.torch.modules.pretrained.gpt2 import PretrainedGPT2Mixin
 from texar.torch.utils.utils import dict_fetch
 
 __all__ = [
@@ -45,13 +45,14 @@ class GPT2Classifier(ClassifierBase, PretrainedGPT2Mixin):
 
     Args:
         pretrained_model_name (optional): a `str`, the name
-            of pre-trained model (e.g., ``117M``). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedGPT2Mixin` for
+            of pre-trained model (e.g., ``gpt2-small``). Please refer to
+            :class:`~texar.torch.modules.PretrainedGPT2Mixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
-            a default directory will be used.
+            a default directory (``texar_data`` folder under user's home
+            directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure

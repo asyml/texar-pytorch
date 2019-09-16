@@ -12,92 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-BERT encoders.
+RoBERTa encoder.
 """
 
 from typing import Optional
 
 import torch
-from torch import nn
 
-from texar.torch.core import layers
-from texar.torch.modules.embedders.embedders import WordEmbedder
-from texar.torch.modules.embedders.position_embedders import PositionEmbedder
-from texar.torch.modules.encoders.encoder_base import EncoderBase
-from texar.torch.modules.encoders.transformer_encoder import TransformerEncoder
-from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
+from texar.torch.modules.encoders.bert_encoder import BERTEncoder
+from texar.torch.modules.pretrained.roberta import \
+    PretrainedRoBERTaMixin
 
 __all__ = [
-    "BERTEncoder",
+    "RoBERTaEncoder",
 ]
 
 
-class BERTEncoder(EncoderBase, PretrainedBERTMixin):
-    r"""Raw BERT Transformer for encoding sequences.
+class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
+    r"""RoBERTa Transformer for encoding sequences.
 
     This module basically stacks
-    :class:`~texar.torch.modules.embedders.WordEmbedder`,
-    :class:`~texar.torch.modules.embedders.PositionEmbedder`,
-    :class:`~texar.torch.modules.encoders.TransformerEncoder` and a dense
+    :class:`~texar.torch.modules.WordEmbedder`,
+    :class:`~texar.torch.modules.PositionEmbedder`,
+    :class:`~texar.torch.modules.TransformerEncoder` and a dense
     pooler.
 
     Args:
         pretrained_model_name (optional): a `str`, the name
-            of pre-trained model (e.g., ``bert-base-uncased``). Please refer to
-            :class:`~texar.torch.modules.pretrained.PretrainedBERTMixin` for
-            all supported models (including the standard BERT models and
-            variants like RoBERTa).
+            of pre-trained model (e.g., ``roberta-base``). Please refer to
+            :class:`~texar.torch.modules.PretrainedRoBERTaMixin` for
+            all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
             pre-trained models will be cached. If `None` (default),
-            a default directory will be used.
+            a default directory (``texar_data`` folder under user's home
+            directory) will be used.
         hparams (dict or HParams, optional): Hyperparameters. Missing
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
-
-    def __init__(self,
-                 pretrained_model_name: Optional[str] = None,
-                 cache_dir: Optional[str] = None,
-                 hparams=None):
-        super().__init__(hparams=hparams)
-
-        self.load_pretrained_config(pretrained_model_name, cache_dir)
-
-        # Word embedding
-        self.word_embedder = WordEmbedder(
-            vocab_size=self._hparams.vocab_size,
-            hparams=self._hparams.embed)
-
-        # Segment embedding for each type of tokens
-        self.segment_embedder = None
-        if self._hparams.type_vocab_size > 0:
-            self.segment_embedder = WordEmbedder(
-                vocab_size=self._hparams.type_vocab_size,
-                hparams=self._hparams.segment_embed)
-
-        # Position embedding
-        self.position_embedder = PositionEmbedder(
-            position_size=self._hparams.position_size,
-            hparams=self._hparams.position_embed)
-
-        # The BERT encoder (a TransformerEncoder)
-        self.encoder = TransformerEncoder(hparams=self._hparams.encoder)
-
-        self.pooler = nn.Sequential(
-            nn.Linear(self._hparams.hidden_size, self._hparams.hidden_size),
-            nn.Tanh())
-
-        self.init_pretrained_weights()
-
-    def reset_parameters(self):
-        initialize = layers.get_initializer(self._hparams.initializer)
-        if initialize is not None:
-            # Do not re-initialize LayerNorm modules.
-            for name, param in self.named_parameters():
-                if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:
-                    initialize(param)
 
     @staticmethod
     def default_hparams():
@@ -115,22 +69,17 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
         .. code-block:: python
 
             {
-                "pretrained_model_name": "bert-base-uncased",
+                "pretrained_model_name": "roberta-base",
                 "embed": {
                     "dim": 768,
                     "name": "word_embeddings"
                 },
-                "vocab_size": 30522,
-                "segment_embed": {
-                    "dim": 768,
-                    "name": "token_type_embeddings"
-                },
-                "type_vocab_size": 2,
+                "vocab_size": 50265,
                 "position_embed": {
                     "dim": 768,
                     "name": "position_embeddings"
                 },
-                "position_size": 512,
+                "position_size": 514,
 
                 "encoder": {
                     "dim": 768,
@@ -171,28 +120,22 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
                     },
                 "hidden_size": 768,
                 "initializer": None,
-                "name": "bert_encoder",
+                "name": "roberta_encoder",
             }
 
         Here:
 
-        The default parameters are values for uncased BERT-Base model.
+        The default parameters are values for RoBERTa-Base model.
 
         `"pretrained_model_name"`: str or None
-            The name of the pre-trained BERT model. If None, the model
+            The name of the pre-trained RoBERTa model. If None, the model
             will be randomly initialized.
 
         `"embed"`: dict
             Hyperparameters for word embedding layer.
 
         `"vocab_size"`: int
-            The vocabulary size of `inputs` in `BertModel`.
-
-        `"segment_embed"`: dict
-            Hyperparameters for segment embedding layer.
-
-        `"type_vocab_size"`: int
-            The vocabulary size of the `segment_ids` passed into `BertModel`.
+            The vocabulary size of `inputs` in RoBERTa model.
 
         `"position_embed"`: dict
             Hyperparameters for position embedding layer.
@@ -202,7 +145,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
 
         `"encoder"`: dict
             Hyperparameters for the TransformerEncoder.
-            See :func:`~texar.torch.modules.TransformerEncoder.default_harams`
+            See :func:`~texar.torch.modules.TransformerEncoder.default_hparams`
             for details.
 
         `"hidden_size"`: int
@@ -218,22 +161,17 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
         """
 
         return {
-            'pretrained_model_name': 'bert-base-uncased',
+            'pretrained_model_name': 'roberta-base',
             'embed': {
                 'dim': 768,
                 'name': 'word_embeddings'
             },
-            'vocab_size': 30522,
-            'segment_embed': {
-                'dim': 768,
-                'name': 'token_type_embeddings'
-            },
-            'type_vocab_size': 2,
+            'vocab_size': 50265,
             'position_embed': {
                 'dim': 768,
                 'name': 'position_embeddings'
             },
-            'position_size': 512,
+            'position_size': 514,
 
             'encoder': {
                 'dim': 768,
@@ -274,7 +212,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
             },
             'hidden_size': 768,
             'initializer': None,
-            'name': 'bert_encoder',
+            'name': 'roberta_encoder',
             '@no_typecheck': ['pretrained_model_name']
         }
 
@@ -282,15 +220,13 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
                 inputs: torch.Tensor,
                 sequence_length: Optional[torch.LongTensor] = None,
                 segment_ids: Optional[torch.LongTensor] = None):
-        r"""Encodes the inputs.
+        r"""Encodes the inputs. Differing from the standard BERT, the RoBERTa
+        model does not use segmentation embedding. As a result, RoBERTa does not
+        require `segment_ids` as an input.
 
         Args:
             inputs: A 2D Tensor of shape `[batch_size, max_time]`,
                 containing the token ids of tokens in the input sequences.
-            segment_ids (optional): A 2D Tensor of shape
-                `[batch_size, max_time]`, containing the segment ids
-                of tokens in input sequences. If `None` (default), a
-                tensor with all elements set to zero is used.
             sequence_length (optional): A 1D Tensor of shape `[batch_size]`.
                 Input tokens beyond respective sequence lengths are masked
                 out automatically.
@@ -304,39 +240,13 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
             - :attr:`pooled_output`: A Tensor of size
               `[batch_size, hidden_size]` which is the output of a pooler
               pre-trained on top of the hidden state associated to the first
-              character of the input (`CLS`), see BERT's paper.
+              character of the input (`CLS`), see RoBERTa's paper.
         """
+        if segment_ids is not None:
+            raise ValueError("segment_ids should be None in RoBERTaEncoder.")
 
-        word_embeds = self.word_embedder(inputs)
-        batch_size = inputs.size(0)
-        pos_length = inputs.new_full((batch_size,), inputs.size(1),
-                                     dtype=torch.int64)
-        pos_embeds = self.position_embedder(sequence_length=pos_length)
-
-        if self.segment_embedder is not None:
-            if segment_ids is None:
-                segment_ids = torch.zeros_like(inputs)
-            segment_embeds = self.segment_embedder(segment_ids)
-            inputs_embeds = word_embeds + segment_embeds + pos_embeds
-        else:
-            inputs_embeds = word_embeds + pos_embeds
-
-        if sequence_length is None:
-            sequence_length = inputs.new_full((batch_size,), inputs.size(1),
-                                              dtype=torch.int64)
-
-        output = self.encoder(inputs_embeds, sequence_length)
-
-        # taking the hidden state corresponding to the first token.
-        first_token_tensor = output[:, 0, :]
-
-        pooled_output = self.pooler(first_token_tensor)
+        output, pooled_output = super().forward(inputs=inputs,
+                                                sequence_length=sequence_length,
+                                                segment_ids=None)
 
         return output, pooled_output
-
-    @property
-    def output_size(self):
-        r"""The feature size of :meth:`forward` output
-        :attr:`pooled_output`.
-        """
-        return self._hparams.hidden_size

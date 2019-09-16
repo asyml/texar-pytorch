@@ -15,10 +15,12 @@
 Utils of BERT Modules.
 """
 
+from typing import Any, Dict
+
 import json
 import os
+
 from abc import ABC
-from typing import Any, Dict
 
 import torch
 
@@ -29,22 +31,24 @@ __all__ = [
 ]
 
 _BERT_PATH = "https://storage.googleapis.com/bert_models/"
-_ROBERTA_PATH = "https://dl.fbaipublicfiles.com/fairseq/models/"
+_BIOBERT_PATH = "https://github.com/naver/biobert-pretrained/releases/download/"
+_SCIBERT_PATH = "https://s3-us-west-2.amazonaws.com/ai2-s2-research/" \
+                "scibert/tensorflow_models/"
 
 
 class PretrainedBERTMixin(PretrainedMixin, ABC):
     r"""A mixin class to support loading pre-trained checkpoints for modules
     that implement the BERT model.
 
-    Both standard BERT models and many variants are supported. Usually, you can
-    specify the :attr:`pretrained_model_name` argument to pick which pre-trained
-    BERT model to use. All available categories of pre-trained models
-    (and names) include:
+    Both standard BERT models and many domain specific BERT-based models are
+    supported. You can specify the :attr:`pretrained_model_name` argument to
+    pick which pre-trained BERT model to use. All available categories of
+    pre-trained models (and names) include:
 
-      * **Standard BERT**: proposed in (`Devlin et al`. 2018)
-        `BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`_
-        . A bidirectional Transformer language model pre-trained on large text
-        corpora. Available model names include:
+    * **Standard BERT**: proposed in (`Devlin et al`. 2018)
+      `BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`_
+      . A bidirectional Transformer language model pre-trained on large text
+      corpora. Available model names include:
 
         * ``bert-base-uncased``: 12-layer, 768-hidden, 12-heads,
           110M parameters.
@@ -60,27 +64,58 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         * ``bert-base-chinese``: Chinese Simplified and Traditional, 12-layer,
           768-hidden, 12-heads, 110M parameters.
 
-      * **RoBERTa**: proposed in (`Liu et al`. 2019)
-        `RoBERTa: A Robustly Optimized BERT Pretraining Approach`_
-        . As a variant of the standard BERT model, RoBERTa trains for more
-        iterations on more data with a larger batch size as well as other tweaks
-        in pre-training. Differing from the standard BERT, the RoBERTa model
-        does not use segmentation embedding. Available model names include:
+    * **BioBERT**: proposed in (`Lee et al`. 2019)
+      `BioBERT: a pre-trained biomedical language representation model for biomedical text mining`_
+      . A domain specific language representation model pre-trained on
+      large-scale biomedical corpora. Based on the BERT architecture, BioBERT
+      effectively transfers the knowledge from a large amount of biomedical
+      texts to biomedical text mining models with minimal task-specific
+      architecture modifications. Available model names include:
 
-        * ``roberta-base``: RoBERTa using the BERT-base architecture,
-          125M parameters.
-        * ``roberta-large``: RoBERTa using the BERT-large architecture,
-          355M parameters.
+        * ``biobert-v1.0-pmc``: BioBERT v1.0 (+ PMC 270K) - based on
+          BERT-base-Cased (same vocabulary).
+        * ``biobert-v1.0-pubmed-pmc``: BioBERT v1.0 (+ PubMed 200K + PMC 270K) -
+          based on BERT-base-Cased (same vocabulary).
+        * ``biobert-v1.0-pubmed``: BioBERT v1.0 (+ PubMed 200K) - based on
+          BERT-base-Cased (same vocabulary).
+        * ``biobert-v1.1-pubmed``: BioBERT v1.1 (+ PubMed 1M) - based on
+          BERT-base-Cased (same vocabulary).
+
+    * **SciBERT**: proposed in (`Beltagy et al`. 2019)
+      `SciBERT: A Pretrained Language Model for Scientific Text`_. A BERT model
+      trained on scientific text. SciBERT leverages unsupervised pre-training
+      on a large multi-domain corpus of scientific publications to improve
+      performance on downstream scientific NLP tasks. Available model
+      names include:
+
+        * ``scibert-scivocab-uncased``: Uncased version of the model trained
+          on its own vocabulary.
+        * ``scibert-scivocab-cased``: Cased version of the model trained on
+          its own vocabulary.
+        * ``scibert-basevocab-uncased``: Uncased version of the model trained
+          on the original BERT vocabulary.
+        * ``scibert-basevocab-cased``: Cased version of the model trained on
+          the original BERT vocabulary.
+
+    We provide the following BERT classes:
+
+      * :class:`~texar.torch.modules.BERTEncoder` for text encoding.
+      * :class:`~texar.torch.modules.BERTClassifier` for text classification and
+        sequence tagging.
 
     .. _`BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`:
         https://arxiv.org/abs/1810.04805
 
-    .. _`RoBERTa: A Robustly Optimized BERT Pretraining Approach`:
-        https://arxiv.org/abs/1907.11692
+    .. _`BioBERT: a pre-trained biomedical language representation model for biomedical text mining`:
+        https://arxiv.org/abs/1901.08746
+
+    .. _`SciBERT: A Pretrained Language Model for Scientific Text`:
+        https://arxiv.org/abs/1903.10676
     """
 
     _MODEL_NAME = "BERT"
     _MODEL2URL = {
+        # Standard BERT
         'bert-base-uncased':
             _BERT_PATH + "2018_10_18/uncased_L-12_H-768_A-12.zip",
         'bert-large-uncased':
@@ -95,10 +130,48 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
             _BERT_PATH + "2018_11_03/multilingual_L-12_H-768_A-12.zip",
         'bert-base-chinese':
             _BERT_PATH + "2018_11_03/chinese_L-12_H-768_A-12.zip",
-        'roberta-base':
-            _ROBERTA_PATH + "roberta.base.tar.gz",
-        'roberta-large':
-            _ROBERTA_PATH + "roberta.large.tar.gz",
+
+        # BioBERT
+        'biobert-v1.0-pmc':
+            _BIOBERT_PATH + 'v1.0-pmc/biobert_v1.0_pmc.tar.gz',
+        'biobert-v1.0-pubmed-pmc':
+            _BIOBERT_PATH + 'v1.0-pubmed-pmc/biobert_v1.0_pubmed_pmc.tar.gz',
+        'biobert-v1.0-pubmed':
+            _BIOBERT_PATH + 'v1.0-pubmed/biobert_v1.0_pubmed.tar.gz',
+        'biobert-v1.1-pubmed':
+            _BIOBERT_PATH + 'v1.1-pubmed/biobert_v1.1_pubmed.tar.gz',
+
+        # SciBERT
+        'scibert-scivocab-uncased':
+            _SCIBERT_PATH + 'scibert_scivocab_uncased.tar.gz',
+        'scibert-scivocab-cased':
+            _SCIBERT_PATH + 'scibert_scivocab_cased.tar.gz',
+        'scibert-basevocab-uncased':
+            _SCIBERT_PATH + 'scibert_basevocab_uncased.tar.gz',
+        'scibert-basevocab-cased':
+            _SCIBERT_PATH + 'scibert_basevocab_cased.tar.gz',
+    }
+    _MODEL2CKPT = {
+        # Standard BERT
+        'bert-base-uncased': 'bert_model.ckpt',
+        'bert-large-uncased': 'bert_model.ckpt',
+        'bert-base-cased': 'bert_model.ckpt',
+        'bert-large-cased': 'bert_model.ckpt',
+        'bert-base-multilingual-uncased': 'bert_model.ckpt',
+        'bert-base-multilingual-cased': 'bert_model.ckpt',
+        'bert-base-chinese': 'bert_model.ckpt',
+
+        # BioBERT
+        'biobert-v1.0-pmc': 'biobert_model.ckpt',
+        'biobert-v1.0-pubmed-pmc': 'biobert_model.ckpt',
+        'biobert-v1.0-pubmed': 'biobert_model.ckpt',
+        'biobert-v1.1-pubmed': 'model.ckpt-1000000',
+
+        # SciBERT
+        'scibert-scivocab-uncased': 'bert_model.ckpt',
+        'scibert-scivocab-cased': 'bert_model.ckpt',
+        'scibert-basevocab-uncased': 'bert_model.ckpt',
+        'scibert-basevocab-cased': 'bert_model.ckpt',
     }
 
     @classmethod
@@ -108,41 +181,22 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         root, _, files = info[0]
         config_path = None
 
-        if pretrained_model_name.startswith('bert'):
-            for file in files:
-                if file.endswith('config.json'):
-                    config_path = os.path.join(root, file)
-                    with open(config_path) as f:
-                        config_ckpt = json.loads(f.read())
-                        hidden_dim = config_ckpt['hidden_size']
-                        vocab_size = config_ckpt['vocab_size']
-                        type_vocab_size = config_ckpt['type_vocab_size']
-                        position_size = config_ckpt['max_position_embeddings']
-                        embedding_dropout = config_ckpt['hidden_dropout_prob']
-                        num_blocks = config_ckpt['num_hidden_layers']
-                        num_heads = config_ckpt['num_attention_heads']
-                        dropout_rate = config_ckpt[
-                            'attention_probs_dropout_prob']
-                        residual_dropout = config_ckpt['hidden_dropout_prob']
-                        intermediate_size = config_ckpt['intermediate_size']
-                        hidden_act = config_ckpt['hidden_act']
-
-        elif pretrained_model_name.startswith('roberta'):
-            for file in files:
-                if file.endswith('model.pt'):
-                    config_path = os.path.join(root, file)
-                    args = torch.load(config_path, map_location="cpu")['args']
-                    hidden_dim = args.encoder_embed_dim
-                    vocab_size = 50265
-                    type_vocab_size = 0
-                    position_size = args.max_positions + 2
-                    embedding_dropout = args.dropout
-                    num_blocks = args.encoder_layers
-                    num_heads = args.encoder_attention_heads
-                    dropout_rate = args.attention_dropout
-                    residual_dropout = args.dropout
-                    intermediate_size = args.encoder_ffn_embed_dim
-                    hidden_act = args.activation_fn
+        for file in files:
+            if file == 'bert_config.json':
+                config_path = os.path.join(root, file)
+                with open(config_path) as f:
+                    config_ckpt = json.loads(f.read())
+                    hidden_dim = config_ckpt['hidden_size']
+                    vocab_size = config_ckpt['vocab_size']
+                    type_vocab_size = config_ckpt['type_vocab_size']
+                    position_size = config_ckpt['max_position_embeddings']
+                    embedding_dropout = config_ckpt['hidden_dropout_prob']
+                    num_blocks = config_ckpt['num_hidden_layers']
+                    num_heads = config_ckpt['num_attention_heads']
+                    dropout_rate = config_ckpt['attention_probs_dropout_prob']
+                    residual_dropout = config_ckpt['hidden_dropout_prob']
+                    intermediate_size = config_ckpt['intermediate_size']
+                    hidden_act = config_ckpt['hidden_act']
 
         if config_path is None:
             raise ValueError(f"Cannot find the config file in {cache_dir}")
@@ -205,12 +259,6 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
     def _init_from_checkpoint(self, pretrained_model_name: str,
                               cache_dir: str, **kwargs):
-        if pretrained_model_name.startswith('bert'):
-            self._init_bert_from_checkpoint(cache_dir)
-        elif pretrained_model_name.startswith('roberta'):
-            self._init_roberta_from_checkpoint(cache_dir)
-
-    def _init_bert_from_checkpoint(self, cache_dir: str):
         try:
             import numpy as np
             import tensorflow as tf
@@ -255,7 +303,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
             'bert/pooler/dense/bias': 'pooler.0.bias',
             'bert/pooler/dense/kernel': 'pooler.0.weight'
         }
-        tf_path = os.path.abspath(os.path.join(cache_dir, 'bert_model.ckpt'))
+        tf_path = os.path.abspath(os.path.join(
+            cache_dir, self._MODEL2CKPT[pretrained_model_name]))
+
         # Load weights from TF model
         init_vars = tf.train.list_variables(tf_path)
         tfnames, arrays = [], []
@@ -267,8 +317,11 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
         idx = 0
         for name, array in zip(tfnames, arrays):
-            if name.startswith('cls'):
+            if name.startswith('cls') or name == 'global_step' or \
+                    name.endswith('adam_m') or name.endswith('adam_v'):
                 # ignore those variables begin with cls
+                # ignore 'global_step' variable
+                # ignore optimizer state variable
                 continue
 
             if name in global_tensor_map:
@@ -308,77 +361,3 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
                 else:
                     raise NameError(f"Variable with name '{name}' not found")
                 idx += 1
-
-    def _init_roberta_from_checkpoint(self, cache_dir: str):
-        global_tensor_map = {
-            'decoder.sentence_encoder.embed_tokens.weight':
-                'word_embedder._embedding',
-            'decoder.sentence_encoder.embed_positions.weight':
-                'position_embedder._embedding',
-            'decoder.sentence_encoder.emb_layer_norm.weight':
-                'encoder.input_normalizer.weight',
-            'decoder.sentence_encoder.emb_layer_norm.bias':
-                'encoder.input_normalizer.bias',
-        }
-
-        attention_tensor_map = {
-            'final_layer_norm.weight':
-                'encoder.output_layer_norm.{}.weight',
-            'final_layer_norm.bias':
-                'encoder.output_layer_norm.{}.bias',
-            'fc1.weight':
-                'encoder.poswise_networks.{}._layers.0.weight',
-            'fc1.bias':
-                'encoder.poswise_networks.{}._layers.0.bias',
-            'fc2.weight':
-                'encoder.poswise_networks.{}._layers.2.weight',
-            'fc2.bias':
-                'encoder.poswise_networks.{}._layers.2.bias',
-            'self_attn_layer_norm.weight':
-                'encoder.poswise_layer_norm.{}.weight',
-            'self_attn_layer_norm.bias':
-                'encoder.poswise_layer_norm.{}.bias',
-            'self_attn.out_proj.weight':
-                'encoder.self_attns.{}.O_dense.weight',
-            'self_attn.out_proj.bias':
-                'encoder.self_attns.{}.O_dense.bias',
-            'self_attn.in_proj_weight': [
-                'encoder.self_attns.{}.Q_dense.weight',
-                'encoder.self_attns.{}.K_dense.weight',
-                'encoder.self_attns.{}.V_dense.weight',
-            ],
-            'self_attn.in_proj_bias': [
-                'encoder.self_attns.{}.Q_dense.bias',
-                'encoder.self_attns.{}.K_dense.bias',
-                'encoder.self_attns.{}.V_dense.bias'
-            ],
-        }
-
-        checkpoint_path = os.path.abspath(os.path.join(cache_dir, 'model.pt'))
-        device = next(self.parameters()).device
-        params = torch.load(checkpoint_path, map_location=device)['model']
-
-        for name, tensor in params.items():
-            if name in global_tensor_map:
-                v_name = global_tensor_map[name]
-                pointer = self._name_to_variable(v_name)
-                assert pointer.shape == tensor.shape
-                pointer.data = tensor.data.type(pointer.dtype)
-            elif name.startswith('decoder.sentence_encoder.layers.'):
-                name = name.lstrip('decoder.sentence_encoder.layers.')
-                layer_num, layer_name = name[0], name[2:]
-                if layer_name in attention_tensor_map:
-                    v_names = attention_tensor_map[layer_name]
-                    if isinstance(v_names, str):
-                        pointer = self._name_to_variable(
-                            v_names.format(layer_num))
-                        assert pointer.shape == tensor.shape
-                        pointer.data = tensor.data.type(pointer.dtype)
-                    else:
-                        # Q, K, V in self-attention
-                        tensors = torch.chunk(tensor, chunks=3, dim=0)
-                        for i in range(3):
-                            pointer = self._name_to_variable(
-                                v_names[i].format(layer_num))
-                            assert pointer.shape == tensors[i].shape
-                            pointer.data = tensors[i].data.type(pointer.dtype)

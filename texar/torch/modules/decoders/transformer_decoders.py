@@ -32,7 +32,6 @@ from texar.torch.modules.encoders.transformer_encoder import (
 from texar.torch.modules.networks.networks import FeedForwardNetwork
 from texar.torch.utils import transformer_attentions as attn
 from texar.torch.utils.beam_search import beam_search
-from texar.torch.utils.dtypes import torch_bool
 from texar.torch.utils.shapes import mask_sequences
 from texar.torch.utils.utils import sequence_mask
 
@@ -51,8 +50,11 @@ class TransformerDecoderOutput(NamedTuple):
     r"""A :tensor:`Tensor` of shape ``[batch_size, max_time, vocab_size]``
     containing the logits."""
     sample_id: torch.LongTensor
-    r"""A :tensor:`LongTensor` of shape ``[batch_size, max_time]`` containing
-    the sampled token indices."""
+    r"""A :tensor:`LongTensor` of shape ``[batch_size, max_time]``
+    (or ``[batch_size, max_time, vocab_size]``) containing the sampled
+    token indices. Note that the shape of ``sample_id`` is different for
+    different decoding strategy or helper. Please refer to
+    :class:`~texar.torch.modules.Helper` for the detailed information."""
 
 
 class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
@@ -60,7 +62,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
     sequence decoding.
 
     It is a stack of
-    :class:`~texar.torch.modules.encoders.MultiheadAttentionEncoder`,
+    :class:`~texar.torch.modules.MultiheadAttentionEncoder`,
     :class:`~texar.torch.modules.FeedForwardNetwork`, and residual connections.
 
     Args:
@@ -334,7 +336,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         r"""Performs decoding.
 
         The interface is very similar to that of RNN decoders
-        (:class:`texar.torch.modules.RNNDecoderBase`). In particular,
+        (:class:`~texar.torch.modules.RNNDecoderBase`). In particular,
         the function provides **3 ways** to specify the decoding method, with
         varying flexibility:
 
@@ -360,14 +362,14 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
           :attr:`beam_width` are both `None`.
 
         2. The :attr:`helper` argument: An instance of subclass of
-           :class:`texar.torch.modules.decoders.Helper`.
+           :class:`~texar.torch.modules.Helper`.
            This provides a superset of decoding strategies than above.
            The interface is the same as in RNN decoders.
            Please refer to :meth:`texar.torch.modules.RNNDecoderBase.forward`
            for detailed usage and examples.
 
            Note that, here, though using a
-           :class:`~texar.torch.decoder.TrainingHelper` corresponding to the
+           :class:`~texar.torch.modules.TrainingHelper` corresponding to the
            ``"train_greedy"`` strategy above, the implementation is *slower*
            than directly setting ``decoding_strategy="train_greedy"`` (though
            output results are the same).
@@ -439,7 +441,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 time steps that were marked as finished. Ignored in
                 ``"train_greedy"`` decoding.
             helper (optional): An instance of
-                :class:`texar.torch.modules.decoders.Helper`
+                :class:`~texar.torch.modules.Helper`
                 that defines the decoding strategy. If given,
                 ``decoding_strategy`` and helper configurations in
                 :attr:`hparams` are ignored.
@@ -731,10 +733,9 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         state = initial_state or self._state_cache
         return initial_finished, initial_inputs, state
 
-    def step(self, helper: Helper, time: int,
-             inputs: torch.Tensor, state: Optional[Cache]) \
-            -> Tuple[TransformerDecoderOutput, Cache,
-                     torch.Tensor, torch.ByteTensor]:
+    def step(self, helper: Helper, time: int, inputs: torch.Tensor,
+             state: Optional[Cache]) -> \
+            Tuple[TransformerDecoderOutput, Cache]:
         assert state is not None
         outputs, state = self._inputs_to_outputs(inputs, state)
         sample_ids = helper.sample(time=time, outputs=outputs)
@@ -745,21 +746,18 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 self._state_context[:, time],
                 sample_ids)
 
-        if time + 1 == self._state_max_decoding_length:
-            # Maximum decoding length reached, mark all batches as finished.
-            # This requires special handling because performing lookup on
-            # position embeddings with `time + 1` may result in IndexError.
-            finished = torch.ones_like(sample_ids, dtype=torch_bool)
-            # Since `next_inputs` will not be used, simply create a null tensor.
-            next_inputs = torch.empty(0)
-        else:
-            finished, next_inputs = helper.next_inputs(
-                self.embed_tokens, time, outputs, sample_ids)
         next_state = state
         outputs = TransformerDecoderOutput(
             logits=outputs,
             sample_id=sample_ids)
-        return outputs, next_state, next_inputs, finished
+        return outputs, next_state
+
+    def next_inputs(self, helper: Helper, time: int,
+                    outputs: TransformerDecoderOutput) -> \
+            Tuple[torch.Tensor, torch.ByteTensor]:
+        finished, next_inputs = helper.next_inputs(
+            self.embed_tokens, time, outputs.logits, outputs.sample_id)
+        return next_inputs, finished
 
     def finalize(self,  # type: ignore
                  outputs: TransformerDecoderOutput,

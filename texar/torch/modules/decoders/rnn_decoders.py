@@ -59,7 +59,9 @@ class BasicRNNDecoderOutput(NamedTuple):
     :class:`~texar.torch.modules.BasicRNNDecoder` with decoding strategy of
     ``"train_greedy"``, this is a :tensor:`LongTensor` of shape
     ``[batch_size, max_time]`` containing the sampled token indices of all
-    steps."""
+    steps. Note that the shape of ``sample_id`` is different for different
+    decoding strategy or helper. Please refer to
+    :class:`~texar.torch.modules.Helper` for the detailed information."""
     cell_output: torch.Tensor
     r"""The output of RNN cell (at each step/of all steps). This contains the
     results prior to the output layer. For example, in
@@ -84,7 +86,9 @@ class AttentionRNNDecoderOutput(NamedTuple):
     :class:`~texar.torch.modules.AttentionRNNDecoder` with decoding strategy of
     ``"train_greedy"``, this is a :tensor:`LongTensor` of shape
     ``[batch_size, max_time]`` containing the sampled token indices of all
-    steps."""
+    steps. Note that the shape of ``sample_id`` is different for different
+    decoding strategy or helper. Please refer to
+    :class:`~texar.torch.modules.Helper` for the detailed information."""
     cell_output: torch.Tensor
     r"""The output of RNN cell (at each step/of all steps). This contains the
     results prior to the output layer. For example, in
@@ -121,8 +125,8 @@ class BasicRNNDecoder(RNNDecoderBase[HiddenState, BasicRNNDecoderOutput]):
                 specified, you must subclass :class:`BasicRNNDecoder` and
                 override :meth:`embed_tokens`.
         cell (RNNCellBase, optional): An instance of
-            :class:`~texar.torch.core.RNNCellBase`. If `None` (default), a cell
-            is created as specified in :attr:`hparams`.
+            :class:`~texar.torch.core.cell_wrappers.RNNCellBase`. If `None`
+            (default), a cell is created as specified in :attr:`hparams`.
         output_layer (optional): An instance of :torch_nn:`Module`. Apply to
             the RNN cell output to get logits. If `None`, a :torch_nn:`Linear`
             layer is used with output dimension set to :attr:`vocab_size`.
@@ -236,18 +240,22 @@ class BasicRNNDecoder(RNNDecoderBase[HiddenState, BasicRNNDecoderOutput]):
         hparams['name'] = 'basic_rnn_decoder'
         return hparams
 
-    def step(self, helper: Helper, time: int,
-             inputs: torch.Tensor, state: Optional[HiddenState]) \
-            -> Tuple[BasicRNNDecoderOutput, HiddenState,
-                     torch.Tensor, torch.ByteTensor]:
+    def step(self, helper: Helper, time: int, inputs: torch.Tensor,
+             state: Optional[HiddenState]) \
+            -> Tuple[BasicRNNDecoderOutput, HiddenState]:
         cell_outputs, cell_state = self._cell(inputs, state)
         logits = self._output_layer(cell_outputs)
         sample_ids = helper.sample(time=time, outputs=logits)
-        (finished, next_inputs) = helper.next_inputs(
-            self.embed_tokens, time, logits, sample_ids)
         next_state = cell_state
         outputs = BasicRNNDecoderOutput(logits, sample_ids, cell_outputs)
-        return outputs, next_state, next_inputs, finished
+        return outputs, next_state
+
+    def next_inputs(self, helper: Helper, time: int,
+                    outputs: BasicRNNDecoderOutput) -> \
+            Tuple[torch.Tensor, torch.ByteTensor]:
+        finished, next_inputs = helper.next_inputs(
+            self.embed_tokens, time, outputs.logits, outputs.sample_id)
+        return next_inputs, finished
 
     @property
     def output_size(self):
@@ -280,8 +288,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
                 specified, you must subclass :class:`AttentionRNNDecoder` and
                 override :meth:`embed_tokens`.
         cell (RNNCellBase, optional): An instance of
-            :class:`~texar.torch.core.RNNCellBase`. If `None`, a cell
-            is created as specified in :attr:`hparams`.
+            :class:`~texar.torch.core.cell_wrappers.RNNCellBase`. If `None`,
+            a cell is created as specified in :attr:`hparams`.
         output_layer (optional): An output layer that transforms cell output
             to logits. This can be:
 
@@ -469,9 +477,10 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             `"type"`: str or class or instance
                 The attention type. Can be an attention class, its name or
                 module path, or a class instance. The class must be a subclass
-                of :class:`~texar.torch.core.AttentionMechanism`. If class name
-                is given, the class must be from modules :mod:`texar.torch.core`
-                or :mod:`texar.torch.custom`.
+                of ``AttentionMechanism``. See :ref:`attention-mechanism` for
+                all supported attention mechanisms. If class name is given,
+                the class must be from modules
+                :mod:`texar.torch.core` or :mod:`texar.torch.custom`.
 
                 Example:
 
@@ -564,18 +573,15 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
 
         return initial_finished, initial_inputs, state
 
-    def step(self, helper: Helper, time: int,
-             inputs: torch.Tensor, state: Optional[AttentionWrapperState]) -> \
-            Tuple[AttentionRNNDecoderOutput, AttentionWrapperState,
-                  torch.Tensor, torch.ByteTensor]:
+    def step(self, helper: Helper, time: int, inputs: torch.Tensor,
+             state: Optional[AttentionWrapperState]) -> \
+            Tuple[AttentionRNNDecoderOutput, AttentionWrapperState]:
         wrapper_outputs, wrapper_state = self._cell(
             inputs, state, self.memory, self.memory_sequence_length)
         # Essentially the same as in BasicRNNDecoder.step()
 
         logits = self._output_layer(wrapper_outputs)
         sample_ids = helper.sample(time=time, outputs=logits)
-        finished, next_inputs = helper.next_inputs(
-            self.embed_tokens, time, logits, sample_ids)
 
         attention_scores = wrapper_state.alignments
         attention_context = wrapper_state.attention
@@ -584,7 +590,14 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             attention_scores, attention_context)
         next_state = wrapper_state
 
-        return outputs, next_state, next_inputs, finished
+        return outputs, next_state
+
+    def next_inputs(self, helper: Helper, time: int,
+                    outputs: AttentionRNNDecoderOutput) -> \
+            Tuple[torch.Tensor, torch.ByteTensor]:
+        finished, next_inputs = helper.next_inputs(
+            self.embed_tokens, time, outputs.logits, outputs.sample_id)
+        return next_inputs, finished
 
     def forward(  # type: ignore
             self,
@@ -635,7 +648,7 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             initial_state (optional): Initial state of decoding.
                 If `None` (default), zero state is used.
             helper (optional): An instance of
-                :class:`texar.torch.modules.decoders.Helper`
+                :class:`~texar.torch.modules.Helper`
                 that defines the decoding strategy. If given,
                 ``decoding_strategy`` and helper configurations in
                 :attr:`hparams` are ignored.

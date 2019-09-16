@@ -24,7 +24,7 @@ import torch
 from torch import nn
 
 from texar.torch.modules.pretrained.pretrained_base import PretrainedMixin
-from texar.torch.modules.pretrained.xlnet_model_utils import (
+from texar.torch.modules.pretrained.xlnet_utils import (
     PositionWiseFF, RelativeMultiheadAttention, init_weights)
 
 __all__ = [
@@ -49,6 +49,15 @@ class PretrainedXLNetMixin(PretrainedMixin, ABC):
       * ``xlnet-based-cased``: 12-layer, 768-hidden, 12-heads. This model is
         trained on full data (different from the one in the paper).
       * ``xlnet-large-cased``: 24-layer, 1024-hidden, 16-heads.
+
+    We provide the following XLNet classes:
+
+      * :class:`~texar.torch.modules.XLNetEncoder` for text encoding.
+      * :class:`~texar.torch.modules.XLNetDecoder` for text generation and
+        decoding.
+      * :class:`~texar.torch.modules.XLNetClassifier` for text classification
+        and sequence tagging.
+      * :class:`~texar.torch.modules.XLNetRegressor` for text regression.
 
     .. _`XLNet: Generalized Autoregressive Pretraining for Language Understanding`:
         http://arxiv.org/abs/1906.08237

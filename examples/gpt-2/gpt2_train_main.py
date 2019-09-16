@@ -21,14 +21,13 @@ import importlib
 import torch
 import texar.torch as tx
 
-from utils import processor
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--checkpoint', type=str, default=None,
     help="Model checkpoint to load model weights from.")
 parser.add_argument(
-    "--pretrained-model-name", type=str, default="117M",
+    "--pretrained-model-name", type=str, default="gpt2-small",
     choices=tx.modules.GPT2Decoder.available_checkpoints(),
     help="Name of the pre-trained checkpoint to load.")
 parser.add_argument(
@@ -85,8 +84,9 @@ def main():
         raise ValueError(
             "max_decoding_length should not be greater than position size")
 
-    # Creates a data pre-processor for, e.g., BPE encoding
-    proc = processor.get_encoder(model.pretrained_model_dir)
+    # Create a GPT-2 tokenizer (BPE encoding)
+    tokenizer = tx.data.GPT2Tokenizer(
+        pretrained_model_name=args.pretrained_model_name)
 
     # Loads data
     datasets = {}
@@ -108,7 +108,7 @@ def main():
     train_op = tx.core.get_train_op(
         params=model.parameters(), hparams=config_train.opt)
 
-    end_token = proc.encoder['<|endoftext|>']
+    end_token = tokenizer.map_token_to_id('<|endoftext|>')
 
     def _get_helper(start_tokens):
         if args.top_p:
@@ -232,14 +232,14 @@ def main():
 
         # Parse samples and write to file
 
-        eos_token_id = proc.encoder['<|endoftext|>']
+        eos_token_id = tokenizer.map_token_to_id('<|endoftext|>')
 
         _all_input_text = []
         for i in _all_inputs:
             if i[0] == eos_token_id:
                 # '<|endoftext|>' is used as the BOS token. Delete it here
                 i = i[1:]
-            i_text = proc.decode(i)
+            i_text = tokenizer.map_id_to_text(i)
             _all_input_text.append(i_text)
         # '<|endoftext|>' is used as the PAD token. Delete them here
         _all_input_text = tx.utils.strip_eos(_all_input_text,
@@ -247,7 +247,7 @@ def main():
 
         _all_samples_text = []
         for i, s in zip(_all_inputs, _all_samples):
-            s_text = proc.decode(s)
+            s_text = tokenizer.map_id_to_text(s)
             s_text = s_text.replace('\n', ' ')
             _all_samples_text.append(s_text)
         _all_samples_text = tx.utils.strip_eos(_all_samples_text,

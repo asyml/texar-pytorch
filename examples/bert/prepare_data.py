@@ -21,7 +21,6 @@ import os
 
 import texar.torch as tx
 from utils import data_utils
-from utils import tokenization
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -123,20 +122,15 @@ def main():
     }
     processor = processors[args.task]()
 
-    config_data = importlib.import_module(args.config_data)
-
-    pretrained_model_dir = tx.modules.BERTEncoder.download_checkpoint(
-        pretrained_model_name=args.pretrained_model_name)
-
-    vocab_file = os.path.join(pretrained_model_dir, "vocab.txt")
-
     num_classes = len(processor.get_labels())
     num_train_data = len(processor.get_train_examples(data_dir))
     logging.info("num_classes: %d; num_train_data: %d",
                  num_classes, num_train_data)
-    tokenizer = tokenization.FullTokenizer(
-        vocab_file=vocab_file,
-        do_lower_case=args.lower_case)
+
+    config_data = importlib.import_module(args.config_data)
+
+    tokenizer = tx.data.BERTTokenizer(
+        pretrained_model_name=args.pretrained_model_name)
 
     # Produces pickled files
     data_utils.prepare_record_data(

@@ -5,7 +5,7 @@ Unit tests for GPT2 utils.
 import os
 import unittest
 
-from texar.torch.modules.pretrained.pretrained_gpt2 import *
+from texar.torch.modules.pretrained.gpt2 import *
 from texar.torch.utils.test import pretrained_test
 
 
@@ -16,7 +16,7 @@ class GPT2UtilsTest(unittest.TestCase):
     @pretrained_test
     def test_load_pretrained_gpt2_AND_transform_gpt2_to_texar_config(self):
         pretrained_model_dir = PretrainedGPT2Mixin.download_checkpoint(
-            pretrained_model_name="117M")
+            pretrained_model_name="gpt2-small")
 
         info = list(os.walk(pretrained_model_dir))
         _, _, files = info[0]
@@ -29,7 +29,7 @@ class GPT2UtilsTest(unittest.TestCase):
         self.assertIn('vocab.bpe', files)
 
         model_config = PretrainedGPT2Mixin._transform_config(
-            pretrained_model_name="117M",
+            pretrained_model_name="gpt2-small",
             cache_dir=pretrained_model_dir)
 
         exp_config = {

@@ -168,6 +168,20 @@ class UtilsTest(unittest.TestCase):
         inputs = [None, None, None]
         self.assertEqual(utils.sum_tensors(inputs), None)
 
+    def test_truncate_seq_pair(self):
+
+        tokens_a = [1, 2, 3]
+        tokens_b = [4, 5, 6]
+        utils.truncate_seq_pair(tokens_a, tokens_b, 4)
+        self.assertListEqual(tokens_a, [1, 2])
+        self.assertListEqual(tokens_b, [4, 5])
+
+        tokens_a = [1]
+        tokens_b = [2, 3, 4, 5]
+        utils.truncate_seq_pair(tokens_a, tokens_b, 3)
+        self.assertListEqual(tokens_a, [1])
+        self.assertListEqual(tokens_b, [2, 3])
+
     # def test_map_ids_to_strs(self):
     #    """Tests :func:`texar.torch.utils.map_ids_to_strs`.
     #    """

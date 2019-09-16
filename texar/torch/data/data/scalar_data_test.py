@@ -12,6 +12,7 @@ import numpy as np
 import unittest
 
 from texar.torch.data import DataIterator, ScalarData
+from texar.torch.utils.dtypes import torch_bool
 
 
 class ScalarDataTest(unittest.TestCase):
@@ -49,6 +50,24 @@ class ScalarDataTest(unittest.TestCase):
             }
         }
 
+        bool_data = [0, 1]
+        bool_data = [str(i) for i in bool_data]
+        bool_file = tempfile.NamedTemporaryFile()
+        bool_file.write('\n'.join(bool_data).encode("utf-8"))
+        bool_file.flush()
+        self._bool_file = bool_file
+
+        self._bool_hparams = {
+            "num_epochs": 1,
+            "batch_size": 1,
+            "shuffle": False,
+            "dataset": {
+                "files": self._bool_file.name,
+                "data_type": "bool",
+                "data_name": "feat"
+            }
+        }
+
     def _run_and_test(self, hparams, test_transform=False):
         # Construct database
         scalar_data = ScalarData(hparams)
@@ -68,18 +87,21 @@ class ScalarDataTest(unittest.TestCase):
             else:
                 self.assertEqual(i, value)
             i += 1
-            if hparams["dataset"]["data_type"] == "int":
-                self.assertTrue(isinstance(value, torch.Tensor))
+            data_type = hparams["dataset"]["data_type"]
+            if data_type == "int":
                 self.assertEqual(value.dtype, torch.int32)
-            else:
-                self.assertTrue(isinstance(value, torch.Tensor))
+            elif data_type == "float":
                 self.assertEqual(value.dtype, torch.float32)
+            elif data_type == "bool":
+                self.assertTrue(value.dtype, torch_bool)
+            self.assertIsInstance(value, torch.Tensor)
 
     def test_default_setting(self):
         """Tests the logic of ScalarData.
         """
         self._run_and_test(self._int_hparams)
         self._run_and_test(self._float_hparams)
+        self._run_and_test(self._bool_hparams)
 
     def test_shuffle(self):
         """Tests results of toggling shuffle.
@@ -116,6 +138,25 @@ class ScalarDataTest(unittest.TestCase):
         hparams["dataset"].update(
             {"other_transformations": [lambda x: x * 2]})
         self._run_and_test(hparams, test_transform=True)
+
+    def test_unsupported_scalar_types(self):
+        """Tests exception for unsupported scalar types.
+        """
+        hparams = copy.copy(self._int_hparams)
+        hparams["dataset"].update({
+            "data_type": "XYZ"
+        })
+
+        with self.assertRaises(ValueError):
+            self._run_and_test(hparams)
+
+        hparams = copy.copy(self._int_hparams)
+        hparams["dataset"].update({
+            "data_type": "str"
+        })
+
+        with self.assertRaises(ValueError):
+            self._run_and_test(hparams)
 
 
 if __name__ == "__main__":

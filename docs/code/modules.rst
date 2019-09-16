@@ -64,6 +64,11 @@ Encoders
 .. autoclass:: texar.torch.modules.BERTEncoder
     :members:
 
+:hidden:`RoBERTaEncoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.RoBERTaEncoder
+    :members:
+
 :hidden:`GPT2Encoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.GPT2Encoder
@@ -219,6 +224,11 @@ Classifiers
 .. autoclass:: texar.torch.modules.BERTClassifier
     :members:
 
+:hidden:`RoBERTaClassifier`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.RoBERTaClassifier
+    :members:
+
 :hidden:`GPT2Classifier`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.GPT2Classifier
@@ -234,23 +244,13 @@ Classifiers
 .. autoclass:: texar.torch.modules.XLNetClassifier
     :members:
 
-Networks
-========
+Regressors
+==========
 
-:hidden:`FeedForwardNetworkBase`
+:hidden:`XLNetRegressor`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.torch.modules.FeedForwardNetworkBase
+.. autoclass:: texar.torch.modules.XLNetRegressor
     :members:
-
-:hidden:`FeedForwardNetwork`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.torch.modules.FeedForwardNetwork
-    :members: default_hparams,forward,append_layer,has_layer,layer_by_name,layers_by_name,layers,layer_names
-
-:hidden:`Conv1DNetwork`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.torch.modules.Conv1DNetwork
-    :members: default_hparams,forward,append_layer,has_layer,layer_by_name,layers_by_name,layers,layer_names
 
 Pre-trained
 ===========
@@ -270,6 +270,11 @@ Pre-trained
 .. autoclass:: texar.torch.modules.PretrainedBERTMixin
     :members:
 
+:hidden:`PretrainedRoBERTaMixin`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.PretrainedRoBERTaMixin
+    :members:
+
 :hidden:`PretrainedGPT2Mixin`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.PretrainedGPT2Mixin
@@ -278,14 +283,6 @@ Pre-trained
 :hidden:`PretrainedXLNetMixin`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.PretrainedXLNetMixin
-    :members:
-
-Regressor
-==========
-
-:hidden:`XLNetRegressor`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.torch.modules.XLNetRegressor
     :members:
 
 Connectors
@@ -318,3 +315,21 @@ Connectors
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.MLPTransformConnector
     :members:
+
+Networks
+========
+
+:hidden:`FeedForwardNetworkBase`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.FeedForwardNetworkBase
+    :members:
+
+:hidden:`FeedForwardNetwork`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.FeedForwardNetwork
+    :members: default_hparams,forward,append_layer,has_layer,layer_by_name,layers_by_name,layers,layer_names
+
+:hidden:`Conv1DNetwork`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.Conv1DNetwork
+    :members: default_hparams,forward,append_layer,has_layer,layer_by_name,layers_by_name,layers,layer_names

@@ -35,6 +35,26 @@ __all__ = [
 # is still `torch.uint8`.
 torch_bool = (torch.empty(()) < 0).dtype
 
+DTYPE_MAP = {
+    np.float32: ['float32', 'float', 'tf.float32', 'torch.float',
+                 'torch.float32', float, np.float32, torch.float32],
+    np.float64: ['float64', 'tf.float64', 'torch.float64', np.float64,
+                 np.float_, torch.float64],
+    np.float16: ['float16', 'tf.float16', 'torch.float16', np.float16,
+                 torch.float16],
+    np.int32: ['int', 'int32', 'tf.int32', 'torch.int', 'torch.int32', int,
+               np.int32, torch.int32],
+    np.int64: ['int64', 'tf.int64', 'torch.int64', np.int64, np.int_,
+               torch.int64],
+    np.int16: ['int16', 'tf.int16', 'torch.int16', np.int16, torch.int16],
+    np.int8: ['int8', 'char', 'tf.int8', 'torch.int8', np.int8, torch.int8],
+    np.uint8: ['uint8', 'tf.uint8', 'torch.uint8', np.uint8, torch.uint8],
+    np.bool_: ['bool', 'tf.bool', 'torch.bool', bool, np.bool, np.bool_,
+               torch_bool],
+    np.str_: ['string', 'str', 'tf.string', str, np.str, np.str_],
+    np.bytes_: ['bytes', 'np.bytes', bytes, np.bytes_]
+}
+
 
 def get_numpy_dtype(dtype: Union[str, type]):
     r"""Returns equivalent NumPy dtype.
@@ -46,39 +66,10 @@ def get_numpy_dtype(dtype: Union[str, type]):
     Returns:
         The corresponding NumPy dtype.
     """
-    if dtype in {'float32', 'float', 'tf.float32', 'torch.float',
-                 'torch.float32', float, np.float32, torch.float32}:
-        return np.float32
-    elif dtype in {'float64', 'tf.float64', 'torch.float64',
-                   np.float64, np.float_, torch.float64}:
-        return np.float64
-    elif dtype in {'float16', 'tf.float16', 'torch.float16',
-                   np.float16, torch.float16}:
-        return np.float16
-    elif dtype in {'int', 'int32', 'tf.int32', 'torch.int', 'torch.int32',
-                   int, np.int32, torch.int32}:
-        return np.int32
-    elif dtype in {'int64', 'tf.int64', 'torch.int64',
-                   np.int64, np.int_, torch.int64}:
-        return np.int64
-    elif dtype in {'int16', 'tf.int16', 'torch.int16',
-                   np.int16, torch.int16}:
-        return np.int16
-    elif dtype in {'int8', 'char', 'tf.int8', 'torch.int8',
-                   np.int8, torch.int8}:
-        return np.int8
-    elif dtype in {'uint8', 'tf.uint8', 'torch.uint8',
-                   np.uint8, torch.uint8}:
-        return np.uint8
-    elif dtype in {'bool', 'tf.bool', 'torch.bool',
-                   bool, np.bool, np.bool_, torch_bool}:
-        return np.bool_
-    elif dtype in {'string', 'str', 'tf.string',
-                   str, np.str, np.str_}:
-        return np.str_
-    elif dtype in {'bytes', 'np.bytes',
-                   bytes, np.bytes_}:
-        return np.bytes_
+    for np_dtype, valid_values in DTYPE_MAP.items():
+        if dtype in valid_values:
+            return np_dtype
+
     raise ValueError(
         f"Unsupported conversion from type {dtype!s} to NumPy dtype")
 
@@ -94,6 +85,17 @@ def is_str(x):
     Returns `False` otherwise.
     """
     return isinstance(x, str)
+
+
+def get_supported_scalar_types():
+    r"""Returns a list of scalar types supported.
+    """
+    types = []
+    for key, value in DTYPE_MAP.items():
+        if key not in {np.str_, np.bytes_}:
+            types.extend(value)
+
+    return types
 
 
 def maybe_hparams_to_dict(hparams: Optional[Union[HParams, Dict[str, Any]]]) \

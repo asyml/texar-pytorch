@@ -15,10 +15,18 @@ More examples are continuously added...
 * [transformer](./transformer): Transformer for machine translation
 * [bert](./bert): Pre-trained BERT model for text representation
 * [gpt-2](./gpt-2): Pre-trained OpenAI GPT-2 language model
+* [xlnet](./xlnet): Pre-trained XLNet language model
+* [vae_text](./vae_text): VAE with a transformer decoder for improved language modeling 
 
-### Classifier / Sequence Prediction ###  
+### Variational Autoencoder (VAE) ###
+
+* [vae_text](./vae_text): VAE language model
+
+### Classifier / Sequence Prediction ###
 
 * [bert](./bert): Pre-trained BERT model for text representation
+* [sentence_classifier](./sentence_classifier): Basic CNN-based sentence classifier
+* [xlnet](./xlnet): Pre-trained XLNet model for text classification/regression
 
 ---
 
@@ -27,6 +35,8 @@ More examples are continuously added...
 ### Language Modeling ###
 
 * [gpt-2](./gpt-2): Pre-trained OpenAI GPT-2 language model
+* [vae_text](./vae_text): VAE language model
+* [xlnet](./xlnet): Pre-trained XLNet language model
 
 ### Machine Translation ###
 
@@ -36,4 +46,6 @@ More examples are continuously added...
 ### Classification ###
 
 * [bert](./bert): Pre-trained BERT model for text representation
+* [sentence_classifier](./sentence_classifier): Basic CNN-based sentence classifier
+* [xlnet](./xlnet): Pre-trained XLNet model for text classification/regression
 

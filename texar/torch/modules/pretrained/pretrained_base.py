@@ -49,7 +49,7 @@ def default_download_dir(name: str) -> Path:
             home_dir = Path.home()
 
         if os.access(home_dir, os.W_OK):
-            _default_texar_download_dir = home_dir / 'texar_download'
+            _default_texar_download_dir = home_dir / 'texar_data'
         else:
             raise ValueError(f"The path {home_dir} is not writable. Please "
                              f"manually specify the download directory")
@@ -181,8 +181,7 @@ class PretrainedMixin(ModuleBase, ABC):
         Args:
             pretrained_model_name (str): Name of the model checkpoint.
             cache_dir (str, optional): Path to the cache directory. If `None`,
-                uses the default directory given by
-                :meth:`~default_download_dir`.
+                uses the default directory (user's home directory).
 
         Returns:
             Path to the cache directory.
