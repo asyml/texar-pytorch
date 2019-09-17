@@ -37,7 +37,9 @@ __all__ = [
 
 
 class XLNetRegressor(RegressorBase, PretrainedXLNetMixin):
-    r"""Regressor based on XLNet modules.
+    r"""Regressor based on XLNet modules. Please see
+    :class:`~texar.torch.modules.PretrainedXLNetMixin` for a brief description
+    of XLNet.
 
     Arguments are the same as in
     :class:`~texar.torch.modules.XLNetEncoder`.

@@ -29,7 +29,9 @@ __all__ = [
 
 
 class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
-    r"""RoBERTa Transformer for encoding sequences.
+    r"""RoBERTa Transformer for encoding sequences. Please see
+    :class:`~texar.torch.modules.PretrainedRoBERTaMixin` for a brief description
+    of RoBERTa.
 
     This module basically stacks
     :class:`~texar.torch.modules.WordEmbedder`,

@@ -36,7 +36,9 @@ __all__ = [
 
 
 class XLNetClassifier(ClassifierBase, PretrainedXLNetMixin):
-    r"""Classifier based on XLNet modules.
+    r"""Classifier based on XLNet modules. Please see
+    :class:`~texar.torch.modules.PretrainedXLNetMixin` for a brief description
+    of XLNet.
 
     Arguments are the same as in
     :class:`~texar.torch.modules.XLNetEncoder`.

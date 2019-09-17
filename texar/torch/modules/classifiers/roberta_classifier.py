@@ -29,7 +29,9 @@ __all__ = [
 
 
 class RoBERTaClassifier(PretrainedRoBERTaMixin, BERTClassifier):
-    r"""Classifier based on RoBERTa modules.
+    r"""Classifier based on RoBERTa modules. Please see
+    :class:`~texar.torch.modules.PretrainedRoBERTaMixin` for a brief description
+    of RoBERTa.
 
     This is a combination of the
     :class:`~texar.torch.modules.RoBERTaEncoder` with a classification

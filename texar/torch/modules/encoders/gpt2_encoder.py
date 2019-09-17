@@ -30,7 +30,9 @@ __all__ = [
 
 
 class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
-    r"""Raw GPT2 Transformer for encoding sequences.
+    r"""Raw GPT2 Transformer for encoding sequences. Please see
+    :class:`~texar.torch.modules.PretrainedGPT2Mixin` for a brief description
+    of GPT2.
 
     This module basically stacks
     :class:`~texar.torch.modules.WordEmbedder`,

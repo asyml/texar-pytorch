@@ -48,7 +48,9 @@ State = List[torch.Tensor]
 
 
 class XLNetDecoder(XLNetEncoder, DecoderBase[Optional[State], Output]):
-    r"""Raw XLNet module for decoding sequences.
+    r"""Raw XLNet module for decoding sequences. Please see
+    :class:`~texar.torch.modules.PretrainedXLNetMixin` for a brief description
+    of XLNet.
 
     Args:
         pretrained_model_name (optional): a `str`, the name

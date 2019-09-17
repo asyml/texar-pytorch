@@ -34,7 +34,9 @@ __all__ = [
 
 
 class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
-    r"""Raw XLNet module for encoding sequences.
+    r"""Raw XLNet module for encoding sequences. Please see
+    :class:`~texar.torch.modules.PretrainedXLNetMixin` for a brief description
+    of XLNet.
 
     Args:
         pretrained_model_name (optional): a `str`, the name

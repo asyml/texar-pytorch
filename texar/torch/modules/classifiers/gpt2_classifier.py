@@ -33,7 +33,9 @@ __all__ = [
 
 
 class GPT2Classifier(ClassifierBase, PretrainedGPT2Mixin):
-    r"""Classifier based on GPT2 modules.
+    r"""Classifier based on GPT2 modules. Please see
+    :class:`~texar.torch.modules.PretrainedGPT2Mixin` for a brief description
+    of GPT2.
 
     This is a combination of the
     :class:`~texar.torch.modules.GPT2Encoder` with a classification
