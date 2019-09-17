@@ -58,7 +58,7 @@ args = parser.parse_args()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def main():
+def main() -> None:
     if args.seed:
         random.seed(args.seed)
         np.random.seed(args.seed)
@@ -148,7 +148,7 @@ def main():
     else:
         # Generate samples from scratch
         start_tokens = torch.full(
-            [batch_size], end_token, dtype=torch.int64, device=device)
+            (batch_size,), end_token, dtype=torch.int64, device=device)
 
         generated = 0
         while nsamples == 0 or generated < nsamples:

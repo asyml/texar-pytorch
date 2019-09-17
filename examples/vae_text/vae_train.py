@@ -186,6 +186,13 @@ class VAE(nn.Module):
         output_embed = output_w_embed + output_p_embed
         return output_embed
 
+    @property
+    def decoder(self) -> tx.modules.DecoderBase:
+        if self._config.decoder_type == "lstm":
+            return self.lstm_decoder
+        else:
+            return self.transformer_decoder
+
     def decode(self,
                helper: Optional[tx.modules.Helper],
                latent_z: Tensor,
@@ -216,7 +223,7 @@ class VAE(nn.Module):
         return outputs
 
 
-def main():
+def main() -> None:
     """Entrypoint.
     """
     config: Any = importlib.import_module(args.config)
@@ -346,24 +353,14 @@ def main():
 
         latent_z = dst.rsample().to(device)
 
-        if config.decoder_type == "lstm":
-            helper = model.decoder.create_helper(
-                decoding_strategy='infer_sample',
-                start_tokens=start_tokens,
-                end_token=end_token)
-            outputs = model.decode(
-                helper=helper,
-                latent_z=latent_z,
-                max_decoding_length=100)
-        else:
-            helper = model.decoder.create_helper(
-                decoding_strategy='infer_sample',
-                start_tokens=start_tokens,
-                end_token=end_token)
-            outputs, _ = model.decode(
-                helper=helper,
-                latent_z=latent_z,
-                max_decoding_length=100)
+        helper = model.decoder.create_helper(
+            decoding_strategy='infer_sample',
+            start_tokens=start_tokens,
+            end_token=end_token)
+        outputs = model.decode(
+            helper=helper,
+            latent_z=latent_z,
+            max_decoding_length=100)
 
         sample_tokens = vocab.map_ids_to_tokens_py(outputs.sample_id.cpu())
 

@@ -9,6 +9,8 @@ from .storage import _StorageBase
 from .tensor import Tensor as TensorBase
 from .utils.hooks import RemovableHandle
 
+from . import optim as optim
+
 
 def manual_seed(seed: builtins.int): ...
 

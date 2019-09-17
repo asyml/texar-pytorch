@@ -48,6 +48,7 @@ __all__ = [
 ]
 
 ActionFn = Callable[['Executor'], None]
+LogDest = Union[str, Path, IO[str]]
 
 
 def make_deterministic(seed: int = 19260817,
@@ -737,7 +738,7 @@ class Executor:
                  train_metrics: OptionalDict[Metric] = None,
                  optimizer: Optional[Instance[Optimizer]] = None,
                  lr_scheduler: Optional[Instance[LRScheduler]] = None,
-                 stop_training_on: OptionalList[Metric] = None,
+                 stop_training_on: OptionalList[Condition] = None,
                  num_iters_per_update: int = 1,
                  grad_clip: Optional[float] = None,
                  # Validation
@@ -753,7 +754,7 @@ class Executor:
                  # Logging
                  log_every: OptionalList[Condition] = None,
                  log_format: Optional[str] = None,
-                 log_destination: OptionalList[Union[str, IO[str]]] = None,
+                 log_destination: OptionalList[LogDest] = None,
                  print_model_arch: bool = True,
                  valid_log_format: Optional[str] = None,
                  test_log_format: Optional[str] = None,
@@ -1841,7 +1842,7 @@ class Executor:
                     self.model.parameters(), self.grad_clip)
             self.optimizer.step()  # type: ignore
             if self.lr_scheduler is not None:
-                self.lr_scheduler.step()  # type: ignore
+                self.lr_scheduler.step()
             self.optimizer.zero_grad()  # type: ignore
             self._fire_event(Event.ParameterUpdate, True)
         return return_dict

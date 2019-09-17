@@ -37,7 +37,7 @@ parser.add_argument(
     help='The config to use.')
 args = parser.parse_args()
 
-config = importlib.import_module(args.config)
+config: Any = importlib.import_module(args.config)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -62,7 +62,7 @@ class SentenceClassifier(nn.Module):
         return pred, loss
 
 
-def main():
+def main() -> None:
     # Data
     train_data = tx.data.MultiAlignedData(config.train_data, device=device)
     val_data = tx.data.MultiAlignedData(config.val_data, device=device)

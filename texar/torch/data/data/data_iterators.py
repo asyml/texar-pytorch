@@ -19,7 +19,7 @@ Various data iterator classes.
 
 from typing import (
     Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional,
-    Sequence, Tuple, TypeVar, Union)
+    Sequence, Tuple, TypeVar, Union, Mapping)
 
 import pkg_resources
 import torch
@@ -41,7 +41,8 @@ __all__ = [
     "TokenCountBatchingStrategy",
 ]
 
-DatasetsType = Union[Dict[str, DataBase], MaybeSeq[DataBase]]
+# `Dict` is invariant, `Mapping` is not.
+DatasetsType = Union[Mapping[str, DataBase], MaybeSeq[DataBase]]
 Example = TypeVar('Example')
 
 

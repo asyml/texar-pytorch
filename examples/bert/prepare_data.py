@@ -18,8 +18,10 @@ import argparse
 import importlib
 import logging
 import os
+from typing import Any
 
 import texar.torch as tx
+
 from utils import data_utils
 
 parser = argparse.ArgumentParser()
@@ -92,7 +94,7 @@ def modify_config_data(max_seq_length, num_train_data, num_classes):
     logging.info("Data preparation finished")
 
 
-def main():
+def main() -> None:
     """ Starts the data preparation
     """
     # Loads data
@@ -127,7 +129,7 @@ def main():
     logging.info("num_classes: %d; num_train_data: %d",
                  num_classes, num_train_data)
 
-    config_data = importlib.import_module(args.config_data)
+    config_data: Any = importlib.import_module(args.config_data)
 
     tokenizer = tx.data.BERTTokenizer(
         pretrained_model_name=args.pretrained_model_name)

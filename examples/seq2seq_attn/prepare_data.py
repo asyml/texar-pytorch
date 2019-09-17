@@ -25,7 +25,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-def prepare_data():
+def main() -> None:
     """Downloads data.
     """
     if args.data == 'iwslt14':
@@ -44,12 +44,6 @@ def prepare_data():
             extract=True)
     else:
         raise ValueError(f'Unknown dataset: {args.data}')
-
-
-def main():
-    """Entrypoint.
-    """
-    prepare_data()
 
 
 if __name__ == '__main__':

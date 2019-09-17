@@ -32,7 +32,7 @@ from argparse import ArgumentParser
 import texar.torch as tx
 
 
-def main():
+def main() -> None:
     parser = ArgumentParser(
         description="Compute BLEU score. \
         Usage: t2t-bleu --translation=my-wmt13.de --reference=wmt13_deen.de"

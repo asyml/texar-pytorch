@@ -17,12 +17,12 @@
 import argparse
 import importlib
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
-import texar.torch as tx
-from texar.torch.run import *  # pylint: disable=wildcard-import
 import torch
 import torch.nn.functional as F
+import texar.torch as tx
+from texar.torch.run import *  # pylint: disable=wildcard-import
 
 from utils import dataset, model_utils
 from utils.processor import get_processor_class
@@ -119,7 +119,7 @@ class ClassifierWrapper(tx.modules.XLNetClassifier):
         return {"loss": loss, "preds": preds}
 
 
-def main(args):
+def main(args) -> None:
     if args.seed != -1:
         make_deterministic(args.seed)
         print(f"Random seed set to {args.seed}")
@@ -129,6 +129,7 @@ def main(args):
 
     processor_class = get_processor_class(args.task)
     is_regression = processor_class.is_regression
+    model: Union[RegressorWrapper, ClassifierWrapper]
     if is_regression:
         model = RegressorWrapper(
             pretrained_model_name=args.pretrained_model_name)
@@ -153,7 +154,7 @@ def main(args):
         return cond.iteration(steps * bps)
 
     if is_regression:
-        valid_metric = metric.PearsonR(
+        valid_metric: metric.Metric = metric.PearsonR(
             pred_name="preds", label_name="label_ids")
     else:
         valid_metric = metric.Accuracy(

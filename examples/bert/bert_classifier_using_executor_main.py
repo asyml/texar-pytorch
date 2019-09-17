@@ -19,19 +19,17 @@ import argparse
 import functools
 import importlib
 import logging
-import sys
-from pathlib import Path
-import tempfile
 import os
-from typing import Dict, Optional, List
+import sys
+import tempfile
+from pathlib import Path
+from typing import Any, Dict, List, Union, Optional
 
 import torch
 from torch import nn
-import torch.nn.functional as F
-
+from torch.nn import functional as F
 import texar.torch as tx
 from texar.torch.run import *
-from texar.torch.modules import BERTClassifier
 
 from utils import model_utils
 
@@ -61,7 +59,7 @@ parser.add_argument(
     help="Whether to run test on the test set.")
 args = parser.parse_args()
 
-config_data = importlib.import_module(args.config_data)
+config_data: Any = importlib.import_module(args.config_data)
 config_downstream = importlib.import_module(args.config_downstream)
 config_downstream = {
     k: v for k, v in config_downstream.__dict__.items()
@@ -73,7 +71,7 @@ logging.root.setLevel(logging.INFO)
 
 
 class ModelWrapper(nn.Module):
-    def __init__(self, model: BERTClassifier):
+    def __init__(self, model: tx.modules.BERTClassifier):
         super().__init__()
         self.model = model
 
@@ -115,28 +113,9 @@ class ModelWrapper(nn.Module):
 
 
 class FileWriterMetric(metric.SimpleMetric[List[int], float]):
-    def __init__(self, vocab: tx.data.Vocab,
-                 file_path: Optional[str] = None):
+    def __init__(self, file_path: Optional[Union[str, Path]] = None):
         super().__init__(pred_name="preds", label_name="input_ids")
-        self.vocab = vocab
         self.file_path = file_path
-
-    @property
-    def metric_name(self) -> str:
-        return "Accuracy"
-
-    def _to_str(self, tokens: List[int]) -> str:
-        pos = next((idx for idx, x in enumerate(tokens)
-                    if x == self.vocab.pad_token_id), -1)
-        if pos != -1:
-            tokens = tokens[:pos]
-        vocab_map = self.vocab.id_to_token_map_py
-
-        words = [vocab_map[t] for t in tokens]
-
-        sentence = ' '.join(words)
-
-        return sentence
 
     def value(self) -> float:
         path = self.file_path or tempfile.mktemp()
@@ -145,7 +124,7 @@ class FileWriterMetric(metric.SimpleMetric[List[int], float]):
         return 1.0
 
 
-def main():
+def main() -> None:
     """
     Builds the model and runs.
     """
@@ -158,10 +137,6 @@ def main():
     model = tx.modules.BERTClassifier(
         pretrained_model_name=args.pretrained_model_name,
         hparams=config_downstream)
-    vocab_file = os.path.join(
-        model._encoder.pretrained_model_dir,  # pylint: disable=W0212
-        "vocab.txt")
-    vocab = tx.data.Vocab(vocab_file)
     model = ModelWrapper(model=model)
 
     num_train_steps = int(num_train_data / config_data.train_batch_size *
@@ -201,11 +176,12 @@ def main():
     test_dataset = tx.data.RecordData(hparams=config_data.test_hparam,
                                       device=device)
 
-    batching_strategy = tx.data.TokenCountBatchingStrategy(
+    batching_strategy = tx.data.TokenCountBatchingStrategy[Dict[str, Any]](
         max_tokens=config_data.max_batch_tokens)
 
     output_dir = Path(args.output_dir)
-    valid_metric = metric.Accuracy(pred_name="preds", label_name="label_ids")
+    valid_metric = metric.Accuracy[float](
+        pred_name="preds", label_name="label_ids")
 
     executor = Executor(
         # supply executor with the model
@@ -235,13 +211,13 @@ def main():
         valid_progress_log_format="{time} : Evaluating on "
                                   "{split} ({progress}%, {speed})",
         test_log_format="{time} : Epoch {epoch}, "
-                         "{split} accuracy = {Accuracy:.3f}",
+                        "{split} accuracy = {Accuracy:.3f}",
         # define metrics
         train_metrics=[
             ("loss", metric.RunningAverage(1)),  # only show current loss
             ("lr", metric.LR(optim))],
         valid_metrics=[valid_metric, ("loss", metric.Average())],
-        test_metrics=[FileWriterMetric(vocab, output_dir / "test.output")],
+        test_metrics=[FileWriterMetric(output_dir / "test.output")],
         # freq of validation
         validate_every=[cond.iteration(config_data.eval_steps)],
         # checkpoint saving location

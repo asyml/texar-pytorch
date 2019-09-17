@@ -20,7 +20,7 @@ import time
 from collections import Counter, OrderedDict
 from typing import (
     Any, Callable, Counter as CounterType, Dict, Iterator, List, NamedTuple,
-    Optional, Tuple, Type, TypeVar, Union)
+    Optional, Tuple, Type, TypeVar, Union, Mapping, Sequence)
 
 from mypy_extensions import TypedDict
 import torch
@@ -28,7 +28,7 @@ from torch import nn
 
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.run.metric import Metric
-from texar.torch.utils.types import MaybeList
+from texar.torch.utils.types import MaybeSeq
 from texar.torch.utils.utils import get_instance
 
 __all__ = [
@@ -50,14 +50,15 @@ __all__ = [
 ]
 
 T = TypeVar('T')
-OptionalList = Optional[MaybeList[T]]
-OptionalDict = Optional[Union[T, List[Union[T, Tuple[str, T]]], Dict[str, T]]]
+OptionalList = Optional[MaybeSeq[T]]
+OptionalDict = Optional[Union[T, Sequence[Union[T, Tuple[str, T]]],
+                              Mapping[str, T]]]
 Instance = Union[T, Dict[str, Any]]
 
 
 def to_list(xs: OptionalList[T]) -> List[T]:
-    if isinstance(xs, list):
-        return xs
+    if isinstance(xs, Sequence):
+        return list(xs)
     if xs is None:
         return []
     return [xs]
@@ -68,9 +69,9 @@ def _to_dict(ds: OptionalDict[T],
              default_name_fn: Callable[[int, T], str]) -> 'OrderedDict[str, T]':
     if ds is None:
         return OrderedDict()
-    if isinstance(ds, dict):
+    if isinstance(ds, Mapping):
         return OrderedDict(ds)
-    if isinstance(ds, list):
+    if isinstance(ds, Sequence):
         xs = ds
     else:
         xs = [ds]

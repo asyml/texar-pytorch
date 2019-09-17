@@ -34,7 +34,7 @@ __all__ = [
 ]
 
 
-class GPT2Tokenizer(PretrainedGPT2Mixin, TokenizerBase):
+class GPT2Tokenizer(TokenizerBase, PretrainedGPT2Mixin):
     r"""Pre-trained GPT2 Tokenizer.
 
     Args:

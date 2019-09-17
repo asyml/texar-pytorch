@@ -22,7 +22,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import torch
 from torch import nn
@@ -139,7 +139,7 @@ class DecodeMixin:
 
 class FileBLEU(metric.SimpleMetric[List[int], float], DecodeMixin):
     def __init__(self, vocab: tx.data.Vocab,
-                 file_path: Optional[str] = None,
+                 file_path: Optional[Union[str, Path]] = None,
                  encoding: Optional[str] = None):
         super().__init__(pred_name="preds", label_name="target_output")
         self.vocab = vocab
@@ -188,7 +188,7 @@ class BLEUWrapper(metric.BLEU, DecodeMixin):
         super().add(predicted, labels)
 
 
-def main():
+def main() -> None:
     """Entry point.
     """
     # Load data

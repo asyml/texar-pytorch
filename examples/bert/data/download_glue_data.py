@@ -106,7 +106,7 @@ def get_tasks(task_names):
     return tasks
 
 
-def main(arguments):
+def main(arguments) -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--data_dir', help='directory to save data to',

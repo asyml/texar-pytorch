@@ -18,7 +18,7 @@ import importlib
 import sys
 import logging
 import shutil
-from typing import Dict
+from typing import Dict, Any
 
 import torch
 from torch import nn
@@ -31,7 +31,6 @@ from texar.torch.run import *
 from texar.torch.modules import BERTClassifier
 
 from utils import model_utils
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -51,7 +50,7 @@ parser.add_argument(
     help="Path to a model checkpoint (including bert modules) to restore from.")
 args = parser.parse_args()
 
-config_data = importlib.import_module(args.config_data)
+config_data: Any = importlib.import_module(args.config_data)
 config_downstream = importlib.import_module(args.config_downstream)
 config_downstream = {
     k: v for k, v in config_downstream.__dict__.items()
@@ -147,8 +146,8 @@ class TPE:
             A conf dict which is passed to BERT classifier
         output_dir: str
             A path to store the models
-
     """
+
     def __init__(self, model_config: Dict, output_dir: str = "output/"):
         tx.utils.maybe_create_dir(output_dir)
 
@@ -170,8 +169,9 @@ class TPE:
         self.model.to(device)
 
         # batching
-        self.batching_strategy = tx.data.TokenCountBatchingStrategy(
-            max_tokens=config_data.max_batch_tokens)
+        self.batching_strategy = \
+            tx.data.TokenCountBatchingStrategy[Dict[str, Any]](
+                max_tokens=config_data.max_batch_tokens)
 
         # logging formats
         self.log_format = "{time} : Epoch {epoch:2d} @ {iteration:6d}it " \
@@ -185,8 +185,6 @@ class TPE:
 
         # exp number
         self.exp_number = 1
-
-        self.optim = tx.core.BertAdam
 
     def objective_func(self, hyperparams: Dict):
         r"""Compute "loss" for a given hyperparameter values. This function is
@@ -241,16 +239,16 @@ class TPE:
             'weight_decay': 0.0,
         }]
 
-        optim = self.optim(opt_params, betas=(0.9, 0.999), eps=1e-6,
-                           lr=static_lr)
+        optim = tx.core.BertAdam(
+            opt_params, betas=(0.9, 0.999), eps=1e-6, lr=static_lr)
 
         scheduler = torch.optim.lr_scheduler.LambdaLR(
             optim, functools.partial(model_utils.get_lr_multiplier,
                                      total_steps=num_train_steps,
                                      warmup_steps=num_warmup_steps))
 
-        valid_metric = metric.Accuracy(pred_name="preds",
-                                       label_name="label_ids")
+        valid_metric = metric.Accuracy[float](
+            pred_name="preds", label_name="label_ids")
         checkpoint_dir = f"./{self.output_dir}/exp{self.exp_number}"
         log_file = f"./{self.output_dir}/log.txt"
 
