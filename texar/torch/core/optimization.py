@@ -27,7 +27,7 @@ from torch.optim.optimizer import Optimizer
 
 from texar.torch.hyperparams import HParams
 from texar.torch.utils import utils
-from texar.torch.utils.types import MaybeDict
+from texar.torch.utils.types import MaybeList
 
 __all__ = [
     "default_optimization_hparams",
@@ -352,6 +352,12 @@ class BertAdamStateDict(TypedDict):
     next_v: torch.Tensor
 
 
+OptimParamType = Union[
+    MaybeList[Iterable[nn.Parameter]],  # model.parameters()
+    MaybeList[Dict[str, Any]],  # {"params": ..., "other_kwargs": ...}
+]
+
+
 class BertAdam(Optimizer):
     r"""Implements BERT version of Adam algorithm with weight decay fix.
 
@@ -371,7 +377,7 @@ class BertAdam(Optimizer):
     param_groups: List[BertAdamParamDict]
     state: Dict[nn.Parameter, BertAdamStateDict]
 
-    def __init__(self, params: Union[MaybeDict[Iterable[nn.Parameter]]],
+    def __init__(self, params: OptimParamType,
                  lr: float = 0.001, betas: Tuple[float, float] = (0.9, 0.999),
                  eps: float = 1e-08, weight_decay: float = 0,
                  max_grad_norm: float = 1.0):

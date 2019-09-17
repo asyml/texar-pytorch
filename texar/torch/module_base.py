@@ -75,12 +75,13 @@ class ModuleBase(nn.Module, ABC):
     @property
     def trainable_variables(self) -> List[nn.Parameter]:
         r"""The list of trainable variables (parameters) of the module.
+        Parameters of this module and all its submodules are included.
 
-        Both parameters of this module and those of all submodules are included.
+        .. note::
+            The list returned may contain duplicate parameters (e.g. output
+            layer shares parameters with embeddings). For most usages, it's not
+            necessary to ensure uniqueness.
         """
-        # TODO: The list returned may contain duplicate parameters (e.g. output
-        #   layer shares parameters with embeddings). For most usages, it's not
-        #   necessary to ensure uniqueness.
         return [x for x in self.parameters() if x.requires_grad]
 
     @property

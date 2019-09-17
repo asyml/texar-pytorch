@@ -90,10 +90,10 @@ def construct_dataset(processor: DataProcessor, output_dir: str,
             features["input_mask"] = feature.input_mask
             features["segment_ids"] = feature.segment_ids
             if not processor.is_regression:
-                features["label_ids"] = [feature.label_id]
+                features["label_ids"] = feature.label_id
             else:
-                features["label_ids"] = [float(feature.label_id)]
-            features["is_real_example"] = [int(feature.is_real_example)]
+                features["label_ids"] = float(feature.label_id)
+            features["is_real_example"] = int(feature.is_real_example)
 
             writer.write(features)
         writer.close()

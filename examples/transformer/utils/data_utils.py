@@ -33,12 +33,12 @@ class CustomBatchingStrategy(tx.data.BatchingStrategy[Example]):
         max_tokens (int): The maximum number of source or target tokens inside
             each batch.
     """
+    max_src_len: int
+    max_tgt_len: int
+    cur_batch_size: int
 
     def __init__(self, max_tokens: int):
         self.max_tokens = max_tokens
-        self.max_src_len = 0
-        self.max_tgt_len = 0
-        self.cur_batch_size = 0
 
     def reset_batch(self) -> None:
         self.max_src_len = 0

@@ -824,7 +824,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
         The collate routine is called to collate (combine) examples into
         batches. This function takes a list of processed examples, and returns
-        an instance of :class:`~texar.torch.data.data.Batch`.
+        an instance of :class:`~texar.torch.data.Batch`.
 
         Implementation should make sure that the returned callable is safe and
         efficient under multi-processing scenarios. Basically, do not rely on
@@ -842,7 +842,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
     def _collate_and_maybe_return(self, examples: List[Example]) -> \
             Union[Batch, Tuple[List[Example], Batch]]:
-        r"""Called by :class:`~texar.torch.data.data.DataIterator` to obtain the
+        r"""Called by :class:`~texar.torch.data.DataIterator` to obtain the
         collated batch (and processed examples under certain circumstances).
 
         Args:

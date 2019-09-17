@@ -24,6 +24,7 @@ from texar.torch import data
 from texar.torch import evals
 from texar.torch import losses
 from texar.torch import modules
+from texar.torch import run
 from texar.torch import utils
 from texar.torch.hyperparams import *
 from texar.torch.module_base import *

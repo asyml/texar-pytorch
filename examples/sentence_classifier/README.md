@@ -23,7 +23,7 @@ Here
 The following command trains the model with Kim's configuration:
 
 ```
-python clas_main.py --config config_kim
+python classifier_main.py --config config_kim
 ```
 
 Here:

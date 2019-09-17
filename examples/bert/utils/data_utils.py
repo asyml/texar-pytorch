@@ -361,7 +361,7 @@ def convert_examples_to_features_and_output_to_files(
                 "input_ids": feature.input_ids,
                 "input_mask": feature.input_mask,
                 "segment_ids": feature.segment_ids,
-                "label_ids": [feature.label_id]
+                "label_ids": feature.label_id
             }
             writer.write(features)
 

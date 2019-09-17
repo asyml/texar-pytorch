@@ -147,7 +147,8 @@ class Vocab:
 
         return id_to_token_map_py, token_to_id_map_py
 
-    def map_ids_to_tokens_py(self, ids: np.ndarray) -> np.ndarray:
+    def map_ids_to_tokens_py(self, ids: Union[List[int], np.ndarray]) \
+            -> np.ndarray:
         r"""Maps ids into text tokens.
 
         The input :attr:`ids` and returned tokens are both python

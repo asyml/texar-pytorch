@@ -428,7 +428,7 @@ def check_or_get_instance(ins_or_class_or_name: Union[Type[T], T, str],
     return ret
 
 
-def get_instance(class_or_name: Union[Type[T], str], kwargs: Kwargs,
+def get_instance(class_or_name: Union[Type[T], str], kwargs: Optional[Kwargs],
                  module_paths: Optional[List[str]] = None) -> T:
     r"""Creates a class instance.
 

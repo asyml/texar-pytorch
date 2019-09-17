@@ -19,6 +19,7 @@ import functools
 import importlib
 import logging
 import os
+from typing import Any
 
 import torch
 import torch.nn.functional as F
@@ -52,18 +53,18 @@ parser.add_argument(
     help="Whether to run test on the test set.")
 args = parser.parse_args()
 
-config_data = importlib.import_module(args.config_data)
+config_data: Any = importlib.import_module(args.config_data)
 config_downstream = importlib.import_module(args.config_downstream)
 config_downstream = {
     k: v for k, v in config_downstream.__dict__.items()
-    if not k.startswith('__')}
+    if not k.startswith('__') and k != "hyperparams"}
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 logging.root.setLevel(logging.INFO)
 
 
-def main():
+def main() -> None:
     """
     Builds the model and runs.
     """

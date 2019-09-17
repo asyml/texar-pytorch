@@ -66,7 +66,7 @@ Data will be processed and cached when the dataset is loaded for the first time.
 will figure it out.
 
 You can use `--pretrained-model-name` to specify the pre-trained model you want to use. Models are saved every 500
-steps under the directory `saved_models`.
+steps under the directory `saved_models/STS-B`.
 
 We use a batch size of 4 because this is the maximum batch size that fits under 12GB GPU memory. The official training
 procedure uses an effective batch size of 32 (4 GPUs each with batch size 8), we simulate the behavior by gradient
@@ -87,41 +87,71 @@ Random seed set to 19260817
 Using CUDA device 0
 >> Downloading cased_L-24_H-1024_A-16.zip 100.0%%
 Successfully downloaded cased_L-24_H-1024_A-16.zip 1338042341 bytes.
-INFO:root:Extract xlnet_pretrained_models/cased_L-24_H-1024_A-16.zip
+INFO:root:Extract texar_download/XLNet/xlnet-large-cased/cased_L-24_H-1024_A-16.zip
 INFO:root:Creating dataset in directory processed_data/STS-B.
 100%|█████████████████████████████████████| 5749/5749 [00:01<00:00, 4927.52it/s]
 100%|█████████████████████████████████████| 1500/1500 [00:00<00:00, 4899.25it/s]
 100%|█████████████████████████████████████| 1379/1379 [00:00<00:00, 5198.48it/s]
-INFO:root:Loading records with prefix "length128." from processed_data/STS-B
+INFO:root:Loading records with prefix "xlnet-large-cased.length128." from processed_data/STS-B
 Dataset constructed
-Using cached pre-trained XLNet model from: xlnet_pretrained_models/xlnet_cased_L-24_H-1024_A-16.
+Using cached pre-trained XLNet model from: texar_download/XLNet/xlnet-large-cased.
 WARNING: Certain weights from checkpoint are not loaded: ['model/transformer/mask_emb/mask_emb', 'model/lm_loss/bias']
-Weights initialized
 Model constructed
-Step: 100, LR = 4.167e-05, loss = 2.8632
-Step: 200, LR = 4.630e-05, loss = 0.8797
-Step: 300, LR = 4.167e-05, loss = 0.5159
-Step: 400, LR = 3.704e-05, loss = 0.4399
-Step: 500, LR = 3.241e-05, loss = 0.3327
-Model at 500 steps saved to saved_models/STS-B_step500_20190726_143750
-Pearsonr: 0.908082989116211, loss: 0.3953
-Step: 600, LR = 2.778e-05, loss = 0.2709
-Step: 700, LR = 2.315e-05, loss = 0.2194
-Step: 800, LR = 1.852e-05, loss = 0.1831
-Step: 900, LR = 1.389e-05, loss = 0.1649
-Step: 1000, LR = 9.259e-06, loss = 0.1246
-Model at 1000 steps saved to saved_models/STS-B_step1000_20190726_145354
-Pearsonr: 0.9170010158922637, loss: 0.3788
-Step: 1100, LR = 4.630e-06, loss = 0.1190                                       
-Step: 1200, LR = 0.000e+00, loss = 0.1024
-9599it [38:20,  4.45it/s]
-Model at 1200 steps saved to saved_models/STS-B_step1200_20190726_150033
-Evaluating on dev
-100%|██████████████████████████| 24/24 [00:22<00:00,  1.24it/s, pearsonR=0.9204]
-Pearsonr: 0.9204028268800634, loss: 0.3528
-Evaluating on test
-22it [00:20,  1.19it/s, pearsonR=nan]
-Pearsonr: nan, loss: 9.0880
+INFO 2019-08-06 10:51:30 : Training started
+INFO 2019-08-06 10:51:30 : Model architecture:
+RegressorWrapper(
+  (_encoder): XLNetEncoder(
+    (word_embed): Embedding(32000, 1024)
+    (pos_embed): RelativePositionalEncoding(
+      (sinusoid_embed): PositionalEmbedding()
+    )
+    (dropout): Dropout(p=0.1)
+    (attn_layers): ModuleList(
+      (ids 0-23): RelativeMultiheadAttention(
+        (head_projection): Linear(in_features=1024, out_features=3072, bias=False)
+        (pos_projection): Linear(in_features=1024, out_features=1024, bias=False)
+        (dropout): Dropout(p=0.1)
+        (dropout_attn): Dropout(p=0.1)
+        (output_projection): Linear(in_features=1024, out_features=1024, bias=False)
+        (layer_norm): LayerNorm(torch.Size([1024]), eps=1e-12, elementwise_affine=True)
+      )
+    )
+    (ff_layers): ModuleList(
+      (ids 0-23): PositionWiseFF(
+        (linear1): Linear(in_features=1024, out_features=4096, bias=True)
+        (activation_fn): GPTGELU()
+        (dropout): Dropout(p=0.1, inplace)
+        (linear2): Linear(in_features=4096, out_features=1024, bias=True)
+        (layer_norm): LayerNorm(torch.Size([1024]), eps=1e-12, elementwise_affine=True)
+      )
+    )
+  )
+  (projection): Linear(in_features=1024, out_features=1024, bias=True)
+  (dropout): Dropout(p=0.1)
+  (hidden_to_logits): Linear(in_features=1024, out_features=1, bias=True)
+)
+2019-08-06 10:54:50 : Epoch 1 @   800it (16.01ex/s), LR = 4.208e-05, loss = 2.863
+2019-08-06 10:58:16 : Epoch 2 @  1600it (15.40ex/s), LR = 4.625e-05, loss = 0.880
+2019-08-06 11:01:41 : Epoch 2 @  2400it (15.58ex/s), LR = 4.162e-05, loss = 0.527
+2019-08-06 11:05:05 : Epoch 3 @  3200it (15.59ex/s), LR = 3.699e-05, loss = 0.451
+2019-08-06 11:08:31 : Epoch 3 @  4000it (15.57ex/s), LR = 3.236e-05, loss = 0.324
+2019-08-06 11:08:57 : Epoch 3, valid result = {PearsonR: 0.907, loss: 0.402}
+INFO 2019-08-06 11:09:13 : Current checkpoint saved to saved_models/STS-B/1565104137.1357086.pt
+2019-08-06 11:12:37 : Epoch 4 @  4800it (15.60ex/s), LR = 2.773e-05, loss = 0.274
+2019-08-06 11:16:02 : Epoch 4 @  5600it (15.59ex/s), LR = 2.310e-05, loss = 0.238
+2019-08-06 11:19:28 : Epoch 5 @  6400it (15.59ex/s), LR = 1.847e-05, loss = 0.179
+2019-08-06 11:22:52 : Epoch 6 @  7200it (15.30ex/s), LR = 1.384e-05, loss = 0.167
+2019-08-06 11:26:18 : Epoch 6 @  8000it (15.58ex/s), LR = 9.213e-06, loss = 0.130
+2019-08-06 11:26:43 : Epoch 6, valid result = {PearsonR: 0.919, loss: 0.359}
+INFO 2019-08-06 11:26:48 : Previous checkpoint 1565104137.1357086.pt removed due to `max_to_keep`(=1) limit
+INFO 2019-08-06 11:27:04 : Current checkpoint saved to saved_models/STS-B/1565105208.3423455.pt
+2019-08-06 11:30:29 : Epoch 7 @  8800it (15.61ex/s), LR = 4.583e-06, loss = 0.126
+2019-08-06 11:33:54 : Epoch 7 @  9600it (15.57ex/s), LR = -4.630e-08, loss = 0.102
+INFO 2019-08-06 11:33:54 : Training terminated
+INFO 2019-08-06 11:33:58 : Previous checkpoint 1565105208.3423455.pt removed due to `max_to_keep`(=1) limit
+INFO 2019-08-06 11:34:16 : Current checkpoint saved to saved_models/STS-B/1565105638.0698519.pt
+2019-08-06 11:34:40 : Epoch 7, dev result = {PearsonR: 0.920, loss: 0.352}
+2019-08-06 11:35:04 : Epoch 7, test result = {PearsonR: nan, loss: 9.151}
 ```
 
 #### Evaluate saved models

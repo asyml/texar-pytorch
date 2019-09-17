@@ -208,11 +208,26 @@ def read_words(filename: str, newline_token: Optional[str] = None) -> List[str]:
                 return f.read().replace("\n", newline_token).split()
 
 
+# TODO: Remove these once pylint supports function stubs.
+# pylint: disable=unused-argument,function-redefined,missing-docstring
+
+# A saner overloaded version with default arguments...
+@overload
+def make_vocab(filenames: MaybeList[str], max_vocab_size: int = -1,
+               newline_token: Optional[str] = None) -> List[str]: ...
+
+
+# ... and an insane version.
+@overload
 def make_vocab(filenames: MaybeList[str], max_vocab_size: int = -1,
                newline_token: Optional[str] = None,
                return_type: str = "list", return_count: bool = False) \
         -> Union[Union[List[str], Tuple[List[str], List[int]]],
-                 MaybeTuple[Dict[str, int]]]:
+                 MaybeTuple[Dict[str, int]]]: ...
+
+
+def make_vocab(filenames, max_vocab_size=-1, newline_token=None,
+               return_type="list", return_count=False):
     r"""Builds vocab of the files.
 
     Args:
@@ -270,8 +285,10 @@ def make_vocab(filenames: MaybeList[str], max_vocab_size: int = -1,
             word_to_count = dict(zip(words, counts))
             return word_to_id, word_to_count
     else:
-        raise ValueError("Unknown return_type: {}".format(return_type))
+        raise ValueError(f"Unknown return_type: {return_type}")
 
+
+# pylint: enable=unused-argument,function-redefined,missing-docstring
 
 def count_file_lines(filenames: MaybeList[str]) -> int:
     r"""Counts the number of lines in the file(s).

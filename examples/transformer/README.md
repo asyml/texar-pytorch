@@ -44,12 +44,14 @@ sh scripts/wmt14_en_de.sh
 sh preprocess_data.sh bpe en de
 ```
 
+Note that this is a large dataset and preprocessing requires large amounts of memory.
+
 By default, the downloaded dataset is in `./data/en_de`. Note that for this dataset, `bpe` encoding (Byte pair encoding)
 is used instead. The encoded data is by default in `./temp/run_en_de_bpe`. 
 
 ### Train and evaluate the model ###
 
-Train the model with the cmd:
+Train the model with the command:
 
 ```bash
 python transformer_main.py \
@@ -61,6 +63,7 @@ python transformer_main.py \
   By default it is set to `./outputs`. 
 * Specifying `--output-dir` will also restore the latest model checkpoint under the directory, if any checkpoint exists.
 * Specify `--config-data=config_wmt14` to train on the WMT'14 data.
+* Additionally, you can also specify `--load-checkpoint` to load a previously trained checkpoint from `output_dir`.
 
 ### Test a trained model ###
 
@@ -73,39 +76,18 @@ python transformer_main.py \
     --output-dir=./outputs
 ```
 The latest checkpoint in `./outputs` is used. Generated samples are in the file `./outputs/test.output.hyp`, and
-reference sentences are in the file `./outputs/test.output.ref` 
+reference sentences are in the file `./outputs/test.output.ref`. The script shows the cased BLEU score as provided by
+the [`tx.evals.file_bleu`](https://texar-pytorch.readthedocs.io/en/latest/code/evals.html#file-bleu) function. 
 
-Next, decode the samples with respective decoder, and evaluate with `bleu_main`:
-
-```bash
-../../bin/utils/spm_decode \
-    --infile ./outputs/test.output.hyp \
-    --outfile temp/test.output.spm \
-    --model temp/run_en_vi_spm/data/spm-codes.32000.model \
-    --input_format=piece 
-
-python bleu_main.py --reference=data/en_vi/test.vi --translation=temp/test.output.spm
-```
-
-For **WMT'14**, the corresponding commands are:
+Alternatively, you can also compute the BLEU score with the raw sentences using the `bleu_main` script:
 
 ```bash
-# Loads model and generates samples
-python transformer_main.py \
-    --run-mode=test \
-    --config-data=config_wmt14 \
-    --output-dir=./outputs
-
-# BPE decoding
-cat outputs/test.output.hyp | sed -E 's/(@@ )|(@@ ?$)//g' > temp/test.output.bpe
-
-# Evaluates BLEU
-python bleu_main.py --reference=data/en_de/test.de --translation=temp/test.output.bpe
+python bleu_main.py --reference=data/en_vi/test.vi --translation=temp/test.output.hyp
 ```
 
 ### Results
 
-* On **IWSLT'15**, the implementation achieves around `BLEU_cased=29.00` and `BLEU_uncased=29.82` (reported by
+* On **IWSLT'15**, the implementation achieves around `BLEU_cased=29.05` and `BLEU_uncased=29.94` (reported by
   [bleu_main.py](./bleu_main.py)), which are comparable to the base_single_gpu results by the
   [official implementation](https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/models/transformer.py)
   (`28.12` and `28.97`, respectively, as reported [here](https://github.com/tensorflow/tensor2tensor/pull/611)).
@@ -114,18 +96,25 @@ python bleu_main.py --reference=data/en_de/test.de --translation=temp/test.outpu
   (setting: base_single_gpu, batch_size=3072). It takes more than 18 hours to finish training 250k steps. You can
   modify `max_train_epoch` in `config_wmt14.py` to adjust the training time.
 
-
 ### Example training log
 
 ```
-2019-08-14 16:37:48,346:INFO:Begin running with train_and_evaluate mode
-2019-08-14 16:39:10,780:INFO:step: 500, loss: 7.4967
-2019-08-14 16:40:34,075:INFO:step: 1000, loss: 6.7844
-2019-08-14 16:41:57,523:INFO:step: 1500, loss: 6.3648
-2019-08-14 16:43:21,424:INFO:step: 2000, loss: 5.8466
-2019-08-14 16:48:31,190:INFO:epoch: 0, eval_bleu 2.0754
-2019-08-14 16:48:31,191:INFO:epoch: 0, best bleu: 2.0754
-2019-08-14 16:48:31,191:INFO:Saving model to ./outputs/best-model.ckpt
+INFO 2019-08-15 22:04:15 : Begin running with train_and_evaluate mode
+WARNING 2019-08-15 22:04:15 : Specified checkpoint directory 'outputs' exists, previous checkpoints might be erased
+INFO 2019-08-15 22:04:15 : Training started
+INFO 2019-08-15 22:04:15 : Model architecture:
+ModelWrapper(
+  (model): Transformer(
+    ...
+  )
+)
+2019-08-15 22:05:51 : Epoch  1 @    500it (13.0%, 172.63ex/s), lr = 2.184e-05, loss = 7.497
+2019-08-15 22:07:27 : Epoch  1 @   1000it (26.0%, 172.91ex/s), lr = 4.367e-05, loss = 6.784
+2019-08-15 22:09:03 : Epoch  1 @   1500it (39.0%, 172.52ex/s), lr = 6.551e-05, loss = 6.365
+2019-08-15 22:10:40 : Epoch  1 @   2000it (51.9%, 172.03ex/s), lr = 8.735e-05, loss = 5.847
+2019-08-15 22:15:50 : Epoch 1, valid BLEU = 2.075
+INFO 2019-08-15 22:15:54 : Current checkpoint saved to outputs/1565921750.7879117.pt
+
 ```
 Using an NVIDIA GTX 1080Ti, the model usually converges within 5 hours (~15 epochs) on **IWSLT'15**.
 
@@ -164,7 +153,7 @@ where
     large. So you may want to try smaller `vocab_size` if it happens. 
 * `max_seq_length` is optional. The default is 70.
 
-In the `iwslt15_en_vi` example, the cmd is `sh preprocess_data.sh spm en vi`.
+In the `iwslt15_en_vi` example, the command is `sh preprocess_data.sh spm en vi`.
 
 By default, the preprocessed data are dumped under `temp/run_${src}_${tgt}_${encoder}`. In the `iwslt15_en_vi` example,
 the directory is `temp/run_en_vi_spm`.
@@ -186,7 +175,7 @@ data configuration.
 
 ### 4. Train the model
 
-Train the model with the following cmd:
+Train the model with the following command:
 
 ```bash
 python transformer_main.py \
@@ -200,7 +189,7 @@ Outputs such as model checkpoints are by default under `outputs/`.
 
 ### 5. Test the model
 
-Test with the following cmd:
+Test with the following command:
 
 ```bash
 python transformer_main.py \
@@ -210,20 +199,9 @@ python transformer_main.py \
 ```
 
 Generated samples on the test set are in `outputs/test.output.hyp`, and reference sentences are in
-`outputs/test.output.ref`. If you've used `bpe` or `spm` encoding in the data preprocessing step, the text in these
-files are in the respective encoding too. To decode, use the respective command:
-
-```bash
-# BPE decoding
-cat outputs/test.output.hyp | sed -E 's/(@@ )|(@@ ?$)//g' > temp/test.output.hyp.final
-
-# SPM decoding (take `iwslt15_en_vi` for example)
-../../bin/utils/spm_decode \
-    --infile ./outputs/test.output.hyp \
-    --outfile temp/test.output.hyp.final \
-    --model temp/run_en_vi_spm/data/spm-codes.32000.model \
-    --input_format=piece 
-```
+`outputs/test.output.ref`. If you've used `bpe` or `spm` encoding in the data preprocessing step, make sure to set
+`encoding` in the data configuration to the appropriate encoding type. The generated output will be decoded using the
+specified encoding.
 
 Finally, to evaluate the BLEU score against the ground truth on the test set:
 

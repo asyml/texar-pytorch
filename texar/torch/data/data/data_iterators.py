@@ -19,7 +19,7 @@ Various data iterator classes.
 
 from typing import (
     Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional,
-    Sequence, Tuple, TypeVar, Union)
+    Sequence, Tuple, TypeVar, Union, Mapping)
 
 import pkg_resources
 import torch
@@ -41,7 +41,8 @@ __all__ = [
     "TokenCountBatchingStrategy",
 ]
 
-DatasetsType = Union[Dict[str, DataBase], MaybeSeq[DataBase]]
+# `Dict` is invariant, `Mapping` is not.
+DatasetsType = Union[Mapping[str, DataBase], MaybeSeq[DataBase]]
 Example = TypeVar('Example')
 
 
@@ -276,6 +277,8 @@ class TokenCountBatchingStrategy(BatchingStrategy[Example]):
             default, :python:`len` is used, which is the desired behavior if the
             dataset in question is a :class:`~texar.torch.data.MonoTextData`.
     """
+    sum_tokens: int
+    cur_batch_size: int
 
     def __init__(self, max_tokens: int, max_batch_size: Optional[int] = None,
                  length_fn: Optional[Callable[[Example], int]] = None):
@@ -283,8 +286,6 @@ class TokenCountBatchingStrategy(BatchingStrategy[Example]):
         self.max_tokens = max_tokens
         self.length_fn: Callable[[Example], int]
         self.length_fn = length_fn or len  # type: ignore
-        self.sum_tokens = 0
-        self.cur_batch_size = 0
 
     def reset_batch(self) -> None:
         self.sum_tokens = 0

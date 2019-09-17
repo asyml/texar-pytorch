@@ -147,9 +147,10 @@ class TransformerEncoder(EncoderBase):
         self.self_attns = nn.ModuleList()
         if not self._hparams.use_bert_config:
             self.self_attn_layer_norm = nn.ModuleList()
+        else:
+            self.output_layer_norm = nn.ModuleList()
         self.poswise_networks = nn.ModuleList()
         self.poswise_layer_norm = nn.ModuleList()
-        self.output_layer_norm = nn.ModuleList()
 
         if self._hparams.use_bert_config:
             # In TensorFlow, eps for LayerNorm is 1e-12 by default.

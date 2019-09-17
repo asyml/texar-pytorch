@@ -276,7 +276,7 @@ init-import=no
 
 # A regular expression matching the name of dummy variables (i.e. expectedly
 # not used).
-dummy-variables-rgx=(_+[a-zA-Z0-9]*?$)|dummy
+dummy-variables-rgx=(_+[a-zA-Z0-9]*?$)|dummy|unused
 
 # List of additional names supposed to be defined in builtins. Remember that
 # you should avoid to define new builtins when possible.
@@ -412,6 +412,8 @@ known-third-party=enchant
 # 3 compatible code, which means that the block might have code that exists
 # only in one or another interpreter, leading to false positives when analysed.
 analyse-fallback-blocks=no
+
+allow-wildcard-with-all=yes
 
 
 [EXCEPTIONS]

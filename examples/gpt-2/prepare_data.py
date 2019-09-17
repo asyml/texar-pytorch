@@ -16,6 +16,7 @@
 
 import argparse
 import importlib
+from typing import Any
 
 import texar.torch as tx
 
@@ -45,7 +46,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-def main():
+def main() -> None:
     """Preprocess raw data and produces pickled files."""
     data_dir = args.data_dir
     if args.output_dir is None:
@@ -59,7 +60,7 @@ def main():
     tokenizer = tx.data.GPT2Tokenizer(
         pretrained_model_name=args.pretrained_model_name)
 
-    config_train = importlib.import_module(args.config_train)
+    config_train: Any = importlib.import_module(args.config_train)
 
     # Produces pickle files
     data_utils.prepare_pickle_data(
