@@ -33,7 +33,9 @@ __all__ = [
 
 
 class BERTEncoder(EncoderBase, PretrainedBERTMixin):
-    r"""Raw BERT Transformer for encoding sequences.
+    r"""Raw BERT Transformer for encoding sequences. Please see
+    :class:`~texar.torch.modules.PretrainedBERTMixin` for a brief description
+    of BERT.
 
     This module basically stacks
     :class:`~texar.torch.modules.WordEmbedder`,

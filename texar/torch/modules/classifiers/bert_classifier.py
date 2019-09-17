@@ -33,7 +33,9 @@ __all__ = [
 
 
 class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
-    r"""Classifier based on BERT modules.
+    r"""Classifier based on BERT modules. Please see
+    :class:`~texar.torch.modules.PretrainedBERTMixin` for a brief description
+    of BERT.
 
     This is a combination of the
     :class:`~texar.torch.modules.BERTEncoder` with a classification

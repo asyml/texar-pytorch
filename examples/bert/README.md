@@ -201,4 +201,4 @@ In this simple example, the hyperparameters to be tuned are provided as a `dict`
 (Tree-structured Parzen Estimator) algorithm for tuning the hyperparams (provided in `hyperopt`
 library). The example runs for 3 trials to find the best hyperparam settings. The final model is
 saved in `output_dir` provided by the user. More  information about the libary can be 
-found at [Hyperopt](https://github.com/hyperopt/hyperopt)
+found at [Hyperopt](https://github.com/hyperopt/hyperopt).
