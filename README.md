@@ -95,7 +95,7 @@ After PyTorch is installed, please run the following commands to install Texar-P
 ```
 git clone https://github.com/asyml/texar-pytorch.git 
 cd texar-pytorch
-pip install -e .
+pip install .
 ```
 
 To use tensorboard support with `Executor`, please install `tensorboardX` with the following command
