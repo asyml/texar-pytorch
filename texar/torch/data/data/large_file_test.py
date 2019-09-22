@@ -57,8 +57,8 @@ class ParallelData(DataBase[RawExample, Example]):
         for b_idx, (src, tgt) in enumerate(examples):
             src_indices[b_idx, :len(src)] = src
             tgt_indices[b_idx, :len(tgt)] = tgt
-        src_indices = torch.from_numpy(src_indices).to(device=self.device)
-        tgt_indices = torch.from_numpy(tgt_indices).to(device=self.device)
+        src_indices = torch.from_numpy(src_indices)
+        tgt_indices = torch.from_numpy(tgt_indices)
         return Batch(batch_size, src=src_indices, tgt=tgt_indices)
 
 

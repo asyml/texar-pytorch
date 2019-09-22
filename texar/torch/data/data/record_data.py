@@ -589,9 +589,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
                     values = np.stack(values, axis=0)
                 if (not isinstance(values, torch.Tensor) and
                         descriptor.dtype not in [np.str_, np.bytes_]):
-                    values = torch.from_numpy(values).to(device=self.device)
-                elif isinstance(values, torch.Tensor):
-                    values = values.to(device=self.device)
+                    values = torch.from_numpy(values)
             else:
                 # VarLenFeature, just put everything in a Python list.
                 pass

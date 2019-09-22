@@ -100,7 +100,7 @@ class Seq2SeqData(tx.data.DataBase[Example, Example]):
             target_output[:, :-1], ((0, 0), (1, 0)),
             mode="constant", constant_values=self._hparams.bos_id)
         source, target_input, target_output = [
-            torch.from_numpy(x).to(device=self.device)
+            torch.from_numpy(x)
             for x in [source, target_input, target_output]
         ]
         return tx.data.Batch(

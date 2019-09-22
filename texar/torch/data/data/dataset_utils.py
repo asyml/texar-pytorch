@@ -102,6 +102,9 @@ class Batch:
     def __len__(self) -> int:
         return self.batch_size
 
+    def __repr__(self):
+        return repr(self._batch)
+
     def keys(self) -> KeysView[str]:
         return self._batch.keys()
 

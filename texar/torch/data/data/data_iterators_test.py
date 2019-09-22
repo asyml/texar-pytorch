@@ -4,6 +4,7 @@ Unit tests for data iterator related operations.
 import copy
 import tempfile
 import unittest
+from unittest.mock import patch
 from typing import List, Tuple, no_type_check
 
 import numpy as np
@@ -268,6 +269,25 @@ class DataIteratorTest(unittest.TestCase):
         for batch in iterator:
             self.assertLessEqual(len(batch), batch_size)
             self.assertLessEqual(sum(len(s) for s in batch.text), max_tokens)
+
+    @patch("torch.cuda.is_available", lambda: True)
+    def test_auto_storage_moving(self):
+        cuda_tensors = set()
+
+        def move_tensor(tensor, device, non_blocking=False):
+            if isinstance(device, torch.device) and device.type == "cuda":
+                self.assertTrue(non_blocking)
+                cuda_tensors.add(id(tensor))
+            return tensor
+
+        device = torch.device("cuda:0")
+
+        with patch.object(torch.Tensor, "to", move_tensor):
+            train = MonoTextData(self._train_hparams, device=device)
+            iterator = DataIterator(train)
+            for batch in iterator:
+                self.assertTrue(id(batch.text_ids) in cuda_tensors)
+                self.assertTrue(id(batch.length) in cuda_tensors)
 
 
 RawExample = Tuple[List[int], str]

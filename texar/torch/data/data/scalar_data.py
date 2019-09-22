@@ -192,7 +192,7 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
     def collate(self, examples: List[Union[bool, int, float]]) -> Batch:
         # convert the list of strings into appropriate tensors here
         examples_np = np.array(examples, dtype=self._data_type)
-        collated_examples = torch.from_numpy(examples_np).to(device=self.device)
+        collated_examples = torch.from_numpy(examples_np)
         return Batch(len(examples),
                      batch={self.data_name: collated_examples})
 

@@ -30,7 +30,7 @@ from torch.utils.data import sampler as torch_sampler
 from texar.torch.data.data.data_base import DataBase
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.utils.types import MaybeSeq
-from texar.torch.utils.utils import ceildiv
+from texar.torch.utils.utils import ceildiv, map_structure
 
 _torch_version = pkg_resources.parse_version(_torch_version)
 
@@ -359,6 +359,21 @@ else:
     from torch.utils.data.dataloader import (  # type: ignore
         pin_memory_batch as _pin_memory)
 
+
+def move_memory(data, device):
+    def _move_fn(x):
+        if isinstance(x, torch.Tensor):
+            return x.to(device=device, non_blocking=True)
+        return x
+
+    if isinstance(data, Batch):
+        return Batch(len(data), batch={
+            key: map_structure(_move_fn, value)
+            for key, value in data.items()
+        })
+    return map_structure(_move_fn, data)
+
+
 if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
     # PyTorch 1.2 split the `_DataLoaderIter` class into two:
     # `_SingleProcessDataLoaderIter` for when `num_workers == 0`, i.e. when
@@ -391,13 +406,14 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
         final batch, which complicates the already complex logic.
         """
 
-        def __new__(cls, loader: DataLoader):
+        def __new__(cls, loader: 'SingleDatasetIterator'):
             if loader.num_workers > 0:
                 return super().__new__(_MPDataLoaderIter)
             else:
                 return super().__new__(_SPDataLoaderIter)
 
-        def __init__(self, loader: DataLoader):
+        def __init__(self, loader: 'SingleDatasetIterator'):
+            self.device = loader.device
             self._batch_size = loader.batch_size
             super().__init__(loader)
 
@@ -409,6 +425,8 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
                     batch.batch_size < self._batch_size and
                     not self.dataset.hparams.allow_smaller_final_batch):
                 raise StopIteration
+            if self.device is not None:
+                batch = move_memory(batch, self.device)
             return batch
 
     class _SPDataLoaderIter(_DataLoaderIter, _SingleProcessDataLoaderIter):
@@ -426,19 +444,20 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
         :class:`~texar.torch.data.data.Batch` instance to the user.
         """
 
-        def __new__(cls, loader: DataLoader):
+        def __new__(cls, loader: 'SingleDatasetIterator'):
             if loader.num_workers > 0:
                 return super().__new__(_MPCacheDataLoaderIter)
             else:
                 return super().__new__(_SPCacheDataLoaderIter)
 
-    class _SPCacheDataLoaderIter(_CacheDataLoaderIter,
-                                 _SingleProcessDataLoaderIter):
-        def __init__(self, loader: DataLoader):
+        def __init__(self, loader: 'SingleDatasetIterator'):
             self._indices_dict: Dict[int, List[int]] = {}
             self._batch_size = loader.batch_size
+            self.device = loader.device
             super().__init__(loader)
 
+    class _SPCacheDataLoaderIter(_CacheDataLoaderIter,
+                                 _SingleProcessDataLoaderIter):
         def __next__(self):
             index = self._next_index()  # may raise StopIteration
             data = self.dataset_fetcher.fetch(index)  # may raise StopIteration
@@ -447,7 +466,7 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
             examples, data = data
             self.dataset._add_cached_examples(index, examples)
             if self.pin_memory:
-                data = _pin_memory(data)
+                data = move_memory(_pin_memory(data), self.device)
             return data
 
     class _MPCacheDataLoaderIter(_CacheDataLoaderIter,
@@ -455,11 +474,6 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
         dataset: DataBase
 
         worker_queue_idx: int  # so that Pylint gives no errors
-
-        def __init__(self, loader: DataLoader):
-            self._indices_dict: Dict[int, List[int]] = {}
-            self._batch_size = loader.batch_size
-            super().__init__(loader)
 
         def _try_put_index(self):
             assert self.tasks_outstanding < 2 * self.num_workers
@@ -497,6 +511,7 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
                     batch.batch_size < self.dataset.batch_size and
                     not self.dataset.hparams.allow_smaller_final_batch):
                 raise StopIteration
+            batch = move_memory(batch, self.device)
             return batch
 else:
     # PyTorch 1.1 and lower defines only the class `_DataLoaderIter` for
@@ -515,8 +530,9 @@ else:
         final batch, which complicates the already complex logic.
         """
 
-        def __init__(self, loader: DataLoader):
+        def __init__(self, loader: 'SingleDatasetIterator'):
             self._batch_size = loader.batch_size
+            self.device = loader.device
             super().__init__(loader)
 
         def __next__(self):
@@ -527,6 +543,7 @@ else:
                     batch.batch_size < self._batch_size and
                     not self.dataset.hparams.allow_smaller_final_batch):
                 raise StopIteration
+            batch = move_memory(batch, self.device)
             return batch
 
     class _CacheDataLoaderIter(torch_DataLoaderIter):  # type: ignore
@@ -541,9 +558,10 @@ else:
 
         worker_queue_idx: int  # so that Pylint gives no errors
 
-        def __init__(self, loader: DataLoader):
+        def __init__(self, loader: 'SingleDatasetIterator'):
             self._indices_dict: Dict[int, List[int]] = {}
             self._batch_size = loader.batch_size
+            self.device = loader.device
             super().__init__(loader)
 
         def _put_indices(self):
@@ -585,6 +603,7 @@ else:
                     batch.batch_size < self.dataset.batch_size and
                     not self.dataset.hparams.allow_smaller_final_batch):
                 raise StopIteration
+            batch = move_memory(batch, self.device)
             return batch
 
 
@@ -599,11 +618,19 @@ class SingleDatasetIterator(DataLoader):
             configurations are read from the dataset `HParams`.
         batching_strategy: The batching strategy to use when performing dynamic
             batching. If `None`, fixed-sized batching is used.
+        pin_memory: If `True`, tensors will be moved onto page-locked memory
+            before returning. This argument is passed into the constructor for
+            :torch_docs:`DataLoader <data.html#torch.utils.data.DataLoader>`.
+
+            Defaults to `None`, which will set the value to `True` if the
+            :class:`~texar.torch.data.DataBase` instance is set to use a CUDA
+            device. Set to `True` or `False` to override this behavior.
     """
     dataset: DataBase
 
     def __init__(self, dataset: DataBase,
-                 batching_strategy: Optional[BatchingStrategy] = None):
+                 batching_strategy: Optional[BatchingStrategy] = None,
+                 pin_memory: Optional[bool] = None):
         shuffle = dataset.hparams.shuffle
         shuffle_buffer_size = dataset.hparams.shuffle_buffer_size
         sampler: SamplerBase
@@ -617,16 +644,25 @@ class SingleDatasetIterator(DataLoader):
         num_workers = dataset.hparams.num_parallel_calls
         collate_fn = dataset._collate_and_maybe_return
 
+        is_cuda = dataset.device is not None and dataset.device.type == "cuda"
+        if pin_memory is None:
+            pin_memory = is_cuda
+        self.device = None
+        if pin_memory and is_cuda:
+            self.device = dataset.device
+
         if batching_strategy is not None:
             batch_sampler = DynamicBatchSampler(
                 dataset, sampler, batching_strategy)
             super().__init__(
                 dataset, batch_sampler=batch_sampler,
-                collate_fn=collate_fn, num_workers=num_workers)
+                collate_fn=collate_fn, num_workers=num_workers,
+                pin_memory=pin_memory)
         else:
             super().__init__(
                 dataset, batch_size=dataset.batch_size, drop_last=False,
-                sampler=sampler, collate_fn=collate_fn, num_workers=num_workers)
+                sampler=sampler, collate_fn=collate_fn, num_workers=num_workers,
+                pin_memory=pin_memory)
 
     def __iter__(self):
         if self.dataset._should_return_processed_examples:
@@ -661,6 +697,13 @@ class DataIterator:
 
         batching_strategy: The batching strategy to use when performing dynamic
             batching. If `None`, fixed-sized batching is used.
+        pin_memory: If `True`, tensors will be moved onto page-locked memory
+            before returning. This argument is passed into the constructor for
+            :torch_docs:`DataLoader <data.html#torch.utils.data.DataLoader>`.
+
+            Defaults to `None`, which will set the value to `True` if the
+            :class:`~texar.torch.data.DataBase` instance is set to use a CUDA
+            device. Set to `True` or `False` to override this behavior.
 
     Example:
 
@@ -725,7 +768,8 @@ class DataIterator:
     # TODO: Think about whether we should support save/load.
 
     def __init__(self, datasets: DatasetsType,
-                 batching_strategy: Optional[BatchingStrategy] = None):
+                 batching_strategy: Optional[BatchingStrategy] = None,
+                 pin_memory: Optional[bool] = None):
         self._default_dataset_name = 'data'
         if isinstance(datasets, DataBase):
             datasets = {self._default_dataset_name: datasets}
@@ -738,8 +782,9 @@ class DataIterator:
             if len(datasets) < num_datasets:
                 raise ValueError("Names of datasets must be unique.")
 
-        _datasets = {name: SingleDatasetIterator(dataset, batching_strategy)
-                     for name, dataset in datasets.items()}
+        _datasets = {
+            name: SingleDatasetIterator(dataset, batching_strategy, pin_memory)
+            for name, dataset in datasets.items()}
         self._datasets = _datasets
 
         if len(self._datasets) <= 0:
@@ -821,6 +866,15 @@ class TrainTestDataIterator(DataIterator):
         train (optional): Training data.
         val (optional): Validation data.
         test (optional): Test data.
+        batching_strategy: The batching strategy to use when performing dynamic
+            batching. If `None`, fixed-sized batching is used.
+        pin_memory: If `True`, tensors will be moved onto page-locked memory
+            before returning. This argument is passed into the constructor for
+            :torch_docs:`DataLoader <data.html#torch.utils.data.DataLoader>`.
+
+            Defaults to `None`, which will set the value to `True` if the
+            :class:`~texar.torch.data.DataBase` instance is set to use a CUDA
+            device. Set to `True` or `False` to override this behavior.
 
     Example:
 
@@ -843,7 +897,9 @@ class TrainTestDataIterator(DataIterator):
 
     def __init__(self, train: Optional[DataBase] = None,
                  val: Optional[DataBase] = None,
-                 test: Optional[DataBase] = None):
+                 test: Optional[DataBase] = None,
+                 batching_strategy: Optional[BatchingStrategy] = None,
+                 pin_memory: Optional[bool] = None):
         dataset_dict = {}
         self._train_name = 'train'
         self._val_name = 'val'
@@ -858,7 +914,7 @@ class TrainTestDataIterator(DataIterator):
             raise ValueError("At least one of `train`, `val`, and `test` "
                              "must be provided.")
 
-        super().__init__(dataset_dict)
+        super().__init__(dataset_dict, batching_strategy, pin_memory)
 
     def switch_to_train_data(self) -> None:
         r"""Switch to training data."""

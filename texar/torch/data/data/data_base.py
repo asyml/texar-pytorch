@@ -44,11 +44,14 @@ Example = TypeVar('Example')  # type of a data example
 
 
 class DataSource(Generic[RawExample], ABC):
-    r"""Base class for all datasets. Different to PyTorch
-    :class:`~torch.utils.data.Dataset`, subclasses of this class are not
-    required to implement :meth:`__getitem__` (default implementation raises
-    `TypeError`), which is beneficial for certain sources that only supports
-    iteration (reading from text files, reading Python iterators, etc.)
+    r"""Base class for all data sources. A data source represents the *source*
+    of the data, from which raw data examples are read and returned.
+
+    Different to PyTorch :class:`~torch.utils.data.Dataset`, subclasses of this
+    class are not required to implement :meth:`__getitem__` (default
+    implementation raises `TypeError`), which is beneficial for certain sources
+    that only supports iteration (reading from text files, reading Python
+    iterators, etc.)
     """
 
     def __getitem__(self, index: int) -> RawExample:
@@ -290,7 +293,69 @@ class _CachedDataSource(DataSource[RawExample]):
 
 
 class DataBase(Dataset, Generic[RawExample, Example], ABC):
-    r"""Base class inherited by all data classes.
+    r"""Base class inherited by all data classes. Users can also directly
+    inherit from this class to implement customized data processing routines.
+    Two methods should be implemented in the subclass:
+
+    - :meth:`process`: Process a single data example read from the data source
+      (*raw example*). Default implementation returns the raw example as is.
+    - :meth:`collate`: Combine a list of processed examples into a single batch,
+      and return an object of type :class:`~texar.torch.data.Batch`.
+
+    Args:
+        source: An instance of type :class:`~texar.torch.data.DataSource`,
+        hparams: A `dict` or instance of :class:`~texar.torch.HParams`
+            containing hyperparameters. See :meth:`default_hparams` for the
+            defaults.
+        device: The device of the produced batches. For GPU training, set to
+            current CUDA device.
+
+            .. note::
+                When :attr:`device` is set to a CUDA device, tensors in the
+                batch will be automatically moved to the specified device. This
+                may result in performance issues if your data examples contain
+                complex structures (e.g., nested lists with many elements). In
+                this case, it is recommended to set :attr:`device` to `None` and
+                manually move your data.
+
+                For more details, see :meth:`collate`.
+
+    Example:
+
+        Here, we define a custom data class named ``MyDataset``, which is
+        equivalent to the most basic usage of
+        :class:`~texar.torch.data.MonoTextData`.
+
+        .. code-block:: python
+
+            class MyDataset(tx.data.DataBase):
+                def __init__(self, data_path, vocab, hparams=None, device=None):
+                    source = tx.data.TextLineDataSource(data_path)
+                    self.vocab = vocab
+                    super().__init__(source, hparams, device)
+
+                def process(self, raw_example):
+                    return self.vocab.map_tokens_to_ids_py(raw_example)
+
+                def collate(self, examples):
+                    ids, lengths = tx.data.padded_batch(examples)
+                    return tx.data.Batch(
+                        len(examples),
+                        text=examples
+                        text_ids=torch.from_numpy(ids),
+                        lengths=torch.tensor(lengths))
+
+            vocab = tx.data.Vocab("vocab.txt")
+            hparams = {'batch_size': 1}
+            data = MyDataset("data.txt", vocab, hparams)
+            iterator = DataIterator(data)
+            for batch in iterator:
+                # batch contains the following
+                # batch_ == {
+                #    'text': [['<BOS>', 'example', 'sequence', '<EOS>']],
+                #    'text_ids': [[1, 5, 10, 2]],
+                #    'length': [4]
+                # }
     """
 
     # pylint: disable=line-too-long
@@ -826,11 +891,20 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
         batches. This function takes a list of processed examples, and returns
         an instance of :class:`~texar.torch.data.Batch`.
 
-        Implementation should make sure that the returned callable is safe and
-        efficient under multi-processing scenarios. Basically, do not rely on
-        variables that could be modified during iteration, and avoid accessing
-        unnecessary variables, as each access would result in a cross-process
-        memory copy.
+        .. note::
+            Implementation should make sure that the returned callable is safe
+            and efficient under multi-processing scenarios. Basically, do not
+            rely on variables that could be modified during iteration, and avoid
+            accessing unnecessary variables, as each access would result in a
+            cross-process memory copy.
+
+        .. warning::
+            The recommended pattern is not to move tensor storage within this
+            method, but you are free to do so.
+
+            However, if multiple workers are used
+            (:attr:`num_parallel_calls` > 0), moving tensors to CUDA devices
+            within this method would result in CUDA errors being thrown.
 
         Args:
             examples: A list of processed examples in a batch.

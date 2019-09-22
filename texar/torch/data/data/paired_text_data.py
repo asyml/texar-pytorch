@@ -403,9 +403,8 @@ class PairedTextData(TextDataBase[Tuple[List[str], List[str]],
             for sent in src_examples
         ]
 
-        source_ids = torch.from_numpy(source_ids).to(device=self.device)
-        source_lengths = torch.tensor(source_lengths, dtype=torch.long,
-                                      device=self.device)
+        source_ids = torch.from_numpy(source_ids)
+        source_lengths = torch.tensor(source_lengths, dtype=torch.long)
 
         tgt_examples = [example[1] for example in examples]
         target_ids = [self._tgt_vocab.map_tokens_to_ids_py(sent) for sent
@@ -421,9 +420,8 @@ class PairedTextData(TextDataBase[Tuple[List[str], List[str]],
             for sent in tgt_examples
         ]
 
-        target_ids = torch.from_numpy(target_ids).to(device=self.device)
-        target_lengths = torch.tensor(target_lengths, dtype=torch.long,
-                                      device=self.device)
+        target_ids = torch.from_numpy(target_ids)
+        target_lengths = torch.tensor(target_lengths, dtype=torch.long)
 
         return Batch(len(examples), source_text=src_examples,
                      source_text_ids=source_ids, source_length=source_lengths,
