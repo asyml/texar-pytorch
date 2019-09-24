@@ -293,14 +293,7 @@ class _CachedDataSource(DataSource[RawExample]):
 
 
 class DataBase(Dataset, Generic[RawExample, Example], ABC):
-    r"""Base class inherited by all data classes. Users can also directly
-    inherit from this class to implement customized data processing routines.
-    Two methods should be implemented in the subclass:
-
-    - :meth:`process`: Process a single data example read from the data source
-      (*raw example*). Default implementation returns the raw example as is.
-    - :meth:`collate`: Combine a list of processed examples into a single batch,
-      and return an object of type :class:`~texar.torch.data.Batch`.
+    r"""Base class inherited by all data classes.
 
     Args:
         source: An instance of type :class:`~texar.torch.data.DataSource`,
@@ -319,6 +312,14 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 manually move your data.
 
                 For more details, see :meth:`collate`.
+
+    Users can also directly inherit from this class to implement customized data
+    processing routines. Two methods should be implemented in the subclass:
+
+    - :meth:`process`: Process a single data example read from the data source
+      (*raw example*). Default implementation returns the raw example as is.
+    - :meth:`collate`: Combine a list of processed examples into a single batch,
+      and return an object of type :class:`~texar.torch.data.Batch`.
 
     Example:
 
@@ -712,9 +713,8 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
     def to(self, device: Optional[torch.device]):
         r"""Move the dataset to the specific device. Note that we don't actually
-        move data or do anything here --- we rely on correct implementations of
-        :meth:`_process` and :meth:`_collate` to move data to appropriate
-        devices.
+        move data or do anything here -- data will be moved to the appropriate
+        device after :class:`~texar.torch.data.DataIterator` fetches the batch.
         """
         if device is not None:
             self.device = device
