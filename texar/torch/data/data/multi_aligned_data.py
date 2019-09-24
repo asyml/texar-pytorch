@@ -18,7 +18,8 @@ from typing import (Any, Callable, Dict, List, Optional, Tuple, Union)
 
 import torch
 from texar.torch.data.data.data_base import (
-    DatasetBase, DataSource, FilterDataSource, ZipDataSource, SequenceDataSource)
+    DatasetBase, DataSource,
+    FilterDataSource, ZipDataSource, SequenceDataSource)
 from texar.torch.data.data.dataset_utils import Batch, connect_name
 from texar.torch.data.data.mono_text_data import (
     MonoTextData, _LengthFilterMode, _default_mono_text_dataset_hparams)

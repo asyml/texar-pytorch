@@ -164,8 +164,8 @@ class RandomSampler(SamplerBase[Example]):
             default=False
     """
 
-    def __init__(self, data: DatasetBase[Any, Example], replacement: bool = False,
-                 num_samples: Optional[int] = None):
+    def __init__(self, data: DatasetBase[Any, Example],
+                 replacement: bool = False, num_samples: Optional[int] = None):
         super().__init__(data)
         self._sampler = torch_sampler.RandomSampler(
             data, replacement, num_samples)
@@ -439,8 +439,8 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
         r"""Iterates once over the DataLoader's dataset. This class is used when
         examples are processed and returned by worker processes. We need to
         record the corresponding indices of each batch, call
-        :meth:`texar.torch.data.data.DatasetBase._add_cached_examples` to cache the
-        processed examples, and return only the
+        :meth:`texar.torch.data.data.DatasetBase._add_cached_examples` to cache
+        the processed examples, and return only the
         :class:`~texar.torch.data.data.Batch` instance to the user.
         """
 
@@ -550,8 +550,8 @@ else:
         r"""Iterates once over the DataLoader's dataset. This class is used when
         examples are processed and returned by worker processes. We need to
         record the corresponding indices of each batch, call
-        :meth:`texar.torch.data.data.DatasetBase._add_cached_examples` to cache the
-        processed examples, and return only the
+        :meth:`texar.torch.data.data.DatasetBase._add_cached_examples` to cache
+        the processed examples, and return only the
         :class:`~texar.torch.data.data.Batch` instance to the user.
         """
         dataset: DatasetBase
@@ -691,9 +691,9 @@ class DataIterator:
             - A single instance of :class:`~texar.torch.data.DatasetBase`.
             - A `dict` that maps dataset name to instances of
               :class:`~texar.torch.data.DatasetBase`.
-            - A `list` of instances of :class:`texar.torch.data.DatasetBase`. The
-              name of instances (:attr:`texar.torch.data.DatasetBase.name`) must be
-              unique.
+            - A `list` of instances of :class:`texar.torch.data.DatasetBase`.
+              The name of instances (:attr:`texar.torch.data.DatasetBase.name`)
+              must be unique.
 
         batching_strategy: The batching strategy to use when performing dynamic
             batching. If `None`, fixed-sized batching is used.
@@ -858,7 +858,8 @@ class TrainTestDataIterator(DataIterator):
     datasets.
 
     :attr:`train`, :attr:`val`, and :attr:`test` are instances of
-    :class:`~texar.torch.data.DatasetBase`. At least one of them must be provided.
+    :class:`~texar.torch.data.DatasetBase`. At least one of them must be
+    provided.
 
     This is a wrapper of :class:`~texar.torch.data.DataIterator`.
 
