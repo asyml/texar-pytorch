@@ -36,7 +36,7 @@ __all__ = [
     "ZipDataSource",
     "FilterDataSource",
     "RecordDataSource",
-    "DataBase",
+    "DatasetBase",
 ]
 
 RawExample = TypeVar('RawExample')  # type of a raw example loaded from source
@@ -236,7 +236,7 @@ class _TransformedDataSource(DataSource[Example], Generic[RawExample, Example]):
 class _CachedDataSource(DataSource[RawExample]):
     r"""Wrapper for random access support over a data source that does not
     implement `__getitem__`. This class is only used internally in
-    :class:`~texar.torch.data.data.DataBase`, while conforming to user
+    :class:`~texar.torch.data.data.DatasetBase`, while conforming to user
     `cache_strategy` and `shuffle_buffer_size` settings.
     """
 
@@ -250,7 +250,7 @@ class _CachedDataSource(DataSource[RawExample]):
             data_source: The data source to wrap around.
             erase_after_access: If `True`, cached examples are erased after
                 being accessed through `__getitem__`. Useful when
-                :class:`~texar.torch.data.data.DataBase` hyperparameter
+                :class:`~texar.torch.data.data.DatasetBase` hyperparameter
                 `cache_strategy` is set to `none` or `processed`.
         """
         self._source = data_source
@@ -292,7 +292,7 @@ class _CachedDataSource(DataSource[RawExample]):
             self._max_index = -1
 
 
-class DataBase(Dataset, Generic[RawExample, Example], ABC):
+class DatasetBase(Dataset, Generic[RawExample, Example], ABC):
     r"""Base class inherited by all data classes.
 
     Args:
@@ -329,7 +329,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
         .. code-block:: python
 
-            class MyDataset(tx.data.DataBase):
+            class MyDataset(tx.data.DatasetBase):
                 def __init__(self, data_path, vocab, hparams=None, device=None):
                     source = tx.data.TextLineDataSource(data_path)
                     self.vocab = vocab
@@ -361,20 +361,20 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
     # pylint: disable=line-too-long
 
-    # The `DataBase` is used in combination with Texar `DataIterator`, which internally uses the PyTorch `DataLoader`
+    # The `DatasetBase` is used in combination with Texar `DataIterator`, which internally uses the PyTorch `DataLoader`
     # for multi-processing support.
     #
     # We divide the entire data pipeline into three stages, namely *load*, *process*, and *batch*:
     # - **Load** refers to loading data from the data source (e.g., a file, a Python list or iterator). In Texar,
     #   loading is handled by `DataSource` classes.
     # - **Process** refers to preprocessing routines for each data example (e.g., vocabulary mapping, tokenization). In
-    #   Texar, this is the `process` function of each `DataBase` class.
+    #   Texar, this is the `process` function of each `DatasetBase` class.
     # - **Batch** refers to combining multiple examples to form a batch, which typically includes padding and moving
-    #   data across devices. In Texar, this is the `collate` function of each `DataBase` class.
+    #   data across devices. In Texar, this is the `collate` function of each `DatasetBase` class.
     #
     # PyTorch DataLoader only performs batching, and since multi-processing is used, the entire dataset is expected to
-    # be in memory before iteration, i.e. loading and processing cannot be lazy. The DataBase class is carefully crafted
-    # to provide laziness and caching options at all possible stages.
+    # be in memory before iteration, i.e. loading and processing cannot be lazy. The `DatasetBase` class is carefully
+    # crafted to provide laziness and caching options at all possible stages.
     #
     # To support laziness, we pass data examples (either raw or processed, depending on whether processing is lazy) to
     # the worker processes. To prevent modifying the underlying `DataLoader` implementation, we hack the PyTorch
@@ -722,7 +722,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
     def _prefetch_processed(self, index: int):
         r"""Performs processing on the main process. This is called in
-        :meth:`texar.torch.data.data.DataBase._prefetch_source` if
+        :meth:`texar.torch.data.data.DatasetBase._prefetch_source` if
         `parallelize_processing` is `False`."""
         if len(self._processed_cache) <= index:
             self._processed_cache.extend(

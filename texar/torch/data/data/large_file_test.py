@@ -8,7 +8,7 @@ import gc
 import numpy as np
 import torch
 
-from texar.torch.data.data.data_base import DataBase, DataSource
+from texar.torch.data.data.data_base import DatasetBase, DataSource
 from texar.torch.data.data.data_iterators import DataIterator
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.data.data.text_data_base import TextLineDataSource
@@ -30,7 +30,7 @@ RawExample = List[str]
 Example = Tuple[np.ndarray, np.ndarray]
 
 
-class ParallelData(DataBase[RawExample, Example]):
+class ParallelData(DatasetBase[RawExample, Example]):
     def __init__(self, source: DataSource[RawExample],
                  src_vocab_path: str,
                  tgt_vocab_path: str,

@@ -57,7 +57,7 @@ class CustomBatchingStrategy(tx.data.BatchingStrategy[Example]):
         return True
 
 
-class Seq2SeqData(tx.data.DataBase[Example, Example]):
+class Seq2SeqData(tx.data.DatasetBase[Example, Example]):
     r"""A dataset that reads processed paired text from dumped NumPy files.
 
     Args:
@@ -80,7 +80,7 @@ class Seq2SeqData(tx.data.DataBase[Example, Example]):
     @staticmethod
     def default_hparams():
         return {
-            **tx.data.DataBase.default_hparams(),
+            **tx.data.DatasetBase.default_hparams(),
             "pad_id": 0,
             "bos_id": 1,
             "eos_id": 2,

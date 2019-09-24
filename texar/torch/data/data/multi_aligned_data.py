@@ -18,7 +18,7 @@ from typing import (Any, Callable, Dict, List, Optional, Tuple, Union)
 
 import torch
 from texar.torch.data.data.data_base import (
-    DataBase, DataSource, FilterDataSource, ZipDataSource, SequenceDataSource)
+    DatasetBase, DataSource, FilterDataSource, ZipDataSource, SequenceDataSource)
 from texar.torch.data.data.dataset_utils import Batch, connect_name
 from texar.torch.data.data.mono_text_data import (
     MonoTextData, _LengthFilterMode, _default_mono_text_dataset_hparams)
@@ -184,7 +184,7 @@ class MultiAlignedData(
         self._names: List[Dict[str, Any]] = []
         sources: List[DataSource] = []
         filters: List[Optional[Callable[[str], bool]]] = []
-        self._databases: List[DataBase] = []
+        self._databases: List[DatasetBase] = []
         for idx, hparams_i in enumerate(self._hparams.datasets):
             data_type = hparams_i.data_type
             source_i: DataSource
@@ -357,7 +357,7 @@ class MultiAlignedData(
                     `None` which disables the processing sharing.
 
         2. For the **general** hyperparameters, see
-        :meth:`texar.torch.data.DataBase.default_hparams` for details.
+        :meth:`texar.torch.data.DatasetBase.default_hparams` for details.
 
         """
         hparams = TextDataBase.default_hparams()

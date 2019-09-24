@@ -27,7 +27,7 @@ from torch import __version__ as _torch_version  # type: ignore
 from torch.utils.data import DataLoader
 from torch.utils.data import sampler as torch_sampler
 
-from texar.torch.data.data.data_base import DataBase
+from texar.torch.data.data.data_base import DatasetBase
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.utils.types import MaybeSeq
 from texar.torch.utils.utils import ceildiv, map_structure
@@ -42,7 +42,7 @@ __all__ = [
 ]
 
 # `Dict` is invariant, `Mapping` is not.
-DatasetsType = Union[Mapping[str, DataBase], MaybeSeq[DataBase]]
+DatasetsType = Union[Mapping[str, DatasetBase], MaybeSeq[DatasetBase]]
 Example = TypeVar('Example')
 
 
@@ -61,15 +61,15 @@ class SamplerBase(torch_sampler.Sampler, Generic[Example]):
 
     This class is used internally in
     :class:`~texar.torch.data.data.DataIterator`. It calls the
-    :meth:`~texar.torch.data.data.DataBase._prefetch_source` method to ensure
+    :meth:`~texar.torch.data.data.DatasetBase._prefetch_source` method to ensure
     the required number of raw examples are prefetched from source.
 
     Args:
-        data: The :class:`~texar.torch.data.data.DataBase` instance.
+        data: The :class:`~texar.torch.data.data.DatasetBase` instance.
     """
     size: Optional[int]
 
-    def __init__(self, data: DataBase[Any, Example]):
+    def __init__(self, data: DatasetBase[Any, Example]):
         super().__init__(data)
 
         self._data = data
@@ -87,7 +87,7 @@ class SamplerBase(torch_sampler.Sampler, Generic[Example]):
     def _iterator_unknown_size(self) -> Iterator[int]:
         r"""Return an iterator that generates samples when the dataset size
         is unknown. This iterator must also call
-        :meth:`texar.torch.data.data.DataBase._prefetch_source` and check
+        :meth:`texar.torch.data.data.DatasetBase._prefetch_source` and check
         whether the dataset size can be determined, before yielding the index.
         See example implementations for details.
         """
@@ -158,13 +158,13 @@ class RandomSampler(SamplerBase[Example]):
     nature of such shuffling, it cannot be used for iterators with unknown size.
 
     Args:
-        data: The :class:`~texar.torch.data.data.DataBase` instance.
+        data: The :class:`~texar.torch.data.data.DatasetBase` instance.
         num_samples (int): number of samples to draw, default=len(dataset)
         replacement (bool): samples are drawn with replacement if `True`,
             default=False
     """
 
-    def __init__(self, data: DataBase[Any, Example], replacement: bool = False,
+    def __init__(self, data: DatasetBase[Any, Example], replacement: bool = False,
                  num_samples: Optional[int] = None):
         super().__init__(data)
         self._sampler = torch_sampler.RandomSampler(
@@ -189,16 +189,16 @@ class BufferShuffleSampler(SamplerBase[Example]):
 
     This class is used internally in
     :class:`~texar.torch.data.data.DataIterator`. It calls the
-    :meth:`~texar.torch.data.data.DataBase._prefetch_source` method to ensure
+    :meth:`~texar.torch.data.data.DatasetBase._prefetch_source` method to ensure
     the required number of raw examples are prefetched from source.
 
     Args:
-        data: The :class:`~texar.torch.data.data.DataBase` instance.
+        data: The :class:`~texar.torch.data.data.DatasetBase` instance.
         buffer_size: The size of the shuffle buffer. Use larger buffer sizes for
             more uniformly-random shuffling.
     """
 
-    def __init__(self, data: DataBase[Any, Example], buffer_size: int):
+    def __init__(self, data: DatasetBase[Any, Example], buffer_size: int):
         super().__init__(data)
         self.buffer_size = buffer_size
 
@@ -317,7 +317,7 @@ class DynamicBatchSampler(torch_sampler.BatchSampler, Generic[Example]):
             a batch should be yielded.
     """
 
-    def __init__(self, dataset: DataBase[Any, Example],  # pylint: disable=super-init-not-called
+    def __init__(self, dataset: DatasetBase[Any, Example],  # pylint: disable=super-init-not-called
                  sampler: SamplerBase, strategy: BatchingStrategy[Example]):
         self.dataset = dataset
         self.sampler = sampler
@@ -439,7 +439,7 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
         r"""Iterates once over the DataLoader's dataset. This class is used when
         examples are processed and returned by worker processes. We need to
         record the corresponding indices of each batch, call
-        :meth:`texar.torch.data.data.DataBase._add_cached_examples` to cache the
+        :meth:`texar.torch.data.data.DatasetBase._add_cached_examples` to cache the
         processed examples, and return only the
         :class:`~texar.torch.data.data.Batch` instance to the user.
         """
@@ -471,7 +471,7 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
 
     class _MPCacheDataLoaderIter(_CacheDataLoaderIter,
                                  _MultiProcessingDataLoaderIter):
-        dataset: DataBase
+        dataset: DatasetBase
 
         worker_queue_idx: int  # so that Pylint gives no errors
 
@@ -550,11 +550,11 @@ else:
         r"""Iterates once over the DataLoader's dataset. This class is used when
         examples are processed and returned by worker processes. We need to
         record the corresponding indices of each batch, call
-        :meth:`texar.torch.data.data.DataBase._add_cached_examples` to cache the
+        :meth:`texar.torch.data.data.DatasetBase._add_cached_examples` to cache the
         processed examples, and return only the
         :class:`~texar.torch.data.data.Batch` instance to the user.
         """
-        dataset: DataBase
+        dataset: DatasetBase
 
         worker_queue_idx: int  # so that Pylint gives no errors
 
@@ -614,7 +614,7 @@ class SingleDatasetIterator(DataLoader):
 
     Args:
         dataset: The dataset to iterator through. The dataset must be an
-            instance of :class:`texar.torch.data.DataBase`, because
+            instance of :class:`texar.torch.data.DatasetBase`, because
             configurations are read from the dataset `HParams`.
         batching_strategy: The batching strategy to use when performing dynamic
             batching. If `None`, fixed-sized batching is used.
@@ -623,12 +623,12 @@ class SingleDatasetIterator(DataLoader):
             :torch_docs:`DataLoader <data.html#torch.utils.data.DataLoader>`.
 
             Defaults to `None`, which will set the value to `True` if the
-            :class:`~texar.torch.data.DataBase` instance is set to use a CUDA
+            :class:`~texar.torch.data.DatasetBase` instance is set to use a CUDA
             device. Set to `True` or `False` to override this behavior.
     """
-    dataset: DataBase
+    dataset: DatasetBase
 
-    def __init__(self, dataset: DataBase,
+    def __init__(self, dataset: DatasetBase,
                  batching_strategy: Optional[BatchingStrategy] = None,
                  pin_memory: Optional[bool] = None):
         shuffle = dataset.hparams.shuffle
@@ -688,11 +688,11 @@ class DataIterator:
     Args:
         datasets: Datasets to iterate through. This can be:
 
-            - A single instance of :class:`~texar.torch.data.DataBase`.
+            - A single instance of :class:`~texar.torch.data.DatasetBase`.
             - A `dict` that maps dataset name to instances of
-              :class:`~texar.torch.data.DataBase`.
-            - A `list` of instances of :class:`texar.torch.data.DataBase`. The
-              name of instances (:attr:`texar.torch.data.DataBase.name`) must be
+              :class:`~texar.torch.data.DatasetBase`.
+            - A `list` of instances of :class:`texar.torch.data.DatasetBase`. The
+              name of instances (:attr:`texar.torch.data.DatasetBase.name`) must be
               unique.
 
         batching_strategy: The batching strategy to use when performing dynamic
@@ -702,7 +702,7 @@ class DataIterator:
             :torch_docs:`DataLoader <data.html#torch.utils.data.DataLoader>`.
 
             Defaults to `None`, which will set the value to `True` if the
-            :class:`~texar.torch.data.DataBase` instance is set to use a CUDA
+            :class:`~texar.torch.data.DatasetBase` instance is set to use a CUDA
             device. Set to `True` or `False` to override this behavior.
 
     Example:
@@ -771,12 +771,12 @@ class DataIterator:
                  batching_strategy: Optional[BatchingStrategy] = None,
                  pin_memory: Optional[bool] = None):
         self._default_dataset_name = 'data'
-        if isinstance(datasets, DataBase):
+        if isinstance(datasets, DatasetBase):
             datasets = {self._default_dataset_name: datasets}
         elif isinstance(datasets, Sequence):
-            if any(not isinstance(d, DataBase) for d in datasets):
+            if any(not isinstance(d, DatasetBase) for d in datasets):
                 raise ValueError("`datasets` must be an non-empty list of "
-                                 "`texar.torch.data.DataBase` instances.")
+                                 "`texar.torch.data.DatasetBase` instances.")
             num_datasets = len(datasets)
             datasets = {d.name: d for d in datasets}
             if len(datasets) < num_datasets:
@@ -858,7 +858,7 @@ class TrainTestDataIterator(DataIterator):
     datasets.
 
     :attr:`train`, :attr:`val`, and :attr:`test` are instances of
-    :class:`~texar.torch.data.DataBase`. At least one of them must be provided.
+    :class:`~texar.torch.data.DatasetBase`. At least one of them must be provided.
 
     This is a wrapper of :class:`~texar.torch.data.DataIterator`.
 
@@ -873,7 +873,7 @@ class TrainTestDataIterator(DataIterator):
             :torch_docs:`DataLoader <data.html#torch.utils.data.DataLoader>`.
 
             Defaults to `None`, which will set the value to `True` if the
-            :class:`~texar.torch.data.DataBase` instance is set to use a CUDA
+            :class:`~texar.torch.data.DatasetBase` instance is set to use a CUDA
             device. Set to `True` or `False` to override this behavior.
 
     Example:
@@ -895,9 +895,9 @@ class TrainTestDataIterator(DataIterator):
                     ... # Do validation on the batch.
     """
 
-    def __init__(self, train: Optional[DataBase] = None,
-                 val: Optional[DataBase] = None,
-                 test: Optional[DataBase] = None,
+    def __init__(self, train: Optional[DatasetBase] = None,
+                 val: Optional[DatasetBase] = None,
+                 test: Optional[DatasetBase] = None,
                  batching_strategy: Optional[BatchingStrategy] = None,
                  pin_memory: Optional[bool] = None):
         dataset_dict = {}

@@ -311,7 +311,7 @@ class MonoTextData(TextDataBase[List[str], List[str]]):
               Name of the dataset.
 
         2. For the **general** hyperparameters, see
-        :meth:`texar.torch.data.DataBase.default_hparams` for details.
+        :meth:`texar.torch.data.DatasetBase.default_hparams` for details.
 
         3. **Bucketing** is to group elements of the dataset
         together by length and then pad and batch. For bucketing

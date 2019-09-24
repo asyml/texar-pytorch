@@ -47,7 +47,7 @@ class DummyClassifier(nn.Module):
 Example = Tuple[torch.LongTensor, int]
 
 
-class DummyData(tx.data.DataBase[Example, Example]):
+class DummyData(tx.data.DatasetBase[Example, Example]):
     def process(self, raw_example: Example) -> Example:
         return raw_example
 

@@ -302,7 +302,7 @@ class PairedTextData(TextDataBase[Tuple[List[str], List[str]],
                `"other_transformations"`.
 
         2. For the **general** hyperparameters, see
-           :meth:`texar.torch.data.DataBase.default_hparams` for details.
+           :meth:`texar.torch.data.DatasetBase.default_hparams` for details.
 
         3. For **bucketing** hyperparameters, see
            :meth:`texar.torch.data.MonoTextData.default_hparams` for details,
