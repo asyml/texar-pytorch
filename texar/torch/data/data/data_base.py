@@ -499,7 +499,10 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 "prefetch_buffer_size": 0,
                 "max_dataset_size": -1,
                 "seed": None,
-                "name": "data",
+                "lazy_strategy": 'none',
+                "cache_strategy": 'processed',
+                "parallelize_processing": True,
+                "name": "data"
             }
 
         Here:
@@ -579,9 +582,6 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 Manual seeding is not yet supported. This option will be
                 ignored.
 
-        `"name"`: str
-            Name of the data.
-
         `"lazy_strategy"`: str
             Lazy strategy for data examples. Lazy loading/processing defers
             data loading/processing until when it's being accessed.
@@ -623,6 +623,9 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             Note that this only affects cases where `lazy_strategy` is not
             `none`. If `lazy_strategy` is `none`, processing will be
             performed on a single process regardless of this value.
+
+        `"name"`: str
+            Name of the data.
         """
         # TODO: Sharding not yet supported.
         # TODO: `seed` is not yet applied.
