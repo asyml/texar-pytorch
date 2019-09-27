@@ -4,13 +4,14 @@ Unit tests for data iterator related operations.
 import copy
 import tempfile
 import unittest
+from unittest.mock import patch
 from typing import List, Tuple, no_type_check
 
 import numpy as np
 import torch
 
 from texar.torch.data.data.data_base import (
-    DataBase, DataSource, IterDataSource, SequenceDataSource, ZipDataSource)
+    DatasetBase, DataSource, IterDataSource, SequenceDataSource, ZipDataSource)
 from texar.torch.data.data.data_iterators import (
     BufferShuffleSampler, DataIterator, TokenCountBatchingStrategy,
     TrainTestDataIterator)
@@ -22,7 +23,7 @@ class SamplerTest(unittest.TestCase):
     r"""Tests samplers.
     """
 
-    class MockDataBase(DataBase):
+    class MockDataBase(DatasetBase):
         def __init__(self, size: int, lazy_strategy: str,
                      cache_strategy: str, unknown_size: bool = False):
             data = list(range(size))
@@ -42,7 +43,7 @@ class SamplerTest(unittest.TestCase):
         self.buffer_size = 5
 
     @no_type_check
-    def _test_data(self, data: DataBase,
+    def _test_data(self, data: DatasetBase,
                    returns_data: bool = False,
                    always_returns_data: bool = False):
         sampler = BufferShuffleSampler(data, self.buffer_size)
@@ -250,7 +251,7 @@ class DataIteratorTest(unittest.TestCase):
         sentences = [['a'] * length for length in sent_lengths]
         data_source = SequenceDataSource(sentences)
 
-        class CustomData(DataBase):
+        class CustomData(DatasetBase):
             def __init__(self, source):
                 super().__init__(source)
 
@@ -269,12 +270,31 @@ class DataIteratorTest(unittest.TestCase):
             self.assertLessEqual(len(batch), batch_size)
             self.assertLessEqual(sum(len(s) for s in batch.text), max_tokens)
 
+    @patch("torch.cuda.is_available", lambda: True)
+    def test_auto_storage_moving(self):
+        cuda_tensors = set()
+
+        def move_tensor(tensor, device, non_blocking=False):
+            if isinstance(device, torch.device) and device.type == "cuda":
+                self.assertTrue(non_blocking)
+                cuda_tensors.add(id(tensor))
+            return tensor
+
+        device = torch.device("cuda:0")
+
+        with patch.object(torch.Tensor, "to", move_tensor):
+            train = MonoTextData(self._train_hparams, device=device)
+            iterator = DataIterator(train)
+            for batch in iterator:
+                self.assertTrue(id(batch.text_ids) in cuda_tensors)
+                self.assertTrue(id(batch.length) in cuda_tensors)
+
 
 RawExample = Tuple[List[int], str]
 Example = Tuple[List[int], List[str]]
 
 
-class MockDataBase(DataBase[RawExample, Example]):
+class MockDataBase(DatasetBase[RawExample, Example]):
     def process(self, raw_example: RawExample) -> Example:
         numbers, string = raw_example
         numbers = [x + 1 for x in numbers]

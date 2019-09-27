@@ -33,7 +33,7 @@ from torch import nn
 from torch.optim.lr_scheduler import _LRScheduler as LRScheduler
 from torch.optim.optimizer import Optimizer
 
-from texar.torch.data.data.data_base import DataBase
+from texar.torch.data.data.data_base import DatasetBase
 from texar.torch.data.data.data_iterators import BatchingStrategy, DataIterator
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.run import executor_utils as utils
@@ -299,14 +299,14 @@ class Executor:
                     loss = loss.sum() / len(batch)
                     return {"loss": loss, "preds": preds}
 
-    `train_data`: :class:`~texar.torch.data.DataBase`
+    `train_data`: :class:`~texar.torch.data.DatasetBase`
         The dataset used during training. Must be specified for training.
 
-    `valid_data`: :class:`~texar.torch.data.DataBase`
+    `valid_data`: :class:`~texar.torch.data.DatasetBase`
         The dataset used during validation. If not specified, you cannot perform
         validation during training (e.g., by setting :attr:`validate_every`).
 
-    `test_data`: :class:`~texar.torch.data.DataBase`, or a list or dictionary
+    `test_data`: :class:`~texar.torch.data.DatasetBase`, or a list or dictionary
         The dataset(s) used during testing. If not specified, you cannot perform
         testing during training (e.g., by setting :attr:`test_every`).
 
@@ -721,9 +721,9 @@ class Executor:
 
     def __init__(self, model: nn.Module,
                  *,
-                 train_data: Optional[DataBase] = None,
-                 valid_data: Optional[DataBase] = None,
-                 test_data: OptionalDict[DataBase] = None,
+                 train_data: Optional[DatasetBase] = None,
+                 valid_data: Optional[DatasetBase] = None,
+                 test_data: OptionalDict[DatasetBase] = None,
                  batching_strategy: Optional[BatchingStrategy] = None,
                  device: Optional[torch.device] = None,
                  # tbX logging
@@ -1354,17 +1354,17 @@ class Executor:
         # close the log files
         self._close_files()
 
-    def test(self, dataset: OptionalDict[DataBase] = None):
+    def test(self, dataset: OptionalDict[DatasetBase] = None):
         r"""Start the test loop.
 
         Args:
             dataset (optional): The dataset(s) to test on. Acceptable values
                 include:
 
-                - A single :attr:`~texar.torch.data.DataBase` instance.
-                - A list of :attr:`~texar.torch.data.DataBase` instances.
+                - A single :attr:`~texar.torch.data.DatasetBase` instance.
+                - A list of :attr:`~texar.torch.data.DatasetBase` instances.
                 - A dictionary mapping names to
-                  :attr:`~texar.torch.data.DataBase` instances.
+                  :attr:`~texar.torch.data.DatasetBase` instances.
 
                 If `None`, :attr:`test_data` from the constructor arguments is
                 used. Defaults to `None`.

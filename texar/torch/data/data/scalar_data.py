@@ -21,7 +21,7 @@ from distutils.util import strtobool
 import numpy as np
 import torch
 
-from texar.torch.data.data.data_base import DataBase, DataSource
+from texar.torch.data.data.data_base import DatasetBase, DataSource
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.data.data.text_data_base import TextLineDataSource
 from texar.torch.hyperparams import HParams
@@ -50,7 +50,7 @@ def _default_scalar_dataset_hparams():
     }
 
 
-class ScalarData(DataBase[List[str], Union[int, float]]):
+class ScalarData(DatasetBase[List[str], Union[int, float]]):
     r"""Scalar data where each line of the files is a scalar (int or float),
     e.g., a data label.
 
@@ -163,10 +163,10 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
                 Name of the dataset.
 
         2. For the **general** hyperparameters, see
-        :meth:`texar.torch.data.DataBase.default_hparams` for details.
+           :meth:`texar.torch.data.DatasetBase.default_hparams` for details.
 
         """
-        hparams = DataBase.default_hparams()
+        hparams = DatasetBase.default_hparams()
         hparams["name"] = "scalar_data"
         hparams.update({
             "dataset": _default_scalar_dataset_hparams()
@@ -192,7 +192,7 @@ class ScalarData(DataBase[List[str], Union[int, float]]):
     def collate(self, examples: List[Union[bool, int, float]]) -> Batch:
         # convert the list of strings into appropriate tensors here
         examples_np = np.array(examples, dtype=self._data_type)
-        collated_examples = torch.from_numpy(examples_np).to(device=self.device)
+        collated_examples = torch.from_numpy(examples_np)
         return Batch(len(examples),
                      batch={self.data_name: collated_examples})
 

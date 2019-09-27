@@ -22,7 +22,7 @@ from typing import (
 import numpy as np
 import torch
 
-from texar.torch.data.data.data_base import DataBase, DataSource
+from texar.torch.data.data.data_base import DatasetBase, DataSource
 from texar.torch.data.data.dataset_utils import Batch, padded_batch
 from texar.torch.hyperparams import HParams
 from texar.torch.utils.dtypes import get_numpy_dtype
@@ -229,7 +229,7 @@ def _convert_feature_hparams(feature_types: Union[Dict[str, Any], HParams]) \
     return features
 
 
-class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
+class RecordData(DatasetBase[Dict[str, Any], Dict[str, Any]]):
     r"""Record data which loads and processes pickled files.
 
     This module can be used to process image data, features, etc.
@@ -557,9 +557,9 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
                Name of the dataset.
 
         2. For the **general** hyperparameters, see
-           :meth:`texar.torch.data.DataBase.default_hparams` for details.
+           :meth:`texar.torch.data.DatasetBase.default_hparams` for details.
         """
-        hparams = DataBase.default_hparams()
+        hparams = DatasetBase.default_hparams()
         hparams["name"] = "record_data"
         hparams.update({
             "dataset": _default_record_dataset_hparams()
@@ -589,9 +589,7 @@ class RecordData(DataBase[Dict[str, Any], Dict[str, Any]]):
                     values = np.stack(values, axis=0)
                 if (not isinstance(values, torch.Tensor) and
                         descriptor.dtype not in [np.str_, np.bytes_]):
-                    values = torch.from_numpy(values).to(device=self.device)
-                elif isinstance(values, torch.Tensor):
-                    values = values.to(device=self.device)
+                    values = torch.from_numpy(values)
             else:
                 # VarLenFeature, just put everything in a Python list.
                 pass

@@ -8,7 +8,7 @@ import gc
 import numpy as np
 import torch
 
-from texar.torch.data.data.data_base import DataBase, DataSource
+from texar.torch.data.data.data_base import DatasetBase, DataSource
 from texar.torch.data.data.data_iterators import DataIterator
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.data.data.text_data_base import TextLineDataSource
@@ -30,7 +30,7 @@ RawExample = List[str]
 Example = Tuple[np.ndarray, np.ndarray]
 
 
-class ParallelData(DataBase[RawExample, Example]):
+class ParallelData(DatasetBase[RawExample, Example]):
     def __init__(self, source: DataSource[RawExample],
                  src_vocab_path: str,
                  tgt_vocab_path: str,
@@ -57,8 +57,8 @@ class ParallelData(DataBase[RawExample, Example]):
         for b_idx, (src, tgt) in enumerate(examples):
             src_indices[b_idx, :len(src)] = src
             tgt_indices[b_idx, :len(tgt)] = tgt
-        src_indices = torch.from_numpy(src_indices).to(device=self.device)
-        tgt_indices = torch.from_numpy(tgt_indices).to(device=self.device)
+        src_indices = torch.from_numpy(src_indices)
+        tgt_indices = torch.from_numpy(tgt_indices)
         return Batch(batch_size, src=src_indices, tgt=tgt_indices)
 
 

@@ -311,7 +311,7 @@ class MonoTextData(TextDataBase[List[str], List[str]]):
               Name of the dataset.
 
         2. For the **general** hyperparameters, see
-        :meth:`texar.torch.data.DataBase.default_hparams` for details.
+        :meth:`texar.torch.data.DatasetBase.default_hparams` for details.
 
         3. **Bucketing** is to group elements of the dataset
         together by length and then pad and batch. For bucketing
@@ -397,8 +397,8 @@ class MonoTextData(TextDataBase[List[str], List[str]]):
             for sent in examples
         ]
 
-        text_ids = torch.from_numpy(text_ids).to(device=self.device)
-        lengths = torch.tensor(lengths, dtype=torch.long, device=self.device)
+        text_ids = torch.from_numpy(text_ids)
+        lengths = torch.tensor(lengths, dtype=torch.long)
         batch = {self.text_name: examples, self.text_id_name: text_ids,
                  self.length_name: lengths}
         return Batch(len(examples), batch=batch)

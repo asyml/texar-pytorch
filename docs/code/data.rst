@@ -122,9 +122,9 @@ Data Sources
 Data Loaders
 =============
 
-:hidden:`DataBase`
+:hidden:`DatasetBase`
 ~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.torch.data.DataBase
+.. autoclass:: texar.torch.data.DatasetBase
     :members:
 
     .. automethod:: process
