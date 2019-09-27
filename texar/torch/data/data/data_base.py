@@ -336,13 +336,32 @@ class DatasetBase(Dataset, Generic[RawExample, Example], ABC):
                     super().__init__(source, hparams, device)
 
                 def process(self, raw_example):
-                    return self.vocab.map_tokens_to_ids_py(raw_example)
+                    # `raw_example` is a data example read from `self.source`,
+                    # in this case, a line of tokenized text, represented as a
+                    # list of `str`.
+                    return {
+                        "text": raw_example,
+                        "ids": self.vocab.map_tokens_to_ids_py(raw_example),
+                    }
 
                 def collate(self, examples):
-                    ids, lengths = tx.data.padded_batch(examples)
+                    # `examples` is a list of objects returned from the
+                    # `process` method. These data examples should be collated
+                    # into a batch.
+
+                    # `text` is a list of list of `str`, storing the tokenized
+                    # sentences for each example in the batch.
+                    text = [ex["text"] for ex in examples]
+                    # `ids` is the NumPy tensor built from the token IDs of each
+                    # sentence, and `lengths` the lengths of each sentence.
+                    # The `tx.data.padded_batch` function pads IDs to the same
+                    # length and then stack them together. This function is
+                    # commonly used in `collate` methods.
+                    ids, lengths = tx.data.padded_batch(
+                        [ex["ids"] for ex in examples])
                     return tx.data.Batch(
                         len(examples),
-                        text=examples
+                        text=text,
                         text_ids=torch.from_numpy(ids),
                         lengths=torch.tensor(lengths))
 
