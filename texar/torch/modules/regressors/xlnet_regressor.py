@@ -15,7 +15,7 @@
 XLNet Regressors.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import torch
 from torch import nn
@@ -224,7 +224,7 @@ class XLNetRegressor(RegressorBase, PretrainedXLNetMixin):
         return self.parameters()
 
     def forward(self,  # type: ignore
-                inputs: torch.LongTensor,
+                inputs: Union[torch.Tensor, torch.LongTensor],
                 segment_ids: Optional[torch.LongTensor] = None,
                 input_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         r"""Feeds the inputs through the network and makes regression.

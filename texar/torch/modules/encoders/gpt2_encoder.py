@@ -15,7 +15,7 @@
 GPT2 encoders.
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 
@@ -260,7 +260,7 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
         }
 
     def forward(self,  # type: ignore
-                inputs: torch.Tensor,
+                inputs: Union[torch.Tensor, torch.LongTensor],
                 sequence_length: Optional[torch.LongTensor] = None):
         r"""Encodes the inputs.
 

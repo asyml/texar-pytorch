@@ -15,7 +15,7 @@
 BERT encoder.
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 from torch import nn
@@ -281,7 +281,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
         }
 
     def forward(self,  # type: ignore
-                inputs: torch.Tensor,
+                inputs: Union[torch.Tensor, torch.LongTensor],
                 sequence_length: Optional[torch.LongTensor] = None,
                 segment_ids: Optional[torch.LongTensor] = None):
         r"""Encodes the inputs.

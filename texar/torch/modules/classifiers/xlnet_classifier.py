@@ -15,7 +15,7 @@
 XLNet Classifier.
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import torch
 from torch import nn
@@ -243,7 +243,7 @@ class XLNetClassifier(ClassifierBase, PretrainedXLNetMixin):
         return self.parameters()
 
     def forward(self,  # type: ignore
-                inputs: torch.Tensor,
+                inputs: Union[torch.Tensor, torch.LongTensor],
                 segment_ids: Optional[torch.LongTensor] = None,
                 input_mask: Optional[torch.Tensor] = None) \
             -> Tuple[torch.Tensor, torch.LongTensor]:
