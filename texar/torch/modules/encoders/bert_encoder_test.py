@@ -171,6 +171,25 @@ class BERTEncoderTest(unittest.TestCase):
             pooled_output.shape,
             torch.Size([self.batch_size, encoder.output_size]))
 
+    def test_soft_ids(self):
+        r"""Tests soft ids.
+        """
+        hparams = {
+            "pretrained_model_name": None,
+        }
+        encoder = BERTEncoder(hparams=hparams)
+
+        inputs = torch.rand(self.batch_size, self.max_length, 30522)
+        outputs, pooled_output = encoder(inputs)
+
+        outputs_dim = encoder.hparams.encoder.dim
+        self.assertEqual(
+            outputs.shape,
+            torch.Size([self.batch_size, self.max_length, outputs_dim]))
+        self.assertEqual(
+            pooled_output.shape,
+            torch.Size([self.batch_size, encoder.output_size]))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -266,7 +266,10 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
 
         Args:
             inputs: A 2D Tensor of shape `[batch_size, max_time]`,
-                containing the token ids of tokens in the input sequences.
+                containing the token ids of tokens in the input sequences or
+                a 3D Tensor of shape `[batch_size, max_time, vocab_size]`,
+                containing the weights (probabilities) used to mix the
+                embedding vectors.
             sequence_length (optional): A 1D Tensor of shape `[batch_size]`.
                 Input tokens beyond respective sequence lengths are masked
                 out automatically.
@@ -275,7 +278,13 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
             outputs:  A Tensor of shape
             `[batch_size, max_time, dim]` containing the encoded vectors.
         """
-        word_embeds = self.word_embedder(inputs)
+        if inputs.dim() == 2:
+            word_embeds = self.word_embedder(ids=inputs)
+        elif inputs.dim() == 3:
+            word_embeds = self.word_embedder(soft_ids=inputs)
+        else:
+            raise ValueError("'inputs' should be a 2D or 3D tensor.")
+
         batch_size = inputs.size(0)
         pos_length = inputs.new_full(
             (batch_size,), inputs.size(1), dtype=torch.long)

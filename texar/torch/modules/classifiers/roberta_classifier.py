@@ -146,7 +146,10 @@ class RoBERTaClassifier(PretrainedRoBERTaMixin, BERTClassifier):
 
         Args:
             inputs: A 2D Tensor of shape `[batch_size, max_time]`,
-                containing the token ids of tokens in input sequences.
+                containing the token ids of tokens in input sequences or
+                a 3D Tensor of shape `[batch_size, max_time, vocab_size]`,
+                containing the weights (probabilities) used to mix the
+                embedding vectors.
             sequence_length (optional): A 1D Tensor of shape `[batch_size]`.
                 Input tokens beyond respective sequence lengths are masked
                 out automatically.

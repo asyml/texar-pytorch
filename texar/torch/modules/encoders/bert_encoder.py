@@ -288,7 +288,10 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
 
         Args:
             inputs: A 2D Tensor of shape `[batch_size, max_time]`,
-                containing the token ids of tokens in the input sequences.
+                containing the token ids of tokens in the input sequences or
+                a 3D Tensor of shape `[batch_size, max_time, vocab_size]`,
+                containing the weights (probabilities) used to mix the
+                embedding vectors.
             segment_ids (optional): A 2D Tensor of shape
                 `[batch_size, max_time]`, containing the segment ids
                 of tokens in input sequences. If `None` (default), a
@@ -308,8 +311,13 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
               pre-trained on top of the hidden state associated to the first
               character of the input (`CLS`), see BERT's paper.
         """
+        if inputs.dim() == 2:
+            word_embeds = self.word_embedder(ids=inputs)
+        elif inputs.dim() == 3:
+            word_embeds = self.word_embedder(soft_ids=inputs)
+        else:
+            raise ValueError("'inputs' should be a 2D or 3D tensor.")
 
-        word_embeds = self.word_embedder(inputs)
         batch_size = inputs.size(0)
         pos_length = inputs.new_full((batch_size,), inputs.size(1),
                                      dtype=torch.int64)
@@ -317,7 +325,9 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
 
         if self.segment_embedder is not None:
             if segment_ids is None:
-                segment_ids = torch.zeros_like(inputs)
+                segment_ids = torch.zeros((inputs.size(0), inputs.size(1)),
+                                          dtype=torch.long,
+                                          device=inputs.device)
             segment_embeds = self.segment_embedder(segment_ids)
             inputs_embeds = word_embeds + segment_embeds + pos_embeds
         else:
