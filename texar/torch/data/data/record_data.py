@@ -325,8 +325,8 @@ class RecordData(DatasetBase[Dict[str, Any], Dict[str, Any]]):
                 'dataset': {
                     'files': 'image1.pkl',
                     'feature_types': {
-                        'height': ['int64', 'list'],
-                        'width': ['int64', 'list'],
+                        'height': ['int64', 'list'],  # or 'stacked_tensor'
+                        'width': ['int64', 'list'],   # or 'stacked_tensor'
                         'label': ['int64', 'stacked_tensor'],
                         'image_raw': ['bytes', 'stacked_tensor'],
                     }
