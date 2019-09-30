@@ -17,7 +17,6 @@ Utils of GPT2 Modules.
 
 import json
 import os
-import sys
 import warnings
 from abc import ABC
 from typing import Any, Dict

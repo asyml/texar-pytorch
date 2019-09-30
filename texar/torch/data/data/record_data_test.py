@@ -93,7 +93,7 @@ class RecordDataTest(unittest.TestCase):
 
         self._hparams = {
             "num_epochs": 1,
-            "batch_size": 2,
+            "batch_size": 1,
             "shuffle": False,
             "dataset": {
                 "files": _record_filepath,
@@ -181,7 +181,7 @@ class RecordDataTest(unittest.TestCase):
     def test_image_resize(self):
         """Tests the image resize function
         """
-        hparams = copy.copy(self._hparams)
+        hparams = copy.deepcopy(self._hparams)
         _image_options = {
             'image_feature_name': 'image_raw',
             'resize_height': 512,

@@ -18,7 +18,7 @@ import copy
 import io
 import pickle
 import warnings
-from enum import Enum, auto
+from enum import Enum
 from typing import (
     Any, Callable, Dict, List, NamedTuple, Optional, Tuple, TypeVar, Union)
 
@@ -276,6 +276,8 @@ def _convert_feature_hparams(feature_types: Union[Dict[str, Any], HParams]) \
 
 
 def _check_shape(tensor: np.ndarray, key: str, descriptor: FeatureDescription):
+    if descriptor.shape is None:
+        return
     # Check whether shape matches.
     if descriptor.collate_method is CollateMethod.PaddedTensor:
         shape = tensor.shape[1:]
@@ -287,7 +289,7 @@ def _check_shape(tensor: np.ndarray, key: str, descriptor: FeatureDescription):
     if shape != descriptor.shape:
         if descriptor.collate_method is CollateMethod.PaddedTensor:
             raise ValueError(
-                f"Expected tensor of shape {('any',) + descriptor.shape} for "
+                f"Expected tensor of shape {('any', *descriptor.shape)} for "
                 f"feature {key}, but received tensor of shape {tensor.shape}")
         else:
             raise ValueError(
@@ -326,7 +328,7 @@ class RecordData(DatasetBase[Dict[str, Any], Dict[str, Any]]):
                         'height': ['int64', 'list'],
                         'width': ['int64', 'list'],
                         'label': ['int64', 'stacked_tensor'],
-                        'image_raw': ['uint8', 'list'],
+                        'image_raw': ['bytes', 'stacked_tensor'],
                     }
                 },
                 'batch_size': 1
@@ -341,7 +343,7 @@ class RecordData(DatasetBase[Dict[str, Any], Dict[str, Any]]):
             #        'width': [149],
             #        'label': tensor([1]),
             #
-            #        # 'image_raw' is a list of image data bytes in this
+            #        # 'image_raw' is a NumPy ndarray of raw image bytes in this
             #        # example.
             #        'image_raw': [...],
             #    }
@@ -355,7 +357,7 @@ class RecordData(DatasetBase[Dict[str, Any], Dict[str, Any]]):
                     'files': 'image2.pkl',
                     'feature_types': {
                         'label': ['int64', 'stacked_tensor'],
-                        'image_raw': ['uint8', 'stacked_tensor'],
+                        'image_raw': ['bytes', 'stacked_tensor'],
                     },
                     'image_options': {
                         'image_feature_name': 'image_raw',
@@ -373,7 +375,7 @@ class RecordData(DatasetBase[Dict[str, Any], Dict[str, Any]]):
             #    'data': {
             #        'label': tensor([1]),
             #
-            #        # "image_raw" is a tensor of image data bytes in this
+            #        # "image_raw" is a tensor of image pixel data in this
             #        # example. Each image has a width of 512 and height of 512.
             #        'image_raw': tensor([...])
             #    }
@@ -442,8 +444,7 @@ class RecordData(DatasetBase[Dict[str, Any], Dict[str, Any]]):
                     continue
                 # Convert to NumPy array.
                 value = np.asarray(value, dtype=descriptor.dtype)
-                if descriptor.shape is not None:
-                    _check_shape(value, key, descriptor)
+                _check_shape(value, key, descriptor)
                 converted[key] = value
             pickle.dump(converted, self._file_handle)
 
@@ -692,8 +693,7 @@ class RecordData(DatasetBase[Dict[str, Any], Dict[str, Any]]):
 
     def process(self, raw_example: Dict[str, Any]) -> Dict[str, Any]:
         for key, descriptor in self._features.items():
-            if descriptor.shape is not None:
-                _check_shape(raw_example[key], key, descriptor)
+            _check_shape(raw_example[key], key, descriptor)
         example = raw_example
         for key, dtype in self._convert_types.items():
             example[key] = np.asarray(example[key], dtype=dtype)
