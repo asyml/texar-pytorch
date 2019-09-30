@@ -2763,9 +2763,14 @@ def tanh(input: Tensor, *, out: Optional[Tensor] = None) -> Tensor: ...
 
 def tanh_(input: Tensor) -> Tensor: ...
 
-
+@overload
 def tensordot(input: Tensor, other: Tensor, dims_self: MaybeTuple[builtins.int],
               dims_other: MaybeTuple[builtins.int]) -> Tensor: ...
+
+@overload
+def tensordot(input: Tensor, other: Tensor,
+              dims: Union[builtins.int, Tuple[
+                  List[builtins.int], List[builtins.int]]]) -> Tensor: ...
 
 
 def th_addmm(input: Tensor, mat1: Tensor, mat2: Tensor, *, beta: builtins.float = 1, alpha: builtins.float = 1,

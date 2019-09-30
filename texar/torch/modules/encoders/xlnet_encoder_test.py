@@ -134,6 +134,22 @@ class XLNetEncoderTest(unittest.TestCase):
             torch.Size([self.batch_size, self.max_length, encoder.output_size]))
         self.assertEqual(new_memory, None)
 
+    def test_soft_ids(self):
+        r"""Tests soft ids.
+        """
+        hparams = {
+            "pretrained_model_name": None,
+        }
+        encoder = XLNetEncoder(hparams=hparams)
+
+        inputs = torch.rand(self.batch_size, self.max_length, 32000)
+        outputs, new_memory = encoder(inputs)
+
+        self.assertEqual(
+            outputs.shape,
+            torch.Size([self.batch_size, self.max_length, encoder.output_size]))
+        self.assertEqual(new_memory, None)
+
 
 if __name__ == "__main__":
     unittest.main()
