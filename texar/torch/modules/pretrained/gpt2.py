@@ -224,14 +224,7 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
         for name, _ in self.named_parameters():
             tensor_names.append(name)
 
-        idx = 0
         for name, array in zip(names, arrays):
-
-            processing = (idx + 1.0) / len(names)
-            idx += 1
-            sys.stdout.write(f"\rLoading checkpoint: {processing:.1%}")
-            sys.stdout.flush()
-
             if name in global_tensor_map:
                 v_name = global_tensor_map[name]
 

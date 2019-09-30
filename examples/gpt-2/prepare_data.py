@@ -68,7 +68,7 @@ def main() -> None:
         max_seq_length=args.max_seq_length,
         tokenizer=tokenizer,
         output_dir=pickle_output_dir,
-        feature_original_types=config_train.feature_original_types)
+        feature_types=config_train.feature_types)
 
 
 if __name__ == "__main__":

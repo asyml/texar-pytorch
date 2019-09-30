@@ -141,7 +141,7 @@ def main() -> None:
         data_dir=data_dir,
         max_seq_length=args.max_seq_length,
         output_dir=output_dir,
-        feature_original_types=config_data.feature_original_types)
+        feature_types=config_data.feature_types)
     modify_config_data(args.max_seq_length, num_train_data, num_classes)
 
 

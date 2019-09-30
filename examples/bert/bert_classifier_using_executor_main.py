@@ -18,16 +18,16 @@ Texar's Executor.
 import argparse
 import functools
 import importlib
-import logging
 import os
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 from torch import nn
 from torch.nn import functional as F
+
 import texar.torch as tx
 from texar.torch.run import *
 
@@ -67,17 +67,24 @@ config_downstream = {
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-logging.root.setLevel(logging.INFO)
-
 
 class ModelWrapper(nn.Module):
     def __init__(self, model: tx.modules.BERTClassifier):
         super().__init__()
         self.model = model
 
-    def _compute_loss(self, logits, labels):
-        r"""Compute loss.
-        """
+    def _get_outputs(self, batch: tx.data.Batch) \
+            -> Tuple[torch.Tensor, torch.LongTensor]:
+        input_ids = batch["input_ids"]
+        segment_ids = batch["segment_ids"]
+        input_length = (1 - (input_ids == 0).int()).sum(dim=1)
+        logits, preds = self.model(input_ids, input_length, segment_ids)
+        return logits, preds
+
+    def forward(self,  # type: ignore
+                batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
+        logits, preds = self._get_outputs(batch)
+        labels = batch["label_ids"]
         if self.model.is_binary:
             loss = F.binary_cross_entropy(
                 logits.view(-1), labels.view(-1), reduction='mean')
@@ -85,30 +92,10 @@ class ModelWrapper(nn.Module):
             loss = F.cross_entropy(
                 logits.view(-1, self.model.num_classes),
                 labels.view(-1), reduction='mean')
-        return loss
-
-    def forward(self,  # type: ignore
-                batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
-        input_ids = batch["input_ids"]
-        segment_ids = batch["segment_ids"]
-        labels = batch["label_ids"]
-
-        input_length = (1 - (input_ids == 0).int()).sum(dim=1)
-
-        logits, preds = self.model(input_ids, input_length, segment_ids)
-
-        loss = self._compute_loss(logits, labels)
-
         return {"loss": loss, "preds": preds}
 
     def predict(self, batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
-        input_ids = batch["input_ids"]
-        segment_ids = batch["segment_ids"]
-
-        input_length = (1 - (input_ids == 0).int()).sum(dim=1)
-
-        _, preds = self.model(input_ids, input_length, segment_ids)
-
+        _, preds = self._get_outputs(batch)
         return {"preds": preds}
 
 
@@ -117,7 +104,7 @@ class FileWriterMetric(metric.SimpleMetric[List[int], float]):
         super().__init__(pred_name="preds", label_name="input_ids")
         self.file_path = file_path
 
-    def value(self) -> float:
+    def _value(self) -> float:
         path = self.file_path or tempfile.mktemp()
         with open(path, "w+") as writer:
             writer.write("\n".join(str(p) for p in self.predicted))
@@ -217,7 +204,8 @@ def main() -> None:
             ("loss", metric.RunningAverage(1)),  # only show current loss
             ("lr", metric.LR(optim))],
         valid_metrics=[valid_metric, ("loss", metric.Average())],
-        test_metrics=[FileWriterMetric(output_dir / "test.output")],
+        test_metrics=[
+            valid_metric, FileWriterMetric(output_dir / "test.output")],
         # freq of validation
         validate_every=[cond.iteration(config_data.eval_steps)],
         # checkpoint saving location

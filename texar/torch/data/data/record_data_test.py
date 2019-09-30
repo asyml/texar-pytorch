@@ -35,12 +35,12 @@ class RecordDataTest(unittest.TestCase):
             'det.4a09796u.jpg',
             self._test_dir, 'bridge_0.jpg')
 
-        _feature_original_types = {
-            'height': ('tf.int64', 'FixedLenFeature'),
-            'width': ('tf.int64', 'FixedLenFeature'),
-            'label': ('tf.int64', 'FixedLenFeature'),
+        _feature_types = {
+            'height': ('tf.int64', 'FixedLenFeature', 1),
+            'width': ('tf.int64', 'FixedLenFeature', 1),
+            'label': ('tf.int64', 'stacked_tensor', 1),
             'shape': (np.int64, 'VarLenFeature'),
-            'image_raw': (bytes, 'FixedLenFeature'),
+            'image_raw': (bytes, 'stacked_tensor'),
             'variable1': (np.str, 'FixedLenFeature'),
             'variable2': ('tf.int64', 'FixedLenFeature'),
         }
@@ -68,11 +68,10 @@ class RecordDataTest(unittest.TestCase):
             cat_in_snow: (213, 320, 3),
             williamsburg_bridge: (239, 194),
         }
-        _tfrecord_filepath = os.path.join(self._test_dir, 'test.tfrecord')
+        _record_filepath = os.path.join(self._test_dir, 'test.pkl')
 
         # Prepare Validation data
-        with RecordData.writer(_tfrecord_filepath,
-                                       _feature_original_types) as writer:
+        with RecordData.writer(_record_filepath, _feature_types) as writer:
             for image_path, label in _toy_image_labels_valid.items():
                 with open(image_path, 'rb') as fid:
                     image_data = fid.read()
@@ -94,11 +93,11 @@ class RecordDataTest(unittest.TestCase):
 
         self._hparams = {
             "num_epochs": 1,
-            "batch_size": 1,
+            "batch_size": 2,
             "shuffle": False,
             "dataset": {
-                "files": _tfrecord_filepath,
-                "feature_original_types": _feature_original_types,
+                "files": _record_filepath,
+                "feature_original_types": _feature_types,
                 "feature_convert_types": self._feature_convert_types,
                 "image_options": [_image_options],
             }
