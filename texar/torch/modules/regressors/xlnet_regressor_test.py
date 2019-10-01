@@ -104,6 +104,19 @@ class XLNetRegressorTest(unittest.TestCase):
         self.assertEqual(preds.shape, torch.Size(
             [self.batch_size, self.max_length]))
 
+    def test_soft_ids(self):
+        r"""Tests soft ids.
+        """
+        inputs = torch.rand(self.batch_size, self.max_length, 32000)
+
+        # case 1
+        hparams = {
+            "pretrained_model_name": None,
+        }
+        regressor = XLNetRegressor(hparams=hparams)
+        preds = regressor(inputs)
+        self.assertEqual(preds.shape, torch.Size([self.batch_size]))
+
 
 if __name__ == "__main__":
     unittest.main()

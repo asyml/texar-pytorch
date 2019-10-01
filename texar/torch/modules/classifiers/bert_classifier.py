@@ -14,7 +14,7 @@
 """
 BERT classifier.
 """
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import torch
 from torch import nn
@@ -196,7 +196,7 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
         return hparams
 
     def forward(self,  # type: ignore
-                inputs: torch.Tensor,
+                inputs: Union[torch.Tensor, torch.LongTensor],
                 sequence_length: Optional[torch.LongTensor] = None,
                 segment_ids: Optional[torch.LongTensor] = None) \
             -> Tuple[torch.Tensor, torch.LongTensor]:
@@ -206,8 +206,11 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
         :class:`~texar.torch.modules.BERTEncoder`.
 
         Args:
-            inputs: A 2D Tensor of shape `[batch_size, max_time]`,
-                containing the token ids of tokens in input sequences.
+            inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
+                containing the ids of tokens in input sequences, or
+                a **3D Tensor** of shape `[batch_size, max_time, vocab_size]`,
+                containing soft token ids (i.e., weights or probabilities)
+                used to mix the embedding vectors.
             sequence_length (optional): A 1D Tensor of shape `[batch_size]`.
                 Input tokens beyond respective sequence lengths are masked
                 out automatically.

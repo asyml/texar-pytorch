@@ -15,7 +15,7 @@
 RoBERTa encoder.
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 
@@ -219,7 +219,7 @@ class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
         }
 
     def forward(self,  # type: ignore
-                inputs: torch.Tensor,
+                inputs: Union[torch.Tensor, torch.LongTensor],
                 sequence_length: Optional[torch.LongTensor] = None,
                 segment_ids: Optional[torch.LongTensor] = None):
         r"""Encodes the inputs. Differing from the standard BERT, the RoBERTa
@@ -227,8 +227,11 @@ class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
         require `segment_ids` as an input.
 
         Args:
-            inputs: A 2D Tensor of shape `[batch_size, max_time]`,
-                containing the token ids of tokens in the input sequences.
+            inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
+                containing the ids of tokens in input sequences, or
+                a **3D Tensor** of shape `[batch_size, max_time, vocab_size]`,
+                containing soft token ids (i.e., weights or probabilities)
+                used to mix the embedding vectors.
             sequence_length (optional): A 1D Tensor of shape `[batch_size]`.
                 Input tokens beyond respective sequence lengths are masked
                 out automatically.

@@ -15,7 +15,7 @@
 XLNet Classifier.
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import torch
 from torch import nn
@@ -243,14 +243,18 @@ class XLNetClassifier(ClassifierBase, PretrainedXLNetMixin):
         return self.parameters()
 
     def forward(self,  # type: ignore
-                token_ids: torch.LongTensor,
+                inputs: Union[torch.Tensor, torch.LongTensor],
                 segment_ids: Optional[torch.LongTensor] = None,
                 input_mask: Optional[torch.Tensor] = None) \
             -> Tuple[torch.Tensor, torch.LongTensor]:
         r"""Feeds the inputs through the network and makes classification.
 
         Args:
-            token_ids: Shape `[batch_size, max_time]`.
+            inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
+                containing the ids of tokens in input sequences, or
+                a **3D Tensor** of shape `[batch_size, max_time, vocab_size]`,
+                containing soft token ids (i.e., weights or probabilities)
+                used to mix the embedding vectors.
             segment_ids: Shape `[batch_size, max_time]`.
             input_mask: Float tensor of shape `[batch_size, max_time]`. Note
                 that positions with value 1 are masked out.
@@ -276,7 +280,7 @@ class XLNetClassifier(ClassifierBase, PretrainedXLNetMixin):
                   shape ``[batch_size, max_time]``.
         """
         # output: [batch_size, seq_len, hidden_dim]
-        output, _ = self._encoder(token_ids=token_ids,
+        output, _ = self._encoder(inputs=inputs,
                                   segment_ids=segment_ids,
                                   input_mask=input_mask)
 
@@ -286,7 +290,7 @@ class XLNetClassifier(ClassifierBase, PretrainedXLNetMixin):
         elif strategy == 'cls_time':
             summary = output[:, -1]
         elif strategy == 'all_time':
-            length_diff = self._hparams.max_seq_length - token_ids.shape[1]
+            length_diff = self._hparams.max_seq_length - inputs.shape[1]
             summary_input = F.pad(output, [0, 0, 0, length_diff, 0, 0])
             summary_input_dim = (self._encoder.output_size *
                                  self._hparams.max_seq_length)

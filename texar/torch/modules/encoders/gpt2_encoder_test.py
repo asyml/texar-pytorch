@@ -160,6 +160,21 @@ class GPT2EncoderTest(unittest.TestCase):
             outputs.shape,
             torch.Size([self.batch_size, self.max_length, encoder.output_size]))
 
+    def test_soft_ids(self):
+        r"""Tests soft ids.
+        """
+        hparams = {
+            "pretrained_model_name": None,
+        }
+        encoder = GPT2Encoder(hparams=hparams)
+
+        inputs = torch.rand(self.batch_size, self.max_length, 50257)
+        outputs = encoder(inputs)
+
+        self.assertEqual(
+            outputs.shape,
+            torch.Size([self.batch_size, self.max_length, encoder.output_size]))
+
 
 if __name__ == "__main__":
     unittest.main()

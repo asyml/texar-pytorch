@@ -100,7 +100,7 @@ def construct_datasets(args) -> Dict[str, tx.data.RecordData]:
 class RegressorWrapper(tx.modules.XLNetRegressor):
     def forward(self,  # type: ignore
                 batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
-        preds = super().forward(token_ids=batch.input_ids,
+        preds = super().forward(inputs=batch.input_ids,
                                 segment_ids=batch.segment_ids,
                                 input_mask=batch.input_mask)
         loss = (preds - batch.label_ids) ** 2
@@ -111,7 +111,7 @@ class RegressorWrapper(tx.modules.XLNetRegressor):
 class ClassifierWrapper(tx.modules.XLNetClassifier):
     def forward(self,  # type: ignore
                 batch: tx.data.Batch) -> Dict[str, torch.Tensor]:
-        logits, preds = super().forward(token_ids=batch.input_ids,
+        logits, preds = super().forward(inputs=batch.input_ids,
                                         segment_ids=batch.segment_ids,
                                         input_mask=batch.input_mask)
         loss = F.cross_entropy(logits, batch.label_ids, reduction='none')

@@ -15,7 +15,7 @@
 XLNet encoder.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 from torch import nn
@@ -319,7 +319,7 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         return ret
 
     def forward(self,  # type: ignore
-                token_ids: torch.LongTensor,
+                inputs: Union[torch.Tensor, torch.LongTensor],
                 segment_ids: Optional[torch.LongTensor] = None,
                 input_mask: Optional[torch.Tensor] = None,
                 memory: Optional[List[torch.Tensor]] = None,
@@ -335,7 +335,11 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         r"""Compute XLNet representations for the input.
 
         Args:
-            token_ids: Shape `[batch_size, max_time]`.
+            inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
+                containing the ids of tokens in input sequences, or
+                a **3D Tensor** of shape `[batch_size, max_time, vocab_size]`,
+                containing soft token ids (i.e., weights or probabilities)
+                used to mix the embedding vectors.
             segment_ids: Shape `[batch_size, max_time]`.
             input_mask: Float tensor of shape `[batch_size, max_time]`. Note
                 that positions with value 1 are masked out.
@@ -374,7 +378,15 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
               `[batch_size, cache_len, hidden_dim]`.
               This can be used as the :attr:`memory` argument in the next batch.
         """
-        return self._forward(self.word_embed(token_ids),
+        if inputs.dim() == 2:
+            word_embeds = self.word_embed(inputs)
+        elif inputs.dim() == 3:
+            word_embeds = torch.tensordot(inputs, self.word_embed.weight,
+                                          dims=([-1], [0]))
+        else:
+            raise ValueError("'inputs' should be a 2D or 3D tensor.")
+
+        return self._forward(word_embed=word_embeds,
                              segment_ids=segment_ids,
                              input_mask=input_mask,
                              memory=memory,

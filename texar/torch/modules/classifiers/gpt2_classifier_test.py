@@ -162,6 +162,23 @@ class GPT2ClassifierTest(unittest.TestCase):
         self.assertEqual(logits.shape, torch.Size([self.batch_size]))
         self.assertEqual(preds.shape, torch.Size([self.batch_size]))
 
+    def test_soft_ids(self):
+        r"""Tests soft ids.
+        """
+        inputs = torch.rand(self.batch_size, self.max_length, 50257)
+        hparams = {
+            "pretrained_model_name": None,
+            "num_classes": 1,
+            "clas_strategy": "time_wise",
+        }
+        classifier = GPT2Classifier(hparams=hparams)
+        logits, preds = classifier(inputs)
+
+        self.assertEqual(logits.shape, torch.Size(
+            [self.batch_size, self.max_length]))
+        self.assertEqual(preds.shape, torch.Size(
+            [self.batch_size, self.max_length]))
+
 
 if __name__ == "__main__":
     unittest.main()
