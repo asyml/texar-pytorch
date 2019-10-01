@@ -27,17 +27,20 @@ __all__ = [
 ]
 
 
-__all__ = [
-    'binary_adversarial_losses',
-]
-
-
 def binary_adversarial_losses(
         real_data: torch.Tensor,
         fake_data: torch.Tensor,
         discriminator_fn: Callable[[torch.Tensor], MaybeTuple[torch.Tensor]],
         mode: str = "max_real") -> Tuple[torch.Tensor, torch.Tensor]:
     r"""Computes adversarial losses of real/fake binary discrimination game.
+
+    Example:
+        discriminator = tx.modules.BERTClassifier('bert-base-uncased')
+
+        G_loss, D_loss = tx.losses.binary_adversarial_losses(
+            real_data=real_token_ids,  # [batch_size, max_time]
+            fake_data=fake_soft_token_ids,  # [batch_size, max_time, vocab_size]
+            discriminator_fn=discriminator)
 
     Args:
         real_data (Tensor or array): Real data of shape
