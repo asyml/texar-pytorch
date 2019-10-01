@@ -26,13 +26,13 @@ opt = {
 
 # Data configs
 
-feature_original_types = {
+feature_types = {
     # Reading features from pickle data file.
     # E.g., Reading feature "text_ids" as dtype `int64`;
-    # "FixedLenFeature" indicates its length is fixed for all data instances;
+    # "stacked_tensor" indicates its length is fixed for all data instances;
     # and the sequence length is limited by `max_seq_length`.
-    "text_ids": ["int64", "FixedLenFeature", max_seq_length],
-    "length": ["int64", "FixedLenFeature"]
+    "text_ids": ["int64", "stacked_tensor", max_seq_length],
+    "length": ["int64", "stacked_tensor"]
 }
 
 train_hparam = {
@@ -40,7 +40,7 @@ train_hparam = {
     "batch_size": train_batch_size,
     "dataset": {
         "data_name": "data",
-        "feature_original_types": feature_original_types,
+        "feature_types": feature_types,
         "files": "{}/train.pkl".format(pickle_data_dir)
     },
     "shuffle": True,
@@ -52,7 +52,7 @@ eval_hparam = {
     "batch_size": eval_batch_size,
     "dataset": {
         "data_name": "data",
-        "feature_original_types": feature_original_types,
+        "feature_types": feature_types,
         "files": "{}/dev.pkl".format(pickle_data_dir)
     },
     "shuffle": False
@@ -65,7 +65,7 @@ test_hparam = {
     "batch_size": test_batch_size,
     "dataset": {
         "data_name": "data",
-        "feature_original_types": feature_original_types,
+        "feature_types": feature_types,
         "files": "{}/test.pkl".format(pickle_data_dir)
     },
     "shuffle": False

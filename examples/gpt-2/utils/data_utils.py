@@ -38,12 +38,11 @@ def convert_examples_to_features_and_output_to_files(
         max_seq_length: int,
         tokenizer: tx.data.GPT2Tokenizer,
         output_file: str,
-        feature_original_types: Dict[str, Any],
+        feature_types: Dict[str, Any],
         append_eos_token: bool = True):
     r"""Converts a set of examples to a `pickle` file."""
 
-    with tx.data.RecordData.writer(
-            output_file, feature_original_types) as writer:
+    with tx.data.RecordData.writer(output_file, feature_types) as writer:
 
         for (_, example) in enumerate(examples):
 
@@ -62,14 +61,14 @@ def prepare_pickle_data(data_dir: str,
                         max_seq_length: int,
                         tokenizer: tx.data.GPT2Tokenizer,
                         output_dir: str,
-                        feature_original_types: Dict[str, Any]):
+                        feature_types: Dict[str, Any]):
     r"""Prepare the `pickle` dataset.
     Args:
         data_dir: The input data directory.
         max_seq_length: Max sequence length.
         tokenizer: The GPT-2 tokenizer.
         output_dir: The directory to save the pickled files in.
-        feature_original_types: The original type of the feature.
+        feature_types: The original type of the feature.
     """
     train_fn = os.path.join(data_dir, "train.txt")
     if os.path.isfile(train_fn):
@@ -78,7 +77,7 @@ def prepare_pickle_data(data_dir: str,
         train_file = os.path.join(output_dir, "train.pkl")
         convert_examples_to_features_and_output_to_files(
             train_examples, max_seq_length, tokenizer, train_file,
-            feature_original_types)
+            feature_types)
 
     dev_fn = os.path.join(data_dir, "dev.txt")
     if os.path.isfile(dev_fn):
@@ -87,7 +86,7 @@ def prepare_pickle_data(data_dir: str,
         eval_file = os.path.join(output_dir, "dev.pkl")
         convert_examples_to_features_and_output_to_files(
             eval_examples, max_seq_length, tokenizer, eval_file,
-            feature_original_types)
+            feature_types)
 
     test_fn = os.path.join(data_dir, "test.txt")
     if os.path.isfile(test_fn):
@@ -96,4 +95,4 @@ def prepare_pickle_data(data_dir: str,
         test_file = os.path.join(output_dir, "test.pkl")
         convert_examples_to_features_and_output_to_files(
             test_examples, max_seq_length, tokenizer, test_file,
-            feature_original_types, append_eos_token=False)
+            feature_types, append_eos_token=False)

@@ -55,12 +55,12 @@ class MultiAlignedDataTest(unittest.TestCase):
         int_3_file.flush()
         self._int_3_file = int_3_file
 
-        self._tfrecord_filepath = os.path.join(tempfile.mkdtemp(),
-                                               'test.tfrecord')
-        self._feature_original_types = {
-            'number1': ('tf.int64', 'FixedLenFeature'),
-            'number2': ('tf.int64', 'FixedLenFeature'),
-            'text': ('tf.string', 'FixedLenFeature')
+        self._record_filepath = os.path.join(
+            tempfile.mkdtemp(), 'test.pkl')
+        self._feature_types = {
+            'number1': ('tf.int64', 'stacked_tensor'),
+            'number2': ('tf.int64', 'stacked_tensor'),
+            'text': ('tf.string', 'stacked_tensor')
         }
 
         features = [{
@@ -74,8 +74,8 @@ class MultiAlignedDataTest(unittest.TestCase):
                 "text": "This is a another sentence for TFRecord 词 词 。"
             }]
         # Prepare Validation data
-        with RecordData.writer(self._tfrecord_filepath,
-                                       self._feature_original_types) as writer:
+        with RecordData.writer(self._record_filepath,
+                               self._feature_types) as writer:
             for feature in features:
                 writer.write(feature)
 
@@ -110,8 +110,8 @@ class MultiAlignedDataTest(unittest.TestCase):
                     "data_name": "label"
                 },
                 {  # dataset 4
-                    "files": self._tfrecord_filepath,
-                    "feature_original_types": self._feature_original_types,
+                    "files": self._record_filepath,
+                    "feature_types": self._feature_types,
                     "feature_convert_types": {
                         'number2': 'tf.float32',
                     },
