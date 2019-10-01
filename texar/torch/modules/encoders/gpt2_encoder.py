@@ -265,11 +265,11 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
         r"""Encodes the inputs.
 
         Args:
-            inputs: A 2D Tensor of shape `[batch_size, max_time]`,
-                containing the token ids of tokens in the input sequences or
-                a 3D Tensor of shape `[batch_size, max_time, vocab_size]`,
-                containing the weights (probabilities) used to mix the
-                embedding vectors.
+            inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
+                containing the ids of tokens in input sequences, or
+                a **3D Tensor** of shape `[batch_size, max_time, vocab_size]`,
+                containing soft token ids (i.e., weights or probabilities)
+                used to mix the embedding vectors.
             sequence_length (optional): A 1D Tensor of shape `[batch_size]`.
                 Input tokens beyond respective sequence lengths are masked
                 out automatically.

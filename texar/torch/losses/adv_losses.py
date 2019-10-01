@@ -35,6 +35,11 @@ def binary_adversarial_losses(
     r"""Computes adversarial losses of real/fake binary discrimination game.
 
     Example:
+
+    .. code-block:: python
+
+        # Using BERTClassifier as the discriminator, which can accept
+        # "soft" token ids for gradient backpropagation
         discriminator = tx.modules.BERTClassifier('bert-base-uncased')
 
         G_loss, D_loss = tx.losses.binary_adversarial_losses(

@@ -250,11 +250,11 @@ class XLNetClassifier(ClassifierBase, PretrainedXLNetMixin):
         r"""Feeds the inputs through the network and makes classification.
 
         Args:
-            inputs: A 2D Tensor of shape `[batch_size, max_time]`,
-                containing the token ids of tokens in the input sequences or
-                a 3D Tensor of shape `[batch_size, max_time, vocab_size]`,
-                containing the weights (probabilities) used to mix the
-                embedding vectors.
+            inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
+                containing the ids of tokens in input sequences, or
+                a **3D Tensor** of shape `[batch_size, max_time, vocab_size]`,
+                containing soft token ids (i.e., weights or probabilities)
+                used to mix the embedding vectors.
             segment_ids: Shape `[batch_size, max_time]`.
             input_mask: Float tensor of shape `[batch_size, max_time]`. Note
                 that positions with value 1 are masked out.
