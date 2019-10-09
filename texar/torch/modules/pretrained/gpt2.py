@@ -226,14 +226,12 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
         for name, array in zip(names, arrays):
             if name in global_tensor_map:
                 v_name = global_tensor_map[name]
-
                 if name == "model/wte":
-                    if load_output_layer:
-                        pointer = self._name_to_variable(
-                            "word_embedder.embedding")
-                        assert pointer.shape == array.shape
-                        pointer.data = torch.from_numpy(array)
+                    pointer = self._name_to_variable("word_embedder.embedding")
+                    assert pointer.shape == array.shape
+                    pointer.data = torch.from_numpy(array)
 
+                    if load_output_layer:
                         output_pointer = self._name_to_variable(
                             "_output_layer.weight")
                         assert output_pointer.shape == array.shape
