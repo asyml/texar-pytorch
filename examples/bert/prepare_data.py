@@ -45,10 +45,6 @@ parser.add_argument(
          "By default it will be set to 'data/{task}'. E.g.: if "
          "task is 'MRPC', it will be set as 'data/MRPC'")
 parser.add_argument(
-    "--lower-case", type=bool, default=True,
-    help="Whether to lower case the input text. Should be True for uncased "
-         "models and False for cased models.")
-parser.add_argument(
     "--config-data", default="config_data", help="The dataset config.")
 args = parser.parse_args()
 
