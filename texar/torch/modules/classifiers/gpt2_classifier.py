@@ -115,7 +115,7 @@ class GPT2Classifier(ClassifierBase, PretrainedGPT2Mixin):
 
         self.is_binary = (self.num_classes == 1) or \
                          (self.num_classes <= 0 and
-                          self._hparams.dim == 1)
+                          self._hparams.encoder.dim == 1)
 
     @staticmethod
     def default_hparams():

@@ -30,7 +30,7 @@ __all__ = [
 ]
 
 
-class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
+class GPT2Decoder(PretrainedGPT2Mixin):
     r"""Raw GPT2 Transformer for decoding sequences. Please see
     :class:`~texar.torch.modules.PretrainedGPT2Mixin` for a brief description
     of GPT2.
@@ -58,39 +58,43 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
     """
+    _IS_DECODE = True
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None):
-        self.load_pretrained_config(pretrained_model_name, cache_dir, hparams)
+        super().__init__(hparams=hparams)
+
+        self.load_pretrained_config(pretrained_model_name, cache_dir)
 
         # Word embedding
-        word_embedder = WordEmbedder(
+        self.word_embedder = WordEmbedder(
             vocab_size=self._hparams.vocab_size,
             hparams=self._hparams.embed)
 
         # Position embedding
-        position_embedder = PositionEmbedder(
+        self.position_embedder = PositionEmbedder(
             position_size=self._hparams.position_size,
             hparams=self._hparams.position_embed)
 
         # The GPT2 decoder (a TransformerDecoder)
-        super().__init__(vocab_size=self._hparams.vocab_size,
-                         output_layer=word_embedder.embedding,
-                         hparams=None)
+        def func(tokens, positions):
+            word_embeds = self.word_embedder(tokens)
+            pos_embeds = self.position_embedder(positions)
+            return word_embeds + pos_embeds
 
-        # Register modules after `__init__` is called.
-        self.word_embedder = word_embedder
-        self.position_embedder = position_embedder
+        class GPT2TransformerDecoder(TransformerDecoder):
+            def embed_tokens(self, tokens: torch.LongTensor,
+                             positions: torch.LongTensor) -> torch.Tensor:
+                return func(tokens, positions)
+
+        self.decoder = GPT2TransformerDecoder(
+            vocab_size=self._hparams.vocab_size,
+            output_layer=self.word_embedder.embedding,
+            hparams=self._hparams.decoder)
 
         self.init_pretrained_weights()
-
-    def embed_tokens(self, tokens: torch.LongTensor,
-                     positions: torch.LongTensor) -> torch.Tensor:
-        word_embeds = self.word_embedder(tokens)
-        pos_embeds = self.position_embedder(positions)
-        return word_embeds + pos_embeds
 
     @staticmethod
     def default_hparams():
@@ -197,53 +201,53 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
             Name of the module.
         """
         return {
-            **TransformerDecoder.default_hparams(),
-            'dim': 768,
-            'num_blocks': 12,
-            'use_gpt_config': True,
-            'embedding_dropout': 0,
-            'residual_dropout': 0,
-            'multihead_attention': {
-                'use_bias': True,
-                'num_units': 768,
-                'num_heads': 12,
-                "dropout_rate": 0.0,
-                'output_dim': 768
-            },
-            'initializer': {
-                'type': 'variance_scaling_initializer',
-                'kwargs': {
-                    'factor': 1.0,
-                    'mode': 'FAN_AVG',
-                    'uniform': True
-                }
-            },
-            'poswise_feedforward': {
-                'layers': [
-                    {
-                        'type': 'Linear',
-                        'kwargs': {
-                            'in_features': 768,
-                            'out_features': 3072,
-                            'bias': True
-                        }
-                    },
-                    {
-                        'type': 'GPTGELU',
-                        'kwargs': {}
-                    },
-                    {
-                        'type': 'Linear',
-                        'kwargs': {
-                            'in_features': 3072,
-                            'out_features': 768,
-                            'bias': True
-                        }
+            'decoder': {
+                'dim': 768,
+                'num_blocks': 12,
+                'use_gpt_config': True,
+                'embedding_dropout': 0,
+                'residual_dropout': 0,
+                'multihead_attention': {
+                    'use_bias': True,
+                    'num_units': 768,
+                    'num_heads': 12,
+                    "dropout_rate": 0.0,
+                    'output_dim': 768
+                },
+                'initializer': {
+                    'type': 'variance_scaling_initializer',
+                    'kwargs': {
+                        'factor': 1.0,
+                        'mode': 'FAN_AVG',
+                        'uniform': True
                     }
-                ],
-                'name': 'ffn'
+                },
+                'poswise_feedforward': {
+                    'layers': [
+                        {
+                            'type': 'Linear',
+                            'kwargs': {
+                                'in_features': 768,
+                                'out_features': 3072,
+                                'bias': True
+                            }
+                        },
+                        {
+                            'type': 'GPTGELU',
+                            'kwargs': {}
+                        },
+                        {
+                            'type': 'Linear',
+                            'kwargs': {
+                                'in_features': 3072,
+                                'out_features': 768,
+                                'bias': True
+                            }
+                        }
+                    ],
+                    'name': 'ffn'
+                },
             },
-
             'pretrained_model_name': 'gpt2-small',
             'vocab_size': 50257,
             'context_size': 1024,
@@ -286,18 +290,18 @@ class GPT2Decoder(TransformerDecoder, PretrainedGPT2Mixin):
         :meth:`texar.torch.modules.TransformerDecoder.forward`. Please refer to
         it for the detailed usage.
         """
-        return super().forward(inputs=inputs,
-                               sequence_length=sequence_length,
-                               memory=memory,
-                               memory_sequence_length=memory_sequence_length,
-                               memory_attention_bias=memory_attention_bias,
-                               context=context,
-                               context_sequence_length=context_sequence_length,
-                               helper=helper,
-                               decoding_strategy=decoding_strategy,
-                               max_decoding_length=max_decoding_length,
-                               impute_finished=impute_finished,
-                               infer_mode=infer_mode,
-                               beam_width=beam_width,
-                               length_penalty=length_penalty,
-                               **kwargs)
+        return self.decoder(inputs=inputs,
+                            sequence_length=sequence_length,
+                            memory=memory,
+                            memory_sequence_length=memory_sequence_length,
+                            memory_attention_bias=memory_attention_bias,
+                            context=context,
+                            context_sequence_length=context_sequence_length,
+                            helper=helper,
+                            decoding_strategy=decoding_strategy,
+                            max_decoding_length=max_decoding_length,
+                            impute_finished=impute_finished,
+                            infer_mode=infer_mode,
+                            beam_width=beam_width,
+                            length_penalty=length_penalty,
+                            **kwargs)
