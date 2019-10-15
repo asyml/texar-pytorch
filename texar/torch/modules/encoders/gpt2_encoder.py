@@ -21,6 +21,7 @@ import torch
 
 from texar.torch.modules.embedders.embedders import WordEmbedder
 from texar.torch.modules.embedders.position_embedders import PositionEmbedder
+from texar.torch.modules.encoders.encoder_base import EncoderBase
 from texar.torch.modules.encoders.transformer_encoder import TransformerEncoder
 from texar.torch.modules.pretrained.gpt2 import PretrainedGPT2Mixin
 
@@ -29,7 +30,7 @@ __all__ = [
 ]
 
 
-class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
+class GPT2Encoder(EncoderBase, PretrainedGPT2Mixin):
     r"""Raw GPT2 Transformer for encoding sequences. Please see
     :class:`~texar.torch.modules.PretrainedGPT2Mixin` for a brief description
     of GPT2.
@@ -59,24 +60,22 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None):
-        self.load_pretrained_config(pretrained_model_name, cache_dir, hparams)
+        super().__init__(hparams=hparams)
+
+        self.load_pretrained_config(pretrained_model_name, cache_dir)
 
         # Word embedding
-        word_embedder = WordEmbedder(
+        self.word_embedder = WordEmbedder(
             vocab_size=self._hparams.vocab_size,
             hparams=self._hparams.embed)
 
         # Position embedding
-        position_embedder = PositionEmbedder(
+        self.position_embedder = PositionEmbedder(
             position_size=self._hparams.position_size,
             hparams=self._hparams.position_embed)
 
         # The GPT2 encoder (a TransformerEncoder)
-        super().__init__(hparams=None)
-
-        # Register modules after `__init__` is called.
-        self.word_embedder = word_embedder
-        self.position_embedder = position_embedder
+        self.encoder = TransformerEncoder(hparams=self._hparams.encoder)
 
         self.init_pretrained_weights(load_output_layer=False)
 
@@ -110,10 +109,10 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
                     "name": "position_embeddings"
                 },
 
-                "decoder": {
+                "encoder": {
                     "dim": 768,
                     "num_blocks": 12,
-                    "use_gpt_config": True,
+                    "use_bert_config": False,
                     "embedding_dropout": 0,
                     "residual_dropout": 0,
                     "multihead_attention": {
@@ -194,53 +193,52 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
             Name of the module.
         """
         return {
-            **TransformerEncoder.default_hparams(),
-            'dim': 768,
-            'num_blocks': 12,
-            'use_bert_config': False,
-            'use_gpt_config': True,
-            'embedding_dropout': 0,
-            'residual_dropout': 0,
-            'multihead_attention': {
-                'use_bias': True,
-                'num_units': 768,
-                'num_heads': 12,
-                'output_dim': 768
-            },
-            'initializer': {
-                'type': 'variance_scaling_initializer',
-                'kwargs': {
-                    'factor': 1.0,
-                    'mode': 'FAN_AVG',
-                    'uniform': True
-                }
-            },
-            'poswise_feedforward': {
-                'layers': [
-                    {
-                        'type': 'Linear',
-                        'kwargs': {
-                            'in_features': 768,
-                            'out_features': 3072,
-                            'bias': True
-                        }
-                    },
-                    {
-                        'type': 'GPTGELU',
-                        'kwargs': {}
-                    },
-                    {
-                        'type': 'Linear',
-                        'kwargs': {
-                            'in_features': 3072,
-                            'out_features': 768,
-                            'bias': True
-                        }
+            'encoder': {
+                'dim': 768,
+                'num_blocks': 12,
+                'use_bert_config': False,
+                'embedding_dropout': 0,
+                'residual_dropout': 0,
+                'multihead_attention': {
+                    'use_bias': True,
+                    'num_units': 768,
+                    'num_heads': 12,
+                    'output_dim': 768
+                },
+                'initializer': {
+                    'type': 'variance_scaling_initializer',
+                    'kwargs': {
+                        'factor': 1.0,
+                        'mode': 'FAN_AVG',
+                        'uniform': True
                     }
-                ],
-                'name': 'ffn'
+                },
+                'poswise_feedforward': {
+                    'layers': [
+                        {
+                            'type': 'Linear',
+                            'kwargs': {
+                                'in_features': 768,
+                                'out_features': 3072,
+                                'bias': True
+                            }
+                        },
+                        {
+                            'type': 'GPTGELU',
+                            'kwargs': {}
+                        },
+                        {
+                            'type': 'Linear',
+                            'kwargs': {
+                                'in_features': 3072,
+                                'out_features': 768,
+                                'bias': True
+                            }
+                        }
+                    ],
+                    'name': 'ffn'
+                },
             },
-
             'pretrained_model_name': 'gpt2-small',
             'vocab_size': 50257,
             'context_size': 1024,
@@ -254,7 +252,7 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
                 'dim': 768,
                 'name': 'position_embeddings'
             },
-
+            'initializer': None,
             'name': 'gpt2_encoder',
             '@no_typecheck': ['pretrained_model_name'],
         }
@@ -296,7 +294,7 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
             sequence_length = inputs.new_full(
                 (batch_size,), inputs.size(1), dtype=torch.long)
 
-        output = super().forward(
+        output = self.encoder(
             inputs=inputs_embeds, sequence_length=sequence_length)
 
         return output
@@ -305,4 +303,4 @@ class GPT2Encoder(TransformerEncoder, PretrainedGPT2Mixin):
     def output_size(self):
         r"""The feature size of :meth:`forward` output.
         """
-        return self._hparams.dim
+        return self._hparams.encoder.dim

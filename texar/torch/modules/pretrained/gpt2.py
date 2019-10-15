@@ -71,6 +71,8 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
                        for file in _CHECKPOINT_FILES],
     }
 
+    _IS_DECODE = False
+
     # Raise warning for the deprecated pre-trained model names
     class MyDict(dict):
         def __contains__(self, key):
@@ -91,8 +93,7 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
     _MODEL2URL.update(_DEPRECATED_MODEL2URL)
     _MODEL2URL = MyDict(_MODEL2URL)  # type: ignore
 
-    @classmethod
-    def _transform_config(cls, pretrained_model_name: str,
+    def _transform_config(self, pretrained_model_name: str,  # type: ignore
                           cache_dir: str) -> Dict[str, Any]:
         info = list(os.walk(cache_dir))
         root, _, files = info[0]
@@ -118,10 +119,11 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
                 "dim": hidden_dim
             }
         }
-        configs.update({
+
+        module_name = 'decoder' if self._IS_DECODE else 'encoder'
+        configs.update({module_name: {
             "dim": hidden_dim,
             "num_blocks": config_gpt["n_layer"],
-            "use_gpt_config": True,
             "embedding_dropout": 0,
             "residual_dropout": 0,
             "multihead_attention": {
@@ -163,7 +165,11 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
                 ],
                 "name": "ffn",
             },
-        })
+        }})
+        if self._IS_DECODE:
+            configs[module_name].update({'use_gpt_config': True})
+        else:
+            configs[module_name].update({'use_bert_config': False})
         return configs
 
     def _init_from_checkpoint(self, pretrained_model_name: str,
@@ -188,25 +194,28 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
                   "for installation instructions.")
             raise
 
+        module_name = 'decoder' if self._IS_DECODE else 'encoder'
+
         global_tensor_map = {
-            "model/wte": "_embedding",
-            "model/wpe": "_embedding",
-            "model/ln_f/b": "final_layer_norm.bias",
-            "model/ln_f/g": "final_layer_norm.weight",
+            "model/wte": "word_embedder.embedding",
+            "model/wpe": "position_embedder.embedding",
+            "model/ln_f/b": module_name + ".final_layer_norm.bias",
+            "model/ln_f/g": module_name + ".final_layer_norm.weight",
         }
         layer_tensor_map = {
-            "ln_1/b": "self_attn_layer_norm.{}.bias",
-            "ln_1/g": "self_attn_layer_norm.{}.weight",
-            "ln_2/b": "poswise_layer_norm.{}.bias",
-            "ln_2/g": "poswise_layer_norm.{}.weight",
-            "mlp/c_fc/b": "poswise_networks.{}._layers.0.bias",
-            "mlp/c_proj/b": "poswise_networks.{}._layers.2.bias",
-            "attn/c_proj/b": "self_attns.{}.O_dense.bias",
+            "ln_1/b": module_name + ".self_attn_layer_norm.{}.bias",
+            "ln_1/g": module_name + ".self_attn_layer_norm.{}.weight",
+            "ln_2/b": module_name + ".poswise_layer_norm.{}.bias",
+            "ln_2/g": module_name + ".poswise_layer_norm.{}.weight",
+            "mlp/c_fc/b": module_name + ".poswise_networks.{}._layers.0.bias",
+            "mlp/c_proj/b": module_name + ".poswise_networks.{}._layers.2.bias",
+            "attn/c_proj/b": module_name + ".self_attns.{}.O_dense.bias",
         }
         layer_transpose_map = {
-            "mlp/c_fc/w": "poswise_networks.{}._layers.0.weight",
-            "mlp/c_proj/w": "poswise_networks.{}._layers.2.weight",
-            "attn/c_proj/w": "self_attns.{}.O_dense.weight",
+            "mlp/c_fc/w": module_name + ".poswise_networks.{}._layers.0.weight",
+            "mlp/c_proj/w": module_name + ".poswise_networks.{}._layers.2."
+                                          "weight",
+            "attn/c_proj/w": module_name + ".self_attns.{}.O_dense.weight",
         }
 
         tf_path = os.path.abspath(os.path.join(cache_dir, 'model.ckpt'))
@@ -227,18 +236,17 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
             if name in global_tensor_map:
                 v_name = global_tensor_map[name]
                 if name == "model/wte":
-                    pointer = self._name_to_variable("word_embedder.embedding")
+                    pointer = self._name_to_variable(v_name)
                     assert pointer.shape == array.shape
                     pointer.data = torch.from_numpy(array)
 
                     if load_output_layer:
                         output_pointer = self._name_to_variable(
-                            "_output_layer.weight")
+                            "decoder._output_layer.weight")
                         assert output_pointer.shape == array.shape
                         output_pointer.data = torch.from_numpy(array)
                 elif name == "model/wpe":
-                    pointer = self._name_to_variable(
-                        "position_embedder.embedding")
+                    pointer = self._name_to_variable(v_name)
                     assert pointer.shape == array.shape
                     pointer.data = torch.from_numpy(array)
                 else:
@@ -269,11 +277,11 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
                     V_w = np.transpose(array[:, 2 * index_d:])
 
                     q_weight = self._name_to_variable(
-                        f"self_attns.{layer_no}.Q_dense.weight")
+                        f"{module_name}.self_attns.{layer_no}.Q_dense.weight")
                     k_weight = self._name_to_variable(
-                        f"self_attns.{layer_no}.K_dense.weight")
+                        f"{module_name}.self_attns.{layer_no}.K_dense.weight")
                     v_weight = self._name_to_variable(
-                        f"self_attns.{layer_no}.V_dense.weight")
+                        f"{module_name}.self_attns.{layer_no}.V_dense.weight")
 
                     assert q_weight.shape == Q_w.shape
                     assert k_weight.shape == K_w.shape
@@ -289,11 +297,11 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
                     K_b = array[d // 3: 2 * d // 3]
                     V_b = array[2 * d // 3:]
                     q_bias = self._name_to_variable(
-                        f"self_attns.{layer_no}.Q_dense.bias")
+                        f"{module_name}.self_attns.{layer_no}.Q_dense.bias")
                     k_bias = self._name_to_variable(
-                        f"self_attns.{layer_no}.K_dense.bias")
+                        f"{module_name}.self_attns.{layer_no}.K_dense.bias")
                     v_bias = self._name_to_variable(
-                        f"self_attns.{layer_no}.V_dense.bias")
+                        f"{module_name}.self_attns.{layer_no}.V_dense.bias")
 
                     assert q_bias.shape == Q_b.shape
                     assert k_bias.shape == K_b.shape
