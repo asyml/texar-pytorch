@@ -51,8 +51,7 @@ class ConditionalGPT2Model(nn.Module):
     # Use hyperparameter dict for model configuration
     self.embedder = tx.modules.WordEmbedder(vocab_size, hparams=emb_hparams)
     self.encoder = tx.modules.TransformerEncoder(hparams=enc_hparams)
-    # GPT-2 module with pre-trained weights
-    self.decoder = tx.modules.GPT2Decoder("gpt2-small")
+    self.decoder = tx.modules.GPT2Decoder("gpt2-small")  # With pre-trained weights
 
   def _get_decoder_output(self, batch, train=True):
     """Perform model inference, i.e., decoding."""
@@ -71,8 +70,7 @@ class ConditionalGPT2Model(nn.Module):
   def forward(self, batch):
     """Compute training loss."""
     outputs = self._get_decoder_output(batch)
-    # Loss for maximum likelihood learning
-    loss = tx.losses.sequence_sparse_softmax_cross_entropy(
+    loss = tx.losses.sequence_sparse_softmax_cross_entropy(  # Sequence loss
         labels=batch['target_text_ids'][:, 1:], logits=outputs.logits,
         sequence_length=batch['target_length'] - 1)  # Automatic masking
     return {"loss": loss}
