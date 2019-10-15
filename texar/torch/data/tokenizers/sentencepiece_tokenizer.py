@@ -234,8 +234,9 @@ class SentencePieceTokenizer(TokenizerBase):
         * If `hparams['vocab_file']` is specified, the tokenizer is directly
           loaded from the vocabulary file. In this case, all other
           configurations in `hparams` are ignored.
-        * Otherwise, the tokenizer is trained based on `hparams['text_file']`.
-          In this case, `hparams['vocab_size']` must be specified.
+        * Otherwise, the tokenizer is automatically trained based on
+          `hparams['text_file']`. In this case, `hparams['vocab_size']` must
+          be specified.
         * `hparams['vocab_file']` and `hparams['text_file']` can not be None
           at the same time.
 
