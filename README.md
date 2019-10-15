@@ -39,6 +39,7 @@ Texar-PyTorch integrates many of the best features of TensorFlow into PyTorch, d
 
 ### Library API Example
 A code example that builds and trains a **Conditional GPT2** model (e.g., for machine translation and text summarization):
+
 ```python
 import texar.torch as tx
 from texar.torch.run import *
@@ -107,9 +108,9 @@ Many more examples are available [here](./examples).
 
 
 ### Installation
-Texar-PyTorch requires `PyTorch>=1.0`. Please follow the [official instructions](https://pytorch.org/get-started/locally/#start-locally) to install the appropriate version.
+Texar-PyTorch requires `torch >= 1.0.0 (but < 1.3.0)`. Please follow the [official instructions](https://pytorch.org/get-started/locally/#start-locally) to install the appropriate version.
 
-After PyTorch is installed, please run the following commands to install Texar-PyTorch:
+After `torch` is installed, please run the following commands to install Texar-PyTorch:
 ```
 git clone https://github.com/asyml/texar-pytorch.git 
 cd texar-pytorch
@@ -129,6 +130,7 @@ pip install tensorboardX
 
 ### Reference
 If you use Texar, please cite the [tech report](https://arxiv.org/abs/1809.00794) with the following BibTex entry:
+
 ```
 Texar: A Modularized, Versatile, and Extensible Toolkit for Text Generation
 Zhiting Hu, Haoran Shi, Bowen Tan, Wentao Wang, Zichao Yang, Tiancheng Zhao, Junxian He, Lianhui Qin, Di Wang, Xuezhe Ma, Zhengzhong Liu, Xiaodan Liang, Wanrong Zhu, Devendra Sachan and Eric Xing
