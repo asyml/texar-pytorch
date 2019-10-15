@@ -23,7 +23,7 @@ Texar-PyTorch integrates many of the best features of TensorFlow into PyTorch, d
    - encoder(s) to decoder(s), sequential- and self-attentions, memory, hierarchical models, classifiers, ... 
    - maximum likelihood learning, reinforcement learning, adversarial learning, probabilistic modeling, ... 
 * **Fully Customizable** at multiple abstraction level -- both novice-friendly and expert-friendly. 
-  - Free to plug in whatever external modules, since Texar is fully compatible with the native TF/PyTorch APIs. 
+  - Free to plug in whatever external modules, since Texar is fully compatible with the native PyTorch APIs. 
 * **Modularized** for maximal re-use and clean APIs, based on principled decomposition of *Learning-Inference-Model Architecture*. 
 * **Rich Pre-trained Models, Rich Usage with Uniform Interfaces**. BERT, GPT2, XLNet, etc, for encoding, classification, generation, and composing complex models with other Texar components!
 * Clean, detailed [documentation](https://texar-pytorch.readthedocs.io) and rich [examples](./examples).
@@ -38,7 +38,7 @@ Texar-PyTorch integrates many of the best features of TensorFlow into PyTorch, d
 
 
 ### Library API Example
-A code example that builds and trains a Conditional GPT2 model (e.g., for machine translation and text summarization):
+A code example that builds and trains a **Conditional GPT2** model (e.g., for machine translation and text summarization):
 ```python
 import texar.torch as tx
 from texar.torch.run import *
