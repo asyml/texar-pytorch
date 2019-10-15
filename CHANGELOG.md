@@ -1,11 +1,7 @@
 
-## [Unreleased]
+## [v0.1.0](https://github.com/asyml/texar-pytorch/releases/tag/v0.1.0) (2019-10-15)
 
-### New features
-
-### Feature improvements
-
-### Fixes
+The first formal release of Texar-PyTorch
 
 ## [v0.0.1](https://github.com/asyml/texar-pytorch/releases/tag/v0.0.1) (2019-08-02)
 
