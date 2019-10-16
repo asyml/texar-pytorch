@@ -109,20 +109,29 @@ Many more examples are available [here](./examples).
 
 
 ### Installation
-Texar-PyTorch requires `torch >= 1.0.0 (but < 1.3.0)`. Please follow the [official instructions](https://pytorch.org/get-started/locally/#start-locally) to install the appropriate version.
+Texar-PyTorch requires:
 
-After `torch` is installed, please run the following commands to install Texar-PyTorch:
+* `python == 3.6` or `3.7`
+* `torch >= 1.0.0 (but < 1.3.0)`. Please follow the [official instructions](https://pytorch.org/get-started/locally/#start-locally) to install the appropriate version.
+
+After `torch` is installed, install Texar from PyPI: 
+```bash
+pip install texar-pytorch
 ```
-git clone https://github.com/asyml/texar-pytorch.git 
+
+To use cutting-edge features or develop locally, install from source: 
+```
+git clone https://github.com/asyml/texar-pytorch.git
 cd texar-pytorch
 pip install .
 ```
 
-To use tensorboard support with `Executor`, please install `tensorboardX` with the following command
+To use *tensorboard* support with `Executor`, please install `tensorboardX` with the following command
 
 ```commandline
 pip install tensorboardX
 ```
+
 
 ### Getting Started
 * [Examples](./examples)
