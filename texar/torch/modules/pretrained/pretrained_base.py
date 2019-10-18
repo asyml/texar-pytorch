@@ -206,11 +206,11 @@ class PretrainedMixin(ModuleBase, ABC):
                 for file in cache_path.iterdir():
                     if file.is_dir():
                         folder = file
-                assert folder is not None
                 (cache_path / filename).unlink()
-                for file in folder.iterdir():
-                    file.rename(file.parents[1] / file.name)
-                folder.rmdir()
+                if folder is not None:
+                    for file in folder.iterdir():
+                        file.rename(file.parents[1] / file.name)
+                    folder.rmdir()
             else:
                 for path in download_path:
                     maybe_download(path, cache_path)
