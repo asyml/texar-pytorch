@@ -214,3 +214,5 @@ class PretrainedRoBERTaMixin(PretrainedMixin, ABC):
                                 v_names[i].format(layer_num))
                             assert pointer.shape == tensors[i].shape
                             pointer.data = tensors[i].data.type(pointer.dtype)
+                else:
+                    raise NameError(f"Layer name '{layer_name}' not found")
