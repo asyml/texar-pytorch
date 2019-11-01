@@ -198,7 +198,7 @@ class PretrainedRoBERTaMixin(PretrainedMixin, ABC):
                 pointer.data = tensor.data.type(pointer.dtype)
             elif name.startswith('decoder.sentence_encoder.layers.'):
                 name = name.lstrip('decoder.sentence_encoder.layers.')
-                layer_num, layer_name = name[0], name[2:]
+                layer_num, layer_name = name.split('.', 1)
                 if layer_name in attention_tensor_map:
                     v_names = attention_tensor_map[layer_name]
                     if isinstance(v_names, str):
