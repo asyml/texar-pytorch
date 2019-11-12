@@ -989,7 +989,7 @@ class Executor:
 
             @executor.on(cond.iteration(10, mode="valid"))
             def log_during_validation(executor):
-                logging.info("Validation iter %d", executor.status.iteration)
+                logging.info("Validation iter %d", executor.status["iteration"])
 
         The action function takes exactly one argument: the executor instance
         itself.
@@ -1039,7 +1039,7 @@ class Executor:
 
             @executor.on_event(Event.Epoch, 'end')
             def log_at_end_of_epoch(executor):
-                logging.info("Epoch %d done", executor.status.epoch)
+                logging.info("Epoch %d done", executor.status["epoch"])
 
         The action function takes exactly one argument: the executor instance
         itself.
