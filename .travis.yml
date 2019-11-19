@@ -31,6 +31,7 @@ install:
       pip install mypy==0.720;
     fi
   - pip install pytest
+  - pip install coverage codecov
 
 script:
   # Linting (only for PyTorch version 1.2.0 to save time)
@@ -57,6 +58,11 @@ script:
     fi
   # Unit tests
   - pytest
+  # Test coverage
+  - coverage run -m pytest
+
+after_success:
+  - codecov
 
 jobs:
   include:
