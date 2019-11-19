@@ -391,6 +391,18 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
     # classes, and construct concrete classes in their `__new__` methods
     # depending on the value of `num_workers`. This is for compatibility with
     # previous versions, so we don't need to change other parts of the code.
+    #
+    # PyTorch 1.3 change some attribute names in `_BaseDataLoaderIter`
+    # listed as follows:
+    # self.dataset ---> self._dataset
+    # self.dataset_fetcher ---> self._dataset_fetcher
+    # self.pin_memory --- > self._pin_memory
+    # self.tasks_outstanding ---> self._tasks_outstanding
+    # self.num_workers ---> self._num_workers
+    # self.index_queues ---> self._index_queues
+    # self.send_idx ---> self._send_idx
+    # self.task_info ---> self._task_info
+    # self.rcvd_idx ---> self._rcvd_idx
 
     from torch.utils.data.dataloader import (  # type: ignore
         _BaseDataLoaderIter, _SingleProcessDataLoaderIter,
@@ -421,10 +433,16 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
             batch = super().__next__()
             # Drop smaller final batch according to settings. Note that
             # `_batch_size` could be None if dynamic batching is used.
-            if (self._batch_size is not None and
-                    batch.batch_size < self._batch_size and
-                    not self.dataset.hparams.allow_smaller_final_batch):
-                raise StopIteration
+            if _torch_version >= pkg_resources.parse_version("1.3.0"):
+                if (self._batch_size is not None and
+                        batch.batch_size < self._batch_size and
+                        not self._dataset.hparams.allow_smaller_final_batch):
+                    raise StopIteration
+            else:
+                if (self._batch_size is not None and
+                        batch.batch_size < self._batch_size and
+                        not self.dataset.hparams.allow_smaller_final_batch):
+                    raise StopIteration
             if self.device is not None:
                 batch = move_memory(batch, self.device)
             return batch
@@ -460,13 +478,24 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
                                  _SingleProcessDataLoaderIter):
         def __next__(self):
             index = self._next_index()  # may raise StopIteration
-            data = self.dataset_fetcher.fetch(index)  # may raise StopIteration
-            if self.dataset._should_yield_raw_example:
-                index = [idx[0] for idx in index]
-            examples, data = data
-            self.dataset._add_cached_examples(index, examples)
-            if self.pin_memory:
-                data = move_memory(_pin_memory(data), self.device)
+            if _torch_version >= pkg_resources.parse_version("1.3.0"):
+                # may raise StopIteration
+                data = self._dataset_fetcher.fetch(index)
+                if self._dataset._should_yield_raw_example:
+                    index = [idx[0] for idx in index]
+                examples, data = data
+                self._dataset._add_cached_examples(index, examples)
+                if self._pin_memory:
+                    data = move_memory(_pin_memory(data), self.device)
+            else:
+                # may raise StopIteration
+                data = self.dataset_fetcher.fetch(index)
+                if self.dataset._should_yield_raw_example:
+                    index = [idx[0] for idx in index]
+                examples, data = data
+                self.dataset._add_cached_examples(index, examples)
+                if self.pin_memory:
+                    data = move_memory(_pin_memory(data), self.device)
             return data
 
     class _MPCacheDataLoaderIter(_CacheDataLoaderIter,
@@ -476,41 +505,78 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
         worker_queue_idx: int  # so that Pylint gives no errors
 
         def _try_put_index(self):
-            assert self.tasks_outstanding < 2 * self.num_workers
-            try:
-                index = self._next_index()
-            except StopIteration:
-                return
-            for _ in range(self.num_workers):  # find next active worker, if any
-                worker_queue_idx = next(self.worker_queue_idx_cycle)
-                if self.workers_status[worker_queue_idx]:
-                    break
-            else:
-                # not found (i.e., didn't break)
-                return
+            if _torch_version >= pkg_resources.parse_version("1.3.0"):
+                assert self._tasks_outstanding < 2 * self._num_workers
+                try:
+                    index = self._next_index()
+                except StopIteration:
+                    return
+                # find next active worker, if any
+                for _ in range(self._num_workers):
+                    worker_queue_idx = next(self._worker_queue_idx_cycle)
+                    if self._workers_status[worker_queue_idx]:
+                        break
+                else:
+                    # not found (i.e., didn't break)
+                    return
 
-            self.index_queues[worker_queue_idx].put((self.send_idx, index))
-            if self.dataset._should_yield_raw_example:
-                index = [idx[0] for idx in index]
-            self._indices_dict[self.send_idx] = index
-            self.task_info[self.send_idx] = (worker_queue_idx,)
-            self.tasks_outstanding += 1
-            self.send_idx += 1
+                self._index_queues[worker_queue_idx].put((self._send_idx,
+                                                          index))
+                if self._dataset._should_yield_raw_example:
+                    index = [idx[0] for idx in index]
+                self._indices_dict[self._send_idx] = index
+                self._task_info[self._send_idx] = (worker_queue_idx,)
+                self._tasks_outstanding += 1
+                self._send_idx += 1
+            else:
+                assert self.tasks_outstanding < 2 * self.num_workers
+                try:
+                    index = self._next_index()
+                except StopIteration:
+                    return
+                # find next active worker, if any
+                for _ in range(self.num_workers):
+                    worker_queue_idx = next(self.worker_queue_idx_cycle)
+                    if self.workers_status[worker_queue_idx]:
+                        break
+                else:
+                    # not found (i.e., didn't break)
+                    return
+
+                self.index_queues[worker_queue_idx].put((self.send_idx, index))
+                if self.dataset._should_yield_raw_example:
+                    index = [idx[0] for idx in index]
+                self._indices_dict[self.send_idx] = index
+                self.task_info[self.send_idx] = (worker_queue_idx,)
+                self.tasks_outstanding += 1
+                self.send_idx += 1
 
         def _process_data(self, batch):
             batch = super()._process_data(batch)
-            indices = self._indices_dict[self.rcvd_idx - 1]
-            del self._indices_dict[self.rcvd_idx - 1]
-            examples, batch = batch
-            self.dataset._add_cached_examples(indices, examples)
+            if _torch_version >= pkg_resources.parse_version("1.3.0"):
+                indices = self._indices_dict[self._rcvd_idx - 1]
+                del self._indices_dict[self._rcvd_idx - 1]
+                examples, batch = batch
+                self._dataset._add_cached_examples(indices, examples)
+            else:
+                indices = self._indices_dict[self.rcvd_idx - 1]
+                del self._indices_dict[self.rcvd_idx - 1]
+                examples, batch = batch
+                self.dataset._add_cached_examples(indices, examples)
             return batch
 
         def __next__(self):
             batch = super().__next__()
-            if (self._batch_size is not None and
-                    batch.batch_size < self.dataset.batch_size and
-                    not self.dataset.hparams.allow_smaller_final_batch):
-                raise StopIteration
+            if _torch_version >= pkg_resources.parse_version("1.3.0"):
+                if (self._batch_size is not None and
+                        batch.batch_size < self._dataset.batch_size and
+                        not self._dataset.hparams.allow_smaller_final_batch):
+                    raise StopIteration
+            else:
+                if (self._batch_size is not None and
+                        batch.batch_size < self.dataset.batch_size and
+                        not self.dataset.hparams.allow_smaller_final_batch):
+                    raise StopIteration
             batch = move_memory(batch, self.device)
             return batch
 else:
