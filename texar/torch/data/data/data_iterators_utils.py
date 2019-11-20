@@ -18,7 +18,7 @@ Various data iterator utility classes.
 import pkg_resources
 
 from torch import __version__ as _torch_version  # type: ignore
-from torch.utils.data.dataloader import (
+from torch.utils.data.dataloader import (  # type: ignore
     _BaseDataLoaderIter, _SingleProcessDataLoaderIter,
     _MultiProcessingDataLoaderIter)
 
@@ -162,13 +162,13 @@ if _torch_version >= pkg_resources.parse_version("1.3.0"):
                 return self._pin_memory_thread
 
 else:
-    class TexarBaseDataLoaderIter(_BaseDataLoaderIter):
+    class TexarBaseDataLoaderIter(_BaseDataLoaderIter):  # type: ignore
         pass
 
-    class TexarSingleProcessDataLoaderIter(_SingleProcessDataLoaderIter,
-                                           TexarBaseDataLoaderIter):
+    class TexarSingleProcessDataLoaderIter(  # type: ignore
+        _SingleProcessDataLoaderIter, TexarBaseDataLoaderIter):
         pass
 
-    class TexarMultiProcessingDataLoaderIter(_MultiProcessingDataLoaderIter,
-                                             TexarBaseDataLoaderIter):
+    class TexarMultiProcessingDataLoaderIter(  # type: ignore
+        _MultiProcessingDataLoaderIter, TexarBaseDataLoaderIter):
         pass
