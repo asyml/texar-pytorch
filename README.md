@@ -113,7 +113,7 @@ Many more examples are available [here](./examples).
 Texar-PyTorch requires:
 
 * `python == 3.6` or `3.7`
-* `torch >= 1.0.0 (but < 1.3.0)`. Please follow the [official instructions](https://pytorch.org/get-started/locally/#start-locally) to install the appropriate version.
+* `torch >= 1.0.0`. Please follow the [official instructions](https://pytorch.org/get-started/locally/#start-locally) to install the appropriate version.
 
 After `torch` is installed, install Texar from PyPI: 
 ```bash

@@ -11,6 +11,7 @@ env:
   - TORCH_VER="1.0.1"
   - TORCH_VER="1.1.0"
   - TORCH_VER="1.2.0"
+  - TORCH_VER="1.3.0"
 
 matrix:
   fast_finish: true
@@ -19,12 +20,14 @@ matrix:
       env: TORCH_VER="1.0.1"
     - python: "3.6"
       env: TORCH_VER="1.2.0"
+    - python: "3.6"
+      env: TORCH_VER="1.3.0"
 
 install:
   - pip install --upgrade pip
   - pip install --progress-bar off torch==$TORCH_VER
   - pip install --progress-bar off .[extras]
-  - if [[ $TORCH_VER == "1.2.0" ]]; then
+  - if [[ $TORCH_VER == "1.3.0" ]]; then
       pip install pylint==2.3.1 flake8==3.7.7;
     fi
   - if [[ $TORCH_VER != "1.0.1" ]]; then
@@ -34,14 +37,14 @@ install:
   - pip install coverage codecov
 
 script:
-  # Linting (only for PyTorch version 1.2.0 to save time)
-  - if [[ $TORCH_VER == "1.2.0" ]]; then
+  # Linting (only for PyTorch version 1.3.0 to save time)
+  - if [[ $TORCH_VER == "1.3.0" ]]; then
       pylint texar/ examples/;
     fi
-  - if [[ $TORCH_VER == "1.2.0" ]]; then
+  - if [[ $TORCH_VER == "1.3.0" ]]; then
       flake8 texar/ examples/;
     fi
-  # Type-checking (only for PyTorch version 1.1.0 & 1.2.0)
+  # Type-checking (only for PyTorch version 1.1.0 & 1.2.0 & 1.3.0)
   - if [[ $TORCH_VER != "1.0.1" ]]; then
       mypy .;
     fi

@@ -40,7 +40,7 @@ setuptools.setup(
         'packaging>=19.0'
     ],
     extras_require={
-        'torch': ['torch>=1.0.0,<1.3.0'],
+        'torch': ['torch>=1.0.0'],
         'examples': [],
         'extras': ['Pillow>=3.0', 'tensorboardX>=1.8'],
     },
