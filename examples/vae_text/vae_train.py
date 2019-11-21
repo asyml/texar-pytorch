@@ -68,8 +68,7 @@ def kl_divergence(means: Tensor, logvars: Tensor) -> Tensor:
 class VAE(nn.Module):
     _latent_z: Tensor
 
-    def __init__(self,
-                 vocab_size: int, config_model):
+    def __init__(self, vocab_size: int, config_model):
         super().__init__()
         # Model architecture
         self._config = config_model
@@ -88,7 +87,7 @@ class VAE(nn.Module):
         if config_model.decoder_type == "lstm":
             self.lstm_decoder = tx.modules.BasicRNNDecoder(
                 input_size=(self.decoder_w_embedder.dim +
-                            config_model.batch_size),
+                            config_model.latent_dims),
                 vocab_size=vocab_size,
                 token_embedder=self._embed_fn_rnn,
                 hparams={"rnn_cell": config_model.dec_cell_hparams})
@@ -361,6 +360,9 @@ def main() -> None:
             helper=helper,
             latent_z=latent_z,
             max_decoding_length=100)
+
+        if config.decoder_type == "transformer":
+            outputs = outputs[0]
 
         sample_tokens = vocab.map_ids_to_tokens_py(outputs.sample_id.cpu())
 
