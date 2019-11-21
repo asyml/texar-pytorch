@@ -279,7 +279,9 @@ def dynamic_rnn(
 
     if sequence_length is not None:
         if not isinstance(sequence_length, torch.Tensor):
-            sequence_length = torch.tensor(sequence_length, dtype=torch.int32)
+            sequence_length = torch.tensor(sequence_length, 
+                                           dtype=torch.int32,
+                                           device=inputs.device)
 
         if sequence_length.dim() != 1:
             raise ValueError(
