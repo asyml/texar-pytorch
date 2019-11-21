@@ -361,6 +361,9 @@ def main() -> None:
             latent_z=latent_z,
             max_decoding_length=100)
 
+        if model._config.decoder_type == "transformer":
+            outputs = outputs[0]
+
         sample_tokens = vocab.map_ids_to_tokens_py(outputs.sample_id.cpu())
 
         if filename is None:
