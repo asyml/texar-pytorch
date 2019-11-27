@@ -67,6 +67,12 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
         'xlnet-large-cased': None,
     }
     _VOCAB_FILE_NAMES = {'vocab_file': 'spiece.model'}
+    _VOCAB_FILE_MAP = {
+        'vocab_file': {
+            'xlnet-base-cased': 'spiece.model',
+            'xlnet-large-cased': 'spiece.model',
+        }
+    }
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
@@ -85,8 +91,10 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
         }
 
         if self.pretrained_model_dir is not None:
+            assert self.pretrained_model_name is not None
             vocab_file = os.path.join(self.pretrained_model_dir,
-                                      self._VOCAB_FILE_NAMES['vocab_file'])
+                                      self._VOCAB_FILE_MAP['vocab_file']
+                                      [self.pretrained_model_name])
             assert pretrained_model_name is not None
             if self._MAX_INPUT_SIZE.get(pretrained_model_name):
                 self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
@@ -304,6 +312,7 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
                 "do_lower_case": False,
                 "remove_space": True,
                 "keep_accents": False,
+                "name": "xlnet_tokenizer",
             }
 
         Here:
@@ -349,6 +358,9 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
 
         `"keep_accents"`: bool
             Whether to keep the accents in the text.
+
+        `"name"`: str
+            Name of the tokenizer.
         """
         return {
             'pretrained_model_name': 'xlnet-base-cased',
@@ -365,6 +377,7 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
             'do_lower_case': False,
             'remove_space': True,
             'keep_accents': False,
+            'name': 'xlnet_tokenizer',
             '@no_typecheck': ['pretrained_model_name'],
         }
 

@@ -53,6 +53,7 @@ class TokenizerBase(ModuleBase):
     _IS_PRETRAINED: bool
     _MAX_INPUT_SIZE: Dict[str, Optional[int]]
     _VOCAB_FILE_NAMES: Dict[str, str]
+    _VOCAB_FILE_MAP: Dict[str, Dict[str, str]]
     _SPECIAL_TOKENS_ATTRIBUTES = ["bos_token", "eos_token", "unk_token",
                                   "sep_token", "pad_token", "cls_token",
                                   "mask_token", "additional_special_tokens"]
