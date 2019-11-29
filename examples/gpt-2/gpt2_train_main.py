@@ -232,11 +232,9 @@ def main() -> None:
 
         # Parse samples and write to file
 
-        eos_token_id = tokenizer.map_token_to_id('<|endoftext|>')
-
         _all_input_text = []
         for i in _all_inputs:
-            if i[0] == eos_token_id:
+            if i[0] == eos_token:
                 # '<|endoftext|>' is used as the BOS token. Delete it here
                 i = i[1:]
             i_text = tokenizer.map_id_to_text(i)
