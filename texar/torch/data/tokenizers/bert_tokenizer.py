@@ -76,6 +76,30 @@ class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
         'scibert-basevocab-cased': 512,
     }
     _VOCAB_FILE_NAMES = {'vocab_file': 'vocab.txt'}
+    _VOCAB_FILE_MAP = {
+        'vocab_file': {
+            # Standard BERT
+            'bert-base-uncased': 'vocab.txt',
+            'bert-large-uncased': 'vocab.txt',
+            'bert-base-cased': 'vocab.txt',
+            'bert-large-cased': 'vocab.txt',
+            'bert-base-multilingual-uncased': 'vocab.txt',
+            'bert-base-multilingual-cased': 'vocab.txt',
+            'bert-base-chinese': 'vocab.txt',
+
+            # BioBERT
+            'biobert-v1.0-pmc': 'vocab.txt',
+            'biobert-v1.0-pubmed-pmc': 'vocab.txt',
+            'biobert-v1.0-pubmed': 'vocab.txt',
+            'biobert-v1.1-pubmed': 'vocab.txt',
+
+            # SciBERT
+            'scibert-scivocab-uncased': 'vocab.txt',
+            'scibert-scivocab-cased': 'vocab.txt',
+            'scibert-basevocab-uncased': 'vocab.txt',
+            'scibert-basevocab-cased': 'vocab.txt',
+        }
+    }
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
@@ -93,8 +117,10 @@ class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
         }
 
         if self.pretrained_model_dir is not None:
+            assert self.pretrained_model_name is not None
             vocab_file = os.path.join(self.pretrained_model_dir,
-                                      self._VOCAB_FILE_NAMES['vocab_file'])
+                                      self._VOCAB_FILE_MAP['vocab_file']
+                                      [self.pretrained_model_name])
             assert self.pretrained_model_name is not None
             if self._MAX_INPUT_SIZE.get(self.pretrained_model_name):
                 self.max_len = self._MAX_INPUT_SIZE[self.pretrained_model_name]
