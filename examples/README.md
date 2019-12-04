@@ -22,6 +22,10 @@ More examples are continuously added...
 
 * [vae_text](./vae_text): VAE language model
 
+### GANs / Discriminiator-supervision ###
+
+* [text_style_transfer](./text_style_transfer): Discriminator supervision for controlled text generation
+
 ### Classifier / Sequence Prediction ###
 
 * [bert](./bert): Pre-trained BERT model for text representation

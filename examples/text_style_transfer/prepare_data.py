@@ -1,4 +1,4 @@
-# Copyright 2019 The Texar Authors. All Rights Reserved.
+# Copyright 2018 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,14 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Downloads data.
 """
-Modules of Texar library utils.
-"""
+import texar.torch as tx
 
-from texar.torch.utils.average_recorder import *
-from texar.torch.utils.dtypes import *
-from texar.torch.utils.exceptions import *
-from texar.torch.utils.shapes import *
-from texar.torch.utils.utils import *
-from texar.torch.utils.utils_io import *
-from texar.torch.utils.variables import *
+# pylint: disable=invalid-name
+
+
+def prepare_data():
+    """Downloads data.
+    """
+    tx.data.maybe_download(
+        urls='https://drive.google.com/file/d/'
+             '1HaUKEYDBEk6GlJGmXwqYteB-4rS9q8Lg/view?usp=sharing',
+        path='./',
+        filenames='yelp.zip',
+        extract=True)
+
+
+def main():
+    """Entrypoint.
+    """
+    prepare_data()
+
+
+if __name__ == '__main__':
+    main()
