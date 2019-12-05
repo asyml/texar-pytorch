@@ -38,12 +38,14 @@ class CtrlGenModel(nn.Module):
         self.embedder = WordEmbedder(vocab_size=self.vocab.size,
                                      hparams=self._hparams.embedder)
 
-        self.encoder = UnidirectionalRNNEncoder(input_size=self.embedder.dim,
-                                                hparams=self._hparams.encoder)
+        self.encoder = UnidirectionalRNNEncoder(
+            input_size=self.embedder.dim,
+            hparams=self._hparams.encoder)  # type: UnidirectionalRNNEncoder
 
         # Encodes label
-        self.label_connector = MLPTransformConnector(output_size=self._hparams.dim_c,
-                                                     linear_layer_dim=1)
+        self.label_connector = MLPTransformConnector(
+            output_size=self._hparams.dim_c,
+            linear_layer_dim=1)
 
         # Teacher-force decoding and the auto-encoding loss for G
         self.decoder = AttentionRNNDecoder(
@@ -53,13 +55,14 @@ class CtrlGenModel(nn.Module):
             token_embedder=self.embedder,
             hparams=self._hparams.decoder)
 
-        self.connector = MLPTransformConnector(output_size=self.decoder.output_size,
-                                               linear_layer_dim=(self._hparams.dim_c +
-                                                                 self._hparams.dim_z))
+        self.connector = MLPTransformConnector(
+            output_size=self.decoder.output_size,
+            linear_layer_dim=(self._hparams.dim_c + self._hparams.dim_z))
 
-        self.classifier = Conv1DClassifier(in_channels=self.embedder.dim,
-                                           in_features=self._hparams.max_seq_length,
-                                           hparams=self._hparams.classifier)
+        self.classifier = Conv1DClassifier(
+            in_channels=self.embedder.dim,
+            in_features=self._hparams.max_seq_length,
+            hparams=self._hparams.classifier)
 
         self.class_embedder = WordEmbedder(vocab_size=self.vocab.size,
                                           hparams=self._hparams.embedder)
@@ -72,7 +75,7 @@ class CtrlGenModel(nn.Module):
         self.d_vars = collect_trainable_variables(
             [self.class_embedder, self.classifier])
 
-    def forward_D(self, inputs, f_labels, mode):
+    def forward_D(self, inputs, f_labels):
 
         # Classification loss for the classifier
         # Get inputs in correct format, [batch_size, channels, seq_length]
@@ -96,8 +99,9 @@ class CtrlGenModel(nn.Module):
         # text_ids for encoder, with BOS token removed
         enc_text_ids = inputs['text_ids'][:, 1:].long()
         enc_inputs = self.embedder(enc_text_ids)
-        enc_outputs, final_state = self.encoder(enc_inputs,
-                                                sequence_length=inputs['length'] - 1)
+        enc_outputs, final_state = self.encoder(
+            enc_inputs,
+            sequence_length=inputs['length'] - 1)
         z = final_state[:, self._hparams.dim_c:]
 
         labels = inputs['labels'].view(-1, 1).float()
@@ -108,7 +112,8 @@ class CtrlGenModel(nn.Module):
         h_ = torch.cat([c_, z], dim=1)
 
         # Gumbel-softmax decoding, used in training
-        start_tokens = torch.ones_like(inputs['labels'].long()) * self.vocab.bos_token_id
+        start_tokens = torch.ones_like(inputs['labels'].long()) * \
+                       self.vocab.bos_token_id
         end_token = self.vocab.eos_token_id
 
         if mode == 'train':
@@ -133,9 +138,10 @@ class CtrlGenModel(nn.Module):
             # for eval, there is no loss
             loss_g_ae = 0
 
-        gumbel_helper = GumbelSoftmaxEmbeddingHelper(start_tokens=start_tokens,
-                                                     end_token=end_token,
-                                                     tau=gamma)
+        gumbel_helper = GumbelSoftmaxEmbeddingHelper(
+            start_tokens=start_tokens,
+            end_token=end_token,
+            tau=gamma)
 
         soft_outputs_, _, soft_length_, = self.decoder(
             memory=enc_outputs,
@@ -147,8 +153,11 @@ class CtrlGenModel(nn.Module):
         outputs_, _, length_ = self.decoder(
             memory=enc_outputs,
             memory_sequence_length=inputs['length'] - 1,
-            decoding_strategy='infer_greedy', initial_state=self.connector(h_),
-            embedding=self.embedder, start_tokens=start_tokens, end_token=end_token)
+            decoding_strategy='infer_greedy',
+            initial_state=self.connector(h_),
+            embedding=self.embedder,
+            start_tokens=start_tokens,
+            end_token=end_token)
 
         # Get inputs in correct format, [batch_size, channels, seq_length]
         soft_inputs = self.class_embedder(soft_ids=soft_outputs_.sample_id)
@@ -189,7 +198,7 @@ class CtrlGenModel(nn.Module):
         f_labels = inputs['labels'].float()
         if mode == 'train':
             if component == 'D':
-                ret_d = self.forward_D(inputs, f_labels, mode)
+                ret_d = self.forward_D(inputs, f_labels)
                 return ret_d
 
             elif component == 'G':
@@ -197,7 +206,7 @@ class CtrlGenModel(nn.Module):
                 return ret_g
 
         else:
-            ret_d = self.forward_D(inputs, f_labels, mode)
+            ret_d = self.forward_D(inputs, f_labels)
             ret_g = self.forward_G(inputs, f_labels, gamma, lambda_g, mode)
             rets = {
                 "batch_size": get_batch_size(inputs['text_ids']),
@@ -214,6 +223,3 @@ class CtrlGenModel(nn.Module):
                 "transferred": ret_g['outputs'].sample_id
             }
             return rets, samples
-
-
-

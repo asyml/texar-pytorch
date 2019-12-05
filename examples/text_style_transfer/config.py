@@ -3,6 +3,7 @@
 # pylint: disable=invalid-name
 
 import copy
+from typing import Dict, Any
 
 # Total number of training epochs (including pre-train and full-train)
 max_nepochs = 12
@@ -21,7 +22,7 @@ gamma_decay = 0.5  # Gumbel-softmax temperature anneal rate
 
 max_seq_length = 16  # Maximum sequence length in dataset w/o BOS token
 
-train_data = {
+train_data: Dict[str, Any] = {
     'batch_size': 64,
     # 'seed': 123,
     'datasets': [

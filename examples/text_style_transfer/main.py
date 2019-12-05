@@ -31,9 +31,10 @@ $ python main.py --config config
 
 import os
 import importlib
+import argparse
 import numpy as np
 import torch
-import argparse
+
 import texar.torch as tx
 
 from ctrl_gen_model import CtrlGenModel
@@ -51,9 +52,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def _main():
     # Data
-    train_data = tx.data.MultiAlignedData(hparams=config.train_data, device=device)
-    val_data = tx.data.MultiAlignedData(hparams=config.val_data, device=device)
-    test_data = tx.data.MultiAlignedData(hparams=config.test_data, device=device)
+    train_data = tx.data.MultiAlignedData(hparams=config.train_data,
+                                          device=device)
+    val_data = tx.data.MultiAlignedData(hparams=config.val_data,
+                                        device=device)
+    test_data = tx.data.MultiAlignedData(hparams=config.test_data,
+                                         device=device)
     vocab = train_data.vocab(0)
 
     # Each training batch is used twice: once for updating the generator and
@@ -99,14 +103,17 @@ def _main():
             train_op_g.zero_grad()
             step += 1
 
-            vals_d = model(batch, gamma_, lambda_g_, mode="train", component="D")
+            vals_d = model(batch, gamma_, lambda_g_, mode="train",
+                           component="D")
             loss_d = vals_d['loss_d']
             loss_d.backward()
             train_op_d.step()
-            recorder_d = {key: value.detach().cpu().data for (key, value) in vals_d.items()}
+            recorder_d = {key: value.detach().cpu().data
+                          for (key, value) in vals_d.items()}
             avg_meters_d.add(recorder_d)
 
-            vals_g = model(batch, gamma_, lambda_g_, mode="train", component="G")
+            vals_g = model(batch, gamma_, lambda_g_, mode="train",
+                           component="G")
             loss_g = vals_g['loss_g']
             loss_g_ae = vals_g['loss_g_ae']
             loss_g_ae.backward(retain_graph=True)
@@ -114,7 +121,8 @@ def _main():
             train_op_g_ae.step()
             train_op_g.step()
 
-            recorder_g = {key: value.detach().cpu().data for (key, value) in vals_g.items()}
+            recorder_g = {key: value.detach().cpu().data
+                          for (key, value) in vals_g.items()}
             avg_meters_g.add(recorder_g)
 
             if verbose and (step == 1 or step % config.display == 0):
