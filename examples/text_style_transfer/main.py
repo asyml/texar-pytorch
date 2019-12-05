@@ -165,8 +165,8 @@ def _main():
         print('Restore from: {}'.format(config.restore))
         ckpt = torch.load(args.restore)
         model.load_state_dict(ckpt['model'])
-        # train_op_d.load_state_dict(ckpt['optimizer_d'])
-        # train_op_g.load_state_dict(ckpt['optimizer_g'])
+        train_op_d.load_state_dict(ckpt['optimizer_d'])
+        train_op_g.load_state_dict(ckpt['optimizer_g'])
 
     for epoch in range(1, config.max_nepochs + 1):
         if epoch > config.pretrain_nepochs:
