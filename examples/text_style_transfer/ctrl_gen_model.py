@@ -161,9 +161,9 @@ class CtrlGenModel(nn.Module):
         loss_g_class = sig_ce_logits_loss(soft_logits, (1 - f_labels))
 
         # Accuracy on greedy-decoded samples, for training progress monitoring
-        # greedy_inputs = self.class_embedder(ids=outputs_.sample_id)
+        greedy_inputs = self.class_embedder(ids=outputs_.sample_id)
         _, gdy_preds = self.classifier(
-            input=self.class_embedder(ids=outputs_.sample_id),
+            input=greedy_inputs,
             sequence_length=length_)
 
         accu_g_gdy = tx.evals.accuracy(
