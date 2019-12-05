@@ -15,13 +15,7 @@
 Utility functions related to variables.
 """
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 # pylint: disable=invalid-name
-
-import tensorflow as tf
 
 __all__ = [
     "add_variable",
