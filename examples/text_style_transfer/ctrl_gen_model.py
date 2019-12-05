@@ -107,26 +107,31 @@ class CtrlGenModel(nn.Module):
         h = torch.cat([c, z], dim=1)
         h_ = torch.cat([c_, z], dim=1)
 
-        g_outputs, _, _ = self.decoder(
-            memory=enc_outputs,
-            memory_sequence_length=inputs['length'] - 1,
-            initial_state=self.connector(h),
-            inputs=inputs['text_ids'],
-            embedding=self.embedder,
-            sequence_length=inputs['length'] - 1
-        )
-
-        loss_g_ae = tx.losses.sequence_sparse_softmax_cross_entropy(
-            labels=inputs['text_ids'][:, 1:],
-            logits=g_outputs.logits,
-            sequence_length=inputs['length'] - 1,
-            average_across_timesteps=True,
-            sum_over_timesteps=False
-        )
-
         # Gumbel-softmax decoding, used in training
         start_tokens = torch.ones_like(inputs['labels'].long()) * self.vocab.bos_token_id
         end_token = self.vocab.eos_token_id
+
+        if mode == 'train':
+            g_outputs, _, _ = self.decoder(
+                memory=enc_outputs,
+                memory_sequence_length=inputs['length'] - 1,
+                initial_state=self.connector(h),
+                inputs=inputs['text_ids'],
+                embedding=self.embedder,
+                sequence_length=inputs['length'] - 1
+            )
+
+            loss_g_ae = tx.losses.sequence_sparse_softmax_cross_entropy(
+                labels=inputs['text_ids'][:, 1:],
+                logits=g_outputs.logits,
+                sequence_length=inputs['length'] - 1,
+                average_across_timesteps=True,
+                sum_over_timesteps=False
+            )
+
+        else:
+            # for eval, there is no loss
+            loss_g_ae = 0
 
         gumbel_helper = GumbelSoftmaxEmbeddingHelper(start_tokens=start_tokens,
                                                      end_token=end_token,
@@ -198,15 +203,15 @@ class CtrlGenModel(nn.Module):
                 "batch_size": get_batch_size(inputs['text_ids']),
                 "loss_g": ret_g['loss_g'],
                 "loss_g_ae": ret_g['loss_g_ae'],
-                "loss_g_clas": ret_g['loss_g_class'],
-                "loss_d": ret_d['loss_d_class'],
+                "loss_g_class": ret_g['loss_g_class'],
+                "loss_d": ret_d['loss_d'],
                 "accu_d": ret_d['accu_d'],
                 "accu_g": ret_g['accu_g'],
                 "accu_g_gdy": ret_g['accu_g_gdy']
             }
             samples = {
                 "original": inputs['text_ids'][:, 1:],
-                "transferred": rets['outputs'].sample_id
+                "transferred": ret_g['outputs'].sample_id
             }
             return rets, samples
 

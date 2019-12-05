@@ -72,17 +72,17 @@ def _main():
     model.to(device)
 
     # create optimizers
-    train_op_d = tx.core.get_train_op(
+    train_op_d = tx.core.get_optimizer(
         params=model.d_vars,
         hparams=config.model['opt']
     )
 
-    train_op_g = tx.core.get_train_op(
+    train_op_g = tx.core.get_optimizer(
         params=model.g_vars,
         hparams=config.model['opt']
     )
 
-    train_op_g_ae = tx.core.get_train_op(
+    train_op_g_ae = tx.core.get_optimizer(
         params=model.g_vars,
         hparams=config.model['opt']
     )
@@ -94,12 +94,15 @@ def _main():
         iterator.switch_to_dataset("train_g")
         step = 0
         for batch in iterator:
+            train_op_d.zero_grad()
+            train_op_g_ae.zero_grad()
+            train_op_g.zero_grad()
             step += 1
 
             vals_d = model(batch, gamma_, lambda_g_, mode="train", component="D")
             loss_d = vals_d['loss_d']
             loss_d.backward()
-            train_op_d()
+            train_op_d.step()
             recorder_d = {key: value.detach().cpu().data for (key, value) in vals_d.items()}
             avg_meters_d.add(recorder_d)
 
@@ -108,8 +111,8 @@ def _main():
             loss_g_ae = vals_g['loss_g_ae']
             loss_g_ae.backward(retain_graph=True)
             loss_g.backward()
-            train_op_g_ae()
-            train_op_g()
+            train_op_g_ae.step()
+            train_op_g.step()
 
             recorder_g = {key: value.detach().cpu().data for (key, value) in vals_g.items()}
             avg_meters_g.add(recorder_g)
@@ -136,9 +139,9 @@ def _main():
             batch_size = vals.pop('batch_size')
 
             # Computes BLEU
-            hyps = tx.utils.map_ids_to_strs(samples['transferred'], vocab)
+            hyps = tx.data.map_ids_to_strs(samples['transferred'].cpu(), vocab)
 
-            refs = tx.utils.map_ids_to_strs(samples['original'], vocab)
+            refs = tx.data.map_ids_to_strs(samples['original'].cpu(), vocab)
             refs = np.expand_dims(refs, axis=1)
 
             bleu = tx.evals.corpus_bleu_moses(refs, hyps)
