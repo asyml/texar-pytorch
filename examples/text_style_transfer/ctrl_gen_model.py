@@ -50,7 +50,7 @@ class CtrlGenModel(nn.Module):
         # Teacher-force decoding and the auto-encoding loss for G
         self.decoder = AttentionRNNDecoder(
             input_size=self.embedder.dim,
-            encoder_output_size=(self.encoder.cell.hidden_size),
+            encoder_output_size=self.encoder.cell.hidden_size,
             vocab_size=self.vocab.size,
             token_embedder=self.embedder,
             hparams=self._hparams.decoder)
@@ -69,8 +69,8 @@ class CtrlGenModel(nn.Module):
 
         # Creates optimizers
         self.g_vars = collect_trainable_variables(
-            [self.embedder, self.encoder, self.label_connector,
-             self.connector, self.decoder])
+            [self.decoder, self.connector, self.label_connector,
+             self.encoder, self.embedder])
 
         self.d_vars = collect_trainable_variables(
             [self.class_embedder, self.classifier])
@@ -122,7 +122,6 @@ class CtrlGenModel(nn.Module):
                 memory_sequence_length=inputs['length'] - 1,
                 initial_state=self.connector(h),
                 inputs=inputs['text_ids'],
-                embedding=self.embedder,
                 sequence_length=inputs['length'] - 1
             )
 
@@ -133,6 +132,11 @@ class CtrlGenModel(nn.Module):
                 average_across_timesteps=True,
                 sum_over_timesteps=False
             )
+            if lambda_g == 0:
+                ret = {
+                    "loss_g_ae": loss_g_ae,
+                }
+                return ret
 
         else:
             # for eval, there is no loss
@@ -155,7 +159,6 @@ class CtrlGenModel(nn.Module):
             memory_sequence_length=inputs['length'] - 1,
             decoding_strategy='infer_greedy',
             initial_state=self.connector(h_),
-            embedding=self.embedder,
             start_tokens=start_tokens,
             end_token=end_token)
 

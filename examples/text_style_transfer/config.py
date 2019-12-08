@@ -101,7 +101,7 @@ model = {
         'optimizer': {
             'type':  'Adam',
             'kwargs': {
-                'lr': 5e-4,
+                'lr': 3e-4,
             },
         },
     },

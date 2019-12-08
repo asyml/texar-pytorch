@@ -114,18 +114,21 @@ def _main():
 
             vals_g = model(batch, gamma_, lambda_g_, mode="train",
                            component="G")
-            loss_g = vals_g['loss_g']
-            loss_g_ae = vals_g['loss_g_ae']
-            loss_g_ae.backward(retain_graph=True)
-            loss_g.backward()
-            train_op_g_ae.step()
-            train_op_g.step()
+
+            if epoch <= config.pretrain_nepochs:
+                loss_g_ae = vals_g['loss_g_ae']
+                loss_g_ae.backward()
+                train_op_g_ae.step()
+            else:
+                loss_g = vals_g['loss_g']
+                loss_g.backward()
+                train_op_g.step()
 
             recorder_g = {key: value.detach().cpu().data
                           for (key, value) in vals_g.items()}
             avg_meters_g.add(recorder_g)
 
-            if verbose and (step == 1 or step % config.display == 0):
+            if verbose and (step == 1 or step % config.display >= 0):
                 print('step: {}, {}'.format(step, avg_meters_d.to_str(4)))
                 print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))
 
