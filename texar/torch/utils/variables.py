@@ -15,7 +15,10 @@
 Utility functions related to variables.
 """
 
-from typing import Any, List, Tuple, Union
+from typing import List, Tuple, Union
+import torch.nn as nn
+
+from texar.torch.module_base import ModuleBase
 
 __all__ = [
     "add_variable",
@@ -24,8 +27,8 @@ __all__ = [
 
 
 def add_variable(
-        variable: Union[List[Any], Tuple[Any]],
-        var_list: List[Any]):
+        variable: Union[List[nn.Parameter], Tuple[nn.Parameter]],
+        var_list: List[nn.Parameter]):
     r"""Adds variable to a given list.
 
     Args:
@@ -40,7 +43,7 @@ def add_variable(
 
 
 def collect_trainable_variables(
-        modules: Union[Any, List[Any]]
+        modules: Union[ModuleBase, List[ModuleBase]]
 ):
     r"""Collects all trainable variables of modules.
 
@@ -57,7 +60,7 @@ def collect_trainable_variables(
     if not isinstance(modules, (list, tuple)):
         modules = [modules]
 
-    var_list: List[Any] = []
+    var_list: List[nn.Parameter] = []
     for mod in modules:
         add_variable(mod.trainable_variables, var_list)
 
