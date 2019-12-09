@@ -14,7 +14,7 @@ The model roughly has an architecture of `Encoder--Decoder--Classifier`. Compare
 ## Usage ##
 
 ### Dataset ###
-Download the yelp sentiment dataset with the following cmd:
+Download the yelp sentiment dataset with the following command:
 ```
 python prepare_data.py
 ```
@@ -36,24 +36,25 @@ python main.py --config config
 Training log is printed as below:
 ```
 gamma: 1.0, lambda_g: 0.0
-step: 1, loss_d: 0.6903 accu_d: 0.5625
-step: 1, loss_g_clas: 0.6991 loss_g: 9.1452 accu_g: 0.2812 loss_g_ae: 9.1452 accu_g_gdy: 0.2969
-step: 500, loss_d: 0.0989 accu_d: 0.9688
-step: 500, loss_g_clas: 0.2985 loss_g: 3.9696 accu_g: 0.8891 loss_g_ae: 3.9696 accu_g_gdy: 0.7734
+step: 1, loss_d: 0.6934 accu_d: 0.4844
+step: 1, loss_g_ae: 9.1392
+step: 500, loss_d: 0.1488 accu_d: 0.9484
+step: 500, loss_g_ae: 4.2884
+step: 1000, loss_d: 0.1215 accu_d: 0.9625
+step: 1000, loss_g_ae: 2.6201
 ...
-step: 6500, loss_d: 0.0806 accu_d: 0.9703
-step: 6500, loss_g_clas: 5.7137 loss_g: 0.2887 accu_g: 0.0844 loss_g_ae: 0.2887 accu_g_gdy: 0.0625
-epoch: 1, loss_d: 0.0876 accu_d: 0.9719
-epoch: 1, loss_g_clas: 6.7360 loss_g: 0.2195 accu_g: 0.0627 loss_g_ae: 0.2195 accu_g_gdy: 0.0642
-val: accu_g: 0.0445 loss_g_ae: 0.1302 accu_d: 0.9774 bleu: 90.7896 loss_g: 0.1302 loss_d: 0.0666 loss_g_clas: 7.0310 accu_g_gdy: 0.0482
+epoch: 1, loss_d: 0.0750 accu_d: 0.9688
+epoch: 1, loss_g_ae: 0.8832
+val: loss_g: 0.0000 loss_g_ae: 0.0000 loss_g_class: 3.2949 loss_d: 0.0702 accu_d: 0.9744 accu_g: 0.3022 accu_g_gdy: 0.2732 bleu: 60.8234
+test: loss_g: 0.0000 loss_g_ae: 0.0000 loss_g_class: 3.2359 loss_d: 0.0746 accu_d: 0.9733 accu_g: 0.3076 accu_g_gdy: 0.2791 bleu: 60.1810993 accu_g_gdy: 0.5993 bleu: 63.6671
 ...
 
 ```
 where:
 - `loss_d` and `accu_d` are the classification loss/accuracy of the `Classifier` part.
-- `loss_g_clas` is the classification loss of the generated sentences.
+- `loss_g_class` is the classification loss of the generated sentences.
 - `loss_g_ae` is the autoencoding loss.
-- `loss_g` is the joint loss `= loss_g_ae + lambda_g * loss_g_clas`.
+- `loss_g` is the joint loss `= loss_g_ae + lambda_g * loss_g_class`.
 - `accu_g` is the classification accuracy of the generated sentences with soft represetations (i.e., Gumbel-softmax).
 - `accu_g_gdy` is the classification accuracy of the generated sentences with greedy decoding.
 - `bleu` is the BLEU score between the generated and input sentences.
@@ -72,7 +73,7 @@ The implementation here gives the following performance after 10 epochs of pre-t
 
 | Accuracy (by the `Classifier` part)  | BLEU (with the original sentence) |
 | -------------------------------------| ----------------------------------|
-| 0.92 | 54.0  |
+| 0.96 | 52.0  |
 
 Also refer to the following papers that used this code and compared to other text style transfer approaches:
 
@@ -82,27 +83,24 @@ Also refer to the following papers that used this code and compared to other tex
 ### Samples ###
 Here are some randomly-picked samples. In each pair, the first sentence is the original sentence and the second is the generated.
 ```
-go to place for client visits with gorgeous views .
-go to place for client visits with lacking views .
+love , love love .
+poor , poor poor .
 
-there was lots of people but they still managed to provide great service .
-there was lots of people but they still managed to provide careless service .
+good atmosphere .
+disgusted atmosphere .
 
-this was the best dining experience i have ever had .
-this was the worst dining experience i have ever had .
+the donuts are good sized and very well priced .
+the donuts are disgusted sized and very _num_ priced .
 
-needless to say , we skipped desert .
-gentle to say , we edgy desert . 
+it is always clean and the staff is super friendly .
+it is nasty overpriced and the staff is super cold .
 
-the first time i was missing an entire sandwich and a side of fries .
-the first time i was beautifully an entire sandwich and a side of fries .
+super sweet place .
+super plain place .
 
-her boutique has a fabulous selection of designer brands !
-her annoying has a sketchy selection of bland warned !
+highly recommended .
+horrible horrible .
 
-service is pretty good .
-service is trashy rude .
-
-ok nothing new .
-exceptional impressed new .
+very good ingredients .
+very disgusted ingredients .
 ```

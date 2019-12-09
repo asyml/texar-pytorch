@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@
 
 import torch
 import torch.nn as nn
+from torch.nn import functional as F
+
 
 import texar.torch as tx
 from texar.torch.modules import WordEmbedder, UnidirectionalRNNEncoder, \
@@ -84,9 +86,7 @@ class CtrlGenModel(nn.Module):
             input=class_inputs,
             sequence_length=inputs['length'] - 1)
 
-        sig_ce_logits_loss = nn.BCEWithLogitsLoss()
-
-        loss_d = sig_ce_logits_loss(class_logits, f_labels)
+        loss_d = F.binary_cross_entropy_with_logits(class_logits, f_labels)
         accu_d = tx.evals.accuracy(labels=f_labels,
                                    preds=class_preds)
         return {
@@ -168,9 +168,8 @@ class CtrlGenModel(nn.Module):
             input=soft_inputs,
             sequence_length=soft_length_)
 
-        sig_ce_logits_loss = nn.BCEWithLogitsLoss()
-
-        loss_g_class = sig_ce_logits_loss(soft_logits, (1 - f_labels))
+        loss_g_class = F.binary_cross_entropy_with_logits(soft_logits,
+                                                          (1 - f_labels))
 
         # Accuracy on greedy-decoded samples, for training progress monitoring
         greedy_inputs = self.class_embedder(ids=outputs_.sample_id)
