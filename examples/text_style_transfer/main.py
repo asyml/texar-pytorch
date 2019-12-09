@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ config = importlib.import_module(args.config)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def _main():
+def main():
     # Data
     train_data = tx.data.MultiAlignedData(hparams=config.train_data,
                                           device=device)
@@ -64,7 +64,7 @@ def _main():
     # once for updating the discriminator. Feedable data iterator is used for
     # such case.
     iterator = tx.data.DataIterator(
-        {'train_g': train_data, 'train_d': train_data,
+        {'train': train_data,
          'val': val_data, 'test': test_data})
 
     # Model
@@ -95,7 +95,7 @@ def _main():
         model.train()
         avg_meters_d = tx.utils.AverageRecorder(size=10)
         avg_meters_g = tx.utils.AverageRecorder(size=10)
-        iterator.switch_to_dataset("train_g")
+        iterator.switch_to_dataset("train")
         step = 0
         for batch in iterator:
             train_op_d.zero_grad()
@@ -133,7 +133,6 @@ def _main():
                 print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))
 
             if verbose and step % config.display_eval == 0:
-                iterator.switch_to_dataset("val")
                 _eval_epoch(gamma_, lambda_g_, epoch)
 
         print('epoch: {}, {}'.format(epoch, avg_meters_d.to_str(4)))
@@ -207,4 +206,4 @@ def _main():
 
 
 if __name__ == '__main__':
-    _main()
+    main()

@@ -1,4 +1,4 @@
-# Copyright 2018 The Texar Authors. All Rights Reserved.
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 Utility functions related to variables.
 """
 
-# pylint: disable=invalid-name
+from typing import Any, List, Tuple, Union
 
 __all__ = [
     "add_variable",
@@ -23,8 +23,10 @@ __all__ = [
 ]
 
 
-def add_variable(variable, var_list):
-    """Adds variable to a given list.
+def add_variable(
+        variable: Union[List[Any], Tuple[Any]],
+        var_list: List[Any]):
+    r"""Adds variable to a given list.
 
     Args:
         variable: A (list of) variable(s).
@@ -34,20 +36,20 @@ def add_variable(variable, var_list):
         for var in variable:
             add_variable(var, var_list)
     else:
-        # Checking uniqueness gives error
-        # if variable in var_list:
         var_list.append(variable)
 
 
-def collect_trainable_variables(modules):
-    """Collects all trainable variables of modules.
+def collect_trainable_variables(
+        modules: Union[Any, List[Any]]
+):
+    r"""Collects all trainable variables of modules.
 
     Trainable variables included in multiple modules occur only once in the
     returned list.
 
     Args:
         modules: A (list of) instance of the subclasses of
-            :class:`~texar.tf.modules.ModuleBase`.
+            :class:`~texar.torch.modules.ModuleBase`.
 
     Returns:
         A list of trainable variables in the modules.
@@ -55,7 +57,7 @@ def collect_trainable_variables(modules):
     if not isinstance(modules, (list, tuple)):
         modules = [modules]
 
-    var_list = []
+    var_list: List[Any] = []
     for mod in modules:
         add_variable(mod.trainable_variables, var_list)
 
