@@ -70,6 +70,24 @@ class GPT2Tokenizer(TokenizerBase, PretrainedGPT2Mixin):
         'vocab_file': 'encoder.json',
         'merges_file': 'vocab.bpe',
     }
+    _VOCAB_FILE_MAP = {
+        'vocab_file': {
+            'gpt2-small': 'encoder.json',
+            'gpt2-medium': 'encoder.json',
+            'gpt2-large': 'encoder.json',
+            'gpt2-xl': 'encoder.json',
+            '117M': 'encoder.json',
+            '345M': 'encoder.json',
+        },
+        'merges_file': {
+            'gpt2-small': 'vocab.bpe',
+            'gpt2-medium': 'vocab.bpe',
+            'gpt2-large': 'vocab.bpe',
+            'gpt2-xl': 'vocab.bpe',
+            '117M': 'vocab.bpe',
+            '345M': 'vocab.bpe',
+        },
+    }
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
@@ -84,10 +102,13 @@ class GPT2Tokenizer(TokenizerBase, PretrainedGPT2Mixin):
         }
 
         if self.pretrained_model_dir is not None:
+            assert self.pretrained_model_name is not None
             vocab_file = os.path.join(self.pretrained_model_dir,
-                                      self._VOCAB_FILE_NAMES['vocab_file'])
+                                      self._VOCAB_FILE_MAP['vocab_file']
+                                      [self.pretrained_model_name])
             merges_file = os.path.join(self.pretrained_model_dir,
-                                       self._VOCAB_FILE_NAMES['merges_file'])
+                                       self._VOCAB_FILE_MAP['merges_file']
+                                       [self.pretrained_model_name])
             assert pretrained_model_name is not None
             if self._MAX_INPUT_SIZE.get(pretrained_model_name):
                 self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
@@ -119,9 +140,8 @@ class GPT2Tokenizer(TokenizerBase, PretrainedGPT2Mixin):
 
         # Should haved added re.IGNORECASE so BPE merges can happen for
         # capitalized versions of contractions
-        self.pat = re.compile(
-            r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?
-            [^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
+        self.pat = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| """ +
+                              r""""?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
     def _map_text_to_token(self, text: str) -> List[str]:  # type: ignore
         r"""Tokenize a string. """
@@ -301,6 +321,7 @@ class GPT2Tokenizer(TokenizerBase, PretrainedGPT2Mixin):
                 "unk_token": "<|endoftext|>",
                 "pad_token": "<|endoftext|>",
                 "errors": "replace",
+                "name": "gpt2_tokenizer",
             }
 
         Here:
@@ -332,6 +353,9 @@ class GPT2Tokenizer(TokenizerBase, PretrainedGPT2Mixin):
         `"errors"`: str
             Response when mapping tokens to text fails. The possible values are
             `ignore`, `replace`, and `strict`.
+
+        `"name"`: str
+            Name of the tokenizer.
         """
         return {
             'pretrained_model_name': '117M',
@@ -343,6 +367,7 @@ class GPT2Tokenizer(TokenizerBase, PretrainedGPT2Mixin):
             'unk_token': '<|endoftext|>',
             'pad_token': '<|endoftext|>',
             'errors': 'replace',
+            'name': 'gpt2_tokenizer',
             '@no_typecheck': ['pretrained_model_name'],
         }
 
