@@ -93,8 +93,8 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
         if self.pretrained_model_dir is not None:
             assert self.pretrained_model_name is not None
             vocab_file = os.path.join(self.pretrained_model_dir,
-                                        self._VOCAB_FILE_MAP['vocab_file']
-                                        [self.pretrained_model_name])
+                                      self._VOCAB_FILE_MAP['vocab_file']
+                                      [self.pretrained_model_name])
             assert self.pretrained_model_name is not None
             if self._MAX_INPUT_SIZE.get(pretrained_model_name):
                 self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
