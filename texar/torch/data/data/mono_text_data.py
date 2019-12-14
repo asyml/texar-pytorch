@@ -50,6 +50,7 @@ def _default_mono_text_dataset_hparams():
     return {
         "files": [],
         "compression_type": None,
+        "encoding": None,
         "vocab_file": "",
         "embedding_init": Embedding.default_hparams(),
         "delimiter": None,

@@ -188,7 +188,7 @@ class PairedTextData(TextDataBase[Tuple[List[str], List[str]],
                                                   src_hparams.eos_token])
 
         src_data_source = TextLineDataSource(
-            src_hparams.files, compression_type=src_hparams.compression_type)
+            src_hparams.files, compression_type=src_hparams.compression_type, encoding=src_hparams.encoding)
 
         self._tgt_transforms = tgt_hparams["other_transformations"]
         self._tgt_delimiter = tgt_hparams.delimiter
@@ -202,7 +202,7 @@ class PairedTextData(TextDataBase[Tuple[List[str], List[str]],
                                                   tgt_hparams.eos_token])
 
         tgt_data_source = TextLineDataSource(
-            tgt_hparams.files, compression_type=tgt_hparams.compression_type)
+            tgt_hparams.files, compression_type=tgt_hparams.compression_type, encoding=tgt_hparams.encoding)
 
         data_source: DataSource[Tuple[List[str], List[str]]]
         data_source = ZipDataSource(  # type: ignore
@@ -233,6 +233,7 @@ class PairedTextData(TextDataBase[Tuple[List[str], List[str]],
                 "source_dataset": {
                     "files": [],
                     "compression_type": None,
+                    "encoding": None,
                     "vocab_file": "",
                     "embedding_init": {},
                     "delimiter": None,
