@@ -26,7 +26,7 @@ setuptools.setup(
 
     packages=[
         f"texar.{name}"
-        for name in setuptools.find_packages(where='texar')
+        for name in setuptools.find_packages(where='texar/')
     ],
     platforms='any',
 
