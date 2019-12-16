@@ -157,6 +157,30 @@ class EmbedderTest(unittest.TestCase):
         soft_outputs = embedder(soft_ids=soft_ids)
         self.assertEqual(outputs, soft_outputs)
 
+    def test_word_embedder_trainable(self):
+        """Tests freezing the embedding parameters.
+        """
+        init_value = np.expand_dims(np.arange(5), 1)
+
+        embedder = WordEmbedder(init_value=init_value,
+                                hparams={"trainable": False})
+        self.assertEqual(len(embedder.trainable_variables), 0)
+
+        embedder = WordEmbedder(init_value=init_value)
+        self.assertEqual(len(embedder.trainable_variables), 1)
+
+    def test_position_embedder_trainable(self):
+        """Tests freezing the embedding parameters.
+        """
+        pos_size = 100
+
+        embedder = PositionEmbedder(
+            position_size=pos_size, hparams={"trainable": False})
+        self.assertEqual(len(embedder.trainable_variables), 0)
+
+        embedder = PositionEmbedder(position_size=pos_size)
+        self.assertEqual(len(embedder.trainable_variables), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
