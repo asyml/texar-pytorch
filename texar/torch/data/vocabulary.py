@@ -115,7 +115,7 @@ class Vocab:
             where and :attr:`token_to_id_map_py` are python `defaultdict`
             instances.
         """
-        with open(filename, "r") as vocab_file:
+        with open(filename, "r", encoding="utf-8") as vocab_file:
             vocab = list(line.strip() for line in vocab_file)
 
         warnings.simplefilter("ignore", UnicodeWarning)
