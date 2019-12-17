@@ -34,6 +34,7 @@ _BERT_PATH = "https://storage.googleapis.com/bert_models/"
 _BIOBERT_PATH = "https://github.com/naver/biobert-pretrained/releases/download/"
 _SCIBERT_PATH = "https://s3-us-west-2.amazonaws.com/ai2-s2-research/" \
                 "scibert/tensorflow_models/"
+_BERT_MSMARCO_PATH = "https://drive.google.com/file/d/"
 
 
 class PretrainedBERTMixin(PretrainedMixin, ABC):
@@ -97,6 +98,16 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         * ``scibert-basevocab-cased``: Cased version of the model trained on
           the original BERT vocabulary.
 
+    * **BERT for MS-MARCO**: proposed in (`Nogueira et al`. 2019)
+      `Passage Re-ranking with BERT`_. A BERT model fine-tuned on MS-MARCO
+      (Nguyen et al., 2016) dataset. It's the best performing model (on Jan 8th
+      2019) on MS-MARCO Passage re-ranking task. Two models are included:
+
+        * ``bert-msmarco-base``: Original BERT base model fine-tuned on
+          MS-MARCO.
+        * ``bert-msmarco-large``: Original BERT large model fine-tuned on
+          MS-MARCO.
+
     We provide the following BERT classes:
 
       * :class:`~texar.torch.modules.BERTEncoder` for text encoding.
@@ -111,6 +122,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
     .. _`SciBERT: A Pretrained Language Model for Scientific Text`:
         https://arxiv.org/abs/1903.10676
+
+    .. _`BERT for MS-MARCO: Passage re-ranking with BERT`:
+        https://arxiv.org/abs/1901.04085
     """
 
     _MODEL_NAME = "BERT"
@@ -150,6 +164,12 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
             _SCIBERT_PATH + 'scibert_basevocab_uncased.tar.gz',
         'scibert-basevocab-cased':
             _SCIBERT_PATH + 'scibert_basevocab_cased.tar.gz',
+
+        # BERT for MS-MARCO
+        'bert-msmarco-base':
+            _BERT_MSMARCO_PATH + '1cyUrhs7JaCJTTu-DjFUqP6Bs4f8a6JTX/view',
+        'bert-msmarco-large':
+            _BERT_MSMARCO_PATH + '1crlASTMlsihALlkabAQP6JTYIZwC1Wm8/view'
     }
     _MODEL2CKPT = {
         # Standard BERT
@@ -172,6 +192,10 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         'scibert-scivocab-cased': 'bert_model.ckpt',
         'scibert-basevocab-uncased': 'bert_model.ckpt',
         'scibert-basevocab-cased': 'bert_model.ckpt',
+
+        # BERT for MSMARCO
+        'bert-msmarco-base': 'model.ckpt-100000',
+        'bert-msmarco-large': 'model.ckpt-100000',
     }
 
     @classmethod
