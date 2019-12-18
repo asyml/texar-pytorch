@@ -73,7 +73,7 @@ class EmbedderTest(unittest.TestCase):
         self.assertEqual(emb_dim, hparams_dim)
         self.assertEqual(embedder.position_size, 100)
         seq_length = torch.empty(64).uniform_(0, pos_size).long()
-        outputs = embedder(sequence_length=seq_length)
+        _ = embedder(sequence_length=seq_length)
 
     def test_sinusoids_position_embedder(self):
         """Tests :class:`texar.torch.modules.SinusoidsPositionEmbedder`.
@@ -86,6 +86,11 @@ class EmbedderTest(unittest.TestCase):
         outputs = embedder(inputs)
         self.assertEqual(outputs.size(), input_size + (hparams['dim'],))
         self.assertEqual(outputs.size(-1), embedder.output_size)
+        sequence_length = torch.randint(high=position_size + 1, size=(23,))
+        outputs_ = embedder(sequence_length=sequence_length)
+        self.assertEqual(outputs_.size(),
+                         (23, max(sequence_length).item()) + (hparams['dim'],))
+        self.assertEqual(outputs_.size(-1), embedder.output_size)
 
         embedder_no_cache = SinusoidsPositionEmbedder(
             None, hparams={**hparams, 'cache_embeddings': False})
