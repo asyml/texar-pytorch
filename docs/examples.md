@@ -22,7 +22,7 @@ More examples are continuously added...
 * [bert](https://github.com/asyml/texar-pytorch/tree/master/examples/bert): Pre-trained BERT model for text representation
 * [xlnet](https://github.com/asyml/texar-pytorch/tree/master/examples/xlnet): Pre-trained XLNet model for text representation
 
-### GANs / Discriminiator-supervision ###
+### GANs / Discriminator-supervision ###
 
 * [text_style_transfer](https://github.com/asyml/texar-pytorch/tree/master/examples/text_style_transfer): Discriminator supervision for controlled text generation
 
