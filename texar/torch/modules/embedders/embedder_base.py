@@ -49,7 +49,8 @@ class EmbedderBase(ModuleBase):
 
         if num_embeds is not None or init_value is not None:
             self._embedding = nn.Parameter(embedder_utils.get_embedding(
-                num_embeds, init_value, hparams))
+                num_embeds, init_value, hparams),
+                requires_grad=self.hparams["trainable"])
 
             self._num_embeds = self._embedding.size(0)
 

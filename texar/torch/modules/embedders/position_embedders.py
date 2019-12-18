@@ -96,6 +96,8 @@ class PositionEmbedder(EmbedderBase):
                     }
                 },
                 "dropout_rate": 0,
+                "dropout_strategy": 'element',
+                "trainable": True,
                 "name": "position_embedder"
             }
 
