@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional, Union
 from torch import nn
 
 from texar.torch.data.data_utils import maybe_download
+from texar.torch.data.data_utils import get_filename
 from texar.torch.hyperparams import HParams
 from texar.torch.module_base import ModuleBase
 from texar.torch.utils.types import MaybeList
@@ -200,7 +201,7 @@ class PretrainedMixin(ModuleBase, ABC):
 
         if not cache_path.exists():
             if isinstance(download_path, str):
-                filename = download_path.split('/')[-1]
+                filename = get_filename(download_path)
                 maybe_download(download_path, cache_path, extract=True)
                 folder = None
                 for file in cache_path.iterdir():
