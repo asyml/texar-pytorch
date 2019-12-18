@@ -13,7 +13,7 @@ Frequent Use
     :members:
 
 :hidden:`collect_trainable_variables`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.torch.utils.collect_trainable_variables
 
 :hidden:`compat_as_text`
