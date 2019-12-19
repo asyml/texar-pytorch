@@ -33,6 +33,7 @@ __all__ = [
     "read_words",
     "make_vocab",
     "count_file_lines",
+    "get_filename"
 ]
 
 Py3 = sys.version_info[0] == 3

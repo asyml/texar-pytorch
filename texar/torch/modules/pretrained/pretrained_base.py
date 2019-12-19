@@ -22,8 +22,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from torch import nn
 
-from texar.torch.data.data_utils import maybe_download
-from texar.torch.data.data_utils import get_filename
+from texar.torch.data.data_utils import maybe_download, get_filename
 from texar.torch.hyperparams import HParams
 from texar.torch.module_base import ModuleBase
 from texar.torch.utils.types import MaybeList
