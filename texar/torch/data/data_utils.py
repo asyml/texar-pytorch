@@ -311,6 +311,8 @@ def count_file_lines(filenames: MaybeList[str]) -> int:
 
 
 def get_filename(url: str) -> str:
+    r"""Extracts the filename of the downloaded checkpoint file from the URL.
+    """
     if 'drive.google.com' in url:
         return _extract_google_drive_file_id(url)
     url, filename = os.path.split(url)
