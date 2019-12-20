@@ -100,8 +100,8 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
     * **BERT for MS-MARCO**: proposed in (`Nogueira et al`. 2019)
       `Passage Re-ranking with BERT`_. A BERT model fine-tuned on MS-MARCO
-      (`Nguyen et al`., 2016) dataset. It's the best performing model (on Jan 8th
-      2019) on MS-MARCO Passage re-ranking task. Two models are included:
+      (`Nguyen et al`., 2016) dataset. It's the best performing model (on Jan
+      8th 2019) on MS-MARCO Passage re-ranking task. Two models are included:
 
         * ``bert-msmarco-base``: Original BERT base model fine-tuned on
           MS-MARCO.
