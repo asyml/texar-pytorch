@@ -282,6 +282,57 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
 
         return input_ids, segment_ids, input_mask
 
+    def encode_text_for_generation(
+            self,
+            text: str,
+            max_seq_length: Optional[int] = None,
+            append_eos_token: bool = True) -> Tuple[List[int], int]:
+        r"""Adds special tokens to a sequence and computes the corresponding
+        sequence length for XLNet specific tasks. The sequence will be truncated
+        if its length is larger than ``max_seq_length``.
+
+        A XLNet sequence has the following format:
+        `[bos_token]` X `[eos_token]` `[pad_token]`
+
+        Args:
+            text: Input text.
+            max_seq_length: Maximum sequence length.
+            append_eos_token: Whether to append ``eos_token`` after the
+                sequence.
+
+        Returns:
+            A tuple of `(input_ids, seq_len)`, where
+
+            - ``input_ids``: A list of input token ids with added
+              special tokens.
+            - ``seq_len``: The sequence length.
+        """
+        if max_seq_length is None:
+            max_seq_length = self.max_len
+
+        token_ids = self.map_text_to_id(text)
+        assert isinstance(token_ids, list)
+
+        bos_token_id = self._map_token_to_id(self.bos_token)
+        eos_token_id = self._map_token_to_id(self.eos_token)
+        pad_token_id = self._map_token_to_id(self.pad_token)
+
+        if append_eos_token:
+            input_ids = token_ids[:max_seq_length - 2]
+            input_ids = [bos_token_id] + input_ids + [eos_token_id]
+        else:
+            input_ids = token_ids[:max_seq_length - 1]
+            input_ids = [bos_token_id] + input_ids
+
+        seq_len = len(input_ids)
+
+        # Pad up to the maximum sequence length.
+        input_ids = input_ids + [pad_token_id] * (max_seq_length - seq_len)
+
+        assert len(input_ids) == max_seq_length
+
+        return input_ids, seq_len
+
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
         r"""Returns a dictionary of hyperparameters with default values.
