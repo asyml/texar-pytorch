@@ -74,6 +74,10 @@ class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
         'scibert-scivocab-cased': 512,
         'scibert-basevocab-uncased': 512,
         'scibert-basevocab-cased': 512,
+
+        # BERT for MS-MARCO
+        'bert-msmarco-base': 512,
+        'bert-msmarco-large': 512,
     }
     _VOCAB_FILE_NAMES = {'vocab_file': 'vocab.txt'}
     _VOCAB_FILE_MAP = {
@@ -98,6 +102,10 @@ class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
             'scibert-scivocab-cased': 'vocab.txt',
             'scibert-basevocab-uncased': 'vocab.txt',
             'scibert-basevocab-cased': 'vocab.txt',
+
+            # BERT for MS-MARCO
+            'bert-msmarco-base': 'vocab.txt',
+            'bert-msmarco-large': 'vocab.txt',
         }
     }
 
