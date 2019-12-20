@@ -250,6 +250,24 @@ class XLNetTokenizerTest(unittest.TestCase):
         self.assertListEqual(segment_ids, [0, 0, 0, 1, 1, 1, 2])
         self.assertListEqual(input_mask, [0, 0, 0, 0, 0, 0, 0])
 
+    def test_encode_text_for_generation(self):
+        text_1 = u"lower newer"
+
+        text_1_ids = self.tokenizer.map_text_to_id(text_1)
+
+        input_ids, seq_len = \
+            self.tokenizer.encode_text_for_generation(text=text_1,
+                                                      max_seq_length=10)
+
+        bos_token_id = self.tokenizer.map_token_to_id(self.tokenizer.bos_token)
+        eos_token_id = self.tokenizer.map_token_to_id(self.tokenizer.eos_token)
+        pad_token_id = self.tokenizer.map_token_to_id(self.tokenizer.pad_token)
+
+        self.assertListEqual(input_ids,
+                             [bos_token_id] + text_1_ids + [eos_token_id] +
+                             [pad_token_id, pad_token_id, pad_token_id])
+        self.assertEqual(seq_len, 7)
+
 
 if __name__ == "__main__":
     unittest.main()
