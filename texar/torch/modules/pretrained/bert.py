@@ -326,11 +326,19 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         pooler_map = {
             'bert/pooler/dense/bias': 'pooler.0.bias',
             'bert/pooler/dense/kernel': 'pooler.0.weight',
+        }
+        classifier_map = {
             'output_bias': '_logits_layer.bias',
             'output_weights': '_logits_layer.weight',
         }
+        global_prefix_map = {
+            'classifier': '_encoder.'
+        }
         tf_path = os.path.abspath(os.path.join(
             cache_dir, self._MODEL2CKPT[pretrained_model_name]))
+
+        class_type = kwargs.get('class_type', 'encoder')
+        global_prefix = global_prefix_map.get(class_type, '')
 
         # Load weights from TF model
         init_vars = tf.train.list_variables(tf_path)
@@ -351,13 +359,14 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
                 continue
 
             if name in global_tensor_map:
-                v_name = global_tensor_map[name]
+                v_name = global_prefix + global_tensor_map[name]
                 pointer = self._name_to_variable(v_name)
                 assert pointer.shape == array.shape
                 pointer.data = torch.from_numpy(array)
                 idx += 1
             elif name in pooler_map:
-                pointer = self._name_to_variable(pooler_map[name])
+                pointer = self._name_to_variable(global_prefix +
+                                                 pooler_map[name])
                 if name.endswith('bias'):
                     assert pointer.shape == array.shape
                     pointer.data = torch.from_numpy(array)
@@ -367,6 +376,13 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
                     assert pointer.shape == array_t.shape
                     pointer.data = torch.from_numpy(array_t)
                     idx += 1
+            elif name in classifier_map:
+                if class_type != 'classifier':
+                    continue
+                pointer = self._name_to_variable(classifier_map[name])
+                assert pointer.shape == array.shape
+                pointer.data = torch.from_numpy(array)
+                idx += 1
             else:
                 # here name is the TensorFlow variable name
                 name_tmp = name.split("/")
@@ -375,12 +391,14 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
                 name_tmp = "/".join(name_tmp[3:])
                 if name_tmp in layer_tensor_map:
                     v_name = layer_tensor_map[name_tmp].format(layer_no)
-                    pointer = self._name_to_variable(py_prefix + v_name)
+                    pointer = self._name_to_variable(global_prefix +
+                                                     py_prefix + v_name)
                     assert pointer.shape == array.shape
                     pointer.data = torch.from_numpy(array)
                 elif name_tmp in layer_transpose_map:
                     v_name = layer_transpose_map[name_tmp].format(layer_no)
-                    pointer = self._name_to_variable(py_prefix + v_name)
+                    pointer = self._name_to_variable(global_prefix +
+                                                     py_prefix + v_name)
                     array_t = np.transpose(array)
                     assert pointer.shape == array_t.shape
                     pointer.data = torch.from_numpy(array_t)
