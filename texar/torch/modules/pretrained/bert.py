@@ -167,9 +167,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
         # BERT for MS-MARCO
         'bert-msmarco-base':
-            _BERT_MSMARCO_PATH + '1cyUrhs7JaCJTTu-DjFUqP6Bs4f8a6JTX/view',
+            _BERT_MSMARCO_PATH + '1cyUrhs7JaCJTTu-DjFUqP6Bs4f8a6JTX/',
         'bert-msmarco-large':
-            _BERT_MSMARCO_PATH + '1crlASTMlsihALlkabAQP6JTYIZwC1Wm8/view'
+            _BERT_MSMARCO_PATH + '1crlASTMlsihALlkabAQP6JTYIZwC1Wm8/'
     }
     _MODEL2CKPT = {
         # Standard BERT
@@ -325,7 +325,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         }
         pooler_map = {
             'bert/pooler/dense/bias': 'pooler.0.bias',
-            'bert/pooler/dense/kernel': 'pooler.0.weight'
+            'bert/pooler/dense/kernel': 'pooler.0.weight',
+            'output_bias': '_logits_layer.bias',
+            'output_weights': '_logits_layer.weight',
         }
         tf_path = os.path.abspath(os.path.join(
             cache_dir, self._MODEL2CKPT[pretrained_model_name]))
