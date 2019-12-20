@@ -123,7 +123,7 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
     .. _`SciBERT: A Pretrained Language Model for Scientific Text`:
         https://arxiv.org/abs/1903.10676
 
-    .. _`BERT for MS-MARCO: Passage re-ranking with BERT`:
+    .. _`Passage re-ranking with BERT`:
         https://arxiv.org/abs/1901.04085
     """
 
