@@ -166,9 +166,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
             _SCIBERT_PATH + 'scibert_basevocab_cased.tar.gz',
 
         # BERT for MS-MARCO
-        'bert-msmarco-base':
+        'bert-msmarco-nogueira19-base':
             _BERT_MSMARCO_NOGUEIRA19_PATH + '1cyUrhs7JaCJTTu-DjFUqP6Bs4f8a6JTX/',
-        'bert-msmarco-large':
+        'bert-msmarco-nogueira19-large':
             _BERT_MSMARCO_NOGUEIRA19_PATH + '1crlASTMlsihALlkabAQP6JTYIZwC1Wm8/'
     }
     _MODEL2CKPT = {
