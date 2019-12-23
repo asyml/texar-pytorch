@@ -76,9 +76,10 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
         # Create the underlying encoder
         encoder_hparams = dict_fetch(hparams,
                                      self._ENCODER_CLASS.default_hparams())
+        encoder_hparams['pretrained_model_name'] = None
 
         self._encoder = self._ENCODER_CLASS(
-            pretrained_model_name=pretrained_model_name,
+            pretrained_model_name=None,
             cache_dir=cache_dir,
             hparams=encoder_hparams)
 
