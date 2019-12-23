@@ -34,7 +34,7 @@ _BERT_PATH = "https://storage.googleapis.com/bert_models/"
 _BIOBERT_PATH = "https://github.com/naver/biobert-pretrained/releases/download/"
 _SCIBERT_PATH = "https://s3-us-west-2.amazonaws.com/ai2-s2-research/" \
                 "scibert/tensorflow_models/"
-_BERT_MSMARCO_PATH = "https://drive.google.com/file/d/"
+_BERT_MSMARCO_NOGUEIRA19_PATH = "https://drive.google.com/file/d/"
 
 
 class PretrainedBERTMixin(PretrainedMixin, ABC):
@@ -103,9 +103,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
       (`Nguyen et al`., 2016) dataset. It's the best performing model (on Jan
       8th 2019) on MS-MARCO Passage re-ranking task. Two models are included:
 
-        * ``bert-msmarco-base``: Original BERT base model fine-tuned on
+        * ``bert-msmarco-nogueira19-base``: Original BERT base model fine-tuned on
           MS-MARCO.
-        * ``bert-msmarco-large``: Original BERT large model fine-tuned on
+        * ``bert-msmarco-nogueira19-large``: Original BERT large model fine-tuned on
           MS-MARCO.
 
     We provide the following BERT classes:
@@ -167,9 +167,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
         # BERT for MS-MARCO
         'bert-msmarco-base':
-            _BERT_MSMARCO_PATH + '1cyUrhs7JaCJTTu-DjFUqP6Bs4f8a6JTX/',
+            _BERT_MSMARCO_NOGUEIRA19_PATH + '1cyUrhs7JaCJTTu-DjFUqP6Bs4f8a6JTX/',
         'bert-msmarco-large':
-            _BERT_MSMARCO_PATH + '1crlASTMlsihALlkabAQP6JTYIZwC1Wm8/'
+            _BERT_MSMARCO_NOGUEIRA19_PATH + '1crlASTMlsihALlkabAQP6JTYIZwC1Wm8/'
     }
     _MODEL2CKPT = {
         # Standard BERT
@@ -194,8 +194,8 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         'scibert-basevocab-cased': 'bert_model.ckpt',
 
         # BERT for MSMARCO
-        'bert-msmarco-base': 'model.ckpt-100000',
-        'bert-msmarco-large': 'model.ckpt-100000',
+        'bert-msmarco-nogueira19-base': 'model.ckpt-100000',
+        'bert-msmarco-nogueira19-large': 'model.ckpt-100000',
     }
 
     @classmethod
