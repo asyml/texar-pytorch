@@ -128,7 +128,7 @@ def main():
                           for (key, value) in vals_g.items()}
             avg_meters_g.add(recorder_g)
 
-            if verbose and (step == 1 or step % config.display >= 0):
+            if verbose and (step == 1 or step % config.display == 0):
                 print('step: {}, {}'.format(step, avg_meters_d.to_str(4)))
                 print('step: {}, {}'.format(step, avg_meters_g.to_str(4)))
 
