@@ -129,6 +129,7 @@ class WordEmbedder(EmbedderBase):
                         "seed": None
                     }
                 },
+                "trainable": True,
                 "name": "word_embedder",
             }
 
@@ -162,6 +163,10 @@ class WordEmbedder(EmbedderBase):
             Hyperparameters of the initializer for embedding values. See
             :func:`~texar.torch.core.get_initializer` for the details. Ignored
             if :attr:`init_value` is given to the embedder constructor.
+
+        `"trainable"`: bool
+            Whether the embedding parameters are trainable. If false, freeze the
+            embedding parameters.
 
         `"name"`: str
             Name of the embedding variable.
