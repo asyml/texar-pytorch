@@ -260,6 +260,9 @@ class TransformerEncoder(EncoderBase):
         `"residual_dropout"`: float
             Dropout rate of the residual connections.
 
+        "eps"`: float
+            Epsilon values for layer norm layers.
+
         `"poswise_feedforward"`: dict
             Hyperparameters for a feed-forward network used in residual
             connections.
@@ -299,6 +302,7 @@ class TransformerEncoder(EncoderBase):
                 'use_bias': False,
             },
             'initializer': None,
+            'eps': 1e-6,
             'name': 'transformer_encoder',
         }
 
@@ -348,7 +352,7 @@ class TransformerEncoder(EncoderBase):
             else:
                 _queries_input = self.self_attn_layer_norm[i](x)
 
-            attention_output = self.self_attns[i](
+            attention_output, position_bias = self.self_attns[i](
                 queries=_queries_input,
                 memory=_queries_input,
                 memory_attention_bias=encoder_self_attention_bias,

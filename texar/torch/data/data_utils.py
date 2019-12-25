@@ -126,7 +126,6 @@ def _download(url: str, filename: str, path: str) -> str:
         percent = float(count * block_size) / float(total_size) * 100.
         sys.stdout.write(f'\r>> Downloading {filename} {percent:.1f}%')
         sys.stdout.flush()
-
     filepath = os.path.join(path, filename)
     filepath, _ = urllib.request.urlretrieve(url, filepath, _progress_hook)
     print()

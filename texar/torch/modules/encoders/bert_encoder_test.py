@@ -20,7 +20,7 @@ class BERTEncoderTest(unittest.TestCase):
         self.inputs = torch.zeros(
             self.batch_size, self.max_length, dtype=torch.long)
 
-    @pretrained_test
+    #@pretrained_test
     def test_model_loading(self):
         r"""Tests model loading functionality."""
         for pretrained_model_name in BERTEncoder.available_checkpoints():

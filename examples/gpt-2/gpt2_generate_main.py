@@ -71,6 +71,7 @@ def main() -> None:
     max_decoding_length = args.max_decoding_length
 
     # Build the GPT-2 model
+    import pdb;pdb.set_trace()
     model = tx.modules.GPT2Decoder(args.pretrained_model_name)
     if args.checkpoint:
         ckpt = torch.load(args.checkpoint)
