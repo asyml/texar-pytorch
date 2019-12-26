@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from torch import nn
 
-from texar.torch.data.data_utils import maybe_download
+from texar.torch.data.data_utils import maybe_download, get_filename
 from texar.torch.hyperparams import HParams
 from texar.torch.module_base import ModuleBase
 from texar.torch.utils.types import MaybeList
@@ -200,17 +200,21 @@ class PretrainedMixin(ModuleBase, ABC):
 
         if not cache_path.exists():
             if isinstance(download_path, str):
-                filename = download_path.split('/')[-1]
+                filename = get_filename(download_path)
                 maybe_download(download_path, cache_path, extract=True)
+
+                # removing the compressed file
+                (cache_path / filename).unlink()
+
                 folder = None
+                # if extracted into a new directory
                 for file in cache_path.iterdir():
                     if file.is_dir():
                         folder = file
-                assert folder is not None
-                (cache_path / filename).unlink()
-                for file in folder.iterdir():
-                    file.rename(file.parents[1] / file.name)
-                folder.rmdir()
+                if folder is not None:
+                    for file in folder.iterdir():
+                        file.rename(file.parents[1] / file.name)
+                    folder.rmdir()
             else:
                 for path in download_path:
                     maybe_download(path, cache_path)
