@@ -350,7 +350,6 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
 
         Returns:
         """
-        # import pdb;pdb.set_trace()
         if inputs.dim() == 2:
             word_embeds = self.word_embedder(ids=inputs)
         elif inputs.dim() == 3:
@@ -366,12 +365,11 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
 
         encoder_output = self.encoder(inputs=word_embeds,
                                       sequence_length=sequence_length)
-        # import pdb;pdb.set_trace()
 
         decoder_output = self.decoder(inputs=inputs,
                                       memory=encoder_output,
                                       memory_sequence_length=sequence_length)
-        # import pdb;pdb.set_trace()
+
         return encoder_output, decoder_output
 
     @property

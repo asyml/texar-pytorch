@@ -236,13 +236,21 @@ class MultiheadRPRAttention(ModuleBase):
         """ Compute binned relative position bias """
         context_position = torch.arange(qlen, dtype=torch.long)[:, None]
         memory_position = torch.arange(klen, dtype=torch.long)[None, :]
-        relative_position = memory_position - context_position  # shape (qlen, klen)
-        rp_bucket = self._relative_position_bucket(relative_position,  # shape (qlen, klen)
-                                                   bidirectional=not self.is_decoder,
-                                                   num_buckets=self.relative_attention_num_buckets)
-        values = self.relative_attention_bias(rp_bucket)  # shape (qlen, klen, num_heads)
-        values = values.permute([2, 0, 1]).unsqueeze(0) # shape (1, num_heads, qlen, klen)
-        return values
+
+        relative_position = memory_position - context_position
+        #  [length_query, length_key]
+
+        rp_bucket = self._relative_position_bucket(
+            relative_position,
+            bidirectional=not self.is_decoder,
+            num_buckets=self.relative_attention_num_buckets)
+        # [length_query, length_key]
+
+        values = self.relative_attention_bias(rp_bucket)
+        # [length_query, length_key, num_heads]
+
+        values = values.permute([2, 0, 1]).unsqueeze(0)
+        return values  # [1, num_heads, length_query, length_key]
 
     def forward(self,  # type: ignore
                 queries: torch.Tensor,
@@ -330,9 +338,10 @@ class MultiheadRPRAttention(ModuleBase):
         Q_ = self._split_heads(Q)
         K_ = self._split_heads(K)
         V_ = self._split_heads(V)
-        # [batch_size, num_heads, seq_length, memory_depth]
+
+        # All of the above [batch_size, num_heads, seq_length, memory_depth]
         #Q_ *= key_depth_per_head ** -0.5  # T5 does not scale
-        # import pdb;pdb.set_trace()
+
         logits = torch.einsum('bnqd,bnkd->bnqk', Q_, K_)
 
         if position_bias is None:
@@ -347,8 +356,7 @@ class MultiheadRPRAttention(ModuleBase):
                 memory_attention_bias = memory_attention_bias.to(
                     device=logits.device)
                 position_bias = position_bias + memory_attention_bias
-        # import pdb;
-        # pdb.set_trace()
+
         logits += position_bias
         weights = torch.softmax(logits, dim=-1)
         weights = F.dropout(weights, self._hparams.dropout_rate,

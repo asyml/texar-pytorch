@@ -352,7 +352,7 @@ class TransformerEncoder(EncoderBase):
             else:
                 _queries_input = self.self_attn_layer_norm[i](x)
 
-            attention_output, position_bias = self.self_attns[i](
+            attention_output = self.self_attns[i](
                 queries=_queries_input,
                 memory=_queries_input,
                 memory_attention_bias=encoder_self_attention_bias,

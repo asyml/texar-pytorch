@@ -216,8 +216,6 @@ class T5Encoder(EncoderBase):
         position_bias=None
 
         for i in range(self._hparams.num_blocks):
-            # import pdb;pdb.set_trace()
-
             _queries_input = self.self_attn_layer_norm[i](x)
 
             attention_output, position_bias = self.self_attns[i](

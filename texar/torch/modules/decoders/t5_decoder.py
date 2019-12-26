@@ -292,7 +292,7 @@ class T5Decoder(DecoderBase[Cache, TransformerDecoderOutput]):
         """
         outputs = self._self_attention_stack(
             inputs.unsqueeze(1), memory=cache['memory'], cache=cache)
-        #import pdb;pdb.set_trace()
+
         outputs = self._output_layer(outputs)
         outputs = outputs.squeeze(1)
         return outputs, cache
@@ -502,7 +502,7 @@ class T5Decoder(DecoderBase[Cache, TransformerDecoderOutput]):
             decoder_output = self._self_attention_stack(
                 inputs, memory, decoder_self_attention_bias,
                 memory_attention_bias, cache=None)
-            #import pdb;pdb.set_trace()
+
             logits = self._output_layer(decoder_output)
             sample_id = torch.argmax(logits, dim=-1)
 
@@ -607,12 +607,11 @@ class T5Decoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 memory_attention_bias = cache['memory_attention_bias']
         else:
             assert decoder_self_attention_bias is not None
-        #import pdb;pdb.set_trace()
+
         x = self.embed_dropout(inputs)
         position_bias = None
         encdec_position_bias = None
         for i in range(self._hparams.num_blocks):
-            #import pdb;pdb.set_trace()
             layer_cache = cache['layers'][i] if cache is not None else None
 
             selfatt_output, position_bias = self.self_attns[i](
@@ -622,28 +621,22 @@ class T5Decoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 cache=layer_cache,
                 position_bias=position_bias
             )
-            # import pdb;
-            # pdb.set_trace()
+
             x = x + self.residual_dropout(selfatt_output)
 
             if memory is not None:
-                # import pdb;
-                # pdb.set_trace()
                 encdec_output, encdec_position_bias = self.enc_dec_attns[i](
                     queries=self.end_dec_attn_layer_norm[i](x),
                     memory=memory,
                     memory_attention_bias=memory_attention_bias,
                     position_bias=encdec_position_bias
                 )
-                # import pdb;
-                # pdb.set_trace()
+
                 x = x + self.residual_dropout(encdec_output)
-            # import pdb;
-            # pdb.set_trace()
+
             sub_output = self.poswise_networks[i](self.poswise_layer_norm[i](x))
             x = x + self.residual_dropout(sub_output)
-        # import pdb;
-        # pdb.set_trace()
+
         return self.final_layer_norm(x)
 
     def _init_cache(self, memory: Optional[torch.Tensor],

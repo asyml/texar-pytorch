@@ -76,7 +76,7 @@ class GPT2Encoder(EncoderBase, PretrainedGPT2Mixin):
 
         # The GPT2 encoder (a TransformerEncoder)
         self.encoder = TransformerEncoder(hparams=self._hparams.encoder)
-        self.decoder = TransformerDecoder()
+
         self.init_pretrained_weights(load_output_layer=False)
 
     @staticmethod

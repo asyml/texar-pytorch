@@ -21,4 +21,3 @@ from texar.torch.utils.exceptions import *
 from texar.torch.utils.shapes import *
 from texar.torch.utils.utils import *
 from texar.torch.utils.utils_io import *
-from texar.torch.utils.variables import *
