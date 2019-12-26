@@ -105,7 +105,7 @@ class T5EncoderDecoderTest(unittest.TestCase):
         self.inputs = torch.from_numpy(
             numpy.asarray([[8774, 6, 82, 1782, 19, 5295]]))
         self.max_length = 6
-        
+
         encoder_output, decoder_output = model(self.inputs)
 
         outputs_dim = model.hparams.encoder.dim
