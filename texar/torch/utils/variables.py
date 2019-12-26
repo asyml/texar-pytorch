@@ -27,13 +27,13 @@ __all__ = [
 
 
 def add_variable(
-        variable: Union[List[nn.Parameter], Tuple[nn.Parameter]],
+        variable: Union[List[nn.Parameter], Tuple[nn.Parameter], nn.Parameter],
         var_list: Set[nn.Parameter]):
     r"""Adds variable to a given list.
 
     Args:
         variable: A (list of) variable(s).
-        var_list (set): The set where the trainable params are added to.
+        var_list (set): The set where the trainable parameters are added to.
     """
     if isinstance(variable, (list, tuple)):
         for var in variable:
