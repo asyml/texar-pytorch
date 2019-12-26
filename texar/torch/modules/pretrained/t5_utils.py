@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Optional
+from typing import Optional, Tuple
 import math
 import torch
 from torch.nn import functional as F
@@ -42,7 +42,8 @@ class T5LayerNorm(nn.Module):
         self.w = nn.Parameter(torch.ones(input_size))
         self.eps = eps
 
-    def forward(self, x: torch.Tensor):
+    def forward(self,  # type: ignore
+                x: torch.Tensor):
         x = x / torch.sqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
         return self.w * x
 
@@ -259,7 +260,7 @@ class MultiheadRPRAttention(ModuleBase):
                 cache: Optional[LayerCache] = None,
                 position_bias: Optional[torch.Tensor] = None
                 ) \
-            -> torch.Tensor:
+            -> Tuple[torch.Tensor, torch.Tensor]:
         r"""Encodes the inputs.
 
         Args:
@@ -274,8 +275,11 @@ class MultiheadRPRAttention(ModuleBase):
                 ``[batch, num_heads, length_query, length_query)]``.
 
         Returns:
-            A tensor of shape ``[batch_size, max_time, dim]`` containing the
-            encoded vectors.
+            A tuple of 2 tensors, first, a tensor of shape
+            ``[batch_size, max_time, dim]`` containing the encoded vectors
+            and second a tensor of shape
+            [batch, num_heads, length_query, length_query)] for sharing the
+            position bias
         """
         length_query = queries.size(1)
         if memory is None:
@@ -312,7 +316,7 @@ class MultiheadRPRAttention(ModuleBase):
             else:
                 # encoder decoder attention
                 if cache is not None:
-                    res: MaybeList[torch.Tensor] = cache[
+                    res: MaybeList[torch.Tensor] = cache[  # type: ignore
                         key]  # type: ignore
                     if isinstance(res, list):
                         # inference-like decoding
@@ -342,7 +346,7 @@ class MultiheadRPRAttention(ModuleBase):
         # All of the above [batch_size, num_heads, seq_length, memory_depth]
         #Q_ *= key_depth_per_head ** -0.5  # T5 does not scale
 
-        logits = torch.einsum('bnqd,bnkd->bnqk', Q_, K_)
+        logits = torch.einsum('bnqd,bnkd->bnqk', Q_, K_)  # type: ignore
 
         if position_bias is None:
             # Must compute bias using embedding stored.

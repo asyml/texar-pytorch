@@ -18,7 +18,6 @@ T5 Model
 from typing import Optional, Union
 
 import torch
-from torch import nn
 
 from texar.torch.core import layers, identity
 from texar.torch.modules.embedders.embedders import WordEmbedder

@@ -38,7 +38,9 @@ State = TypeVar('State')
 Output = TypeVar('Output')  # output type can be of any nested structure
 
 
-def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
+def _make_output_layer(layer: Optional[Union[nn.Module,
+                                             torch.Tensor,
+                                             Callable]],
                        vocab_size: Optional[int],
                        output_size: int,
                        bias: bool) -> Tuple[nn.Module, Optional[int]]:
@@ -66,8 +68,10 @@ def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
                 "layer is wanted.")
         output_layer = nn.Linear(output_size, vocab_size, bias)
     elif torch.is_tensor(layer):
-        vocab_size = layer.size(0)
-        output_layer = nn.Linear(layer.size(1), vocab_size, bias)
+        vocab_size = layer.size(0)  # type: ignore
+        output_layer = nn.Linear(layer.size(1),  # type: ignore
+                                 vocab_size,
+                                 bias)
         if not isinstance(layer, nn.Parameter):
             layer = nn.Parameter(layer, requires_grad=False)
         output_layer.weight = layer

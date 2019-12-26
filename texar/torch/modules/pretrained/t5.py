@@ -454,11 +454,8 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
 
         if len(from_params) > 0:
             print(f"WARNING: Certain weights from checkpoint are not loaded: "
-                  f"{list(from_params.keys())}")
+                  f"{list(from_params)}")
 
         if len(to_params) > 0:
             print(f"WARNING: Certain parameters are not initialized: "
                   f"{list(to_params)}")
-
-
-        pass

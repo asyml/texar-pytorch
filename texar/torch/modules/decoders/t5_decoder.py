@@ -17,7 +17,7 @@ import warnings
 
 import torch
 from torch import nn
-from texar.torch.core import layers
+from texar.torch.core import layers, identity
 from texar.torch.modules.encoders.multihead_attention import Cache
 from texar.torch.modules.pretrained.t5_utils import \
     T5LayerNorm, MultiheadRPRAttention
@@ -91,7 +91,9 @@ class T5Decoder(DecoderBase[Cache, TransformerDecoderOutput]):
                  token_embedder: Optional[TokenEmbedder] = None,
                  token_pos_embedder: Optional[TokenPosEmbedder] = None,
                  vocab_size: Optional[int] = None,
-                 output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
+                 output_layer: Optional[Union[nn.Module,
+                                              torch.Tensor,
+                                              Callable]] = None,
                  hparams=None):
         super().__init__(
             token_embedder, token_pos_embedder,
