@@ -20,6 +20,7 @@ Frequent Use
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.torch.utils.write_paired_text
 
+
 IO
 ===
 
