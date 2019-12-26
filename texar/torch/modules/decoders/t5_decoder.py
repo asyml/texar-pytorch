@@ -17,7 +17,7 @@ import warnings
 
 import torch
 from torch import nn
-from texar.torch.core import layers, identity
+from texar.torch.core import layers
 from texar.torch.modules.encoders.multihead_attention import Cache
 from texar.torch.modules.pretrained.t5_utils import \
     T5LayerNorm, MultiheadRPRAttention
@@ -33,6 +33,7 @@ from texar.torch.utils.shapes import mask_sequences
 from texar.torch.utils import sequence_mask, transformer_attentions as attn
 from texar.torch.modules.networks.networks import FeedForwardNetwork
 from texar.torch.utils.beam_search import beam_search
+
 
 class T5Decoder(DecoderBase[Cache, TransformerDecoderOutput]):
     r"""T5 decoder that applies multi-head self-attention with #todo rpr for

@@ -213,7 +213,7 @@ class T5Encoder(EncoderBase):
 
         x = self.embed_dropout(inputs)
 
-        position_bias=None
+        position_bias = None
 
         for i in range(self._hparams.num_blocks):
             _queries_input = self.self_attn_layer_norm[i](x)

@@ -44,4 +44,3 @@ def read_t5_gin_config_file(config_file_path):
                 config[arg_name] = ast.literal_eval(value)
 
     return config
-

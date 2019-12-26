@@ -339,7 +339,7 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
         # Load weights from TF model
         init_vars = tf.train.list_variables(tf_path)
 
-        to_params: Set[str] = set([x[0] for x in self.named_parameters()])
+        to_params: Set[str] = {x[0] for x in self.named_parameters()}
         to_params.remove(  # Not used as duplicate weights stored
             'decoder.enc_dec_attns.0.relative_attention_bias.weight')
 
@@ -427,7 +427,7 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
                     layer_num = str(int(tmp_name[2][6:]))
                     sublayer_name = "/".join(tmp_name[3:])
                     # Block-wise params
-                    map_ = block_map[submodule+layer_num]
+                    map_ = block_map[submodule + layer_num]
                     if sublayer_name in map_:
                         v_name = map_[sublayer_name].format(submodule,
                                                             block_num)

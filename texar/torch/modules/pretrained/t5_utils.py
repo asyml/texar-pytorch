@@ -344,7 +344,7 @@ class MultiheadRPRAttention(ModuleBase):
         V_ = self._split_heads(V)
 
         # All of the above [batch_size, num_heads, seq_length, memory_depth]
-        #Q_ *= key_depth_per_head ** -0.5  # T5 does not scale
+        # Q_ *= key_depth_per_head ** -0.5  # T5 does not scale
 
         logits = torch.einsum('bnqd,bnkd->bnqk', Q_, K_)  # type: ignore
 
