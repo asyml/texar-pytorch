@@ -22,10 +22,6 @@ More examples are continuously added...
 * [bert](https://github.com/asyml/texar-pytorch/tree/master/examples/bert): Pre-trained BERT model for text representation
 * [xlnet](https://github.com/asyml/texar-pytorch/tree/master/examples/xlnet): Pre-trained XLNet model for text representation
 
-### GANs / Discriminator-supervision ###
-
-* [text_style_transfer](https://github.com/asyml/texar-pytorch/tree/master/examples/text_style_transfer): Discriminator supervision for controlled text generation
-
 ---
 
 ## Examples by Tasks
@@ -38,11 +34,6 @@ More examples are continuously added...
 
 * [seq2seq_attn](https://github.com/asyml/texar-pytorch/tree/master/examples/seq2seq_attn): Attentional seq2seq
 * [transformer](https://github.com/asyml/texar-pytorch/tree/master/examples/transformer): Transformer for machine translation
-
-### Text Style Transfer ###
-
-* [text_style_transfer](https://github.com/asyml/texar-pytorch/tree/master/examples/text_style_transfer): Discriminator supervision for controlled text generation
-
 
 ### Classification ###
 
