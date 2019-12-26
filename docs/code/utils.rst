@@ -12,10 +12,6 @@ Frequent Use
 .. autoclass:: texar.torch.utils.AverageRecorder
     :members:
 
-:hidden:`collect_trainable_variables`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.torch.utils.collect_trainable_variables
-
 :hidden:`compat_as_text`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.torch.utils.compat_as_text
@@ -23,18 +19,6 @@ Frequent Use
 :hidden:`write_paired_text`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.torch.utils.write_paired_text
-
-Variables
-=========
-
-:hidden:`collect_trainable_variables`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.torch.utils.collect_trainable_variables
-
-:hidden:`add_variable`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: texar.torch.utils.add_variable
-
 
 IO
 ===
