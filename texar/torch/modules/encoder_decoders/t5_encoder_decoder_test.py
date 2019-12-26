@@ -21,7 +21,7 @@ class T5EncoderDecoderTest(unittest.TestCase):
         self.inputs = torch.zeros(
             self.batch_size, self.max_length, dtype=torch.long)
 
-    #@pretrained_test
+    @pretrained_test
     def test_model_loading(self):
         r"""Tests model loading functionality."""
         for pretrained_model_name in T5EncoderDecoder.available_checkpoints():
@@ -32,7 +32,7 @@ class T5EncoderDecoderTest(unittest.TestCase):
                 pretrained_model_name=pretrained_model_name)
             _, _ = model(self.inputs)
 
-    #@pretrained_test
+    @pretrained_test
     def test_hparams(self):
         r"""Tests the priority of the architecture.
         """
@@ -72,7 +72,7 @@ class T5EncoderDecoderTest(unittest.TestCase):
         self.assertEqual(encoder.hparams.encoder.num_blocks, 6)
         _, _ = encoder(self.inputs)
 
-    #@pretrained_test
+    @pretrained_test
     def test_trainable_variables(self):
         r"""Tests the functionality of automatically collecting trainable
         variables.
@@ -92,8 +92,9 @@ class T5EncoderDecoderTest(unittest.TestCase):
                          13 * 12 + 3 + 8 * 12 + 3)
         _, _ = encoder(self.inputs)
 
+    @pretrained_test
     def test_t5(self):
-        r"""Tests model.
+        r"""Tests pretrained model.
         """
         hparams = {
             "pretrained_model_name": 'T5-Small',
