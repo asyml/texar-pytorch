@@ -33,6 +33,7 @@ __all__ = [
     "read_words",
     "make_vocab",
     "count_file_lines",
+    "get_filename"
 ]
 
 Py3 = sys.version_info[0] == 3
@@ -139,6 +140,9 @@ def _download(url: str, filename: str, path: str) -> str:
 def _extract_google_drive_file_id(url: str) -> str:
     # id is between `/d/` and '/'
     url_suffix = url[url.find('/d/') + 3:]
+    if url_suffix.find('/') == -1:
+        # if there's no trailing '/'
+        return url_suffix
     file_id = url_suffix[:url_suffix.find('/')]
     return file_id
 
@@ -305,3 +309,12 @@ def count_file_lines(filenames: MaybeList[str]) -> int:
         filenames = [filenames]
     num_lines = np.sum([_count_lines(fn) for fn in filenames]).item()
     return num_lines
+
+
+def get_filename(url: str) -> str:
+    r"""Extracts the filename of the downloaded checkpoint file from the URL.
+    """
+    if 'drive.google.com' in url:
+        return _extract_google_drive_file_id(url)
+    url, filename = os.path.split(url)
+    return filename or os.path.basename(url)
