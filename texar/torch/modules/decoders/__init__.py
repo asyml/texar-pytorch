@@ -22,3 +22,4 @@ from texar.torch.modules.decoders.gpt2_decoder import *
 from texar.torch.modules.decoders.rnn_decoders import *
 from texar.torch.modules.decoders.transformer_decoders import *
 from texar.torch.modules.decoders.xlnet_decoder import *
+from texar.torch.modules.decoders.t5_decoder import *

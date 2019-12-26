@@ -24,7 +24,8 @@ from texar.torch.core import layers, identity
 from texar.torch.modules.embedders.embedders import WordEmbedder
 from texar.torch.modules.encoder_decoders.encoder_decoder_base\
     import EncoderDecoderBase
-from texar.torch.modules.pretrained.t5_utils import T5Encoder, T5Decoder
+from texar.torch.modules.encoders import T5Encoder
+from texar.torch.modules.decoders import T5Decoder
 from texar.torch.modules.pretrained.t5 import PretrainedT5Mixin
 
 __all__ = [
@@ -224,8 +225,8 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
             The maximum sequence length that this model might ever be used with.
 
         `"encoder"`: dict
-            Hyperparameters for the TransformerEncoder.
-            See :func:`~texar.torch.modules.TransformerEncoder.default_hparams`
+            Hyperparameters for the T5Encoder.
+            See :func:`~texar.torch.modules.T5Encoder.default_hparams`
             for details.
 
         `"hidden_size"`: int
@@ -257,7 +258,9 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
                     'num_heads': 12,
                     'num_units': 768,
                     'output_dim': 768,
-                    'use_bias': False
+                    'use_bias': False,
+                    'is_decoder': False,
+                    'relative_attention_num_buckets': 32
                 },
                 'eps': 1e-6,
                 'name': 'encoder',
@@ -295,7 +298,9 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
                     'num_heads': 12,
                     'num_units': 768,
                     'output_dim': 768,
-                    'use_bias': False
+                    'use_bias': False,
+                    'is_decoder': True,
+                    'relative_attention_num_buckets': 32
                 },
                 'name': 'encoder',
                 'num_blocks': 12,
@@ -330,18 +335,44 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
 
     def forward(self,  # type: ignore
                 inputs: Union[torch.Tensor, torch.LongTensor],
-                sequence_length: Optional[torch.LongTensor] = None,
-                segment_ids: Optional[torch.LongTensor] = None):
+                sequence_length: Optional[torch.LongTensor] = None):
         r"""
 
         Args:
-            inputs:
-            sequence_length:
-            segment_ids:
+            inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
+                containing the ids of tokens in input sequences, or
+                a **3D Tensor** of shape `[batch_size, max_time, vocab_size]`,
+                containing soft token ids (i.e., weights or probabilities)
+                used to mix the embedding vectors.
+            sequence_length: A 1D :tensor:`Tensor` of shape
+                ``[batch_size]``. Input tokens beyond respective sequence
+                lengths are masked out automatically.
 
         Returns:
         """
+        # import pdb;pdb.set_trace()
+        if inputs.dim() == 2:
+            word_embeds = self.word_embedder(ids=inputs)
+        elif inputs.dim() == 3:
+            word_embeds = self.word_embedder(soft_ids=inputs)
+        else:
+            raise ValueError("'inputs' should be a 2D or 3D tensor.")
 
+        batch_size = inputs.size(0)
+
+        if sequence_length is None:
+            sequence_length = inputs.new_full(
+                (batch_size,), inputs.size(1), dtype=torch.long)
+
+        encoder_output = self.encoder(inputs=word_embeds,
+                                      sequence_length=sequence_length)
+        # import pdb;pdb.set_trace()
+
+        decoder_output = self.decoder(inputs=inputs,
+                                      memory=encoder_output,
+                                      memory_sequence_length=sequence_length)
+        # import pdb;pdb.set_trace()
+        return encoder_output, decoder_output
 
     @property
     def output_size(self):

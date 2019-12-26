@@ -60,10 +60,8 @@ def collect_trainable_variables(
     """
     if not isinstance(modules, (list, tuple)):
         modules = [modules]
-    import pdb;pdb.set_trace()
     var_list: Set[nn.Parameter] = {}
     for mod in modules:
         add_variable(mod.trainable_variables, var_list)
-    import pdb;pdb.set_trace()
 
     return list(var_list)

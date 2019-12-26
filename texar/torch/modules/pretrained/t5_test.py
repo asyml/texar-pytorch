@@ -41,16 +41,18 @@ class T5UtilsTest(unittest.TestCase):
                 'embedding_dropout': 0.1,
                 'num_blocks': 12,
                 'multihead_attention': {
-                    'use_bias': True,
+                    'use_bias': False,
                     'num_units': 768,
                     'num_heads': 12,
                     'output_dim': 768,
                     'dropout_rate': 0.1,
-                    'name': 'self'
+                    'name': 'self',
+                    'is_decoder': False,
+                    'relative_attention_num_buckets': 32
                 },
                 'residual_dropout': 0.1,
                 'dim': 768,
-                'use_bert_config': False,
+                'eps': 1e-6,
                 'poswise_feedforward': {
                     'layers': [
                         {
@@ -83,10 +85,13 @@ class T5UtilsTest(unittest.TestCase):
                     'num_heads': 12,
                     'output_dim': 768,
                     'dropout_rate': 0.1,
-                    'name': 'self'
+                    'name': 'self',
+                    'is_decoder': True,
+                    'relative_attention_num_buckets': 32
                 },
                 'residual_dropout': 0.1,
                 'dim': 768,
+                'eps': 1e-6,
                 'poswise_feedforward': {
                     'layers': [
                         {

@@ -20,7 +20,6 @@ import os
 from abc import ABC
 from typing import Any, Set, Dict
 import torch
-import pdb
 
 from texar.torch.modules.pretrained.pretrained_base import PretrainedMixin
 from texar.torch.utils.gin import read_t5_gin_config_file
@@ -225,6 +224,8 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
         dropout_rate = gin_config['dropout_rate']
         residual_dropout = gin_config['dropout_rate']
         intermediate_size = gin_config['d_ff']
+        rel_attn_num_buckets = 32
+        use_bias = False
 
         configs = {
             'hidden_size': hidden_dim,
@@ -239,12 +240,14 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
                 'embedding_dropout': embedding_dropout,
                 'num_blocks': num_blocks,
                 'multihead_attention': {
-                    'use_bias': False,
+                    'use_bias': use_bias,
                     'num_units': num_units,
                     'num_heads': num_heads,
                     'output_dim': hidden_dim,
                     'dropout_rate': dropout_rate,
-                    'name': 'self'
+                    'name': 'self',
+                    'is_decoder': False,
+                    'relative_attention_num_buckets': rel_attn_num_buckets
                 },
                 'eps': eps,
                 'residual_dropout': residual_dropout,
@@ -255,7 +258,7 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
                         'kwargs': {
                             'in_features': hidden_dim,
                             'out_features': intermediate_size,
-                            'bias': False,
+                            'bias': use_bias,
                         }
                     }, {
                         'type': "ReLU"
@@ -264,7 +267,7 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
                         'kwargs': {
                             'in_features': intermediate_size,
                             'out_features': hidden_dim,
-                            'bias': False,
+                            'bias': use_bias,
                         }
                     }],
                 },
@@ -274,12 +277,14 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
                 'embedding_dropout': embedding_dropout,
                 'num_blocks': num_blocks,
                 'multihead_attention': {
-                    'use_bias': False,
+                    'use_bias': use_bias,
                     'num_units': num_units,
                     'num_heads': num_heads,
                     'output_dim': hidden_dim,
                     'dropout_rate': dropout_rate,
-                    'name': 'self'
+                    'name': 'self',
+                    'is_decoder': True,
+                    'relative_attention_num_buckets': rel_attn_num_buckets
                 },
                 'eps': eps,
                 'residual_dropout': residual_dropout,
@@ -290,7 +295,7 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
                         'kwargs': {
                             'in_features': hidden_dim,
                             'out_features': intermediate_size,
-                            'bias': False,
+                            'bias': use_bias,
                         }
                     }, {
                         'type': "ReLU"
@@ -299,7 +304,7 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
                         'kwargs': {
                             'in_features': intermediate_size,
                             'out_features': hidden_dim,
-                            'bias': False,
+                            'bias': use_bias,
                         }
                     }],
                 },
@@ -335,7 +340,7 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
         init_vars = tf.train.list_variables(tf_path)
 
         to_params: Set[str] = set([x[0] for x in self.named_parameters()])
-        to_params.remove(  # Not used
+        to_params.remove(  # Not used as duplicate weights stored
             'decoder.enc_dec_attns.0.relative_attention_bias.weight')
 
         tfnames, arrays = [], []
@@ -348,7 +353,6 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
         global_tensor_map = {
             'shared/embedding': 'word_embedder._embedding'
         }
-
         self_attention_map = {
             'SelfAttention/k': '{}.self_attns.{}.K_dense.weight',
             'SelfAttention/o': '{}.self_attns.{}.O_dense.weight',
@@ -389,8 +393,12 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
 
         idx = 0
 
-        import pdb;
-        pdb.set_trace()
+        # Initialize this param separately
+        special_param_name = \
+            'decoder.enc_dec_attns.0.relative_attention_bias.weight'
+        pointer = self._name_to_variable(special_param_name)
+        pointer.data.normal_(mean=0.0, std=(self._hparams.hidden_size) ** -0.5)
+
         for name, array in zip(tfnames, arrays):
             if name.startswith('cls') or name == 'global_step' or \
                     name.endswith('adam_m') or name.endswith('adam_v')\
@@ -425,7 +433,6 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
                                                             block_num)
                         pointer = self._name_to_variable(v_name)
                         array_t = np.transpose(array)
-                        print("Loading {} to {}".format(name,v_name))
                         assert pointer.shape == array_t.shape
                         pointer.data = \
                             torch.from_numpy(array_t.astype(np.float32))

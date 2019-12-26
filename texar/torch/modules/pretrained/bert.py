@@ -259,7 +259,6 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
     def _init_from_checkpoint(self, pretrained_model_name: str,
                               cache_dir: str, **kwargs):
-        import pdb;pdb.set_trace()
         try:
             import numpy as np
             import tensorflow as tf
