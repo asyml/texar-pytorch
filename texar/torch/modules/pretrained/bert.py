@@ -103,10 +103,10 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
       (`Nguyen et al`., 2016) dataset. It's the best performing model (on Jan
       8th 2019) on MS-MARCO Passage re-ranking task. Two models are included:
 
-        * ``bert-msmarco-nogueira19-base``: Original BERT base model fine-tuned on
-          MS-MARCO.
-        * ``bert-msmarco-nogueira19-large``: Original BERT large model fine-tuned on
-          MS-MARCO.
+        * ``bert-msmarco-nogueira19-base``: Original BERT base model fine-tuned
+          on MS-MARCO.
+        * ``bert-msmarco-nogueira19-large``: Original BERT large model
+          fine-tuned on MS-MARCO.
 
     We provide the following BERT classes:
 
@@ -167,7 +167,7 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
         # BERT for MS-MARCO
         'bert-msmarco-nogueira19-base':
-            _BERT_MSMARCO_NOGUEIRA19_PATH + '1cyUrhs7JaCJTTu-DjFUqP6Bs4f8a6JTX/',
+            _BERT_MSMARCO_NOGUEIRA19_PATH + '1cyUrhs7JaCJTTu-DjFUqP6Bs4f8a6JTX',
         'bert-msmarco-nogueira19-large':
             _BERT_MSMARCO_NOGUEIRA19_PATH + '1crlASTMlsihALlkabAQP6JTYIZwC1Wm8/'
     }
