@@ -14,13 +14,11 @@
 """Example for building the language model.
 """
 
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 import argparse
 import importlib
 import time
-
-import numpy as np
 
 import torch
 import torch.nn as nn
@@ -58,16 +56,15 @@ class PTBLanguageModel(nn.Module):
             hparams=hparams['decoder'])
 
     def forward(self,  # type: ignore
-                inputs: torch.Tensor, targets: torch.Tensor, state) -> \
-            Tuple[torch.Tensor, torch.Tensor]:
+                inputs: torch.Tensor, targets: torch.Tensor,
+                state: List[Tuple[torch.Tensor]]):
         outputs, final_state, seq_lengths = self.decoder(
             decoding_strategy="train_greedy",
             impute_finished=False,
             inputs=inputs,
-            sequence_length=torch.tensor([config.num_steps] * config.batch_size),
+            sequence_length=torch.tensor(
+                [config.num_steps] * config.batch_size),
             initial_state=state)
-
-        # import pdb; pdb.set_trace()
 
         mle_loss = tx.losses.sequence_sparse_softmax_cross_entropy(
             labels=targets,
@@ -101,20 +98,21 @@ def main() -> None:
         state = None
 
         if is_train:
-            epoch_size = (len(data["train_text_id"]) // batch_size - 1) \
-                         // num_steps
+            model.train()
+            epoch_size = ((len(data["train_text_id"]) // batch_size - 1) //
+                          num_steps)
+        else:
+            model.eval()
 
         for step, (x, y) in enumerate(data_iter):
-
-            print("Hello, world!")
-
             loss_, state_ = model(inputs=torch.tensor(x),
                                   targets=torch.tensor(y), state=state)
             if is_train:
-                loss_.backward(retain_graph=True)
+                loss_.backward()
                 train_op()
             loss += loss_
-            state = state_
+            state = [(state_[0][0].detach(), state_[0][1].detach()),
+                     (state_[1][0].detach(), state_[1][1].detach())]
             iters += num_steps
 
             ppl = torch.exp(loss / iters)
@@ -123,7 +121,7 @@ def main() -> None:
                       ((step + 1) * 1.0 / epoch_size, ppl,
                        iters * batch_size / (time.time() - start_time)))
 
-        ppl = np.exp(loss / iters)
+        ppl = torch.exp(loss / iters)
         return ppl
 
     for epoch in range(num_epochs):
@@ -132,6 +130,8 @@ def main() -> None:
             data["train_text_id"], batch_size, num_steps)
         train_ppl = _run_epoch(train_data_iter, is_train=True, verbose=True)
         print("Epoch: %d Train Perplexity: %.3f" % (epoch, train_ppl))
+        train_op(use_scheduler=True)  # type: ignore
+
         # Valid
         valid_data_iter = ptb_iterator(
             data["valid_text_id"], batch_size, num_steps)

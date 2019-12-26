@@ -324,14 +324,15 @@ def get_train_op(params: Optional[Iterable[Union[torch.Tensor,
         elif isinstance(params, list):
             params_list += params
 
-    def _train_op():
-        if grad_clip_fn is not None:
-            grad_clip_fn(parameters=params_list)
-        optimizer.step()
-        # TODO: Ideally, scheduler should be used in the epoch level.
-        if scheduler is not None:
-            scheduler.step()
-        optimizer.zero_grad()
+    def _train_op(use_scheduler=False):
+        if not use_scheduler:
+            if grad_clip_fn is not None:
+                grad_clip_fn(parameters=params_list)
+            optimizer.step()
+            optimizer.zero_grad()
+        else:
+            if scheduler is not None:
+                scheduler.step()
 
     return _train_op
 

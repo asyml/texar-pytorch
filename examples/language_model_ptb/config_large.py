@@ -35,12 +35,12 @@ cell = {
 
 emb = {
     "dim": hidden_size,
+    "dropout_rate": 1 - keep_prob,
     "initializer": {
-        "type": "random_uniform_initializer",
+        "type": "torch.nn.init.uniform_",
         "kwargs": {
-            "minval": -init_scale,
-            "maxval": init_scale,
-            "seed": None
+            "a": -init_scale,
+            "b": init_scale,
         }
     },
 }
