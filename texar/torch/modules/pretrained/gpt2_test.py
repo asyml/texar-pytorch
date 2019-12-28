@@ -13,7 +13,7 @@ class GPT2UtilsTest(unittest.TestCase):
     r"""Tests GPT2 utils.
     """
 
-    @pretrained_test
+    #@pretrained_test
     def test_load_pretrained_gpt2_AND_transform_gpt2_to_texar_config(self):
         pretrained_model_dir = PretrainedGPT2Mixin.download_checkpoint(
             pretrained_model_name="gpt2-small")
@@ -44,50 +44,53 @@ class GPT2UtilsTest(unittest.TestCase):
                 'dim': 768
             },
 
-            'dim': 768,
-            'num_blocks': 12,
-            'use_gpt_config': True,
-            'embedding_dropout': 0,
-            'residual_dropout': 0,
-            'multihead_attention': {
-                'use_bias': True,
-                'num_units': 768,
-                'num_heads': 12,
-                'output_dim': 768
-            },
-            'initializer': {
-                'type': 'variance_scaling_initializer',
-                'kwargs': {
-                    'factor': 1.0,
-                    'mode': 'FAN_AVG',
-                    'uniform': True
-                }
-            },
-            'poswise_feedforward': {
-                'layers':
-                    [
-                        {
-                            'type': 'Linear',
-                            'kwargs': {
-                                'in_features': 768,
-                                'out_features': 3072,
-                                'bias': True
+            'encoder': {
+                'dim': 768,
+                'num_blocks': 12,
+                'embedding_dropout': 0,
+                'residual_dropout': 0,
+                'multihead_attention': {
+                    'use_bias': True,
+                    'num_units': 768,
+                    'num_heads': 12,
+                    'output_dim': 768
+                },
+                'initializer': {
+                    'type': 'variance_scaling_initializer',
+                    'kwargs': {
+                        'factor': 1.0,
+                        'mode': 'FAN_AVG',
+                        'uniform': True
+                    }
+                },
+                'eps': 1e-6,
+                'poswise_feedforward': {
+                    'layers':
+                        [
+                            {
+                                'type': 'Linear',
+                                'kwargs': {
+                                    'in_features': 768,
+                                    'out_features': 3072,
+                                    'bias': True
+                                }
+                            },
+                            {
+                                'type': 'GPTGELU',
+                                'kwargs': {}
+                            },
+                            {
+                                'type': 'Linear',
+                                'kwargs': {
+                                    'in_features': 3072,
+                                    'out_features': 768,
+                                    'bias': True
+                                }
                             }
-                        },
-                        {
-                            'type': 'GPTGELU',
-                            'kwargs': {}
-                        },
-                        {
-                            'type': 'Linear',
-                            'kwargs': {
-                                'in_features': 3072,
-                                'out_features': 768,
-                                'bias': True
-                            }
-                        }
-                    ],
-                'name': 'ffn'
+                        ],
+                    'name': 'ffn'
+                },
+                'use_bert_config': False
             }
         }
 

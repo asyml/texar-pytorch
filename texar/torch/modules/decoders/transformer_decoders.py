@@ -114,7 +114,9 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                  token_embedder: Optional[TokenEmbedder] = None,
                  token_pos_embedder: Optional[TokenPosEmbedder] = None,
                  vocab_size: Optional[int] = None,
-                 output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
+                 output_layer: Optional[Union[nn.Module, torch.Tensor,
+                                              Callable[[torch.Tensor],
+                                                       torch.Tensor]]] = None,
                  hparams=None):
         super().__init__(
             token_embedder, token_pos_embedder,
@@ -137,44 +139,11 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         self.poswise_networks = nn.ModuleList()
         self.poswise_layer_norm = nn.ModuleList()
 
-        if self._hparams.use_gpt_config:
-            eps = 1e-5
-        else:
-            eps = self._hparams.eps
+        self.initialize_blocks()
 
-        for _ in range(self._hparams.num_blocks):
-            attn_module = MultiheadAttentionEncoder(
-                self._input_size, self._hparams.multihead_attention)
-            if self._hparams.dim != attn_module.output_size:
-                raise ValueError("The output dimension of "
-                                 "MultiheadEncoder should be equal "
-                                 "to the dim of TransformerDecoder")
-            self.self_attns.append(attn_module)
-            self.self_attn_layer_norm.append(
-                nn.LayerNorm(self._input_size, eps=eps))
+        self.final_layer_norm = nn.LayerNorm(self._input_size,
+                                             eps=self._hparams.eps)
 
-            attn_module = MultiheadAttentionEncoder(
-                self._input_size, self._hparams.multihead_attention)
-            if self._hparams.dim != attn_module.output_size:
-                raise ValueError("The output dimension of "
-                                 "MultiheadEncoder should be equal "
-                                 "to the dim of TransformerDecoder")
-            self.enc_dec_attns.append(attn_module)
-            self.end_dec_attn_layer_norm.append(
-                nn.LayerNorm(self._input_size, eps=eps))
-
-            poswise_network = FeedForwardNetwork(
-                hparams=self._hparams.poswise_feedforward)
-            if (poswise_network.hparams.layers[-1]['kwargs']['out_features']
-                    != self._hparams.dim):
-                raise ValueError("The output dimension of "
-                                 "FeedForwardNetwork should be equal "
-                                 "to the dim of TransformerDecoder")
-            self.poswise_networks.append(poswise_network)
-            self.poswise_layer_norm.append(
-                nn.LayerNorm(self._input_size, eps=eps))
-
-        self.final_layer_norm = nn.LayerNorm(self._input_size, eps=eps)
         self.embed_dropout = nn.Dropout(self._hparams.embedding_dropout)
         self.residual_dropout = nn.Dropout(self._hparams.residual_dropout)
 
@@ -187,6 +156,43 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 if name.split(".")[-1] == "weight" and "layer_norm" not in name:
                     initialize(param)
 
+    def initialize_blocks(self):
+        r"""Helper function which initializes blocks for decoder.
+
+        Should be overridden by any classes where block initialization varies.
+        """
+        for _ in range(self._hparams.num_blocks):
+            attn_module = MultiheadAttentionEncoder(
+                self._input_size, self._hparams.multihead_attention)
+            if self._hparams.dim != attn_module.output_size:
+                raise ValueError("The output dimension of "
+                                 "MultiheadEncoder should be equal "
+                                 "to the dim of TransformerDecoder")
+            self.self_attns.append(attn_module)
+            self.self_attn_layer_norm.append(
+                nn.LayerNorm(self._input_size, eps=self._hparams.eps))
+
+            attn_module = MultiheadAttentionEncoder(
+                self._input_size, self._hparams.multihead_attention)
+            if self._hparams.dim != attn_module.output_size:
+                raise ValueError("The output dimension of "
+                                 "MultiheadEncoder should be equal "
+                                 "to the dim of TransformerDecoder")
+            self.enc_dec_attns.append(attn_module)
+            self.end_dec_attn_layer_norm.append(
+                nn.LayerNorm(self._input_size, eps=self._hparams.eps))
+
+            poswise_network = FeedForwardNetwork(
+                hparams=self._hparams.poswise_feedforward)
+            if (poswise_network.hparams.layers[-1]['kwargs']['out_features']
+                    != self._hparams.dim):
+                raise ValueError("The output dimension of "
+                                 "FeedForwardNetwork should be equal "
+                                 "to the dim of TransformerDecoder")
+            self.poswise_networks.append(poswise_network)
+            self.poswise_layer_norm.append(
+                nn.LayerNorm(self._input_size, eps=self._hparams.eps))
+
     @staticmethod
     def default_hparams():
         r"""Returns a dictionary of hyperparameters with default values.
@@ -197,7 +203,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 # Same as in TransformerEncoder
                 "num_blocks": 6,
                 "dim": 512,
-                "use_gpt_config": False,
                 "embedding_dropout": 0.1,
                 "residual_dropout": 0.1,
                 "poswise_feedforward": default_transformer_poswise_net_hparams,
@@ -209,6 +214,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                     'dropout_rate': 0.1,
                     'use_bias': False,
                 },
+                "eps": 1e-12,
                 "initializer": None,
                 "name": "transformer_decoder"
 
@@ -225,9 +231,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
 
         `"dim"`: int
             Hidden dimension of the encoder.
-
-        `"use_gpt_config"`: bool
-            Whether to follow the `eps` setting of OpenAI GPT.
 
         `"embedding_dropout"`: float
             Dropout rate of the input word and position embeddings.
@@ -280,7 +283,6 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
         return {
             'num_blocks': 6,
             'dim': dim,
-            'use_gpt_config': False,
             'embedding_tie': True,
             'output_layer_bias': False,
             'max_decoding_length': int(1e10),
@@ -295,7 +297,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 'output_dim': 512,
                 'use_bias': False,
             },
-            'eps': 1e-6,
+            'eps': 1e-12,
             'initializer': None,
             'name': "transformer_decoder",
         }

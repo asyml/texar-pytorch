@@ -18,7 +18,9 @@ Utils for T5 Modules
 import copy
 import os
 from abc import ABC
-from typing import Any, Set, Dict
+from typing import Any, Dict, List, Set
+
+import numpy as np
 import torch
 
 from texar.torch.modules.pretrained.pretrained_base import PretrainedMixin
@@ -29,127 +31,32 @@ __all__ = [
 ]
 
 _T5_PATH = "https://storage.googleapis.com/t5-data/pretrained_models/"
-_CHECKPOINT_FILES = {'small': ['checkpoint',
-'model.ckpt-1000000.data-00000-of-00016',
-'model.ckpt-1000000.data-00001-of-00016',
-'model.ckpt-1000000.data-00002-of-00016',
-'model.ckpt-1000000.data-00003-of-00016',
-'model.ckpt-1000000.data-00004-of-00016',
-'model.ckpt-1000000.data-00005-of-00016',
-'model.ckpt-1000000.data-00006-of-00016',
-'model.ckpt-1000000.data-00007-of-00016',
-'model.ckpt-1000000.data-00008-of-00016',
-'model.ckpt-1000000.data-00009-of-00016',
-'model.ckpt-1000000.data-00010-of-00016',
-'model.ckpt-1000000.data-00011-of-00016',
-'model.ckpt-1000000.data-00012-of-00016',
-'model.ckpt-1000000.data-00013-of-00016',
-'model.ckpt-1000000.data-00014-of-00016',
-'model.ckpt-1000000.data-00015-of-00016',
-'model.ckpt-1000000.index',
-'model.ckpt-1000000.meta',
-'operative_config.gin'],
-'base': ['checkpoint',
-'model.ckpt-999900.data-00000-of-00016',
-'model.ckpt-999900.data-00001-of-00016',
-'model.ckpt-999900.data-00002-of-00016',
-'model.ckpt-999900.data-00003-of-00016',
-'model.ckpt-999900.data-00004-of-00016',
-'model.ckpt-999900.data-00005-of-00016',
-'model.ckpt-999900.data-00006-of-00016',
-'model.ckpt-999900.data-00007-of-00016',
-'model.ckpt-999900.data-00008-of-00016',
-'model.ckpt-999900.data-00009-of-00016',
-'model.ckpt-999900.data-00010-of-00016',
-'model.ckpt-999900.data-00011-of-00016',
-'model.ckpt-999900.data-00012-of-00016',
-'model.ckpt-999900.data-00013-of-00016',
-'model.ckpt-999900.data-00014-of-00016',
-'model.ckpt-999900.data-00015-of-00016',
-'model.ckpt-999900.index',
-'model.ckpt-999900.meta',
-'operative_config.gin'],
-'large': ['checkpoint',
-'model.ckpt-1000700.data-00000-of-00008',
-'model.ckpt-1000700.data-00001-of-00008',
-'model.ckpt-1000700.data-00002-of-00008',
-'model.ckpt-1000700.data-00003-of-00008',
-'model.ckpt-1000700.data-00004-of-00008',
-'model.ckpt-1000700.data-00005-of-00008',
-'model.ckpt-1000700.data-00006-of-00008',
-'model.ckpt-1000700.data-00007-of-00008',
-'model.ckpt-1000700.index',
-'model.ckpt-1000700.meta',
-'operative_config.gin'],
-'B': ['checkpoint',
-'model.ckpt-1000000.data-00000-of-00064',
-'model.ckpt-1000000.data-00001-of-00064',
-'model.ckpt-1000000.data-00002-of-00064',
-'model.ckpt-1000000.data-00003-of-00064',
-'model.ckpt-1000000.data-00004-of-00064',
-'model.ckpt-1000000.data-00005-of-00064',
-'model.ckpt-1000000.data-00006-of-00064',
-'model.ckpt-1000000.data-00007-of-00064',
-'model.ckpt-1000000.data-00008-of-00064',
-'model.ckpt-1000000.data-00010-of-00064',
-'model.ckpt-1000000.data-00014-of-00064',
-'model.ckpt-1000000.data-00011-of-00064',
-'model.ckpt-1000000.data-00012-of-00064',
-'model.ckpt-1000000.data-00013-of-00064',
-'model.ckpt-1000000.data-00009-of-00064',
-'model.ckpt-1000000.data-00015-of-00064',
-'model.ckpt-1000000.data-00016-of-00064',
-'model.ckpt-1000000.data-00017-of-00064',
-'model.ckpt-1000000.data-00019-of-00064',
-'model.ckpt-1000000.data-00021-of-00064',
-'model.ckpt-1000000.data-00020-of-00064',
-'model.ckpt-1000000.data-00022-of-00064',
-'model.ckpt-1000000.data-00018-of-00064',
-'model.ckpt-1000000.data-00023-of-00064',
-'model.ckpt-1000000.data-00030-of-00064',
-'model.ckpt-1000000.data-00024-of-00064',
-'model.ckpt-1000000.data-00025-of-00064',
-'model.ckpt-1000000.data-00026-of-00064',
-'model.ckpt-1000000.data-00027-of-00064',
-'model.ckpt-1000000.data-00034-of-00064',
-'model.ckpt-1000000.data-00029-of-00064',
-'model.ckpt-1000000.data-00028-of-00064',
-'model.ckpt-1000000.data-00036-of-00064',
-'model.ckpt-1000000.data-00031-of-00064',
-'model.ckpt-1000000.data-00032-of-00064',
-'model.ckpt-1000000.data-00037-of-00064',
-'model.ckpt-1000000.data-00033-of-00064',
-'model.ckpt-1000000.data-00038-of-00064',
-'model.ckpt-1000000.data-00042-of-00064',
-'model.ckpt-1000000.data-00044-of-00064',
-'model.ckpt-1000000.data-00040-of-00064',
-'model.ckpt-1000000.data-00039-of-00064',
-'model.ckpt-1000000.data-00043-of-00064',
-'model.ckpt-1000000.data-00035-of-00064',
-'model.ckpt-1000000.data-00047-of-00064',
-'model.ckpt-1000000.data-00045-of-00064',
-'model.ckpt-1000000.data-00041-of-00064',
-'model.ckpt-1000000.data-00049-of-00064',
-'model.ckpt-1000000.data-00054-of-00064',
-'model.ckpt-1000000.data-00048-of-00064',
-'model.ckpt-1000000.data-00050-of-00064',
-'model.ckpt-1000000.data-00056-of-00064',
-'model.ckpt-1000000.data-00046-of-00064',
-'model.ckpt-1000000.data-00053-of-00064',
-'model.ckpt-1000000.data-00051-of-00064',
-'model.ckpt-1000000.data-00059-of-00064',
-'model.ckpt-1000000.data-00057-of-00064',
-'model.ckpt-1000000.data-00052-of-00064',
-'model.ckpt-1000000.data-00055-of-00064',
-'model.ckpt-1000000.data-00058-of-00064',
-'model.ckpt-1000000.data-00060-of-00064',
-'model.ckpt-1000000.data-00061-of-00064',
-'model.ckpt-1000000.data-00062-of-00064',
-'model.ckpt-1000000.data-00063-of-00064',
-'model.ckpt-1000000.index',
-'model.ckpt-1000000.meta',
-'operative_config.gin']
-                     }
+_CHECKPOINT_FILES_GEN_MAP = {  # stores a tuple of model_id and number of
+                               # partitions
+    'small': (1000000, 16),
+    'base': (999900, 16),
+    'large': (1000700, 8),
+    'B': (1000000, 64)
+}
+
+
+def _generate_t5_file_list(ckpt_tuple: tuple) -> List[str]:
+    """ Helper function to generate file list given a tuple of model_id and
+    parittion size.
+
+    Args:
+        ckpt_tuple: A tuple of model_id and number of partitions
+
+    """
+    ckpt_id = ckpt_tuple[0]
+    ckpt_parts = ckpt_tuple[1]
+    return [
+        'checkpoint',
+        *[f'model.ckpt-{ckpt_id}.data-{idx:05d}-of-{ckpt_parts:05d}'
+          for idx in range(ckpt_parts)],
+        f'model.ckpt-{ckpt_id}.index',
+        f'model.ckpt-{ckpt_id}.meta',
+        'operative_config.gin']
 
 
 class PretrainedT5Mixin(PretrainedMixin, ABC):
@@ -175,21 +82,26 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
 
     We provide the following classes:
 
-    #TODO(swapni): fill this up.
+    #TODO(swapnil): fill this up.
     """
     _MODEL_NAME = "T5"
 
     _MODEL2URL = {
         'T5-Small': [_T5_PATH + f"small/{file}"
-                       for file in _CHECKPOINT_FILES['small']],
-        'T5-Base': [_T5_PATH + f"base/{file}"
-                        for file in _CHECKPOINT_FILES['base']],
+                     for file in _generate_t5_file_list(
+                      _CHECKPOINT_FILES_GEN_MAP['small'])],
+        'T5-Base': [_T5_PATH + f"small/{file}"
+                    for file in _generate_t5_file_list(
+                     _CHECKPOINT_FILES_GEN_MAP['base'])],
         'T5-Large': [_T5_PATH + f"large/{file}"
-                       for file in _CHECKPOINT_FILES['large']],
+                     for file in _generate_t5_file_list(
+                      _CHECKPOINT_FILES_GEN_MAP['large'])],
         'T5-3B': [_T5_PATH + f"3B/{file}"
-                    for file in _CHECKPOINT_FILES['B']],
+                  for file in _generate_t5_file_list(
+                   _CHECKPOINT_FILES_GEN_MAP['B'])],
         'T5-11B': [_T5_PATH + f"11B/{file}"
-                    for file in _CHECKPOINT_FILES['B']]
+                   for file in _generate_t5_file_list(
+                    _CHECKPOINT_FILES_GEN_MAP['B'])]
     }
 
     _MODEL2CKPT = {
@@ -314,6 +226,13 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
 
         return configs
 
+    def assign(self, from_array, to_param, transpose=False):
+        pointer = self._name_to_variable(to_param)
+        if transpose:
+            from_array = np.transpose(from_array)
+        assert pointer.shape == from_array.shape
+        pointer.data = torch.from_numpy(from_array.astype(np.float32))
+
     def _init_from_checkpoint(self, pretrained_model_name: str,
                               cache_dir: str, **kwargs):
         r"""
@@ -324,7 +243,6 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
         :return:
         """
         try:
-            import numpy as np
             import tensorflow as tf
         except ImportError:
             print("Loading TensorFlow models in PyTorch requires installing "
@@ -396,8 +314,9 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
         # Initialize this param separately
         special_param_name = \
             'decoder.enc_dec_attns.0.relative_attention_bias.weight'
-        pointer = self._name_to_variable(special_param_name)
-        pointer.data.normal_(mean=0.0, std=(self._hparams.hidden_size) ** -0.5)
+        rab_pointer = self._name_to_variable(special_param_name)
+        rab_pointer.data.normal_(mean=0.0,
+                                 std=(self._hparams.hidden_size) ** -0.5)
 
         for name, array in zip(tfnames, arrays):
             if name.startswith('cls') or name == 'global_step' or \
@@ -412,9 +331,7 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
 
             if name in global_tensor_map:
                 v_name = global_tensor_map[name]
-                pointer = self._name_to_variable(v_name)
-                assert pointer.shape == array.shape
-                pointer.data = torch.from_numpy(array.astype(np.float32))
+                self.assign(array, v_name)
                 idx += 1
                 from_params.remove(name)
                 to_params.remove(v_name)
@@ -431,11 +348,7 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
                     if sublayer_name in map_:
                         v_name = map_[sublayer_name].format(submodule,
                                                             block_num)
-                        pointer = self._name_to_variable(v_name)
-                        array_t = np.transpose(array)
-                        assert pointer.shape == array_t.shape
-                        pointer.data = \
-                            torch.from_numpy(array_t.astype(np.float32))
+                        self.assign(array, v_name, True)
                         idx += 1
                         from_params.remove(name)
                         to_params.remove(v_name)
@@ -444,10 +357,7 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
                     sublayer_name = "/".join(tmp_name[1:])
                     if sublayer_name in component_map:
                         v_name = component_map[sublayer_name].format(submodule)
-                        pointer = self._name_to_variable(v_name)
-                        assert pointer.shape == array.shape
-                        pointer.data = \
-                            torch.from_numpy(array.astype(np.float32))
+                        self.assign(array, v_name)
                         idx += 1
                         from_params.remove(name)
                         to_params.remove(v_name)

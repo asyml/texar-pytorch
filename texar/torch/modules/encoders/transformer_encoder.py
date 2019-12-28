@@ -152,20 +152,39 @@ class TransformerEncoder(EncoderBase):
         self.poswise_networks = nn.ModuleList()
         self.poswise_layer_norm = nn.ModuleList()
 
-        if self._hparams.use_bert_config:
-            # In TensorFlow, eps for LayerNorm is 1e-12 by default.
-            eps = 1e-12
-        else:
-            # In PyTorch, eps for LayerNorm is 1e-6 by default.
-            eps = 1e-6
+        # In PyTorch, eps for LayerNorm is 1e-6 by default.
+        eps = self._hparams.eps
 
+        self.initialize_blocks()
+
+        self.embed_dropout = nn.Dropout(p=self._hparams.embedding_dropout)
+        self.residual_dropout = nn.Dropout(p=self._hparams.residual_dropout)
+
+        if self._hparams.use_bert_config:
+            self.input_normalizer = nn.LayerNorm(self._input_size, eps=eps)
+        else:
+            self.final_layer_norm = nn.LayerNorm(self._input_size, eps=eps)
+
+        if self._hparams.initializer:
+            initialize = layers.get_initializer(self._hparams.initializer)
+            assert initialize is not None
+            # Do not re-initialize LayerNorm modules.
+            for name, param in self.named_parameters():
+                if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:
+                    initialize(param)
+
+    def initialize_blocks(self):
+        r"""Helper function which initializes blocks for encoder.
+
+        Should be overridden by any classes where block initialization varies.
+        """
         for _ in range(self._hparams.num_blocks):
             mh_attn = MultiheadAttentionEncoder(
                 self._input_size, self._hparams.multihead_attention)
             self.self_attns.append(mh_attn)
             if not self._hparams.use_bert_config:
                 self.self_attn_layer_norm.append(
-                    nn.LayerNorm(self._input_size, eps=eps))
+                    nn.LayerNorm(self._input_size, eps=self._hparams.eps))
             if self._hparams.dim != mh_attn.hparams.output_dim:
                 raise ValueError(
                     'The "dim" in the hparams of '
@@ -184,26 +203,10 @@ class TransformerEncoder(EncoderBase):
 
             self.poswise_networks.append(pw_net)
             self.poswise_layer_norm.append(
-                nn.LayerNorm(self._input_size, eps=eps))
+                nn.LayerNorm(self._input_size, eps=self._hparams.eps))
             if self._hparams.use_bert_config:
                 self.output_layer_norm.append(
-                    nn.LayerNorm(self._input_size, eps=eps))
-
-        self.embed_dropout = nn.Dropout(p=self._hparams.embedding_dropout)
-        self.residual_dropout = nn.Dropout(p=self._hparams.residual_dropout)
-
-        if self._hparams.use_bert_config:
-            self.input_normalizer = nn.LayerNorm(self._input_size, eps=eps)
-        else:
-            self.final_layer_norm = nn.LayerNorm(self._input_size, eps=eps)
-
-        if self._hparams.initializer:
-            initialize = layers.get_initializer(self._hparams.initializer)
-            assert initialize is not None
-            # Do not re-initialize LayerNorm modules.
-            for name, param in self.named_parameters():
-                if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:
-                    initialize(param)
+                    nn.LayerNorm(self._input_size, eps=self._hparams.eps))
 
     @staticmethod
     def default_hparams():
@@ -226,6 +229,7 @@ class TransformerEncoder(EncoderBase):
                     'output_dim': 512,
                     'use_bias': False,
                 },
+                "eps": 1e-6,
                 "initializer": None,
                 "name": "transformer_encoder"
             }

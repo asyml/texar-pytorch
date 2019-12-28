@@ -4,6 +4,7 @@ Unit tests for T5 encoder-decoder
 
 import unittest
 
+import numpy
 import torch
 
 from texar.torch.modules.encoder_decoders import T5EncoderDecoder
@@ -92,15 +93,16 @@ class T5EncoderDecoderTest(unittest.TestCase):
                          13 * 12 + 3 + 8 * 12 + 3)
         _, _ = encoder(self.inputs)
 
-    @pretrained_test
-    def test_t5(self):
-        r"""Tests pretrained model.
+    #@pretrained_test
+    def test_t5_eval(self):
+        r"""Tests pretrained model and check it generates
+        same results everytime.
         """
         hparams = {
             "pretrained_model_name": 'T5-Small',
         }
         model = T5EncoderDecoder(hparams=hparams)
-        import numpy
+        model.eval()
 
         self.inputs = torch.from_numpy(
             numpy.asarray([[8774, 6, 82, 1782, 19, 5295]]))
@@ -116,6 +118,17 @@ class T5EncoderDecoderTest(unittest.TestCase):
         self.assertEqual(
             encoder_output.shape,
             torch.Size([self.inputs.size()[0], self.max_length, outputs_dim]))
+
+        # Check if these value are same consistently. If not, there is something
+        # wrong with the pretrained model.
+        self.assertEqual(
+            encoder_output.data[0][3][345].tolist(),
+            -0.16204041242599487
+        )
+        self.assertLess(  # leave some margin for minor stochastic differences
+            decoder_output[0].data[0][0][234].tolist() + 0.325570285320282,
+            0.000001
+        )
 
 
 if __name__ == "__main__":

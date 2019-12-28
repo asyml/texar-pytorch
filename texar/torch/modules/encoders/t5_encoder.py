@@ -13,18 +13,17 @@
 # limitations under the License.
 
 import torch
-from torch import nn
-from texar.torch.modules.encoders.encoder_base import EncoderBase
+
+from texar.torch.modules.encoders.transformer_encoder import TransformerEncoder
 from texar.torch.modules.pretrained.t5_utils import \
     T5LayerNorm, MultiheadRPRAttention
-from texar.torch.core import layers
 from texar.torch.modules.networks.networks import FeedForwardNetwork
 from texar.torch.modules.encoders.transformer_encoder import \
     default_transformer_poswise_net_hparams
 from texar.torch.utils import sequence_mask, transformer_attentions as attn
 
 
-class T5Encoder(EncoderBase):
+class T5Encoder(TransformerEncoder):
     r"""Transformer based encoder that applies multi-head self attention with
      relative positional representations for encoding sequences for T5.
 
@@ -45,15 +44,14 @@ class T5Encoder(EncoderBase):
     """
     def __init__(self, hparams=None):
         super().__init__(hparams=hparams)
-        self._input_size = self._hparams.dim
-        self.self_attns = nn.ModuleList()
-        self.self_attn_layer_norm = nn.ModuleList()
-        self.output_layer_norm = nn.ModuleList()
-        self.poswise_networks = nn.ModuleList()
-        self.poswise_layer_norm = nn.ModuleList()
 
-        eps = hparams.eps
+        self.final_layer_norm = T5LayerNorm(self._input_size,
+                                            eps=self._hparams.eps)
 
+    def initialize_blocks(self):
+        r""" Helper function to initialize blocks.
+
+        """
         for i in range(self._hparams.num_blocks):
             mh_attn = MultiheadRPRAttention(
                 self._input_size,
@@ -63,7 +61,7 @@ class T5Encoder(EncoderBase):
             self.self_attns.append(mh_attn)
 
             self.self_attn_layer_norm.append(
-                T5LayerNorm(self._input_size, eps=eps))
+                T5LayerNorm(self._input_size, eps=self._hparams.eps))
             if self._hparams.dim != mh_attn.hparams.output_dim:
                 raise ValueError(
                     'The "dim" in the hparams of '
@@ -82,20 +80,7 @@ class T5Encoder(EncoderBase):
 
             self.poswise_networks.append(pw_net)
             self.poswise_layer_norm.append(
-                T5LayerNorm(self._input_size, eps=eps))
-
-        self.embed_dropout = nn.Dropout(p=self._hparams.residual_dropout)
-        self.residual_dropout = nn.Dropout(p=self._hparams.residual_dropout)
-
-        self.final_layer_norm = T5LayerNorm(self._input_size, eps=eps)
-
-        if self._hparams.initializer:
-            initialize = layers.get_initializer(self._hparams.initializer)
-            assert initialize is not None
-            # Do not re-initialize LayerNorm modules.
-            for name, param in self.named_parameters():
-                if name.split('.')[-1] == 'weight' and 'layer_norm' not in name:
-                    initialize(param)
+                T5LayerNorm(self._input_size, eps=self._hparams.eps))
 
     @staticmethod
     def default_hparams():
@@ -108,6 +93,7 @@ class T5Encoder(EncoderBase):
                 "dim": 512,
                 "embedding_dropout": 0.1,
                 "residual_dropout": 0.1,
+                "use_bert_config: False,
                 "poswise_feedforward": default_transformer_poswise_net_hparams,
                 'multihead_attention': {
                     'name': 'multihead_rpr_attention',
@@ -168,6 +154,7 @@ class T5Encoder(EncoderBase):
             'dim': dim,
             'embedding_dropout': 0.1,
             'residual_dropout': 0.1,
+            'use_bert_config': False,
             'poswise_feedforward': default_transformer_poswise_net_hparams(dim),
             'multihead_attention': {
                 'name': 'multihead_rpr_attention',
@@ -245,8 +232,5 @@ class T5Encoder(EncoderBase):
             x = x + sub_output
 
         x = self.final_layer_norm(x)
-        return x
 
-    @property
-    def output_size(self) -> int:
-        return self._hparams.dim
+        return x
