@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Pre-trained modules of Texar library.
+Modules of Texar library encoders.
 """
 
-from texar.torch.modules.pretrained.pretrained_base import *
-from texar.torch.modules.pretrained.bert import *
-from texar.torch.modules.pretrained.gpt2 import *
-from texar.torch.modules.pretrained.roberta import *
-from texar.torch.modules.pretrained.xlnet import *
-from texar.torch.modules.pretrained.t5 import *
+from texar.torch.modules.encoder_decoders.t5_encoder_decoder \
+    import T5EncoderDecoder

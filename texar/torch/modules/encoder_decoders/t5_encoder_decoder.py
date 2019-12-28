@@ -12,41 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-BERT encoder.
+T5 Model
 """
 
 from typing import Optional, Union
 
 import torch
-from torch import nn
 
-from texar.torch.core import layers
+from texar.torch.core import layers, Identity
 from texar.torch.modules.embedders.embedders import WordEmbedder
-from texar.torch.modules.embedders.position_embedders import PositionEmbedder
-from texar.torch.modules.encoders.encoder_base import EncoderBase
-from texar.torch.modules.encoders.transformer_encoder import TransformerEncoder
-from texar.torch.modules.pretrained.bert import PretrainedBERTMixin
+from texar.torch.modules.encoder_decoders.encoder_decoder_base\
+    import EncoderDecoderBase
+from texar.torch.modules.encoders import T5Encoder
+from texar.torch.modules.decoders import T5Decoder
+from texar.torch.modules.pretrained.t5 import PretrainedT5Mixin
 
 __all__ = [
-    "BERTEncoder",
+    "T5EncoderDecoder"
 ]
 
 
-class BERTEncoder(EncoderBase, PretrainedBERTMixin):
-    r"""Raw BERT Transformer for encoding sequences. Please see
-    :class:`~texar.torch.modules.PretrainedBERTMixin` for a brief description
-    of BERT.
+class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
+    r"""Pretrained T5 model. Please see
+    :class:`~texar.torch.modules.PretrainedT5Mixin` for a brief description
+    of T5.
 
     This module basically stacks
     :class:`~texar.torch.modules.WordEmbedder`,
-    :class:`~texar.torch.modules.PositionEmbedder`,
-    :class:`~texar.torch.modules.TransformerEncoder` and a dense
+    :class:`~texar.torch.modules.TransformerEncoder`,
+    :class:`~texar.torch.modules.TransformerDecoder` and a dense
     pooler.
 
     Args:
         pretrained_model_name (optional): a `str`, the name
-            of pre-trained model (e.g., ``bert-base-uncased``). Please refer to
-            :class:`~texar.torch.modules.PretrainedBERTMixin` for
+            of pre-trained model (e.g., ``T5-Small``). Please refer to
+            :class:`~texar.torch.modules.PretrainedT5Mixin` for
             all supported models.
             If `None`, the model name in :attr:`hparams` is used.
         cache_dir (optional): the path to a folder in which the
@@ -72,26 +72,21 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
             vocab_size=self._hparams.vocab_size,
             hparams=self._hparams.embed)
 
-        # Segment embedding for each type of tokens
-        self.segment_embedder = None
-        if self._hparams.get('type_vocab_size', 0) > 0:
-            self.segment_embedder = WordEmbedder(
-                vocab_size=self._hparams.type_vocab_size,
-                hparams=self._hparams.segment_embed)
+        # The encoder (a TransformerEncoder)
+        self.encoder = T5Encoder(hparams=self._hparams.encoder)
 
-        # Position embedding
-        self.position_embedder = PositionEmbedder(
-            position_size=self._hparams.position_size,
-            hparams=self._hparams.position_embed)
-
-        # The BERT encoder (a TransformerEncoder)
-        self.encoder = TransformerEncoder(hparams=self._hparams.encoder)
-
-        self.pooler = nn.Sequential(
-            nn.Linear(self._hparams.hidden_size, self._hparams.hidden_size),
-            nn.Tanh())
+        # The decoder (a TransformerDecoder)
+        self.decoder = T5Decoder(
+            token_embedder=self._embedding_fn,
+            output_layer=Identity(),
+            hparams=self._hparams.decoder)
 
         self.init_pretrained_weights()
+
+    def _embedding_fn(self, tokens: torch.LongTensor
+                      ) -> torch.Tensor:
+        word_embed = self.word_embedder(tokens)
+        return word_embed
 
     def reset_parameters(self):
         initialize = layers.get_initializer(self._hparams.initializer)
@@ -122,17 +117,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
                     "dim": 768,
                     "name": "word_embeddings"
                 },
-                "vocab_size": 30522,
-                "segment_embed": {
-                    "dim": 768,
-                    "name": "token_type_embeddings"
-                },
-                "type_vocab_size": 2,
-                "position_embed": {
-                    "dim": 768,
-                    "name": "position_embeddings"
-                },
-                "position_size": 512,
+                "vocab_size": 32128,
 
                 "encoder": {
                     "dim": 768,
@@ -145,9 +130,9 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
                         "output_dim": 768,
                         "use_bias": True
                     },
-                    "name": "encoder",
+                    "relative_attention_num_buckets": 32,
+                    "name": "t5encoder",
                     "num_blocks": 12,
-                    "eps": 1e-12,
                     "poswise_feedforward": {
                         "layers": [
                             {
@@ -158,7 +143,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
                                 },
                                 "type": "Linear"
                             },
-                            {"type": "BertGELU"},
+                            {"type": "ReLU"},
                             {
                                 "kwargs": {
                                     "in_features": 3072,
@@ -170,11 +155,49 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
                         ]
                     },
                     "residual_dropout": 0.1,
-                    "use_bert_config": True
+                    },
+
+                "decoder": {
+                    "dim": 768,
+                    "embedding_dropout": 0.1,
+                    "multihead_attention": {
+                        "dropout_rate": 0.1,
+                        "name": "self",
+                        "num_heads": 12,
+                        "num_units": 768,
+                        "output_dim": 768,
+                        "use_bias": True,
+                        "relative_attention_num_buckets": 32,
+                    },
+
+                    "name": "t5coder",
+                    "num_blocks": 12,
+                    "poswise_feedforward": {
+                        "layers": [
+                            {
+                                "kwargs": {
+                                    "in_features": 768,
+                                    "out_features": 3072,
+                                    "bias": True
+                                },
+                                "type": "Linear"
+                            },
+                            {"type": "ReLU"},
+                            {
+                                "kwargs": {
+                                    "in_features": 3072,
+                                    "out_features": 768,
+                                    "bias": True
+                                },
+                                "type": "Linear"
+                            }
+                        ]
+                    },
+                    "residual_dropout": 0.1,
                     },
                 "hidden_size": 768,
                 "initializer": None,
-                "name": "bert_encoder",
+                "name": "t5_encoder_decoder",
             }
 
         Here:
@@ -191,9 +214,6 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
         `"vocab_size"`: int
             The vocabulary size of `inputs` in BERT model.
 
-        `"segment_embed"`: dict
-            Hyperparameters for segment embedding layer.
-
         `"type_vocab_size"`: int
             The vocabulary size of the `segment_ids` passed into `BertModel`.
 
@@ -204,15 +224,12 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
             The maximum sequence length that this model might ever be used with.
 
         `"encoder"`: dict
-            Hyperparameters for the TransformerEncoder.
-            See :func:`~texar.torch.modules.TransformerEncoder.default_hparams`
+            Hyperparameters for the T5Encoder.
+            See :func:`~texar.torch.modules.T5Encoder.default_hparams`
             for details.
 
         `"hidden_size"`: int
             Size of the pooler dense layer.
-
-        `"eps"`: float
-            Epsilon values for layer norm layers.
 
         `"initializer"`: dict, optional
             Hyperparameters of the default initializer that initializes
@@ -224,22 +241,12 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
         """
 
         return {
-            'pretrained_model_name': 'bert-base-uncased',
+            'pretrained_model_name': 'T5-Small',
             'embed': {
                 'dim': 768,
                 'name': 'word_embeddings'
             },
-            'vocab_size': 30522,
-            'segment_embed': {
-                'dim': 768,
-                'name': 'token_type_embeddings'
-            },
-            'type_vocab_size': 2,
-            'position_embed': {
-                'dim': 768,
-                'name': 'position_embeddings'
-            },
-            'position_size': 512,
+            'vocab_size': 32128,
 
             'encoder': {
                 'dim': 768,
@@ -250,46 +257,85 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
                     'num_heads': 12,
                     'num_units': 768,
                     'output_dim': 768,
-                    'use_bias': True
+                    'use_bias': False,
+                    'is_decoder': False,
+                    'relative_attention_num_buckets': 32
                 },
+                'eps': 1e-6,
                 'name': 'encoder',
                 'num_blocks': 12,
-                'eps': 1e-12,
                 'poswise_feedforward': {
                     'layers': [
                         {
                             'kwargs': {
                                 'in_features': 768,
                                 'out_features': 3072,
-                                'bias': True
+                                'bias': False
                             },
                             'type': 'Linear'
                         },
-                        {"type": "BertGELU"},
+                        {"type": "ReLU"},
                         {
                             'kwargs': {
                                 'in_features': 3072,
                                 'out_features': 768,
-                                'bias': True
+                                'bias': False
                             },
                             'type': 'Linear'
                         }
                     ]
                 },
                 'residual_dropout': 0.1,
-                'use_bert_config': True
+            },
+            'decoder': {
+                'eps': 1e-6,
+                'dim': 768,
+                'embedding_dropout': 0.1,
+                'multihead_attention': {
+                    'dropout_rate': 0.1,
+                    'name': 'self',
+                    'num_heads': 12,
+                    'num_units': 768,
+                    'output_dim': 768,
+                    'use_bias': False,
+                    'is_decoder': True,
+                    'relative_attention_num_buckets': 32
+                },
+                'name': 'encoder',
+                'num_blocks': 12,
+                'poswise_feedforward': {
+                    'layers': [
+                        {
+                            'kwargs': {
+                                'in_features': 768,
+                                'out_features': 3072,
+                                'bias': False
+                            },
+                            'type': 'Linear'
+                        },
+                        {"type": "ReLU"},
+                        {
+                            'kwargs': {
+                                'in_features': 3072,
+                                'out_features': 768,
+                                'bias': False
+                            },
+                            'type': 'Linear'
+                        }
+                    ]
+                },
+                'residual_dropout': 0.1,
             },
             'hidden_size': 768,
             'initializer': None,
-            'name': 'bert_encoder',
+            'name': 't5_encoder_decoder',
             '@no_typecheck': ['pretrained_model_name']
         }
 
     def forward(self,  # type: ignore
                 inputs: Union[torch.Tensor, torch.LongTensor],
-                sequence_length: Optional[torch.LongTensor] = None,
-                segment_ids: Optional[torch.LongTensor] = None):
-        r"""Encodes the inputs.
+                sequence_length: Optional[torch.LongTensor] = None):
+        r"""
 
         Args:
             inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
@@ -297,24 +343,11 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
                 a **3D Tensor** of shape `[batch_size, max_time, vocab_size]`,
                 containing soft token ids (i.e., weights or probabilities)
                 used to mix the embedding vectors.
-            segment_ids (optional): A 2D Tensor of shape
-                `[batch_size, max_time]`, containing the segment ids
-                of tokens in input sequences. If `None` (default), a
-                tensor with all elements set to zero is used.
-            sequence_length (optional): A 1D Tensor of shape `[batch_size]`.
-                Input tokens beyond respective sequence lengths are masked
-                out automatically.
+            sequence_length: A 1D :tensor:`Tensor` of shape
+                ``[batch_size]``. Input tokens beyond respective sequence
+                lengths are masked out automatically.
 
         Returns:
-            A pair :attr:`(outputs, pooled_output)`
-
-            - :attr:`outputs`:  A Tensor of shape
-              `[batch_size, max_time, dim]` containing the encoded vectors.
-
-            - :attr:`pooled_output`: A Tensor of size
-              `[batch_size, hidden_size]` which is the output of a pooler
-              pre-trained on top of the hidden state associated to the first
-              character of the input (`CLS`), see BERT's paper.
         """
         if inputs.dim() == 2:
             word_embeds = self.word_embedder(ids=inputs)
@@ -324,32 +357,19 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
             raise ValueError("'inputs' should be a 2D or 3D tensor.")
 
         batch_size = inputs.size(0)
-        pos_length = inputs.new_full((batch_size,), inputs.size(1),
-                                     dtype=torch.int64)
-        pos_embeds = self.position_embedder(sequence_length=pos_length)
-
-        if self.segment_embedder is not None:
-            if segment_ids is None:
-                segment_ids = torch.zeros((inputs.size(0), inputs.size(1)),
-                                          dtype=torch.long,
-                                          device=inputs.device)
-            segment_embeds = self.segment_embedder(segment_ids)
-            inputs_embeds = word_embeds + segment_embeds + pos_embeds
-        else:
-            inputs_embeds = word_embeds + pos_embeds
 
         if sequence_length is None:
-            sequence_length = inputs.new_full((batch_size,), inputs.size(1),
-                                              dtype=torch.int64)
+            sequence_length = inputs.new_full(
+                (batch_size,), inputs.size(1), dtype=torch.long)
 
-        output = self.encoder(inputs_embeds, sequence_length)
+        encoder_output = self.encoder(inputs=word_embeds,
+                                      sequence_length=sequence_length)
 
-        # taking the hidden state corresponding to the first token.
-        first_token_tensor = output[:, 0, :]
+        decoder_output = self.decoder(inputs=inputs,
+                                      memory=encoder_output,
+                                      memory_sequence_length=sequence_length)
 
-        pooled_output = self.pooler(first_token_tensor)
-
-        return output, pooled_output
+        return encoder_output, decoder_output
 
     @property
     def output_size(self):
