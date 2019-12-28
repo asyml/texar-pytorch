@@ -264,7 +264,7 @@ class TransformerEncoder(EncoderBase):
         `"residual_dropout"`: float
             Dropout rate of the residual connections.
 
-        "eps"`: float
+        `"eps"`: float
             Epsilon values for layer norm layers.
 
         `"poswise_feedforward"`: dict
