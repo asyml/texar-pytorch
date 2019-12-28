@@ -76,7 +76,7 @@ def _make_output_layer(layer: Optional[Union[nn.Module, torch.Tensor]],
     else:
         raise ValueError(
             f"output_layer should be an instance of `nn.Module`, a tensor,"
-            f"identity, or None. Unsupported type: {type(layer)}")
+            f"or None. Unsupported type: {type(layer)}")
 
     return output_layer, vocab_size
 
