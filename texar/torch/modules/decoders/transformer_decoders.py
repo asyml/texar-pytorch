@@ -114,9 +114,7 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                  token_embedder: Optional[TokenEmbedder] = None,
                  token_pos_embedder: Optional[TokenPosEmbedder] = None,
                  vocab_size: Optional[int] = None,
-                 output_layer: Optional[Union[nn.Module, torch.Tensor,
-                                              Callable[[torch.Tensor],
-                                                       torch.Tensor]]] = None,
+                 output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
                  hparams=None):
         super().__init__(
             token_embedder, token_pos_embedder,

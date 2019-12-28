@@ -19,7 +19,7 @@ from typing import Optional, Union
 
 import torch
 
-from texar.torch.core import layers, identity
+from texar.torch.core import layers, Identity
 from texar.torch.modules.embedders.embedders import WordEmbedder
 from texar.torch.modules.encoder_decoders.encoder_decoder_base\
     import EncoderDecoderBase
@@ -78,7 +78,7 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
         # The decoder (a TransformerDecoder)
         self.decoder = T5Decoder(
             token_embedder=self._embedding_fn,
-            output_layer=identity,
+            output_layer=Identity(),
             hparams=self._hparams.decoder)
 
         self.init_pretrained_weights()
