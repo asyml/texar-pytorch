@@ -88,8 +88,7 @@ class T5Decoder(TransformerDecoder):
                  vocab_size: Optional[int] = None,
                  output_layer: Optional[Union[nn.Module,
                                               torch.Tensor,
-                                              Callable[[torch.Tensor],
-                                                       torch.Tensor]]] = None,
+                                              ]] = None,
                  hparams=None):
         super().__init__(
             token_embedder, token_pos_embedder,
