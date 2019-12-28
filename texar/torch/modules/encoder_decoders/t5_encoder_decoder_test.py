@@ -130,6 +130,29 @@ class T5EncoderDecoderTest(unittest.TestCase):
             0.000001
         )
 
+    def test_t5(self):
+        r"""t5 test.
+        """
+        hparams = {
+           "pretrained_model_name": None,
+        }
+
+        t5 = T5EncoderDecoder(hparams=hparams)
+
+        inputs = torch.randint(32128, (self.batch_size, self.max_length))
+
+        encoder_output, decoder_output = t5(inputs)
+
+        outputs_dim = t5.output_size
+
+        self.assertEqual(
+            decoder_output[0].shape,
+            torch.Size([self.batch_size, self.max_length, outputs_dim]))
+
+        self.assertEqual(
+            encoder_output.shape,
+            torch.Size([self.batch_size, self.max_length, outputs_dim]))
+
 
 if __name__ == "__main__":
     unittest.main()
