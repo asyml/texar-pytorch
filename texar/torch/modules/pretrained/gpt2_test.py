@@ -13,7 +13,7 @@ class GPT2UtilsTest(unittest.TestCase):
     r"""Tests GPT2 utils.
     """
 
-    #@pretrained_test
+    @pretrained_test
     def test_load_pretrained_gpt2_AND_transform_gpt2_to_texar_config(self):
         pretrained_model_dir = PretrainedGPT2Mixin.download_checkpoint(
             pretrained_model_name="gpt2-small")
