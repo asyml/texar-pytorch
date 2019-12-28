@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from typing import Optional, Tuple
+import ast
 import math
+from typing import Dict, Optional, Tuple
+
 import torch
 from torch.nn import functional as F
 from torch import nn
@@ -22,14 +23,46 @@ from torch import nn
 from texar.torch.core import layers
 from texar.torch.module_base import ModuleBase
 from texar.torch.modules.encoders.multihead_attention import LayerCache
-
-
 from texar.torch.utils.types import MaybeList
 
 __all__ = [
     "T5LayerNorm",
-    "MultiheadRPRAttention"
+    "MultiheadRPRAttention",
+    "read_t5_gin_config_file"
 ]
+
+IMPORTANT_PARAMS = ('d_ff',
+                    'd_kv',
+                    'd_model',
+                    'dropout',
+                    'num_heads',
+                    'num_layers',
+                    'inputs_length'
+                    )
+
+
+def read_t5_gin_config_file(config_file_path: str) -> Dict:
+    r"""Simple helper function to read a gin file
+    and get hyperparameters for T5.
+
+    Args:
+        config_file_path: path of config.gin file as a string.
+
+    Returns:
+        A dictionary with important parameters for loading T5.
+
+    """
+    config = {}
+
+    with open(config_file_path, 'r') as gin_file:
+        for line in gin_file:
+            if line.startswith(IMPORTANT_PARAMS):
+                assignment = line.strip().split()
+                assert len(assignment) == 3
+                arg_name, _, value = assignment
+                config[arg_name] = ast.literal_eval(value)
+
+    return config
 
 
 class T5LayerNorm(nn.Module):

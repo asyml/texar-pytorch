@@ -7,7 +7,7 @@ import unittest
 import os
 import tempfile
 
-from texar.torch.utils.gin import read_t5_gin_config_file
+from texar.torch.modules.pretrained.t5_utils import read_t5_gin_config_file
 
 
 class GinTest(unittest.TestCase):

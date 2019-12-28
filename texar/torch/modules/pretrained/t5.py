@@ -24,7 +24,7 @@ import numpy as np
 import torch
 
 from texar.torch.modules.pretrained.pretrained_base import PretrainedMixin
-from texar.torch.utils.gin import read_t5_gin_config_file
+from texar.torch.modules.pretrained.t5_utils import read_t5_gin_config_file
 
 __all__ = [
     "PretrainedT5Mixin"
