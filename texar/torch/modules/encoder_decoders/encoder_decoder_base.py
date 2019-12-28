@@ -12,12 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Pre-trained modules of Texar library.
+Base class for encoder_decoders.
 """
+from abc import ABC
+from typing import Any, Dict
 
-from texar.torch.modules.pretrained.pretrained_base import *
-from texar.torch.modules.pretrained.bert import *
-from texar.torch.modules.pretrained.gpt2 import *
-from texar.torch.modules.pretrained.roberta import *
-from texar.torch.modules.pretrained.xlnet import *
-from texar.torch.modules.pretrained.t5 import *
+from texar.torch.module_base import ModuleBase
+
+__all__ = [
+    'EncoderDecoderBase',
+]
+
+
+class EncoderDecoderBase(ModuleBase, ABC):
+    r"""Base class inherited by all encoderdecoder classes.
+    """
+
+    @staticmethod
+    def default_hparams() -> Dict[str, Any]:
+        r"""Returns a dictionary of hyperparameters with default values.
+        """
+        return {
+            'name': 'encoderdecoder'
+        }

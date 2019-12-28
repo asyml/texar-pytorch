@@ -115,6 +115,7 @@ class PretrainedRoBERTaMixin(PretrainedMixin, ABC):
                 },
                 'residual_dropout': residual_dropout,
                 'dim': hidden_dim,
+                'eps': 1e-12,
                 'use_bert_config': True,
                 'poswise_feedforward': {
                     "layers": [{

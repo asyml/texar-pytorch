@@ -40,8 +40,6 @@ class VocabularyTest(unittest.TestCase):
             set(vocab.token_to_id_map_py.keys()),
             set(['word', '词'] + vocab.special_tokens))
 
-        # import pdb
-        # pdb.set_trace()
         # Tests UNK token
         unk_token_id = vocab.map_tokens_to_ids_py(['new'])
         unk_token_text = vocab.map_ids_to_tokens_py(unk_token_id)

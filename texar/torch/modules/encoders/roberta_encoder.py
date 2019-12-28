@@ -96,6 +96,7 @@ class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
                     },
                     "name": "encoder",
                     "num_blocks": 12,
+                    "eps": 1e-12,
                     "poswise_feedforward": {
                         "layers": [
                             {
@@ -153,6 +154,9 @@ class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
         `"hidden_size"`: int
             Size of the pooler dense layer.
 
+        `"eps"`: float
+            Epsilon values for layer norm layers.
+
         `"initializer"`: dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
@@ -188,6 +192,7 @@ class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
                 },
                 'name': 'encoder',
                 'num_blocks': 12,
+                'eps': 1e-12,
                 'poswise_feedforward': {
                     'layers': [
                         {
