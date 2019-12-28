@@ -93,7 +93,7 @@ class T5EncoderDecoderTest(unittest.TestCase):
                          13 * 12 + 3 + 8 * 12 + 3)
         _, _ = encoder(self.inputs)
 
-    #@pretrained_test
+    @pretrained_test
     def test_t5_eval(self):
         r"""Tests pretrained model and check it generates
         same results everytime.
