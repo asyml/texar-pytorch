@@ -1,5 +1,5 @@
 """
-Unit tests for SentencePiece tokenizer.
+Unit tests for T5 tokenizer.
 """
 
 import unittest
