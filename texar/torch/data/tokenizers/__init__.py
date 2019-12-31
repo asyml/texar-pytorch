@@ -21,3 +21,4 @@ from texar.torch.data.tokenizers.roberta_tokenizer import *
 from texar.torch.data.tokenizers.tokenizer_base import *
 from texar.torch.data.tokenizers.xlnet_tokenizer import *
 from texar.torch.data.tokenizers.sentencepiece_tokenizer import *
+from texar.torch.data.tokenizers.t5_tokenizer import *

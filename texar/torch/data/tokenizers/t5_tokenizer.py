@@ -123,13 +123,13 @@ class T5Tokenizer(SentencePieceTokenizer, PretrainedT5Mixin):
                 "do_lower_case": False,
                 "remove_space": True,
                 "keep_accents": False,
-                "name": "xlnet_tokenizer",
+                "name": "t5_tokenizer",
             }
 
         Here:
 
         `"pretrained_model_name"`: str or None
-            The name of the pre-trained XLNet model.
+            The name of the pre-trained T5 model.
 
         `"vocab_file"`: str or None
             The path to a sentencepiece vocabulary file.
