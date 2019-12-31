@@ -13,7 +13,6 @@
 # limitations under the License.
 """
 Pre-trained T5 tokenizer.
-
 """
 
 from typing import Any, Dict, Optional
@@ -74,7 +73,7 @@ class T5Tokenizer(SentencePieceTokenizer, PretrainedT5Mixin):
             assert self.pretrained_model_name is not None
             vocab_file = os.path.join(self.pretrained_model_dir,
                                       self._VOCAB_FILE_NAMES['vocab_file'])
-            assert self.pretrained_model_name is not None
+
             if self._MAX_INPUT_SIZE.get(self.pretrained_model_name):
                 self.max_len = self._MAX_INPUT_SIZE[self.pretrained_model_name]
             setattr(self.hparams, 'vocab_file', vocab_file)
@@ -112,17 +111,13 @@ class T5Tokenizer(SentencePieceTokenizer, PretrainedT5Mixin):
             {
                 "pretrained_model_name": "T5-Small",
                 "vocab_file": None,
-                "max_len": None,
+                "max_len": 512,
+                "bos_token": None,
                 "eos_token": "</s>",
                 "unk_token": "<unk>",
-                "sep_token": "<sep>",
                 "pad_token": "<pad>",
-                "cls_token": "<cls>",
-                "mask_token": "<mask>",
-                "additional_special_tokens": ["<eop>", "<eod>"],
-                "do_lower_case": False,
-                "remove_space": True,
-                "keep_accents": False,
+                "extra_ids": 100,
+                "additional_special_tokens": [],
                 "name": "t5_tokenizer",
             }
 
@@ -141,33 +136,25 @@ class T5Tokenizer(SentencePieceTokenizer, PretrainedT5Mixin):
             Beginning of sentence token. Set None to disable ``bos_token``.
 
         `"eos_token"`: str
-            End of sentence token.
+            End of sentence token. Set None to disable ``eos_token``.
 
         `"unk_token"`: str
-            Unknown token.
-
-        `"sep_token"`: str
-            Separation token.
+            Unknown token. Set None to disable ``unk_token``.
 
         `"pad_token"`: str
-            Padding token.
+            Padding token. Set None to disable ``pad_token``.
 
         `"extra_ids"`: int
             Add a number of extra ids added to the end of the vocabulary for
             use as sentinels. These tokens are accessible as `<extra_id_{%d}>`
             where `{%d}` is a number between 0 and extra_ids-1. Extra tokens
-            are indexed from the end of the vocabulary up to beginnning
+            are indexed from the end of the vocabulary up to beginning
             (<extra_id_0> is the last token in the vocabulary) (like in T5
-            preprocessing).
-
-        `"mask_token"`: str
-            Masking token.
+            preprocessing) see:
+            `https://github.com/google-research/text-to-text-transfer-transformer/blob/9fd7b14a769417be33bc6c850f9598764913c833/t5/data/preprocessors.py#L2117`
 
         `"additional_special_tokens"`: list
             A list of additional special tokens.
-
-        `"do_lower_case"`: bool
-            Whether to lower-case the text.
 
         `"name"`: str
             Name of the tokenizer.
@@ -182,7 +169,6 @@ class T5Tokenizer(SentencePieceTokenizer, PretrainedT5Mixin):
             'pad_token': '<pad>',
             'extra_ids': 100,
             'additional_special_tokens': [],
-            'do_lower_case': False,
             'name': 't5_tokenizer',
             '@no_typecheck': ['pretrained_model_name'],
         }

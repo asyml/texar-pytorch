@@ -33,7 +33,7 @@ __all__ = [
 
 
 class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
-    r"""Pretrained T5 model. Please see
+    r"""The pre-trained T5 model. Please see
     :class:`~texar.torch.modules.PretrainedT5Mixin` for a brief description
     of T5.
 

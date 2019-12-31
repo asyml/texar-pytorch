@@ -30,8 +30,8 @@ from texar.torch.modules.networks.networks import FeedForwardNetwork
 
 
 class T5Decoder(TransformerDecoder):
-    r"""T5 decoder that applies multi-head self-attention with #todo rpr for
-    sequence decoding.
+    r"""T5 decoder that applies multi-head self-attention with relative
+    position representation for sequence decoding.
 
     It is a stack of
     :class:`~texar.torch.modules.MultiheadRPRAttention`,

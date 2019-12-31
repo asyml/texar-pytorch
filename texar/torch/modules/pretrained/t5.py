@@ -43,7 +43,7 @@ _CHECKPOINT_FILES_GEN_MAP = {  # stores a tuple of model_id and number of
 
 def _generate_t5_file_list(ckpt_tuple: tuple) -> List[str]:
     """ Helper function to generate file list given a tuple of model_id and
-    parittion size.
+    partition size.
 
     Args:
         ckpt_tuple: A tuple of model_id and number of partitions
@@ -69,7 +69,7 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
     single model to be trained supervised on a wide variety of NLP tasks.
 
     The T5 model examines factors relevant for leveraging transfer learning
-    at scale from pure unsupervised pretraining to supervised tasks. It is
+    at scale from pure unsupervised pre-training to supervised tasks. It is
     discussed in much detail in `Exploring the Limits of Transfer Learning
     with a Unified Text-to-Text Transformer` from Google.
 
@@ -83,7 +83,12 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
 
     We provide the following classes:
 
-    #TODO(swapnil): fill this up.
+      * :class:`~texar.torch.modules.T5Encoder` for loading weights for the
+        encoder stack.
+      * :class:`~texar.torch.modules.T5Decoder` for loading weights for the
+        decoding stack.
+      * :class:`~texar.torch.modules.T5EncoderDecoder` as a raw pre-trained
+        model.
     """
     _MODEL_NAME = "T5"
 
@@ -241,13 +246,6 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
 
     def _init_from_checkpoint(self, pretrained_model_name: str,
                               cache_dir: str, **kwargs):
-        r"""
-
-        :param pretrained_model_name:
-        :param cache_dir:
-        :param kwargs:
-        :return:
-        """
         try:
             import tensorflow as tf
         except ImportError:
