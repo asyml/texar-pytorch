@@ -31,6 +31,7 @@ __all__ = [
 ]
 
 _T5_PATH = "https://storage.googleapis.com/t5-data/pretrained_models/"
+_T5_VOCAB_PATH = "https://storage.googleapis.com/t5-data/vocabs/cc_all.32000/"
 _CHECKPOINT_FILES_GEN_MAP = {  # stores a tuple of model_id and number of
                                # partitions
     'small': (1000000, 16),
@@ -89,19 +90,24 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
     _MODEL2URL = {
         'T5-Small': [_T5_PATH + f"small/{file}"
                      for file in _generate_t5_file_list(
-                      _CHECKPOINT_FILES_GEN_MAP['small'])],
-        'T5-Base': [_T5_PATH + f"small/{file}"
+                      _CHECKPOINT_FILES_GEN_MAP['small'])] +
+                    [_T5_VOCAB_PATH + 'sentencepiece.model'],
+        'T5-Base': [_T5_PATH + f"base/{file}"
                     for file in _generate_t5_file_list(
-                     _CHECKPOINT_FILES_GEN_MAP['base'])],
+                     _CHECKPOINT_FILES_GEN_MAP['base'])] +
+                   [_T5_VOCAB_PATH + 'sentencepiece.model'],
         'T5-Large': [_T5_PATH + f"large/{file}"
                      for file in _generate_t5_file_list(
-                      _CHECKPOINT_FILES_GEN_MAP['large'])],
+                      _CHECKPOINT_FILES_GEN_MAP['large'])] +
+                    [_T5_VOCAB_PATH + 'sentencepiece.model'],
         'T5-3B': [_T5_PATH + f"3B/{file}"
                   for file in _generate_t5_file_list(
-                   _CHECKPOINT_FILES_GEN_MAP['B'])],
+                   _CHECKPOINT_FILES_GEN_MAP['B'])] + [_T5_VOCAB_PATH +
+                                                       'sentencepiece.model'],
         'T5-11B': [_T5_PATH + f"11B/{file}"
                    for file in _generate_t5_file_list(
-                    _CHECKPOINT_FILES_GEN_MAP['B'])]
+                    _CHECKPOINT_FILES_GEN_MAP['B'])] +
+                  [_T5_VOCAB_PATH + 'sentencepiece.model']
     }
 
     _MODEL2CKPT = {

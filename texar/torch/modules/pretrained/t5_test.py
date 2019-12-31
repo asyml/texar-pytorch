@@ -24,6 +24,9 @@ class T5UtilsTest(unittest.TestCase):
         self.assertIn('checkpoint', files)
         self.assertIn('operative_config.gin', files)
 
+        # Check vocab file
+        self.assertIn('sentencepiece.model', files)
+
         model_config = PretrainedT5Mixin._transform_config(
             pretrained_model_name="T5-Base",
             cache_dir=pretrained_model_dir)
