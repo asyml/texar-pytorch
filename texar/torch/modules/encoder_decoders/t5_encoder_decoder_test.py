@@ -95,7 +95,7 @@ class T5EncoderDecoderTest(unittest.TestCase):
 
     @pretrained_test
     def test_t5_eval(self):
-        r"""Tests pretrained model and check it generates
+        r"""Tests pre-trained model and check it generates
         same results everytime.
         """
         hparams = {
@@ -120,7 +120,7 @@ class T5EncoderDecoderTest(unittest.TestCase):
             torch.Size([self.inputs.size()[0], self.max_length, outputs_dim]))
 
         # Check if these value are same consistently. If not, there is something
-        # wrong with the pretrained model.
+        # wrong with the pre-trained model.
         self.assertEqual(
             encoder_output.data[0][3][345].tolist(),
             -0.16204041242599487

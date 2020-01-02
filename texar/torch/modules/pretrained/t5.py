@@ -31,6 +31,7 @@ __all__ = [
 ]
 
 _T5_PATH = "https://storage.googleapis.com/t5-data/pretrained_models/"
+_T5_VOCAB_PATH = "https://storage.googleapis.com/t5-data/vocabs/cc_all.32000/"
 _CHECKPOINT_FILES_GEN_MAP = {  # stores a tuple of model_id and number of
                                # partitions
     'small': (1000000, 16),
@@ -42,7 +43,7 @@ _CHECKPOINT_FILES_GEN_MAP = {  # stores a tuple of model_id and number of
 
 def _generate_t5_file_list(ckpt_tuple: tuple) -> List[str]:
     """ Helper function to generate file list given a tuple of model_id and
-    parittion size.
+    partition size.
 
     Args:
         ckpt_tuple: A tuple of model_id and number of partitions
@@ -68,7 +69,7 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
     single model to be trained supervised on a wide variety of NLP tasks.
 
     The T5 model examines factors relevant for leveraging transfer learning
-    at scale from pure unsupervised pretraining to supervised tasks. It is
+    at scale from pure unsupervised pre-training to supervised tasks. It is
     discussed in much detail in `Exploring the Limits of Transfer Learning
     with a Unified Text-to-Text Transformer` from Google.
 
@@ -82,26 +83,36 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
 
     We provide the following classes:
 
-    #TODO(swapnil): fill this up.
+      * :class:`~texar.torch.modules.T5Encoder` for loading weights for the
+        encoder stack.
+      * :class:`~texar.torch.modules.T5Decoder` for loading weights for the
+        decoding stack.
+      * :class:`~texar.torch.modules.T5EncoderDecoder` as a raw pre-trained
+        model.
     """
     _MODEL_NAME = "T5"
 
     _MODEL2URL = {
         'T5-Small': [_T5_PATH + f"small/{file}"
                      for file in _generate_t5_file_list(
-                      _CHECKPOINT_FILES_GEN_MAP['small'])],
-        'T5-Base': [_T5_PATH + f"small/{file}"
+                      _CHECKPOINT_FILES_GEN_MAP['small'])] +
+                    [_T5_VOCAB_PATH + 'sentencepiece.model'],
+        'T5-Base': [_T5_PATH + f"base/{file}"
                     for file in _generate_t5_file_list(
-                     _CHECKPOINT_FILES_GEN_MAP['base'])],
+                     _CHECKPOINT_FILES_GEN_MAP['base'])] +
+                   [_T5_VOCAB_PATH + 'sentencepiece.model'],
         'T5-Large': [_T5_PATH + f"large/{file}"
                      for file in _generate_t5_file_list(
-                      _CHECKPOINT_FILES_GEN_MAP['large'])],
+                      _CHECKPOINT_FILES_GEN_MAP['large'])] +
+                    [_T5_VOCAB_PATH + 'sentencepiece.model'],
         'T5-3B': [_T5_PATH + f"3B/{file}"
                   for file in _generate_t5_file_list(
-                   _CHECKPOINT_FILES_GEN_MAP['B'])],
+                   _CHECKPOINT_FILES_GEN_MAP['B'])] + [_T5_VOCAB_PATH +
+                                                       'sentencepiece.model'],
         'T5-11B': [_T5_PATH + f"11B/{file}"
                    for file in _generate_t5_file_list(
-                    _CHECKPOINT_FILES_GEN_MAP['B'])]
+                    _CHECKPOINT_FILES_GEN_MAP['B'])] +
+                  [_T5_VOCAB_PATH + 'sentencepiece.model']
     }
 
     _MODEL2CKPT = {
@@ -235,13 +246,6 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
 
     def _init_from_checkpoint(self, pretrained_model_name: str,
                               cache_dir: str, **kwargs):
-        r"""
-
-        :param pretrained_model_name:
-        :param cache_dir:
-        :param kwargs:
-        :return:
-        """
         try:
             import tensorflow as tf
         except ImportError:

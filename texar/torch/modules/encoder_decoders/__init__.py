@@ -15,5 +15,5 @@
 Modules of Texar library encoders.
 """
 
-from texar.torch.modules.encoder_decoders.t5_encoder_decoder \
-    import T5EncoderDecoder
+from texar.torch.modules.encoder_decoders.encoder_decoder_base import *
+from texar.torch.modules.encoder_decoders.t5_encoder_decoder import *

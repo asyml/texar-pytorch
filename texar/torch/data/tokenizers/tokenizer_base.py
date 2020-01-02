@@ -83,7 +83,12 @@ class TokenizerBase(ModuleBase):
                     assert isinstance(value, (list, tuple)) and \
                            all(isinstance(v, str) for v in value)
                 else:
-                    assert isinstance(value, str)
+                    if value is not None:
+                        assert isinstance(value, str)
+                    else:
+                        warnings.warn(f"Trying to set None as value special "
+                                      f"token '{key}'. Proceed only if you"
+                                      f" are sure!", UserWarning)
                 setattr(self, key, value)
 
     @classmethod

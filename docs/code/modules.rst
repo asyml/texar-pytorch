@@ -252,6 +252,14 @@ Regressors
 .. autoclass:: texar.torch.modules.XLNetRegressor
     :members:
 
+EncoderDecoders
+================
+
+:hidden:`T5EncoderDecoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.T5EncoderDecoder
+    :members:
+
 Pre-trained
 ===========
 
@@ -283,6 +291,11 @@ Pre-trained
 :hidden:`PretrainedXLNetMixin`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.PretrainedXLNetMixin
+    :members:
+
+:hidden:`PretrainedT5Mixin`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.PretrainedT5Mixin
     :members:
 
 Connectors

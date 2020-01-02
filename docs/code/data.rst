@@ -37,6 +37,11 @@ Tokenizer
 .. autoclass:: texar.torch.data.XLNetTokenizer
     :members:
 
+:hidden:`T5Tokenizer`
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.data.T5Tokenizer
+    :members:
+
 Vocabulary
 ==========
 
