@@ -20,8 +20,8 @@ The code structure adapted from:
 
 from typing import Any, Dict, List, Optional, Tuple, overload
 
-import os
 import json
+import os
 import warnings
 
 from texar.torch.module_base import ModuleBase
@@ -386,11 +386,11 @@ class TokenizerBase(ModuleBase):
         for token in tokens:
             ids.append(self._map_token_to_id_with_added_voc(token))
         if len(ids) > self.max_len:
-            raise ValueError(
+            warnings.warn(
                 "Token indices sequence length is longer than the specified "
                 "maximum sequence length for this model ({} > {}). Running "
                 "this sequence through the model will result in indexing "
-                "errors".format(len(ids), self.max_len))
+                "errors".format(len(ids), self.max_len), UserWarning)
         return ids
 
     # pylint: enable=unused-argument,function-redefined
