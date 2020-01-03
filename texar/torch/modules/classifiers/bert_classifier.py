@@ -71,12 +71,15 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
 
         super().__init__(hparams=hparams)
 
+        self.load_pretrained_config(pretrained_model_name, cache_dir)
+
         # Create the underlying encoder
         encoder_hparams = dict_fetch(hparams,
                                      self._ENCODER_CLASS.default_hparams())
+        encoder_hparams['pretrained_model_name'] = None
 
         self._encoder = self._ENCODER_CLASS(
-            pretrained_model_name=pretrained_model_name,
+            pretrained_model_name=None,
             cache_dir=cache_dir,
             hparams=encoder_hparams)
 
@@ -119,6 +122,8 @@ class BERTClassifier(ClassifierBase, PretrainedBERTMixin):
         self.is_binary = (self.num_classes == 1) or \
                          (self.num_classes <= 0 and
                           self._hparams.encoder.dim == 1)
+
+        self.init_pretrained_weights(class_type='classifier')
 
     @staticmethod
     def default_hparams():

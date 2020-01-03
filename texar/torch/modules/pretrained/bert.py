@@ -34,6 +34,7 @@ _BERT_PATH = "https://storage.googleapis.com/bert_models/"
 _BIOBERT_PATH = "https://github.com/naver/biobert-pretrained/releases/download/"
 _SCIBERT_PATH = "https://s3-us-west-2.amazonaws.com/ai2-s2-research/" \
                 "scibert/tensorflow_models/"
+_BERT_MSMARCO_NOGUEIRA19_PATH = "https://drive.google.com/file/d/"
 
 
 class PretrainedBERTMixin(PretrainedMixin, ABC):
@@ -97,6 +98,16 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         * ``scibert-basevocab-cased``: Cased version of the model trained on
           the original BERT vocabulary.
 
+    * **BERT for MS-MARCO**: proposed in (`Nogueira et al`. 2019)
+      `Passage Re-ranking with BERT`_. A BERT model fine-tuned on MS-MARCO
+      (`Nguyen et al`., 2016) dataset. It's the best performing model (on Jan
+      8th 2019) on MS-MARCO Passage re-ranking task. Two models are included:
+
+        * ``bert-msmarco-nogueira19-base``: Original BERT base model fine-tuned
+          on MS-MARCO.
+        * ``bert-msmarco-nogueira19-large``: Original BERT large model
+          fine-tuned on MS-MARCO.
+
     We provide the following BERT classes:
 
       * :class:`~texar.torch.modules.BERTEncoder` for text encoding.
@@ -111,6 +122,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
     .. _`SciBERT: A Pretrained Language Model for Scientific Text`:
         https://arxiv.org/abs/1903.10676
+
+    .. _`Passage Re-ranking with BERT`:
+        https://arxiv.org/abs/1901.04085
     """
 
     _MODEL_NAME = "BERT"
@@ -150,6 +164,12 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
             _SCIBERT_PATH + 'scibert_basevocab_uncased.tar.gz',
         'scibert-basevocab-cased':
             _SCIBERT_PATH + 'scibert_basevocab_cased.tar.gz',
+
+        # BERT for MS-MARCO
+        'bert-msmarco-nogueira19-base':
+            _BERT_MSMARCO_NOGUEIRA19_PATH + '1cyUrhs7JaCJTTu-DjFUqP6Bs4f8a6JTX',
+        'bert-msmarco-nogueira19-large':
+            _BERT_MSMARCO_NOGUEIRA19_PATH + '1crlASTMlsihALlkabAQP6JTYIZwC1Wm8/'
     }
     _MODEL2CKPT = {
         # Standard BERT
@@ -172,6 +192,10 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         'scibert-scivocab-cased': 'bert_model.ckpt',
         'scibert-basevocab-uncased': 'bert_model.ckpt',
         'scibert-basevocab-cased': 'bert_model.ckpt',
+
+        # BERT for MSMARCO
+        'bert-msmarco-nogueira19-base': 'model.ckpt-100000',
+        'bert-msmarco-nogueira19-large': 'model.ckpt-100000',
     }
 
     @classmethod
@@ -302,10 +326,20 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         }
         pooler_map = {
             'bert/pooler/dense/bias': 'pooler.0.bias',
-            'bert/pooler/dense/kernel': 'pooler.0.weight'
+            'bert/pooler/dense/kernel': 'pooler.0.weight',
+        }
+        classifier_map = {
+            'output_bias': '_logits_layer.bias',
+            'output_weights': '_logits_layer.weight',
+        }
+        global_prefix_map = {
+            'classifier': '_encoder.'
         }
         tf_path = os.path.abspath(os.path.join(
             cache_dir, self._MODEL2CKPT[pretrained_model_name]))
+
+        class_type = kwargs.get('class_type', 'encoder')
+        global_prefix = global_prefix_map.get(class_type, '')
 
         # Load weights from TF model
         init_vars = tf.train.list_variables(tf_path)
@@ -326,13 +360,14 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
                 continue
 
             if name in global_tensor_map:
-                v_name = global_tensor_map[name]
+                v_name = global_prefix + global_tensor_map[name]
                 pointer = self._name_to_variable(v_name)
                 assert pointer.shape == array.shape
                 pointer.data = torch.from_numpy(array)
                 idx += 1
             elif name in pooler_map:
-                pointer = self._name_to_variable(pooler_map[name])
+                pointer = self._name_to_variable(global_prefix +
+                                                 pooler_map[name])
                 if name.endswith('bias'):
                     assert pointer.shape == array.shape
                     pointer.data = torch.from_numpy(array)
@@ -342,6 +377,13 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
                     assert pointer.shape == array_t.shape
                     pointer.data = torch.from_numpy(array_t)
                     idx += 1
+            elif name in classifier_map:
+                if class_type != 'classifier':
+                    continue
+                pointer = self._name_to_variable(classifier_map[name])
+                assert pointer.shape == array.shape
+                pointer.data = torch.from_numpy(array)
+                idx += 1
             else:
                 # here name is the TensorFlow variable name
                 name_tmp = name.split("/")
@@ -350,12 +392,14 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
                 name_tmp = "/".join(name_tmp[3:])
                 if name_tmp in layer_tensor_map:
                     v_name = layer_tensor_map[name_tmp].format(layer_no)
-                    pointer = self._name_to_variable(py_prefix + v_name)
+                    pointer = self._name_to_variable(global_prefix +
+                                                     py_prefix + v_name)
                     assert pointer.shape == array.shape
                     pointer.data = torch.from_numpy(array)
                 elif name_tmp in layer_transpose_map:
                     v_name = layer_transpose_map[name_tmp].format(layer_no)
-                    pointer = self._name_to_variable(py_prefix + v_name)
+                    pointer = self._name_to_variable(global_prefix +
+                                                     py_prefix + v_name)
                     array_t = np.transpose(array)
                     assert pointer.shape == array_t.shape
                     pointer.data = torch.from_numpy(array_t)
