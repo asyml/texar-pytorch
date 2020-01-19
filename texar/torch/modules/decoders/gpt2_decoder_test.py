@@ -191,9 +191,9 @@ class GPT2DecoderTest(unittest.TestCase):
         self.assertEqual(
             outputs['log_prob'].shape,
             torch.Size([self.batch_size, self.beam_width]))
-        self.assertEqual(
-            outputs['sample_id'].shape,
-            torch.Size([self.batch_size, self.max_length, self.beam_width]))
+        self.assertEqual(outputs['sample_id'].shape[0], self.batch_size)
+        self.assertLessEqual(outputs['sample_id'].shape[1], self.max_length)
+        self.assertEqual(outputs['sample_id'].shape[2], self.beam_width)
 
     def test_greedy_embedding_helper(self):
         r"""Tests with tf.contrib.seq2seq.GreedyEmbeddingHelper
