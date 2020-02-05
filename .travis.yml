@@ -19,10 +19,10 @@ install:
   - pip install --progress-bar off torch==$TORCH_VER
   - pip install --progress-bar off .[extras]
   - if [[ $TORCH_VER == "1.4.0" ]]; then
-      pip install pylint==2.3.1 flake8==3.7.7;
+      pip install pylint==2.4.4 flake8==3.7.9;
     fi
   - if [[ $TORCH_VER != "1.0.1" ]]; then
-      pip install mypy==0.720;
+      pip install mypy==0.761;
     fi
   - pip install pytest
   - pip install coverage codecov
