@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-T5 Model
+T5 Model.
 """
 
 from typing import Optional, Union
@@ -100,7 +100,7 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
     def default_hparams():
         r"""Returns a dictionary of hyperparameters with default values.
 
-        * The encoder arch is determined by the constructor argument
+        * The model arch is determined by the constructor argument
           :attr:`pretrained_model_name` if it's specified. In this case,
           `hparams` are ignored.
         * Otherwise, the encoder arch is determined by

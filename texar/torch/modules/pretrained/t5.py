@@ -62,16 +62,16 @@ def _generate_t5_file_list(ckpt_tuple: tuple) -> List[str]:
 
 class PretrainedT5Mixin(PretrainedMixin, ABC):
     r"""A mixin class to support loading pre-trained checkpoints for modules
-        that implement the T5 model.
+    that implement the T5 model.
 
-    The T5 model treats multiple NLP tasks in a similar manner by encoding the
-    different tasks as text directives in the input stream. This enables a
-    single model to be trained supervised on a wide variety of NLP tasks.
-
-    The T5 model examines factors relevant for leveraging transfer learning
-    at scale from pure unsupervised pre-training to supervised tasks. It is
-    discussed in much detail in `Exploring the Limits of Transfer Learning
-    with a Unified Text-to-Text Transformer` from Google.
+    The T5 model was proposed in
+    `Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer`_
+    by `Raffel et al.` from Google. It treats multiple NLP tasks in a similar
+    manner by encoding the different tasks as text directives in the input
+    stream. This enables a single model to be trained supervised on a wide
+    variety of NLP tasks. The T5 model examines factors relevant for leveraging
+    transfer learning at scale from pure unsupervised pre-training to
+    supervised tasks.
 
     The available T5 models are as follows:
 
@@ -89,6 +89,9 @@ class PretrainedT5Mixin(PretrainedMixin, ABC):
         decoding stack.
       * :class:`~texar.torch.modules.T5EncoderDecoder` as a raw pre-trained
         model.
+
+    .. _`Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer`:
+        https://arxiv.org/abs/1910.10683
     """
     _MODEL_NAME = "T5"
 
