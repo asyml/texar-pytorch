@@ -463,7 +463,8 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                   When used with the Texar data module, to get ``batch_size``
                   samples where ``batch_size`` is changing according to the
                   data module, this can be set as
-                  ``start_tokens=torch.full_like(batch['length'], bos_token_id)``
+                  :python:`start_tokens=torch.full_like(batch['length'],
+                  bos_token_id)`.
 
                 - **end_token**: An integer or 0D :tensor:`LongTensor`, the
                   token that marks the end of decoding.
