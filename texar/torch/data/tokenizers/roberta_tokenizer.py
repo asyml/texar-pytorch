@@ -24,8 +24,7 @@ __all__ = [
     'RoBERTaTokenizer',
 ]
 
-_GPT2_PATH = "https://dl.fbaipublicfiles.com/fairseq/gpt2_bpe/"
-_CHECKPOINT_FILES = ["encoder.json", "vocab.bpe"]
+_ROBERTA_PATH = "https://s3.amazonaws.com/models.huggingface.co/bert/"
 
 
 class RoBERTaTokenizer(GPT2Tokenizer):
@@ -48,12 +47,28 @@ class RoBERTaTokenizer(GPT2Tokenizer):
     """
 
     _MODEL2URL = {
-        'roberta-base': [_GPT2_PATH + f"{file}" for file in _CHECKPOINT_FILES],
-        'roberta-large': [_GPT2_PATH + f"{file}" for file in _CHECKPOINT_FILES],
+        'roberta-base': [
+            _ROBERTA_PATH + 'roberta-base-vocab.json',
+            _ROBERTA_PATH + 'roberta-base-merges.txt',
+        ],
+        'roberta-large': [
+            _ROBERTA_PATH + 'roberta-large-vocab.json',
+            _ROBERTA_PATH + 'roberta-large-merges.txt',
+        ],
     }
     _MAX_INPUT_SIZE = {
         'roberta-base': 512,
         'roberta-large': 512,
+    }
+    _VOCAB_FILE_MAP = {
+        'vocab_file': {
+            'roberta-base': 'roberta-base-vocab.json',
+            'roberta-large': 'roberta-large-vocab.json',
+        },
+        'merges_file': {
+            'roberta-base': 'roberta-base-merges.txt',
+            'roberta-large': 'roberta-large-merges.txt',
+        },
     }
 
     def encode_text(self,  # type: ignore
@@ -153,6 +168,7 @@ class RoBERTaTokenizer(GPT2Tokenizer):
                 "pad_token": "<pad>",
                 "mask_token": "<mask>",
                 "errors": "replace",
+                "name": "roberta_tokenizer",
             }
 
         Here:
@@ -193,6 +209,9 @@ class RoBERTaTokenizer(GPT2Tokenizer):
         `"errors"`: str
             Response when decoding fails. The possible values are
             `ignore`, `replace`, and `strict`.
+
+        `"name"`: str
+            Name of the tokenizer.
         """
         return {
             'pretrained_model_name': 'roberta-base',
@@ -207,6 +226,7 @@ class RoBERTaTokenizer(GPT2Tokenizer):
             'pad_token': '<pad>',
             'mask_token': '<mask>',
             'errors': 'replace',
+            'name': 'roberta_tokenizer',
             '@no_typecheck': ['pretrained_model_name'],
         }
 

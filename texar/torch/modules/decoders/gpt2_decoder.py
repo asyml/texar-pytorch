@@ -131,7 +131,6 @@ class GPT2Decoder(PretrainedGPT2Mixin):
                 "decoder": {
                     "dim": 768,
                     "num_blocks": 12,
-                    "use_gpt_config": True,
                     "embedding_dropout": 0,
                     "residual_dropout": 0,
                     "multihead_attention": {
@@ -149,6 +148,7 @@ class GPT2Decoder(PretrainedGPT2Mixin):
                             "uniform": True
                         }
                     },
+                    "eps": 1e-5,
                     "poswise_feedforward": {
                         "layers": [
                             {
@@ -194,6 +194,9 @@ class GPT2Decoder(PretrainedGPT2Mixin):
         `"position_embed"`: dict
             Hyperparameters for position embedding layer.
 
+        `"eps"`: float
+            Epsilon values for layer norm layers.
+
         `"position_size"`:  int
             The maximum sequence length that this model might ever be used with.
 
@@ -204,7 +207,6 @@ class GPT2Decoder(PretrainedGPT2Mixin):
             'decoder': {
                 'dim': 768,
                 'num_blocks': 12,
-                'use_gpt_config': True,
                 'embedding_dropout': 0,
                 'residual_dropout': 0,
                 'multihead_attention': {
@@ -222,6 +224,7 @@ class GPT2Decoder(PretrainedGPT2Mixin):
                         'uniform': True
                     }
                 },
+                'eps': 1e-5,
                 'poswise_feedforward': {
                     'layers': [
                         {

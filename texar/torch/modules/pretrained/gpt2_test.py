@@ -1,3 +1,16 @@
+# Copyright 2019 The Texar Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Unit tests for GPT2 utils.
 """
@@ -44,50 +57,53 @@ class GPT2UtilsTest(unittest.TestCase):
                 'dim': 768
             },
 
-            'dim': 768,
-            'num_blocks': 12,
-            'use_gpt_config': True,
-            'embedding_dropout': 0,
-            'residual_dropout': 0,
-            'multihead_attention': {
-                'use_bias': True,
-                'num_units': 768,
-                'num_heads': 12,
-                'output_dim': 768
-            },
-            'initializer': {
-                'type': 'variance_scaling_initializer',
-                'kwargs': {
-                    'factor': 1.0,
-                    'mode': 'FAN_AVG',
-                    'uniform': True
-                }
-            },
-            'poswise_feedforward': {
-                'layers':
-                    [
-                        {
-                            'type': 'Linear',
-                            'kwargs': {
-                                'in_features': 768,
-                                'out_features': 3072,
-                                'bias': True
+            'encoder': {
+                'dim': 768,
+                'num_blocks': 12,
+                'embedding_dropout': 0,
+                'residual_dropout': 0,
+                'multihead_attention': {
+                    'use_bias': True,
+                    'num_units': 768,
+                    'num_heads': 12,
+                    'output_dim': 768
+                },
+                'initializer': {
+                    'type': 'variance_scaling_initializer',
+                    'kwargs': {
+                        'factor': 1.0,
+                        'mode': 'FAN_AVG',
+                        'uniform': True
+                    }
+                },
+                'eps': 1e-6,
+                'poswise_feedforward': {
+                    'layers':
+                        [
+                            {
+                                'type': 'Linear',
+                                'kwargs': {
+                                    'in_features': 768,
+                                    'out_features': 3072,
+                                    'bias': True
+                                }
+                            },
+                            {
+                                'type': 'GPTGELU',
+                                'kwargs': {}
+                            },
+                            {
+                                'type': 'Linear',
+                                'kwargs': {
+                                    'in_features': 3072,
+                                    'out_features': 768,
+                                    'bias': True
+                                }
                             }
-                        },
-                        {
-                            'type': 'GPTGELU',
-                            'kwargs': {}
-                        },
-                        {
-                            'type': 'Linear',
-                            'kwargs': {
-                                'in_features': 3072,
-                                'out_features': 768,
-                                'bias': True
-                            }
-                        }
-                    ],
-                'name': 'ffn'
+                        ],
+                    'name': 'ffn'
+                },
+                'use_bert_config': False
             }
         }
 

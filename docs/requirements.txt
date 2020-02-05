@@ -1,6 +1,6 @@
 sphinx
 sphinx-rtd-theme >= 0.2.4
-Pygments >= 2.1.1
+Pygments >= 2.1.1, < 2.5.1
 funcsigs
 recommonmark
 mypy_extensions

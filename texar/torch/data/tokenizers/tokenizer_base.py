@@ -20,8 +20,9 @@ The code structure adapted from:
 
 from typing import Any, Dict, List, Optional, Tuple, overload
 
-import os
 import json
+import os
+import warnings
 
 from texar.torch.module_base import ModuleBase
 
@@ -53,6 +54,7 @@ class TokenizerBase(ModuleBase):
     _IS_PRETRAINED: bool
     _MAX_INPUT_SIZE: Dict[str, Optional[int]]
     _VOCAB_FILE_NAMES: Dict[str, str]
+    _VOCAB_FILE_MAP: Dict[str, Dict[str, str]]
     _SPECIAL_TOKENS_ATTRIBUTES = ["bos_token", "eos_token", "unk_token",
                                   "sep_token", "pad_token", "cls_token",
                                   "mask_token", "additional_special_tokens"]
@@ -81,7 +83,12 @@ class TokenizerBase(ModuleBase):
                     assert isinstance(value, (list, tuple)) and \
                            all(isinstance(v, str) for v in value)
                 else:
-                    assert isinstance(value, str)
+                    if value is not None:
+                        assert isinstance(value, str)
+                    else:
+                        warnings.warn(f"Trying to set None as value special "
+                                      f"token '{key}'. Proceed only if you"
+                                      f" are sure!", UserWarning)
                 setattr(self, key, value)
 
     @classmethod
@@ -379,11 +386,11 @@ class TokenizerBase(ModuleBase):
         for token in tokens:
             ids.append(self._map_token_to_id_with_added_voc(token))
         if len(ids) > self.max_len:
-            raise ValueError(
+            warnings.warn(
                 "Token indices sequence length is longer than the specified "
                 "maximum sequence length for this model ({} > {}). Running "
                 "this sequence through the model will result in indexing "
-                "errors".format(len(ids), self.max_len))
+                "errors".format(len(ids), self.max_len), UserWarning)
         return ids
 
     # pylint: enable=unused-argument,function-redefined

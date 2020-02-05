@@ -13,7 +13,7 @@ The example shows:
 Use the following command to download and prepare the SST binary data:
 
 ```
-python sst_data_preprocessor.py [--data-path ./data]
+python sst_data_preprocessor.py --data-path ./data
 ```
 
 Here
