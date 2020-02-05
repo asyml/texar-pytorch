@@ -153,8 +153,8 @@ def corpus_bleu_moses(list_of_references: List[List[MaybeList[str]]],
         try:
             multi_bleu_ret = subprocess.check_output(
                 multi_bleu_cmd, stdin=hyp_input, stderr=subprocess.STDOUT)
-            multi_bleu_ret = multi_bleu_ret.decode("utf-8")
-            bleu_score = _parse_multi_bleu_ret(multi_bleu_ret, return_all)
+            multi_bleu_ret_ = multi_bleu_ret.decode("utf-8")
+            bleu_score = _parse_multi_bleu_ret(multi_bleu_ret_, return_all)
         except subprocess.CalledProcessError as error:
             if error.output is not None:
                 logging.warning("multi-bleu.perl returned non-zero exit code")

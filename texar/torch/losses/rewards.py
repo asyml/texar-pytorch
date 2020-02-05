@@ -58,7 +58,7 @@ def discount_reward(reward: torch.Tensor,
 
     tensor_rank = reward.dim()
     if tensor_rank == 1:
-        disc_reward = _discount_reward_tensor_1d(  # type: ignore
+        disc_reward = _discount_reward_tensor_1d(
             reward, sequence_length, discount)
     elif tensor_rank == 2:
         disc_reward = _discount_reward_tensor_2d(
@@ -75,7 +75,7 @@ def discount_reward(reward: torch.Tensor,
 
 
 def _discount_reward_tensor_1d(reward: torch.Tensor,
-                               sequence_length: torch.LongTensor,
+                               sequence_length: Optional[torch.LongTensor],
                                discount: float = 1.) -> torch.Tensor:
     r"""Computes discounted reward.
 
