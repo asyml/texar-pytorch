@@ -35,7 +35,7 @@ parser.add_argument(
     help="The output directory where the pickle files will be generated. "
          "By default it is set to be the same as `--data-dir`.")
 parser.add_argument(
-    "--pretrained-model-name", type=str, default="gpt2-small",
+    '--pretrained-model-name', type=str, default='gpt2-small',
     choices=tx.modules.GPT2Decoder.available_checkpoints(),
     help="Name of the pre-trained checkpoint to load.")
 parser.add_argument(

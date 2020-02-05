@@ -451,6 +451,25 @@ class TransformerDecoder(DecoderBase[Cache, TransformerDecoderOutput]):
                 :attr:`hparams` are ignored.
             infer_mode (optional): If not `None`, overrides mode given by
                 :attr:`self.training`.
+            **kwargs (optional, dict): Other keyword arguments. Typically ones
+                such as:
+
+                - **start_tokens**: A :tensor:`LongTensor` of shape
+                  ``[batch_size]``, the start tokens.
+                  Used when :attr:`decoding_strategy` is ``"infer_greedy"`` or
+                  ``"infer_sample"`` or when :attr:`beam_search` is set.
+                  Ignored when :attr:`context` is set.
+
+                  When used with the Texar data module, to get ``batch_size``
+                  samples where ``batch_size`` is changing according to the
+                  data module, this can be set as
+                  :python:`start_tokens=torch.full_like(batch['length'],
+                  bos_token_id)`.
+
+                - **end_token**: An integer or 0D :tensor:`LongTensor`, the
+                  token that marks the end of decoding.
+                  Used when :attr:`decoding_strategy` is ``"infer_greedy"`` or
+                  ``"infer_sample"``, or when :attr:`beam_search` is set.
 
         Returns:
 

@@ -107,6 +107,11 @@ Decoders
     Bahdanau
     Gumbel
 
+:hidden:`DecoderBase`
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.DecoderBase
+    :members:
+
 :hidden:`RNNDecoderBase`
 ~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.RNNDecoderBase
