@@ -564,7 +564,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
     def forward(self,  # type: ignore
                 input: torch.Tensor,
-                sequence_length: Union[torch.LongTensor, List[int]] = None,
+                sequence_length: Optional[Union[torch.LongTensor,
+                                                List[int]]] = None,
                 dtype: Optional[torch.dtype] = None,
                 data_format: Optional[str] = None) -> torch.Tensor:
         r"""Feeds forward inputs through the network layers and returns outputs.

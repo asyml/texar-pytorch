@@ -729,9 +729,12 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             if initial_state is not None:
                 state = state._replace(cell_state=initial_state)
 
-            sample_id, log_prob = self.beam_decode(  # type: ignore
+            end_token = kwargs.get('end_token')
+            assert isinstance(end_token, int)
+
+            sample_id, log_prob = self.beam_decode(
                 start_tokens=start_tokens,
-                end_token=kwargs.get('end_token'),
+                end_token=end_token,
                 initial_state=state,
                 beam_width=beam_width,
                 length_penalty=length_penalty,
@@ -761,8 +764,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         self._cell.init_batch()
 
         (outputs, final_state,
-         sequence_lengths) = self.dynamic_decode(  # type: ignore
-            helper, inputs, sequence_length, initial_state,
+         sequence_lengths) = self.dynamic_decode(
+            helper, inputs, sequence_length, initial_state,  # type: ignore
             max_decoding_length, impute_finished)
 
         # Release memory and memory_sequence_length in AttentionRNNDecoder

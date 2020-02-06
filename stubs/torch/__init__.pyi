@@ -9,6 +9,8 @@ from .storage import _StorageBase
 from .tensor import Tensor as TensorBase
 from .utils.hooks import RemovableHandle
 
+from . import backends as backends
+from . import cuda as cuda
 from . import optim as optim
 
 
@@ -105,6 +107,7 @@ double = float64 = _float64()
 short = int16 = _int16()
 long = int64 = _int64()
 uint8 = _uint8()
+int8 = _int8()
 float = float32 = _float32()
 int = int32 = _int32()
 

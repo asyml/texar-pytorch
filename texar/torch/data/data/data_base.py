@@ -179,7 +179,7 @@ class RecordDataSource(DataSource[Dict[str, RawExample]]):
         keys = list(self._sources.keys())
         iterator = zip(*[iter(source) for source in self._sources.values()])
         for values in iterator:
-            yield {key: value for key, value in zip(keys, values)}
+            yield dict(zip(keys, values))
 
     def __len__(self) -> int:
         return min(len(source) for source in self._sources.values())
