@@ -79,6 +79,7 @@ disable=invalid-name,too-many-branches,too-many-statements,too-many-arguments,  
         no-self-use,                                                            # (cannot ignore overridden methods)
         unused-wildcard-import,                                                 # (https://github.com/rogalski/astroid/commit/82c6ef644a2efb77217a23d9b8a6cfb5caffb4ba)
         duplicate-code,                                                         # (will be fixed in next release)
+        import-outside-toplevel,
 
 
 [REPORTS]

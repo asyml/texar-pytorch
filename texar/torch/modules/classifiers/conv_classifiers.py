@@ -163,7 +163,8 @@ class Conv1DClassifier(ClassifierBase):
 
     def forward(self,  # type:ignore
                 input: torch.Tensor,
-                sequence_length: Union[torch.LongTensor, List[int]] = None,
+                sequence_length: Optional[Union[torch.LongTensor,
+                                                List[int]]] = None,
                 dtype: Optional[torch.dtype] = None,
                 data_format: Optional[str] = None) \
             -> Tuple[torch.Tensor, torch.Tensor]:

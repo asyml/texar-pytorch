@@ -273,7 +273,6 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
     size = lengths.size()
     row_vector = torch.arange(max_len, device=device, dtype=lengths.dtype).view(
         *([1] * len(size)), -1).expand(*size, max_len)
-    row_vector = row_vector
     mask = (row_vector < lengths.unsqueeze(-1)).to(device=device)
     if dtype is not None:
         mask = mask.to(dtype=dtype)
