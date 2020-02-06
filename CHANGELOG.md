@@ -42,6 +42,7 @@
 * Fix the bug in google drive downloading function. ([#275](https://github.com/asyml/texar-pytorch/pull/275))
 * Fix the bug in the unit test of `GPT2Decoder`. ([#288](https://github.com/asyml/texar-pytorch/pull/288))
 * Fix the documentation issues in `Decoder` module. ([#290](https://github.com/asyml/texar-pytorch/pull/290))
+* Fix the bug in `.travis.yml` and update the versions of `pylint`, `flake8`, and `mypy`. ([#292](https://github.com/asyml/texar-pytorch/pull/292))
 
 ## [v0.1.0](https://github.com/asyml/texar-pytorch/releases/tag/v0.1.0) (2019-10-15)
 
