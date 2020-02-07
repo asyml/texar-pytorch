@@ -97,7 +97,7 @@ class FeedForwardNetwork(FeedForwardNetworkBase):
                 size = size_ext
             if size is None:
                 break
-            elif size > 0:
+            if size > 0:
                 return size
             elif i == len(self._layers) - 1:
                 return -1

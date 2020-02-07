@@ -15,6 +15,7 @@
 """
 import argparse
 import random
+import sys
 
 import numpy as np
 import torch
@@ -114,7 +115,7 @@ def main() -> None:
                     raw_text = input("Model input >>> ")
             except EOFError:
                 print("EOF entered, quitting.")
-                exit(0)
+                sys.exit()
 
             context_tokens = tokenizer.map_text_to_id(raw_text)
             context = torch.tensor(
