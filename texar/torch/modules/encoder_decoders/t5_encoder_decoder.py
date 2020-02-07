@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-T5 Model
+T5 Model.
 """
 
 from typing import Optional, Union
@@ -39,9 +39,8 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
 
     This module basically stacks
     :class:`~texar.torch.modules.WordEmbedder`,
-    :class:`~texar.torch.modules.TransformerEncoder`,
-    :class:`~texar.torch.modules.TransformerDecoder` and a dense
-    pooler.
+    :class:`~texar.torch.modules.T5Encoder`, and
+    :class:`~texar.torch.modules.T5Decoder`.
 
     Args:
         pretrained_model_name (optional): a `str`, the name
@@ -100,10 +99,10 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
     def default_hparams():
         r"""Returns a dictionary of hyperparameters with default values.
 
-        * The encoder arch is determined by the constructor argument
+        * The model arch is determined by the constructor argument
           :attr:`pretrained_model_name` if it's specified. In this case,
           `hparams` are ignored.
-        * Otherwise, the encoder arch is determined by
+        * Otherwise, the model arch is determined by
           `hparams['pretrained_model_name']` if it's specified. All other
           configurations in `hparams` are ignored.
         * If the above two are `None`, the encoder arch is defined by the
@@ -112,7 +111,7 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
         .. code-block:: python
 
             {
-                "pretrained_model_name": "bert-base-uncased",
+                "pretrained_model_name": "T5-Small",
                 "embed": {
                     "dim": 768,
                     "name": "word_embeddings"
@@ -128,10 +127,12 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
                         "num_heads": 12,
                         "num_units": 768,
                         "output_dim": 768,
-                        "use_bias": True
+                        "use_bias": False,
+                        "is_decoder": False,
+                        "relative_attention_num_buckets": 32,
                     },
-                    "relative_attention_num_buckets": 32,
-                    "name": "t5encoder",
+                    "eps": 1e-6,
+                    "name": "encoder",
                     "num_blocks": 12,
                     "poswise_feedforward": {
                         "layers": [
@@ -139,7 +140,7 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
                                 "kwargs": {
                                     "in_features": 768,
                                     "out_features": 3072,
-                                    "bias": True
+                                    "bias": False
                                 },
                                 "type": "Linear"
                             },
@@ -148,7 +149,7 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
                                 "kwargs": {
                                     "in_features": 3072,
                                     "out_features": 768,
-                                    "bias": True
+                                    "bias": False
                                 },
                                 "type": "Linear"
                             }
@@ -158,6 +159,7 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
                     },
 
                 "decoder": {
+                    "eps": 1e-6,
                     "dim": 768,
                     "embedding_dropout": 0.1,
                     "multihead_attention": {
@@ -166,11 +168,11 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
                         "num_heads": 12,
                         "num_units": 768,
                         "output_dim": 768,
-                        "use_bias": True,
+                        "use_bias": False,
+                        "is_decoder": True,
                         "relative_attention_num_buckets": 32,
                     },
-
-                    "name": "t5coder",
+                    "name": "decoder",
                     "num_blocks": 12,
                     "poswise_feedforward": {
                         "layers": [
@@ -178,7 +180,7 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
                                 "kwargs": {
                                     "in_features": 768,
                                     "out_features": 3072,
-                                    "bias": True
+                                    "bias": False
                                 },
                                 "type": "Linear"
                             },
@@ -187,7 +189,7 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
                                 "kwargs": {
                                     "in_features": 3072,
                                     "out_features": 768,
-                                    "bias": True
+                                    "bias": False
                                 },
                                 "type": "Linear"
                             }
@@ -202,34 +204,30 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
 
         Here:
 
-        The default parameters are values for uncased BERT-Base model.
+        The default parameters are values for T5-Small model.
 
         `"pretrained_model_name"`: str or None
-            The name of the pre-trained BERT model. If None, the model
+            The name of the pre-trained T5 model. If None, the model
             will be randomly initialized.
 
         `"embed"`: dict
             Hyperparameters for word embedding layer.
 
         `"vocab_size"`: int
-            The vocabulary size of `inputs` in BERT model.
-
-        `"type_vocab_size"`: int
-            The vocabulary size of the `segment_ids` passed into `BertModel`.
-
-        `"position_embed"`: dict
-            Hyperparameters for position embedding layer.
-
-        `"position_size"`: int
-            The maximum sequence length that this model might ever be used with.
+            The vocabulary size of `inputs` in T5 model.
 
         `"encoder"`: dict
-            Hyperparameters for the T5Encoder.
+            Hyperparameters for the `T5Encoder`.
             See :func:`~texar.torch.modules.T5Encoder.default_hparams`
             for details.
 
+        `"decoder"`: dict
+            Hyperparameters for the `T5Decoder`.
+            See :func:`~texar.torch.modules.T5Decoder.default_hparams`
+            for details.
+
         `"hidden_size"`: int
-            Size of the pooler dense layer.
+            Size of the hidden layer.
 
         `"initializer"`: dict, optional
             Hyperparameters of the default initializer that initializes
@@ -301,7 +299,7 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
                     'is_decoder': True,
                     'relative_attention_num_buckets': 32
                 },
-                'name': 'encoder',
+                'name': 'decoder',
                 'num_blocks': 12,
                 'poswise_feedforward': {
                     'layers': [
@@ -335,10 +333,10 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
     def forward(self,  # type: ignore
                 inputs: Union[torch.Tensor, torch.LongTensor],
                 sequence_length: Optional[torch.LongTensor] = None):
-        r"""
+        r"""Performs encoding and decoding.
 
         Args:
-            inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
+            inputs: Either a **2D Tensor** of shape ``[batch_size, max_time]``,
                 containing the ids of tokens in input sequences, or
                 a **3D Tensor** of shape `[batch_size, max_time, vocab_size]`,
                 containing soft token ids (i.e., weights or probabilities)
@@ -348,6 +346,14 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
                 lengths are masked out automatically.
 
         Returns:
+            A pair :attr:`(encoder_output, decoder_output)`
+
+            - :attr:`encoder_output`: A Tensor of shape
+              `[batch_size, max_time, dim]` containing the encoded vectors.
+
+            - :attr:`decoder_output`: An instance of
+              :class:`~texar.torch.modules.TransformerDecoderOutput` which
+              contains `sample_id` and `logits`.
         """
         if inputs.dim() == 2:
             word_embeds = self.word_embedder(ids=inputs)
@@ -373,7 +379,6 @@ class T5EncoderDecoder(EncoderDecoderBase, PretrainedT5Mixin):
 
     @property
     def output_size(self):
-        r"""The feature size of :meth:`forward` output
-        :attr:`pooled_output`.
+        r"""The feature size of :meth:`forward` output of the encoder.
         """
         return self._hparams.hidden_size

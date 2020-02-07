@@ -34,7 +34,7 @@ class T5Decoder(TransformerDecoder):
     position representation for sequence decoding.
 
     It is a stack of
-    :class:`~texar.torch.modules.MultiheadRPRAttention`,
+    :class:`~texar.torch.modules.pretrained.t5_utilsMultiheadRPRAttention`,
     :class:`~texar.torch.modules.FeedForwardNetwork`, and residual connections.
 
     Args:
@@ -86,21 +86,18 @@ class T5Decoder(TransformerDecoder):
                  token_embedder: Optional[TokenEmbedder] = None,
                  token_pos_embedder: Optional[TokenPosEmbedder] = None,
                  vocab_size: Optional[int] = None,
-                 output_layer: Optional[Union[nn.Module,
-                                              torch.Tensor,
-                                              ]] = None,
+                 output_layer: Optional[Union[nn.Module, torch.Tensor]] = None,
                  hparams=None):
         super().__init__(
             token_embedder, token_pos_embedder,
-            vocab_size=vocab_size,
-            output_layer=output_layer,
-            hparams=hparams)
+            vocab_size=vocab_size, output_layer=output_layer, hparams=hparams)
 
         self.final_layer_norm = T5LayerNorm(self._input_size,  # type: ignore
                                             eps=self._hparams.eps)
 
     def initialize_blocks(self):
-
+        r"""Helper function to initialize blocks.
+        """
         for i in range(self._hparams.num_blocks):
             attn_module = MultiheadRPRAttention(
                 self._input_size,
@@ -161,6 +158,7 @@ class T5Decoder(TransformerDecoder):
                     'relative_attention_num_buckets': 32
                 },
                 "initializer": None,
+                "eps": 1e-6,
                 "name": "t5_decoder"
 
                 # Additional for TransformerDecoder
