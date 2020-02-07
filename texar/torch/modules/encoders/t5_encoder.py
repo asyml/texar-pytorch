@@ -25,10 +25,10 @@ from texar.torch.utils import sequence_mask, transformer_attentions as attn
 
 class T5Encoder(TransformerEncoder):
     r"""Transformer based encoder that applies multi-head self attention with
-     relative positional representations for encoding sequences for T5.
+    relative positional representations for encoding sequences for T5.
 
     This module basically stacks
-    :class:`~texar.torch.modules.MultiheadRPRAttention`,
+    :class:`~texar.torch.modules.pretrained.t5_utils.MultiheadRPRAttention`,
     :class:`~texar.torch.modules.FeedForwardNetwork` and residual connections.
     This module supports the standard T5 architecture proposed in
     `(Raffel et al.) "Exploring the Limits of Transfer Learning with a Unified
@@ -49,8 +49,7 @@ class T5Encoder(TransformerEncoder):
                                             eps=self._hparams.eps)
 
     def initialize_blocks(self):
-        r""" Helper function to initialize blocks.
-
+        r"""Helper function to initialize blocks.
         """
         for i in range(self._hparams.num_blocks):
             mh_attn = MultiheadRPRAttention(
@@ -106,6 +105,7 @@ class T5Encoder(TransformerEncoder):
                     'relative_attention_num_buckets': 32
                 },
                 "initializer": None,
+                "eps": 1e-6,
                 "name": "t5_encoder"
             }
 
@@ -179,7 +179,7 @@ class T5Encoder(TransformerEncoder):
         Args:
             inputs: A 3D Tensor of shape ``[batch_size, max_time, dim]``,
                 containing the embedding of input sequences. Note that
-                the embedding dimension `dim` must equal "dim" in
+                the embedding dimension `dim` must equal `"dim"` in
                 :attr:`hparams`. The input embedding is typically an
                 aggregation of word embedding and position embedding.
             sequence_length: A 1D :tensor:`LongTensor` of shape
