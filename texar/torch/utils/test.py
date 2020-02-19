@@ -21,6 +21,7 @@ import unittest
 __all__ = [
     "pretrained_test",
     "data_test",
+    "cuda_test",
     "external_library_test",
 ]
 
@@ -35,6 +36,8 @@ pretrained_test = define_skip_condition(
     'TEST_PRETRAINED', "Test requires loading pre-trained checkpoints.")
 data_test = define_skip_condition(
     'TEST_DATA', "Test requires loading large data files.")
+cuda_test = define_skip_condition(
+    'TEST_CUDA', "Test requires cuda.")
 
 
 def external_library_test(name: str):
