@@ -40,11 +40,15 @@ from texar.torch.data.tokenizers.elmo_tokenizer_utils import batch_to_ids
 from texar.torch.data.data_utils import maybe_download
 from texar.torch.modules.pretrained.elmo_utils import (
     Highway, LstmCellWithProjection, _EncoderBase, _ElmoBiLm, TimeDistributed,
-    sort_batch_by_length, get_lengths_from_binary_sequence_mask,
     remove_sentence_boundaries, add_sentence_boundary_token_ids,
-    lazy_groups_of, block_orthogonal, ConfigurationError, combine_initial_dims,
+    block_orthogonal, ConfigurationError, combine_initial_dims,
     uncombine_initial_dims, ScalarMix)
 from texar.torch.utils.test import cuda_test
+from texar.torch.utils.utils import sort_batch_by_length
+
+
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 
 class TestElmoBiLm(unittest.TestCase):
@@ -166,7 +170,7 @@ class TestEncoderBase(unittest.TestCase):
 
         self.batch_size = 5
         self.num_valid = 3
-        sequence_lengths = get_lengths_from_binary_sequence_mask(mask)
+        sequence_lengths = mask.long().sum(-1)
         _, _, restoration_indices, sorting_indices = sort_batch_by_length(
             tensor, sequence_lengths)
         self.sorting_indices = sorting_indices
@@ -734,51 +738,6 @@ class TestUtils(unittest.TestCase):
         expected_new_mask = torch.from_numpy(numpy.array(
             [[0, 0, 0], [1, 1, 1], [1, 1, 0]])).long()
         assert (new_mask.data.numpy() == expected_new_mask.data.numpy()).all()
-
-    def test_lazy_groups_of(self):
-        xs = [1, 2, 3, 4, 5, 6, 7]
-        groups = lazy_groups_of(iter(xs), group_size=3)
-        assert next(groups) == [1, 2, 3]
-        assert next(groups) == [4, 5, 6]
-        assert next(groups) == [7]
-        with self.assertRaises(StopIteration):
-            _ = next(groups)
-
-    def test_get_sequence_lengths_from_binary_mask(self):
-        binary_mask = torch.ByteTensor(
-            [[1, 1, 1, 0, 0, 0], [1, 1, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1],
-             [1, 0, 0, 0, 0, 0]]
-        )
-        lengths = get_lengths_from_binary_sequence_mask(binary_mask)
-        numpy.testing.assert_array_equal(lengths.numpy(),
-                                         numpy.array([3, 2, 6, 1]))
-
-    def test_sort_tensor_by_length(self):
-        tensor = torch.rand([5, 7, 9])
-        tensor[0, 3:, :] = 0
-        tensor[1, 4:, :] = 0
-        tensor[2, 1:, :] = 0
-        tensor[3, 5:, :] = 0
-
-        sequence_lengths = torch.LongTensor([3, 4, 1, 5, 7])
-        sorted_tensor, sorted_lengths, reverse_indices, _ = \
-            sort_batch_by_length(tensor, sequence_lengths)
-
-        # Test sorted indices are padded correctly.
-        numpy.testing.assert_array_equal(
-            sorted_tensor[1, 5:, :].data.numpy(), 0.0)
-        numpy.testing.assert_array_equal(
-            sorted_tensor[2, 4:, :].data.numpy(), 0.0)
-        numpy.testing.assert_array_equal(
-            sorted_tensor[3, 3:, :].data.numpy(), 0.0)
-        numpy.testing.assert_array_equal(
-            sorted_tensor[4, 1:, :].data.numpy(), 0.0)
-
-        assert sorted_lengths.data.equal(torch.LongTensor([7, 5, 4, 3, 1]))
-
-        # Test restoration indices correctly recover the original tensor.
-        assert sorted_tensor.index_select(0, reverse_indices).data.equal(
-            tensor.data)
 
     def test_block_orthogonal_can_initialize(self):
         tensor = torch.zeros([10, 6])

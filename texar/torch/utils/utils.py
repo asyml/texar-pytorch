@@ -19,10 +19,12 @@ import collections
 import copy
 import inspect
 from functools import lru_cache
+from itertools import islice
 from pydoc import locate
 from typing import (
-    Any, Callable, Collection, Dict, List, MutableMapping, Optional, Sequence,
-    Tuple, Type, TypeVar, Union, cast, no_type_check, overload)
+    Any, Callable, Collection, Dict, Iterable, Iterator, List, MutableMapping,
+    Optional, Sequence, Tuple, Type, TypeVar, Union, cast, no_type_check,
+    overload)
 
 import funcsigs
 import numpy as np
@@ -67,6 +69,8 @@ __all__ = [
     'uniquify_str',
     'ceildiv',
     'sum_tensors',
+    'lazy_groups_of',
+    'sort_batch_by_length',
 ]
 
 T = TypeVar('T')  # type argument
@@ -1196,3 +1200,67 @@ def truncate_seq_pair(tokens_a: Union[List[int], List[str]],
             tokens_a.pop()
         else:
             tokens_b.pop()
+
+
+A = TypeVar("A")
+
+
+def lazy_groups_of(iterable: Iterable[A], group_size: int) -> Iterator[List[A]]:
+    r"""Takes an iterable and batches the individual instances into lists of the
+    specified size. The last list may be smaller if there are instances left
+    over.
+
+    Args:
+        iterable: An iterable object.
+        group_size: The group size.
+
+    Returns:
+        An iterator.
+    """
+    iterator = iter(iterable)
+    while True:
+        s = list(islice(iterator, group_size))
+        if len(s) > 0:
+            yield s
+        else:
+            break
+
+
+def sort_batch_by_length(tensor: torch.Tensor,
+                         sequence_lengths: torch.Tensor) -> \
+        Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    r"""Sort a batch first tensor by some specified lengths.
+
+    Args:
+        tensor: A batch first tensor.
+        sequence_lengths: A tensor representing the lengths of some dimension of
+            the tensor which we want to sort by.
+
+    Returns:
+        sorted_tensor: The original tensor sorted along the batch dimension
+            with respect to `sequence_lengths`.
+        sorted_sequence_lengths: The original `sequence_lengths` sorted by
+            decreasing size.
+        restoration_indices: Indices into the `sorted_tensor` such that
+            ``sorted_tensor.index_select(0, restoration_indices) ==
+            original_tensor``
+        permutation_index: The indices used to sort the tensor. This is useful
+            if you want to sort many tensors using the same ordering.
+    """
+    if not isinstance(tensor, torch.Tensor) or \
+            not isinstance(sequence_lengths, torch.Tensor):
+        raise ValueError(
+            "Both the tensor and sequence lengths must be torch.Tensors.")
+
+    sorted_sequence_lengths, permutation_index = sequence_lengths.sort(
+        0, descending=True)
+    sorted_tensor = tensor.index_select(0, permutation_index)
+
+    index_range = torch.arange(0, len(sequence_lengths),
+                               device=sequence_lengths.device)
+    # This is the equivalent of zipping with index, sorting by the original
+    # sequence lengths and returning the now sorted indices.
+    _, reverse_mapping = permutation_index.sort(0, descending=False)
+    restoration_indices = index_range.index_select(0, reverse_mapping)
+    return (sorted_tensor, sorted_sequence_lengths, restoration_indices,
+            permutation_index)

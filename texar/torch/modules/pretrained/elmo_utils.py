@@ -32,9 +32,7 @@ import itertools
 import json
 import logging
 
-from itertools import islice
-from typing import (Any, Callable, Dict, Iterable, Iterator, List, Optional,
-                    Tuple, TypeVar, Union)
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import h5py
 import numpy
@@ -47,6 +45,8 @@ from torch.nn.utils.rnn import (
 
 from texar.torch.data.tokenizers.elmo_tokenizer_utils import (
     batch_to_ids, ELMoCharacterMapper)
+from texar.torch.utils.utils import (
+    lazy_groups_of, sort_batch_by_length)
 
 # pylint: disable=attribute-defined-outside-init,protected-access
 
@@ -66,10 +66,7 @@ __all__ = [
     "combine_initial_dims",
     "get_device_of",
     "get_dropout_mask",
-    "get_lengths_from_binary_sequence_mask",
-    "lazy_groups_of",
     "remove_sentence_boundaries",
-    "sort_batch_by_length",
     "uncombine_initial_dims",
 ]
 
@@ -650,7 +647,7 @@ class _EncoderBase(torch.nn.Module):
         batch_size = mask.size(0)
         num_valid = torch.sum(mask[:, 0]).int().item()
 
-        sequence_lengths = get_lengths_from_binary_sequence_mask(mask)
+        sequence_lengths = mask.long().sum(-1)
         (
             sorted_inputs,
             sorted_sequence_lengths,
@@ -1872,23 +1869,6 @@ def remove_sentence_boundaries(tensor: torch.Tensor, mask: torch.Tensor) -> \
     return tensor_without_boundary_tokens, new_mask
 
 
-A = TypeVar("A")
-
-
-def lazy_groups_of(iterable: Iterable[A], group_size: int) -> Iterator[List[A]]:
-    r"""Takes an iterable and batches the individual instances into lists of the
-    specified size. The last list may be smaller if there are instances left
-    over.
-    """
-    iterator = iter(iterable)
-    while True:
-        s = list(islice(iterator, group_size))
-        if len(s) > 0:
-            yield s
-        else:
-            break
-
-
 class ConfigurationError(Exception):
     r"""The exception raised by any AllenNLP object when it's misconfigured
     (e.g. missing properties, invalid properties, unknown properties).
@@ -1902,69 +1882,6 @@ class ConfigurationError(Exception):
         # TODO(brendanr): Is there some reason why we need repr here? It
         # produces horrible output for simple multi-line error messages.
         return self.message
-
-
-def get_lengths_from_binary_sequence_mask(mask: torch.Tensor):
-    r"""Compute sequence lengths for each batch element in a tensor using a
-    binary mask.
-
-    # Parameters
-
-    mask : torch.Tensor, required.
-        A 2D binary mask of shape (batch_size, sequence_length) to
-        calculate the per-batch sequence lengths from.
-
-    # Returns
-
-    A torch.LongTensor of shape (batch_size,) representing the lengths
-    of the sequences in the batch.
-    """
-    return mask.long().sum(-1)
-
-
-def sort_batch_by_length(tensor: torch.Tensor, sequence_lengths: torch.Tensor):
-    r"""Sort a batch first tensor by some specified lengths.
-
-    # Parameters
-
-    tensor : torch.FloatTensor, required.
-        A batch first Pytorch tensor.
-    sequence_lengths : torch.LongTensor, required.
-        A tensor representing the lengths of some dimension of the tensor which
-        we want to sort by.
-
-    # Returns
-
-    sorted_tensor : torch.FloatTensor
-        The original tensor sorted along the batch dimension with respect to
-        sequence_lengths.
-    sorted_sequence_lengths : torch.LongTensor
-        The original sequence_lengths sorted by decreasing size.
-    restoration_indices : torch.LongTensor
-        Indices into the sorted_tensor such that
-        `sorted_tensor.index_select(0, restoration_indices) == original_tensor`
-    permutation_index : torch.LongTensor
-        The indices used to sort the tensor. This is useful if you want to sort
-        many tensors using the same ordering.
-    """
-
-    if not isinstance(tensor, torch.Tensor) or not isinstance(sequence_lengths,
-                                                              torch.Tensor):
-        raise ConfigurationError(
-            "Both the tensor and sequence lengths must be torch.Tensors.")
-
-    sorted_sequence_lengths, permutation_index = sequence_lengths.sort(
-        0, descending=True)
-    sorted_tensor = tensor.index_select(0, permutation_index)
-
-    index_range = torch.arange(0, len(sequence_lengths),
-                               device=sequence_lengths.device)
-    # This is the equivalent of zipping with index, sorting by the original
-    # sequence lengths and returning the now sorted indices.
-    _, reverse_mapping = permutation_index.sort(0, descending=False)
-    restoration_indices = index_range.index_select(0, reverse_mapping)
-    return (sorted_tensor, sorted_sequence_lengths, restoration_indices,
-            permutation_index)
 
 
 def block_orthogonal(tensor: torch.Tensor, split_sizes: List[int],
