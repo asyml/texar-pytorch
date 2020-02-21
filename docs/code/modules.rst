@@ -64,6 +64,11 @@ Encoders
 .. autoclass:: texar.torch.modules.BERTEncoder
     :members:
 
+:hidden:`ELMoEncoder`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.ELMoEncoder
+    :members:
+
 :hidden:`RoBERTaEncoder`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.RoBERTaEncoder
@@ -281,6 +286,11 @@ Pre-trained
 :hidden:`PretrainedBERTMixin`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.PretrainedBERTMixin
+    :members:
+
+:hidden:`PretrainedELMoMixin`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.PretrainedELMoMixin
     :members:
 
 :hidden:`PretrainedRoBERTaMixin`

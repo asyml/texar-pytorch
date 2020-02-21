@@ -195,25 +195,50 @@ class UtilsTest(unittest.TestCase):
         self.assertListEqual(tokens_a, [1])
         self.assertListEqual(tokens_b, [2, 3])
 
-    # def test_map_ids_to_strs(self):
-    #    """Tests :func:`texar.torch.utils.map_ids_to_strs`.
-    #    """
-    #    vocab_list = ['word', '词']
-    #    vocab_file = tempfile.NamedTemporaryFile()
-    #    vocab_file.write('\n'.join(vocab_list).encode("utf-8"))
-    #    vocab_file.flush()
-    #    vocab = Vocab(vocab_file.name)
+    def test_lazy_groups_of(self):
+        xs = [1, 2, 3, 4, 5, 6, 7]
+        groups = utils.lazy_groups_of(iter(xs), group_size=3)
+        assert next(groups) == [1, 2, 3]
+        assert next(groups) == [4, 5, 6]
+        assert next(groups) == [7]
+        with self.assertRaises(StopIteration):
+            _ = next(groups)
 
-    #    text = [['<BOS>', 'word', '词', '<EOS>', '<PAD>'],
-    #            ['word', '词', 'word', '词', '<PAD>']]
-    #    text = np.asarray(text)
-    #    ids = vocab.map_tokens_to_ids_py(text)
+    def test_sort_batch_by_length(self):
+        tensor = torch.rand([5, 7, 9])
+        tensor[0, 3:, :] = 0
+        tensor[1, 4:, :] = 0
+        tensor[2, 1:, :] = 0
+        tensor[3, 5:, :] = 0
 
-    #    ids = ids.tolist()
-    #    text_ = utils.map_ids_to_strs(ids, vocab)
+        sequence_lengths = torch.LongTensor([3, 4, 1, 5, 7])
+        sorted_tensor, sorted_lengths, reverse_indices, _ = \
+            utils.sort_batch_by_length(tensor, sequence_lengths)
 
-    #    self.assertEqual(text_[0], 'word 词')
-    #    self.assertEqual(text_[1], 'word 词 word 词')
+        # Test sorted indices are padded correctly.
+        np.testing.assert_array_equal(sorted_tensor[1, 5:, :].data.numpy(), 0.0)
+        np.testing.assert_array_equal(sorted_tensor[2, 4:, :].data.numpy(), 0.0)
+        np.testing.assert_array_equal(sorted_tensor[3, 3:, :].data.numpy(), 0.0)
+        np.testing.assert_array_equal(sorted_tensor[4, 1:, :].data.numpy(), 0.0)
+
+        assert sorted_lengths.data.equal(torch.LongTensor([7, 5, 4, 3, 1]))
+
+        # Test restoration indices correctly recover the original tensor.
+        assert sorted_tensor.index_select(0, reverse_indices).data.equal(
+            tensor.data)
+
+    def test_combine_initial_dims(self):
+        tensor = torch.randn(4, 10, 20, 17, 5)
+
+        tensor2d = utils.combine_initial_dims(tensor)
+        assert list(tensor2d.size()) == [4 * 10 * 20 * 17, 5]
+
+    def test_uncombine_initial_dims(self):
+        embedding2d = torch.randn(4 * 10 * 20 * 17 * 5, 12)
+
+        embedding = utils.uncombine_initial_dims(embedding2d,
+                                                 torch.Size((4, 10, 20, 17, 5)))
+        assert list(embedding.size()) == [4, 10, 20, 17, 5, 12]
 
 
 if __name__ == "__main__":

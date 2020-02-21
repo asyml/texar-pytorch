@@ -37,7 +37,7 @@ class PretrainedELMoMixin(PretrainedMixin, ABC):
     The ELMo model was proposed in
     `Deep contextualized word representations`_
     by `Peters et al.` from Allen Institute for Artificial Intelligence. It is
-    a deep  bidirectional language model (biLM), which is pre-trained on a
+    a deep bidirectional language model (`biLM`), which is pre-trained on a
     large text corpus.
 
     The available ELMo models are as follows:

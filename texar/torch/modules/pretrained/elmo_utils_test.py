@@ -15,7 +15,6 @@
 Unit tests for utils of ELMo modules.
 
 Code adapted from:
-    `https://github.com/allenai/allennlp/blob/master/allennlp/tests/common/util_test.py`
     `https://github.com/allenai/allennlp/blob/master/allennlp/tests/modules/elmo_test.py`
     `https://github.com/allenai/allennlp/blob/master/allennlp/tests/modules/encoder_base_test.py`
     `https://github.com/allenai/allennlp/blob/master/allennlp/tests/modules/lstm_cell_with_projection_test.py`
@@ -40,11 +39,10 @@ from texar.torch.data.tokenizers.elmo_tokenizer_utils import batch_to_ids
 from texar.torch.data.data_utils import maybe_download
 from texar.torch.modules.pretrained.elmo_utils import (
     Highway, LstmCellWithProjection, _EncoderBase, _ElmoBiLm, TimeDistributed,
-    sort_batch_by_length, get_lengths_from_binary_sequence_mask,
     remove_sentence_boundaries, add_sentence_boundary_token_ids,
-    lazy_groups_of, block_orthogonal, ConfigurationError, combine_initial_dims,
-    uncombine_initial_dims, ScalarMix)
+    block_orthogonal, ScalarMix)
 from texar.torch.utils.test import cuda_test
+from texar.torch.utils.utils import sort_batch_by_length
 
 
 class TestElmoBiLm(unittest.TestCase):
@@ -96,8 +94,7 @@ class TestElmoBiLm(unittest.TestCase):
                 for i in range(10):
                     sent_embeds = fin["%s" % i][...]
                     sent_embeds_concat = numpy.concatenate(
-                        (sent_embeds[0, :, :], sent_embeds[1, :, :]), axis=-1
-                    )
+                        (sent_embeds[0, :, :], sent_embeds[1, :, :]), axis=-1)
                     expected_lm_embeddings[-1].append(sent_embeds_concat)
 
         return sentences, expected_lm_embeddings
@@ -116,8 +113,7 @@ class TestElmoBiLm(unittest.TestCase):
         for i, batch in enumerate(batches):
             lm_embeddings = elmo_bilm(batch_to_ids(batch[:3]))
             top_layer_embeddings, mask = remove_sentence_boundaries(
-                lm_embeddings["activations"][2], lm_embeddings["mask"]
-            )
+                lm_embeddings["activations"][2], lm_embeddings["mask"])
 
             # check the mask lengths
             lengths = mask.data.numpy().sum(axis=1)
@@ -134,9 +130,7 @@ class TestElmoBiLm(unittest.TestCase):
                     numpy.allclose(
                         top_layer_embeddings[k, : lengths[k], :].data.numpy(),
                         expected_top_layer[k],
-                        atol=1.0e-6,
-                    )
-                )
+                        atol=1.0e-6,))
 
 
 class TestEncoderBase(unittest.TestCase):
@@ -145,12 +139,10 @@ class TestEncoderBase(unittest.TestCase):
         super().setUp()
         self.lstm = LSTM(
             bidirectional=True, num_layers=3, input_size=3, hidden_size=7,
-            batch_first=True
-        )
+            batch_first=True)
         self.rnn = RNN(
             bidirectional=True, num_layers=3, input_size=3, hidden_size=7,
-            batch_first=True
-        )
+            batch_first=True)
         self.encoder_base = _EncoderBase(stateful=True)
 
         tensor = torch.rand([5, 7, 3])
@@ -166,7 +158,7 @@ class TestEncoderBase(unittest.TestCase):
 
         self.batch_size = 5
         self.num_valid = 3
-        sequence_lengths = get_lengths_from_binary_sequence_mask(mask)
+        sequence_lengths = mask.long().sum(-1)
         _, _, restoration_indices, sorting_indices = sort_batch_by_length(
             tensor, sequence_lengths)
         self.sorting_indices = sorting_indices
@@ -179,8 +171,7 @@ class TestEncoderBase(unittest.TestCase):
         # we'll just use a "pass through" encoder, as we aren't actually testing
         # the functionality of the encoder here anyway.
         _, states, restoration_indices = encoder_base.sort_and_run_forward(
-            lambda *x: x, self.tensor, self.mask, initial_states
-        )
+            lambda *x: x, self.tensor, self.mask, initial_states)
         # Our input tensor had 2 zero length sequences, so we need
         # to concat a tensor of shape
         # (num_layers * num_directions, batch_size - num_valid, hidden_dim),
@@ -198,18 +189,13 @@ class TestEncoderBase(unittest.TestCase):
             for index in [0, 1, 3]:
                 numpy.testing.assert_array_equal(
                     unsorted_state[:, index, :].data.numpy(),
-                    original[:, index, :].data.numpy()
-                )
+                    original[:, index, :].data.numpy())
 
     def test_get_initial_states(self):
         # First time we call it, there should be no state, so we should return
         # None.
-        assert (
-            self.encoder_base._get_initial_states(
-                self.batch_size, self.num_valid, self.sorting_indices
-            )
-            is None
-        )
+        assert (self.encoder_base._get_initial_states(
+            self.batch_size, self.num_valid, self.sorting_indices) is None)
 
         # First test the case that the previous state is _smaller_ than the
         # current state input.
@@ -217,23 +203,18 @@ class TestEncoderBase(unittest.TestCase):
         self.encoder_base._states = initial_states
         # sorting indices are: [0, 1, 3, 2, 4]
         returned_states = self.encoder_base._get_initial_states(
-            self.batch_size, self.num_valid, self.sorting_indices
-        )
+            self.batch_size, self.num_valid, self.sorting_indices)
 
-        correct_expanded_states = [
-            torch.cat([state, torch.zeros([1, 2, 7])], 1)
-            for state in initial_states
-        ]
+        correct_expanded_states = [torch.cat([state, torch.zeros([1, 2, 7])], 1)
+                                   for state in initial_states]
         # State should have been expanded with zeros to have shape
         # (1, batch_size, hidden_size).
         numpy.testing.assert_array_equal(
             self.encoder_base._states[0].data.numpy(),
-            correct_expanded_states[0].data.numpy()
-        )
+            correct_expanded_states[0].data.numpy())
         numpy.testing.assert_array_equal(
             self.encoder_base._states[1].data.numpy(),
-            correct_expanded_states[1].data.numpy()
-        )
+            correct_expanded_states[1].data.numpy())
 
         # The returned states should be of shape (1, num_valid, hidden_size) and
         # they also should have been sorted with respect to the indices.
@@ -241,50 +222,41 @@ class TestEncoderBase(unittest.TestCase):
 
         correct_returned_states = [
             state.index_select(1, self.sorting_indices)[:, : self.num_valid, :]
-            for state in correct_expanded_states
-        ]
+            for state in correct_expanded_states]
 
         numpy.testing.assert_array_equal(
             returned_states[0].data.numpy(),
-            correct_returned_states[0].data.numpy()
-        )
+            correct_returned_states[0].data.numpy())
         numpy.testing.assert_array_equal(
             returned_states[1].data.numpy(),
-            correct_returned_states[1].data.numpy()
-        )
+            correct_returned_states[1].data.numpy())
 
         # Now test the case that the previous state is larger:
         original_states = (torch.randn([1, 10, 7]), torch.randn([1, 10, 7]))
         self.encoder_base._states = original_states
         # sorting indices are: [0, 1, 3, 2, 4]
         returned_states = self.encoder_base._get_initial_states(
-            self.batch_size, self.num_valid, self.sorting_indices
-        )
+            self.batch_size, self.num_valid, self.sorting_indices)
         # State should not have changed, as they were larger
         # than the batch size of the requested states.
         numpy.testing.assert_array_equal(
             self.encoder_base._states[0].data.numpy(),
-            original_states[0].data.numpy()
-        )
+            original_states[0].data.numpy())
         numpy.testing.assert_array_equal(
             self.encoder_base._states[1].data.numpy(),
-            original_states[1].data.numpy()
-        )
+            original_states[1].data.numpy())
 
         # The returned states should be of shape (1, num_valid, hidden_size)
         # and they also should have been sorted with respect to the indices.
         correct_returned_state = [
             x.index_select(1, self.sorting_indices)[:, : self.num_valid, :]
-            for x in original_states
-        ]
+            for x in original_states]
         numpy.testing.assert_array_equal(
             returned_states[0].data.numpy(),
-            correct_returned_state[0].data.numpy()
-        )
+            correct_returned_state[0].data.numpy())
         numpy.testing.assert_array_equal(
             returned_states[1].data.numpy(),
-            correct_returned_state[1].data.numpy()
-        )
+            correct_returned_state[1].data.numpy())
 
     def test_update_states(self):
         assert self.encoder_base._states is None
@@ -292,8 +264,7 @@ class TestEncoderBase(unittest.TestCase):
 
         index_selected_initial_states = (
             initial_states[0].index_select(1, self.restoration_indices),
-            initial_states[1].index_select(1, self.restoration_indices),
-        )
+            initial_states[1].index_select(1, self.restoration_indices),)
 
         self.encoder_base._update_states(initial_states,
                                          self.restoration_indices)
@@ -301,12 +272,10 @@ class TestEncoderBase(unittest.TestCase):
         # state.
         numpy.testing.assert_array_equal(
             self.encoder_base._states[0].data.numpy(),
-            index_selected_initial_states[0].data.numpy()
-        )
+            index_selected_initial_states[0].data.numpy())
         numpy.testing.assert_array_equal(
             self.encoder_base._states[1].data.numpy(),
-            index_selected_initial_states[1].data.numpy()
-        )
+            index_selected_initial_states[1].data.numpy())
 
         new_states = torch.randn([1, 5, 7]), torch.randn([1, 5, 7])
         # tensor has 2 completely masked rows, so the last 2 rows of the _
@@ -317,8 +286,7 @@ class TestEncoderBase(unittest.TestCase):
 
         index_selected_new_states = (
             new_states[0].index_select(1, self.restoration_indices),
-            new_states[1].index_select(1, self.restoration_indices),
-        )
+            new_states[1].index_select(1, self.restoration_indices),)
 
         self.encoder_base._update_states(new_states, self.restoration_indices)
         # Check that the update _preserved_ the state for the rows which were
@@ -326,22 +294,18 @@ class TestEncoderBase(unittest.TestCase):
         for index in [2, 4]:
             numpy.testing.assert_array_equal(
                 self.encoder_base._states[0][:, index, :].data.numpy(),
-                index_selected_initial_states[0][:, index, :].data.numpy(),
-            )
+                index_selected_initial_states[0][:, index, :].data.numpy(),)
             numpy.testing.assert_array_equal(
                 self.encoder_base._states[1][:, index, :].data.numpy(),
-                index_selected_initial_states[1][:, index, :].data.numpy(),
-            )
+                index_selected_initial_states[1][:, index, :].data.numpy(),)
         # Now the states which were updated:
         for index in [0, 1, 3]:
             numpy.testing.assert_array_equal(
                 self.encoder_base._states[0][:, index, :].data.numpy(),
-                index_selected_new_states[0][:, index, :].data.numpy(),
-            )
+                index_selected_new_states[0][:, index, :].data.numpy(),)
             numpy.testing.assert_array_equal(
                 self.encoder_base._states[1][:, index, :].data.numpy(),
-                index_selected_new_states[1][:, index, :].data.numpy(),
-            )
+                index_selected_new_states[1][:, index, :].data.numpy(),)
 
         # Now test the case that the new state is smaller:
         small_new_states = torch.randn([1, 3, 7]), torch.randn([1, 3, 7])
@@ -352,8 +316,7 @@ class TestEncoderBase(unittest.TestCase):
 
         index_selected_small_states = (
             small_new_states[0].index_select(1, small_restoration_indices),
-            small_new_states[1].index_select(1, small_restoration_indices),
-        )
+            small_new_states[1].index_select(1, small_restoration_indices),)
         self.encoder_base._update_states(small_new_states,
                                          small_restoration_indices)
 
@@ -362,33 +325,27 @@ class TestEncoderBase(unittest.TestCase):
         for index in [1, 3]:
             numpy.testing.assert_array_equal(
                 self.encoder_base._states[0][:, index, :].data.numpy(),
-                index_selected_new_states[0][:, index, :].data.numpy(),
-            )
+                index_selected_new_states[0][:, index, :].data.numpy(),)
             numpy.testing.assert_array_equal(
                 self.encoder_base._states[1][:, index, :].data.numpy(),
-                index_selected_new_states[1][:, index, :].data.numpy(),
-            )
+                index_selected_new_states[1][:, index, :].data.numpy(),)
         # Indices we did update:
         for index in [0, 2]:
             numpy.testing.assert_array_equal(
                 self.encoder_base._states[0][:, index, :].data.numpy(),
-                index_selected_small_states[0][:, index, :].data.numpy(),
-            )
+                index_selected_small_states[0][:, index, :].data.numpy(),)
             numpy.testing.assert_array_equal(
                 self.encoder_base._states[1][:, index, :].data.numpy(),
-                index_selected_small_states[1][:, index, :].data.numpy(),
-            )
+                index_selected_small_states[1][:, index, :].data.numpy(),)
 
         # We didn't update index 4 in the previous step either, so it should
         # be equal to the 4th index of initial states.
         numpy.testing.assert_array_equal(
             self.encoder_base._states[0][:, 4, :].data.numpy(),
-            index_selected_initial_states[0][:, 4, :].data.numpy(),
-        )
+            index_selected_initial_states[0][:, 4, :].data.numpy(),)
         numpy.testing.assert_array_equal(
             self.encoder_base._states[1][:, 4, :].data.numpy(),
-            index_selected_initial_states[1][:, 4, :].data.numpy(),
-        )
+            index_selected_initial_states[1][:, 4, :].data.numpy(),)
 
     def test_reset_states(self):
         # Initialize the encoder states.
@@ -396,8 +353,7 @@ class TestEncoderBase(unittest.TestCase):
         initial_states = torch.randn([1, 5, 7]), torch.randn([1, 5, 7])
         index_selected_initial_states = (
             initial_states[0].index_select(1, self.restoration_indices),
-            initial_states[1].index_select(1, self.restoration_indices),
-        )
+            initial_states[1].index_select(1, self.restoration_indices),)
         self.encoder_base._update_states(initial_states,
                                          self.restoration_indices)
 
@@ -407,21 +363,17 @@ class TestEncoderBase(unittest.TestCase):
         # First two states should be zeros
         numpy.testing.assert_array_equal(
             self.encoder_base._states[0][:, :2, :].data.numpy(),
-            torch.zeros_like(initial_states[0])[:, :2, :].data.numpy(),
-        )
+            torch.zeros_like(initial_states[0])[:, :2, :].data.numpy(),)
         numpy.testing.assert_array_equal(
             self.encoder_base._states[1][:, :2, :].data.numpy(),
-            torch.zeros_like(initial_states[1])[:, :2, :].data.numpy(),
-        )
+            torch.zeros_like(initial_states[1])[:, :2, :].data.numpy(),)
         # Remaining states should be the same
         numpy.testing.assert_array_equal(
             self.encoder_base._states[0][:, 2:, :].data.numpy(),
-            index_selected_initial_states[0][:, 2:, :].data.numpy(),
-        )
+            index_selected_initial_states[0][:, 2:, :].data.numpy(),)
         numpy.testing.assert_array_equal(
             self.encoder_base._states[1][:, 2:, :].data.numpy(),
-            index_selected_initial_states[1][:, 2:, :].data.numpy(),
-        )
+            index_selected_initial_states[1][:, 2:, :].data.numpy(),)
 
         # Check that error is raised if mask has wrong batch size.
         bad_mask = torch.FloatTensor([1, 1, 0])
@@ -440,10 +392,8 @@ class TestEncoderBase(unittest.TestCase):
         # A transposition will make the tensors non-contiguous, start them off
         # at the wrong shape and transpose them into the right shape.
         encoder_base = _EncoderBase(stateful=False)
-        initial_states = (
-            torch.randn(5, 6, 7).permute(1, 0, 2),
-            torch.randn(5, 6, 7).permute(1, 0, 2),
-        )
+        initial_states = (torch.randn(5, 6, 7).permute(1, 0, 2),
+                          torch.randn(5, 6, 7).permute(1, 0, 2),)
         assert not initial_states[0].is_contiguous() and \
                not initial_states[1].is_contiguous()
         assert initial_states[0].size() == torch.Size([6, 5, 7])
@@ -486,10 +436,8 @@ class TestEncoderBase(unittest.TestCase):
         # A transposition will make the tensors non-contiguous, start them off
         # at the wrong shape and transpose them into the right shape.
         encoder_base = _EncoderBase(stateful=False).cuda()
-        initial_states = (
-            torch.randn(5, 6, 7).cuda().permute(1, 0, 2),
-            torch.randn(5, 6, 7).cuda().permute(1, 0, 2),
-        )
+        initial_states = (torch.randn(5, 6, 7).cuda().permute(1, 0, 2),
+                          torch.randn(5, 6, 7).cuda().permute(1, 0, 2),)
         assert not initial_states[0].is_contiguous() and not initial_states[
             1].is_contiguous()
         assert initial_states[0].size() == torch.Size([6, 5, 7])
@@ -500,12 +448,10 @@ class TestEncoderBase(unittest.TestCase):
         # or just a single tensor.
         encoder_base.sort_and_run_forward(
             self.lstm.cuda(), self.tensor.cuda(), self.mask.cuda(),
-            initial_states
-        )
+            initial_states)
         encoder_base.sort_and_run_forward(
             self.rnn.cuda(), self.tensor.cuda(), self.mask.cuda(),
-            initial_states[0]
-        )
+            initial_states[0])
 
         # Case 2: Encoder is stateful
 
@@ -567,12 +513,10 @@ class TestLstmCellWithProjection(unittest.TestCase):
             hidden_size=5,
             cell_size=7,
             memory_cell_clip_value=2,
-            state_projection_clip_value=1,
-        )
+            state_projection_clip_value=1,)
         output_sequence, lstm_state = lstm(
             input_tensor, [5, 4, 2, 1], (initial_hidden_state,
-                                         initial_memory_state)
-        )
+                                         initial_memory_state))
         numpy.testing.assert_array_equal(
             output_sequence.data[1, 4:, :].numpy(), 0.0)
         numpy.testing.assert_array_equal(
@@ -605,8 +549,7 @@ class TestTimeDistributed(unittest.TestCase):
         output = distributed_embedding(char_input)
         assert_almost_equal(
             output.data.numpy(),
-            [[[[0.5, 0.5], [0.4, 0.4]], [[0.5, 0.5], [0.5, 0.5]]]]
-        )
+            [[[[0.5, 0.5], [0.4, 0.4]], [[0.5, 0.5], [0.5, 0.5]]]])
 
     def test_time_distributed_reshapes_positional_kwarg_correctly(self):
         char_embedding = Embedding(2, 2)
@@ -617,8 +560,7 @@ class TestTimeDistributed(unittest.TestCase):
         output = distributed_embedding(input=char_input)
         assert_almost_equal(
             output.data.numpy(),
-            [[[[0.5, 0.5], [0.4, 0.4]], [[0.5, 0.5], [0.5, 0.5]]]]
-        )
+            [[[[0.5, 0.5], [0.4, 0.4]], [[0.5, 0.5], [0.5, 0.5]]]])
 
     def test_time_distributed_works_with_multiple_inputs(self):
         module = lambda x, y: x + y
@@ -631,10 +573,8 @@ class TestTimeDistributed(unittest.TestCase):
     def test_time_distributed_reshapes_multiple_inputs_with_pass_through_tensor_correctly(self):
 
         class FakeModule(Module):
-
             def forward(self, input_tensor, tensor_to_pass_through=None,
                         another_tensor=None):
-
                 return input_tensor + tensor_to_pass_through + another_tensor
 
         module = FakeModule()
@@ -648,8 +588,7 @@ class TestTimeDistributed(unittest.TestCase):
             input_tensor1,
             tensor_to_pass_through=input_to_pass_through,
             another_tensor=input_tensor2,
-            pass_through=["tensor_to_pass_through"],
-        )
+            pass_through=["tensor_to_pass_through"],)
         assert_almost_equal(output.data.numpy(), [[[8, 11], [15, 12]]])
 
     def test_time_distributed_reshapes_multiple_inputs_with_pass_through_non_tensor_correctly(self):
@@ -671,8 +610,7 @@ class TestTimeDistributed(unittest.TestCase):
             input_tensor1,
             number=input_number,
             another_tensor=input_tensor2,
-            pass_through=["number"],
-        )
+            pass_through=["number"],)
         assert_almost_equal(output.data.numpy(), [[[10, 9], [17, 10]]])
 
 
@@ -691,26 +629,18 @@ class TestUtils(unittest.TestCase):
 
     def test_add_sentence_boundary_token_ids_handles_3D_input(self):
         tensor = torch.from_numpy(
-            numpy.array(
-                [
-                    [[1, 2, 3, 4], [5, 5, 5, 5], [6, 8, 1, 2]],
-                    [[4, 3, 2, 1], [8, 7, 6, 5], [0, 0, 0, 0]],
-                ]
-            )
-        )
+            numpy.array([[[1, 2, 3, 4], [5, 5, 5, 5], [6, 8, 1, 2]],
+                         [[4, 3, 2, 1], [8, 7, 6, 5], [0, 0, 0, 0]]]))
         mask = ((tensor > 0).sum(dim=-1) > 0).type(torch.LongTensor)
         bos = torch.from_numpy(numpy.array([9, 9, 9, 9]))
         eos = torch.from_numpy(numpy.array([10, 10, 10, 10]))
         new_tensor, new_mask = add_sentence_boundary_token_ids(
             tensor, mask, bos, eos)
         expected_new_tensor = numpy.array(
-            [
-                [[9, 9, 9, 9], [1, 2, 3, 4], [5, 5, 5, 5], [6, 8, 1, 2],
-                 [10, 10, 10, 10]],
-                [[9, 9, 9, 9], [4, 3, 2, 1], [8, 7, 6, 5], [10, 10, 10, 10],
-                 [0, 0, 0, 0]],
-            ]
-        )
+            [[[9, 9, 9, 9], [1, 2, 3, 4], [5, 5, 5, 5], [6, 8, 1, 2],
+              [10, 10, 10, 10]],
+             [[9, 9, 9, 9], [4, 3, 2, 1], [8, 7, 6, 5], [10, 10, 10, 10],
+              [0, 0, 0, 0]]])
         assert (new_tensor.data.numpy() == expected_new_tensor).all()
         assert (new_mask.data.numpy() == (
                 (expected_new_tensor > 0).sum(axis=-1) > 0)).all()
@@ -735,51 +665,6 @@ class TestUtils(unittest.TestCase):
             [[0, 0, 0], [1, 1, 1], [1, 1, 0]])).long()
         assert (new_mask.data.numpy() == expected_new_mask.data.numpy()).all()
 
-    def test_lazy_groups_of(self):
-        xs = [1, 2, 3, 4, 5, 6, 7]
-        groups = lazy_groups_of(iter(xs), group_size=3)
-        assert next(groups) == [1, 2, 3]
-        assert next(groups) == [4, 5, 6]
-        assert next(groups) == [7]
-        with self.assertRaises(StopIteration):
-            _ = next(groups)
-
-    def test_get_sequence_lengths_from_binary_mask(self):
-        binary_mask = torch.ByteTensor(
-            [[1, 1, 1, 0, 0, 0], [1, 1, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1],
-             [1, 0, 0, 0, 0, 0]]
-        )
-        lengths = get_lengths_from_binary_sequence_mask(binary_mask)
-        numpy.testing.assert_array_equal(lengths.numpy(),
-                                         numpy.array([3, 2, 6, 1]))
-
-    def test_sort_tensor_by_length(self):
-        tensor = torch.rand([5, 7, 9])
-        tensor[0, 3:, :] = 0
-        tensor[1, 4:, :] = 0
-        tensor[2, 1:, :] = 0
-        tensor[3, 5:, :] = 0
-
-        sequence_lengths = torch.LongTensor([3, 4, 1, 5, 7])
-        sorted_tensor, sorted_lengths, reverse_indices, _ = \
-            sort_batch_by_length(tensor, sequence_lengths)
-
-        # Test sorted indices are padded correctly.
-        numpy.testing.assert_array_equal(
-            sorted_tensor[1, 5:, :].data.numpy(), 0.0)
-        numpy.testing.assert_array_equal(
-            sorted_tensor[2, 4:, :].data.numpy(), 0.0)
-        numpy.testing.assert_array_equal(
-            sorted_tensor[3, 3:, :].data.numpy(), 0.0)
-        numpy.testing.assert_array_equal(
-            sorted_tensor[4, 1:, :].data.numpy(), 0.0)
-
-        assert sorted_lengths.data.equal(torch.LongTensor([7, 5, 4, 3, 1]))
-
-        # Test restoration indices correctly recover the original tensor.
-        assert sorted_tensor.index_select(0, reverse_indices).data.equal(
-            tensor.data)
-
     def test_block_orthogonal_can_initialize(self):
         tensor = torch.zeros([10, 6])
         block_orthogonal(tensor, [5, 3])
@@ -788,8 +673,7 @@ class TestUtils(unittest.TestCase):
         def test_block_is_orthogonal(block) -> None:
             matrix_product = block.T @ block
             numpy.testing.assert_array_almost_equal(
-                matrix_product, numpy.eye(matrix_product.shape[-1]), 6
-            )
+                matrix_product, numpy.eye(matrix_product.shape[-1]), 6)
 
         test_block_is_orthogonal(tensor[:5, :3])
         test_block_is_orthogonal(tensor[:5, 3:])
@@ -798,21 +682,8 @@ class TestUtils(unittest.TestCase):
 
     def test_block_orthogonal_raises_on_mismatching_dimensions(self):
         tensor = torch.zeros([10, 6, 8])
-        with self.assertRaises(ConfigurationError):
+        with self.assertRaises(ValueError):
             block_orthogonal(tensor, [7, 2, 1])
-
-    def test_combine_initial_dims(self):
-        tensor = torch.randn(4, 10, 20, 17, 5)
-
-        tensor2d = combine_initial_dims(tensor)
-        assert list(tensor2d.size()) == [4 * 10 * 20 * 17, 5]
-
-    def test_uncombine_initial_dims(self):
-        embedding2d = torch.randn(4 * 10 * 20 * 17 * 5, 12)
-
-        embedding = uncombine_initial_dims(embedding2d,
-                                           torch.Size((4, 10, 20, 17, 5)))
-        assert list(embedding.size()) == [4, 10, 20, 17, 5, 12]
 
 
 class TestScalarMix(unittest.TestCase):
@@ -835,11 +706,11 @@ class TestScalarMix(unittest.TestCase):
     def test_scalar_mix_throws_error_on_incorrect_number_of_inputs(self):
         mixture = ScalarMix(3)
         tensors = [torch.randn([3, 4, 5]) for _ in range(5)]
-        with self.assertRaises(ConfigurationError):
+        with self.assertRaises(ValueError):
             _ = mixture(tensors)
 
     def test_scalar_mix_throws_error_on_incorrect_initial_scalar_parameters_length(self):
-        with self.assertRaises(ConfigurationError):
+        with self.assertRaises(ValueError):
             ScalarMix(3, initial_scalar_parameters=[0.0, 0.0])
 
     def test_scalar_mix_trainable_with_initial_scalar_parameters(self):

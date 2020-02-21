@@ -81,11 +81,9 @@ class ELMoEncoder(EncoderBase, PretrainedELMoMixin):
 
         assert options_file is not None
         self._elmo_lstm = _ElmoBiLm(
-            options_file,
-            weight_file,  # type: ignore
+            options_file, weight_file,
             requires_grad=self.hparams.requires_grad,
-            vocab_to_cache=self.hparams.vocab_to_cache,
-        )
+            vocab_to_cache=self.hparams.vocab_to_cache)
         tmp_dir.cleanup()
 
         self._has_cached_vocab = self.hparams.vocab_to_cache is not None
@@ -97,8 +95,7 @@ class ELMoEncoder(EncoderBase, PretrainedELMoMixin):
                 self._elmo_lstm.num_layers,
                 do_layer_norm=self.hparams.do_layer_norm,
                 initial_scalar_parameters=self.hparams.scalar_mix_parameters,
-                trainable=self.hparams.scalar_mix_parameters is None,
-            )
+                trainable=self.hparams.scalar_mix_parameters is None)
             self.add_module("scalar_mix_{}".format(k), scalar_mix)
             self._scalar_mixes.append(scalar_mix)
 
@@ -152,7 +149,7 @@ class ELMoEncoder(EncoderBase, PretrainedELMoMixin):
 
         Here:
 
-        The default parameters are values for elmo-small model.
+        The default parameters are values for ELMo small model.
 
         `"pretrained_model_name"`: str or None
             The name of the pre-trained ELMo model. If None, the model
@@ -164,7 +161,7 @@ class ELMoEncoder(EncoderBase, PretrainedELMoMixin):
         `"num_output_representations"`: int
             The number of ELMo representation to output with different linear
             weighted combination of the 3 layers (i.e., character-convnet
-            output, 1st lstm output, 2nd lstm output).
+            output, the first LSTM output, the second LSTM output).
 
         `"requires_grad"`: bool
             If True, compute gradient of ELMo parameters for fine tuning.
@@ -175,12 +172,12 @@ class ELMoEncoder(EncoderBase, PretrainedELMoMixin):
         `"dropout"`: float
             The dropout to be applied to the ELMo representations.
 
-        `"vocab_to_cache"`: List[str]
+        `"vocab_to_cache"`: List[string]
             A list of words to pre-compute and cache character convolutions
-            for. If you use this option, Elmo expects that you pass word
-            indices of shape (batch_size, timesteps) to forward, instead
+            for. If you use this option, ELMo expects that you pass word
+            indices of shape `(batch_size, timesteps)` to forward, instead
             of character indices. If you use this option and pass a word which
-            wasn't pre-cached, this will break.
+            was not pre-cached, this will break.
 
         `"keep_sentence_boundaries"`: bool
             If True, the representation of the sentence boundary tokens are
@@ -245,7 +242,7 @@ class ELMoEncoder(EncoderBase, PretrainedELMoMixin):
                 word ids which have been pre-cached.
 
         Returns:
-            A Dict with keys:
+            A Dictionary with keys:
 
             - :attr:`elmo_representations`: A `num_output_representations` list
               of ELMo representations for the input sequence. Each
@@ -304,14 +301,12 @@ class ELMoEncoder(EncoderBase, PretrainedELMoMixin):
             mask = processed_mask.view(original_word_size)
             elmo_representations = [
                 representation.view(original_word_size + (-1,))
-                for representation in representations
-            ]
+                for representation in representations]
         elif len(original_shape) > 3:
             mask = processed_mask.view(original_shape[:-1])
             elmo_representations = [
                 representation.view(original_shape[:-1] + (-1,))
-                for representation in representations
-            ]
+                for representation in representations]
         else:
             mask = processed_mask
             elmo_representations = representations
