@@ -30,13 +30,11 @@ __all__ = [
 ]
 
 
-def _make_bos_eos(
-    character: int,
-    padding_character: int,
-    beginning_of_word_character: int,
-    end_of_word_character: int,
-    max_word_length: int,
-):
+def _make_bos_eos(character: int,
+                  padding_character: int,
+                  beginning_of_word_character: int,
+                  end_of_word_character: int,
+                  max_word_length: int):
     char_ids = [padding_character] * max_word_length
     char_ids[0] = beginning_of_word_character
     char_ids[1] = character
@@ -86,25 +84,22 @@ class ELMoCharacterMapper:
 
     def convert_word_to_char_ids(self, word: str) -> List[int]:
         if word in self.tokens_to_add:
-            char_ids = ([ELMoCharacterMapper.padding_character] *
-                        ELMoCharacterMapper.max_word_length)
-            char_ids[0] = ELMoCharacterMapper.beginning_of_word_character
+            char_ids = [self.padding_character] * self.max_word_length
+            char_ids[0] = self.beginning_of_word_character
             char_ids[1] = self.tokens_to_add[word]
-            char_ids[2] = ELMoCharacterMapper.end_of_word_character
-        elif word == ELMoCharacterMapper.bos_token:
-            char_ids = ELMoCharacterMapper.beginning_of_sentence_characters
-        elif word == ELMoCharacterMapper.eos_token:
-            char_ids = ELMoCharacterMapper.end_of_sentence_characters
+            char_ids[2] = self.end_of_word_character
+        elif word == self.bos_token:
+            char_ids = self.beginning_of_sentence_characters
+        elif word == self.eos_token:
+            char_ids = self.end_of_sentence_characters
         else:
-            word_encoded = word.encode(
-                "utf-8", "ignore")[: (ELMoCharacterMapper.max_word_length - 2)]
-            char_ids = ([ELMoCharacterMapper.padding_character] *
-                        ELMoCharacterMapper.max_word_length)
-            char_ids[0] = ELMoCharacterMapper.beginning_of_word_character
+            word_encoded = word.encode("utf-8", "ignore")[: (
+                    self.max_word_length - 2)]
+            char_ids = [self.padding_character] * self.max_word_length
+            char_ids[0] = self.beginning_of_word_character
             for k, chr_id in enumerate(word_encoded, start=1):
                 char_ids[k] = chr_id
-            char_ids[len(word_encoded) + 1] = \
-                ELMoCharacterMapper.end_of_word_character
+            char_ids[len(word_encoded) + 1] = self.end_of_word_character
 
         # +1 one for masking
         return [c + 1 for c in char_ids]
