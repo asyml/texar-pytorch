@@ -34,6 +34,7 @@ _BERT_PATH = "https://storage.googleapis.com/bert_models/"
 _BIOBERT_PATH = "https://github.com/naver/biobert-pretrained/releases/download/"
 _SCIBERT_PATH = "https://s3-us-west-2.amazonaws.com/ai2-s2-research/" \
                 "scibert/tensorflow_models/"
+_SPANBERT_PATH = "https://dl.fbaipublicfiles.com/fairseq/models/"
 
 
 class PretrainedBERTMixin(PretrainedMixin, ABC):
@@ -97,6 +98,21 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         * ``scibert-basevocab-cased``: Cased version of the model trained on
           the original BERT vocabulary.
 
+    * **SpanBERT**: proposed in (`Joshi et al`. 2019)
+      `SpanBERT: Improving Pre-training by Representing and Predicting Spans`_.
+      As a variant of the standard BERT model, SpanBERT extends BERT by
+      (1) masking contiguous random spans, rather than random tokens, and
+      (2) training the span boundary representations to predict the entire
+      content of the masked span, without relying on the individual token
+      representations within it. Differing from the standard BERT, the
+      SpanBERT model does not use segmentation embedding. Available model names
+      include:
+
+        * ``spanbert-base-cased``: SpanBERT using the BERT-base architecture,
+          12-layer, 768-hidden, 12-heads , 110M parameters.
+        * ``spanbert-large-cased``: SpanBERT using the BERT-large architecture,
+          24-layer, 1024-hidden, 16-heads, 340M parameters.
+
     We provide the following BERT classes:
 
       * :class:`~texar.torch.modules.BERTEncoder` for text encoding.
@@ -111,6 +127,9 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
 
     .. _`SciBERT: A Pretrained Language Model for Scientific Text`:
         https://arxiv.org/abs/1903.10676
+
+    .. _`SpanBERT: Improving Pre-training by Representing and Predicting Spans`:
+        https://arxiv.org/abs/1907.10529
     """
 
     _MODEL_NAME = "BERT"
@@ -150,6 +169,12 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
             _SCIBERT_PATH + 'scibert_basevocab_uncased.tar.gz',
         'scibert-basevocab-cased':
             _SCIBERT_PATH + 'scibert_basevocab_cased.tar.gz',
+
+        # SpanBERT
+        'spanbert-base-cased':
+            _SPANBERT_PATH + "spanbert_hf_base.tar.gz",
+        'spanbert-large-cased':
+            _SPANBERT_PATH + "spanbert_hf.tar.gz",
     }
     _MODEL2CKPT = {
         # Standard BERT
@@ -172,6 +197,10 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         'scibert-scivocab-cased': 'bert_model.ckpt',
         'scibert-basevocab-uncased': 'bert_model.ckpt',
         'scibert-basevocab-cased': 'bert_model.ckpt',
+
+        # SpanBERT
+        'spanbert-base-cased': 'pytorch_model.bin',
+        'spanbert-large-cased': 'pytorch_model.bin',
     }
 
     @classmethod
@@ -182,13 +211,14 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         config_path = None
 
         for file in files:
-            if file == 'bert_config.json':
+            if file in ('bert_config.json', 'config.json'):
                 config_path = os.path.join(root, file)
                 with open(config_path) as f:
                     config_ckpt = json.loads(f.read())
                     hidden_dim = config_ckpt['hidden_size']
                     vocab_size = config_ckpt['vocab_size']
-                    type_vocab_size = config_ckpt['type_vocab_size']
+                    if not pretrained_model_name.startswith('spanbert'):
+                        type_vocab_size = config_ckpt['type_vocab_size']
                     position_size = config_ckpt['max_position_embeddings']
                     embedding_dropout = config_ckpt['hidden_dropout_prob']
                     num_blocks = config_ckpt['num_hidden_layers']
@@ -208,11 +238,6 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
                 'dim': hidden_dim
             },
             'vocab_size': vocab_size,
-            'segment_embed': {
-                'name': 'token_type_embeddings',
-                'dim': hidden_dim
-            },
-            'type_vocab_size': type_vocab_size,
             'position_embed': {
                 'name': 'position_embeddings',
                 'dim': hidden_dim
@@ -256,10 +281,74 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
             }
         }
 
+        if not pretrained_model_name.startswith('spanbert'):
+            configs.update({
+                'segment_embed': {
+                    'name': 'token_type_embeddings',
+                    'dim': hidden_dim},
+                'type_vocab_size': type_vocab_size,
+            })
+
         return configs
 
     def _init_from_checkpoint(self, pretrained_model_name: str,
                               cache_dir: str, **kwargs):
+        if pretrained_model_name.startswith('spanbert'):
+            global_tensor_map = {
+                'bert.embeddings.word_embeddings.weight':
+                    'word_embedder._embedding',
+                'bert.embeddings.position_embeddings.weight':
+                    'position_embedder._embedding',
+                'bert.embeddings.LayerNorm.weight':
+                    'encoder.input_normalizer.weight',
+                'bert.embeddings.LayerNorm.bias':
+                    'encoder.input_normalizer.bias',
+            }
+
+            attention_tensor_map = {
+                "attention.self.key.bias": "self_attns.{}.K_dense.bias",
+                "attention.self.query.bias": "self_attns.{}.Q_dense.bias",
+                "attention.self.value.bias": "self_attns.{}.V_dense.bias",
+                "attention.output.dense.bias": "self_attns.{}.O_dense.bias",
+                "attention.output.LayerNorm.weight":
+                    "poswise_layer_norm.{}.weight",
+                "attention.output.LayerNorm.bias": "poswise_layer_norm.{}.bias",
+                "intermediate.dense.bias": "poswise_networks.{}._layers.0.bias",
+                "output.dense.bias": "poswise_networks.{}._layers.2.bias",
+                "output.LayerNorm.weight": "output_layer_norm.{}.weight",
+                "output.LayerNorm.bias": "output_layer_norm.{}.bias",
+                "attention.self.key.weight": "self_attns.{}.K_dense.weight",
+                "attention.self.query.weight": "self_attns.{}.Q_dense.weight",
+                "attention.self.value.weight": "self_attns.{}.V_dense.weight",
+                "attention.output.dense.weight": "self_attns.{}.O_dense.weight",
+                "intermediate.dense.weight":
+                    "poswise_networks.{}._layers.0.weight",
+                "output.dense.weight": "poswise_networks.{}._layers.2.weight",
+            }
+            checkpoint_path = os.path.abspath(os.path.join(
+                cache_dir, self._MODEL2CKPT[pretrained_model_name]))
+
+            device = next(self.parameters()).device
+            params = torch.load(checkpoint_path, map_location=device)
+
+            for name, tensor in params.items():
+                if name in global_tensor_map:
+                    v_name = global_tensor_map[name]
+                    pointer = self._name_to_variable(v_name)
+                    assert pointer.shape == tensor.shape
+                    pointer.data = tensor.data.type(pointer.dtype)
+                elif name.startswith('bert.encoder.layer.'):
+                    name = name.lstrip('bert.encoder.layer.')
+                    layer_num, layer_name = name.split('.', 1)
+                    if layer_name in attention_tensor_map:
+                        v_name = attention_tensor_map[layer_name]
+                        pointer = self._name_to_variable(
+                            'encoder.' + v_name.format(layer_num))
+                        assert pointer.shape == tensor.shape
+                        pointer.data = tensor.data.type(pointer.dtype)
+
+            return
+
         try:
             import numpy as np
             import tensorflow as tf
