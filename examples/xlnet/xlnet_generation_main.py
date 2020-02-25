@@ -15,6 +15,8 @@
 """
 
 import argparse
+import sys
+
 import torch
 
 import texar.torch as tx
@@ -142,7 +144,7 @@ def main() -> None:
                        n_samples=batch_size)
             except EOFError:
                 print("EOF entered, quitting.")
-                exit(0)
+                sys.exit()
     else:
         # Generate samples from scratch
         for _ in range(nsamples // batch_size):

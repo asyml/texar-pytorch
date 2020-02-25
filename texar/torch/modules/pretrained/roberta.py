@@ -115,6 +115,7 @@ class PretrainedRoBERTaMixin(PretrainedMixin, ABC):
                 },
                 'residual_dropout': residual_dropout,
                 'dim': hidden_dim,
+                'eps': 1e-12,
                 'use_bert_config': True,
                 'poswise_feedforward': {
                     "layers": [{
@@ -214,3 +215,5 @@ class PretrainedRoBERTaMixin(PretrainedMixin, ABC):
                                 v_names[i].format(layer_num))
                             assert pointer.shape == tensors[i].shape
                             pointer.data = tensors[i].data.type(pointer.dtype)
+                else:
+                    raise NameError(f"Layer name '{layer_name}' not found")

@@ -1,3 +1,16 @@
+# Copyright 2019 The Texar Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Unit tests for pre-trained XLNet tokenizer.
 """
@@ -19,9 +32,9 @@ class XLNetTokenizerTest(unittest.TestCase):
     def setUp(self):
         self.tmp_dir = tempfile.TemporaryDirectory()
         self.SAMPLE_VOCAB = maybe_download(
-            'https://github.com/gpengzhi/pytorch-transformers/blob/master/'
-            'pytorch_transformers/tests/fixtures/test_sentencepiece.model'
-            '?raw=true', self.tmp_dir.name)
+            'https://github.com/huggingface/transformers/blob/master/'
+            'tests/fixtures/test_sentencepiece.model?raw=true',
+            self.tmp_dir.name)
 
         self.tokenizer = XLNetTokenizer.load(
             self.SAMPLE_VOCAB, configs={'keep_accents': True})
@@ -249,6 +262,24 @@ class XLNetTokenizerTest(unittest.TestCase):
                              [cls_token_id])
         self.assertListEqual(segment_ids, [0, 0, 0, 1, 1, 1, 2])
         self.assertListEqual(input_mask, [0, 0, 0, 0, 0, 0, 0])
+
+    def test_encode_text_for_generation(self):
+        text_1 = u"lower newer"
+
+        text_1_ids = self.tokenizer.map_text_to_id(text_1)
+
+        input_ids, seq_len = \
+            self.tokenizer.encode_text_for_generation(text=text_1,
+                                                      max_seq_length=10)
+
+        bos_token_id = self.tokenizer.map_token_to_id(self.tokenizer.bos_token)
+        eos_token_id = self.tokenizer.map_token_to_id(self.tokenizer.eos_token)
+        pad_token_id = self.tokenizer.map_token_to_id(self.tokenizer.pad_token)
+
+        self.assertListEqual(input_ids,
+                             [bos_token_id] + text_1_ids + [eos_token_id] +
+                             [pad_token_id, pad_token_id, pad_token_id])
+        self.assertEqual(seq_len, 7)
 
 
 if __name__ == "__main__":

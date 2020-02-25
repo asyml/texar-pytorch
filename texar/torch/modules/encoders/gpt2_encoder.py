@@ -121,6 +121,7 @@ class GPT2Encoder(EncoderBase, PretrainedGPT2Mixin):
                         "num_heads": 12,
                         "output_dim": 768
                     },
+                    "eps": 1e-6,
                     "initializer": {
                         "type": "variance_scaling_initializer",
                         "kwargs": {
@@ -184,6 +185,9 @@ class GPT2Encoder(EncoderBase, PretrainedGPT2Mixin):
             See :func:`~texar.torch.modules.TransformerDecoder.default_hparams`
             for details.
 
+        `"eps"`: float
+            Epsilon values for layer norm layers.
+
         `"initializer"`: dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
@@ -205,6 +209,7 @@ class GPT2Encoder(EncoderBase, PretrainedGPT2Mixin):
                     'num_heads': 12,
                     'output_dim': 768
                 },
+                'eps': 1e-6,
                 'initializer': {
                     'type': 'variance_scaling_initializer',
                     'kwargs': {

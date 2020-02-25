@@ -67,6 +67,12 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
         'xlnet-large-cased': None,
     }
     _VOCAB_FILE_NAMES = {'vocab_file': 'spiece.model'}
+    _VOCAB_FILE_MAP = {
+        'vocab_file': {
+            'xlnet-base-cased': 'spiece.model',
+            'xlnet-large-cased': 'spiece.model',
+        }
+    }
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
@@ -85,11 +91,13 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
         }
 
         if self.pretrained_model_dir is not None:
+            assert self.pretrained_model_name is not None
             vocab_file = os.path.join(self.pretrained_model_dir,
-                                      self._VOCAB_FILE_NAMES['vocab_file'])
-            assert pretrained_model_name is not None
-            if self._MAX_INPUT_SIZE.get(pretrained_model_name):
-                self.max_len = self._MAX_INPUT_SIZE[pretrained_model_name]
+                                      self._VOCAB_FILE_MAP['vocab_file']
+                                      [self.pretrained_model_name])
+            assert self.pretrained_model_name is not None
+            if self._MAX_INPUT_SIZE.get(self.pretrained_model_name):
+                self.max_len = self._MAX_INPUT_SIZE[self.pretrained_model_name]
         else:
             vocab_file = self.hparams['vocab_file']
             if self.hparams.get('max_len'):
@@ -274,6 +282,57 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
 
         return input_ids, segment_ids, input_mask
 
+    def encode_text_for_generation(
+            self,
+            text: str,
+            max_seq_length: Optional[int] = None,
+            append_eos_token: bool = True) -> Tuple[List[int], int]:
+        r"""Adds special tokens to a sequence and computes the corresponding
+        sequence length for XLNet specific tasks. The sequence will be truncated
+        if its length is larger than ``max_seq_length``.
+
+        A XLNet sequence has the following format:
+        `[bos_token]` X `[eos_token]` `[pad_token]`
+
+        Args:
+            text: Input text.
+            max_seq_length: Maximum sequence length.
+            append_eos_token: Whether to append ``eos_token`` after the
+                sequence.
+
+        Returns:
+            A tuple of `(input_ids, seq_len)`, where
+
+            - ``input_ids``: A list of input token ids with added
+              special tokens.
+            - ``seq_len``: The sequence length.
+        """
+        if max_seq_length is None:
+            max_seq_length = self.max_len
+
+        token_ids = self.map_text_to_id(text)
+        assert isinstance(token_ids, list)
+
+        bos_token_id = self._map_token_to_id(self.bos_token)
+        eos_token_id = self._map_token_to_id(self.eos_token)
+        pad_token_id = self._map_token_to_id(self.pad_token)
+
+        if append_eos_token:
+            input_ids = token_ids[:max_seq_length - 2]
+            input_ids = [bos_token_id] + input_ids + [eos_token_id]
+        else:
+            input_ids = token_ids[:max_seq_length - 1]
+            input_ids = [bos_token_id] + input_ids
+
+        seq_len = len(input_ids)
+
+        # Pad up to the maximum sequence length.
+        input_ids = input_ids + [pad_token_id] * (max_seq_length - seq_len)
+
+        assert len(input_ids) == max_seq_length
+
+        return input_ids, seq_len
+
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
         r"""Returns a dictionary of hyperparameters with default values.
@@ -304,6 +363,7 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
                 "do_lower_case": False,
                 "remove_space": True,
                 "keep_accents": False,
+                "name": "xlnet_tokenizer",
             }
 
         Here:
@@ -349,6 +409,9 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
 
         `"keep_accents"`: bool
             Whether to keep the accents in the text.
+
+        `"name"`: str
+            Name of the tokenizer.
         """
         return {
             'pretrained_model_name': 'xlnet-base-cased',
@@ -365,6 +428,7 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
             'do_lower_case': False,
             'remove_space': True,
             'keep_accents': False,
+            'name': 'xlnet_tokenizer',
             '@no_typecheck': ['pretrained_model_name'],
         }
 

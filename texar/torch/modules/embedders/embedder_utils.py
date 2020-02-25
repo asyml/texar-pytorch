@@ -40,6 +40,7 @@ def default_embedding_hparams():
                 "initializer": None,
                 "dropout_rate": 0.,
                 "dropout_strategy": 'element',
+                "trainable": True,
             }
 
         Here:
@@ -103,6 +104,9 @@ def default_embedding_hparams():
               better", where the word type "the" is dropped. The dropout will
               never yield "_ simpler the better" as in the ``"item"`` strategy.
 
+        `"trainable"`: bool
+            Whether the embedding parameters are trainable. If false, freeze the
+            embedding parameters.
     """
     return {
         "name": "embedding",
@@ -110,6 +114,7 @@ def default_embedding_hparams():
         "initializer": None,
         "dropout_rate": 0.,
         "dropout_strategy": 'element',
+        "trainable": True,
         "@no_typecheck": ["dim"]
     }
 

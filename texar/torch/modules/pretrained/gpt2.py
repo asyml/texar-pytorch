@@ -49,6 +49,7 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
       * ``gpt2-small``: Small version of GPT-2, 124M parameters.
       * ``gpt2-medium``: Medium version of GPT-2, 355M parameters.
       * ``gpt2-large``: Large version of GPT-2, 774M parameters.
+      * ``gpt2-xl``: XL version of GPT-2, 1558M parameters.
 
     We provide the following GPT2 classes:
 
@@ -69,6 +70,8 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
                         for file in _CHECKPOINT_FILES],
         'gpt2-large': [_GPT2_PATH + f"774M/{file}"
                        for file in _CHECKPOINT_FILES],
+        'gpt2-xl': [_GPT2_PATH + f"1558M/{file}"
+                    for file in _CHECKPOINT_FILES],
     }
 
     _IS_DECODE = False
@@ -93,7 +96,8 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
     _MODEL2URL.update(_DEPRECATED_MODEL2URL)
     _MODEL2URL = MyDict(_MODEL2URL)  # type: ignore
 
-    def _transform_config(self, pretrained_model_name: str,  # type: ignore
+    @classmethod
+    def _transform_config(cls, pretrained_model_name: str,
                           cache_dir: str) -> Dict[str, Any]:
         info = list(os.walk(cache_dir))
         root, _, files = info[0]
@@ -120,7 +124,9 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
             }
         }
 
-        module_name = 'decoder' if self._IS_DECODE else 'encoder'
+        module_name = 'decoder' if cls._IS_DECODE else 'encoder'
+        eps = 1e-5 if cls._IS_DECODE else 1e-6
+
         configs.update({module_name: {
             "dim": hidden_dim,
             "num_blocks": config_gpt["n_layer"],
@@ -140,6 +146,7 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
                     "uniform": True,
                 },
             },
+            'eps': eps,
             "poswise_feedforward": {
                 "layers": [
                     {
@@ -166,9 +173,7 @@ class PretrainedGPT2Mixin(PretrainedMixin, ABC):
                 "name": "ffn",
             },
         }})
-        if self._IS_DECODE:
-            configs[module_name].update({'use_gpt_config': True})
-        else:
+        if not cls._IS_DECODE:
             configs[module_name].update({'use_bert_config': False})
         return configs
 

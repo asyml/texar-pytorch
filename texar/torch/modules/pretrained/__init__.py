@@ -21,3 +21,4 @@ from texar.torch.modules.pretrained.gpt2 import *
 from texar.torch.modules.pretrained.roberta import *
 from texar.torch.modules.pretrained.spanbert import *
 from texar.torch.modules.pretrained.xlnet import *
+from texar.torch.modules.pretrained.t5 import *

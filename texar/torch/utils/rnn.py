@@ -166,7 +166,8 @@ def bidirectional_dynamic_rnn(
 
     if sequence_length is None:
         sequence_length = torch.tensor([time_steps] * batch_size,
-                                       dtype=torch.int32)
+                                       dtype=torch.int32,
+                                       device=inputs.device)
 
     # Backward direction
     inputs_reverse = reverse_sequence(inputs=inputs,
@@ -278,7 +279,9 @@ def dynamic_rnn(
 
     if sequence_length is not None:
         if not isinstance(sequence_length, torch.Tensor):
-            sequence_length = torch.tensor(sequence_length, dtype=torch.int32)
+            sequence_length = torch.tensor(sequence_length,
+                                           dtype=torch.int32,
+                                           device=inputs.device)
 
         if sequence_length.dim() != 1:
             raise ValueError(
@@ -290,7 +293,8 @@ def dynamic_rnn(
                              % sequence_length.shape)
     else:
         sequence_length = torch.tensor([time_steps] * batch_size,
-                                       dtype=torch.int32)
+                                       dtype=torch.int32,
+                                       device=inputs.device)
 
     if initial_state is not None:
         state = initial_state

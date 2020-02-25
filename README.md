@@ -7,6 +7,7 @@
 
 [![pypi](https://img.shields.io/pypi/v/texar_pytorch.svg)](https://pypi.python.org/pypi/texar-pytorch)
 [![Build Status](https://travis-ci.org/asyml/texar-pytorch.svg?branch=master)](https://travis-ci.org/asyml/texar-pytorch)
+[![codecov](https://codecov.io/gh/asyml/texar-pytorch/branch/master/graph/badge.svg)](https://codecov.io/gh/asyml/texar-pytorch)
 [![Documentation Status](https://readthedocs.org/projects/texar-pytorch/badge/?version=latest)](https://texar-pytorch.readthedocs.io/en/latest/?badge=latest)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/asyml/texar-pytorch/blob/master/LICENSE)
  
@@ -112,7 +113,7 @@ Many more examples are available [here](./examples).
 Texar-PyTorch requires:
 
 * `python == 3.6` or `3.7`
-* `torch >= 1.0.0 (but < 1.3.0)`. Please follow the [official instructions](https://pytorch.org/get-started/locally/#start-locally) to install the appropriate version.
+* `torch >= 1.0.0`. Please follow the [official instructions](https://pytorch.org/get-started/locally/#start-locally) to install the appropriate version.
 
 After `torch` is installed, install Texar from PyPI: 
 ```bash

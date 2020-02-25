@@ -421,7 +421,7 @@ class Conv1DNetwork(FeedForwardNetworkBase):
                 other_kwargs[i] = _to_list(other_kwargs[i], "other_kwargs[i]",
                                            len(kernel_size[i]))
             elif (isinstance(other_kwargs[i], (list, tuple))
-                  and len(other_kwargs[i]) != kernel_size[i]):
+                  and len(other_kwargs[i]) != len(kernel_size[i])):
                 raise ValueError("The length of hparams['other_conv_kwargs'][i]"
                                  " must be equal to the length of "
                                  "hparams['kernel_size'][i]")
@@ -564,7 +564,8 @@ class Conv1DNetwork(FeedForwardNetworkBase):
 
     def forward(self,  # type: ignore
                 input: torch.Tensor,
-                sequence_length: Union[torch.LongTensor, List[int]] = None,
+                sequence_length: Optional[Union[torch.LongTensor,
+                                                List[int]]] = None,
                 dtype: Optional[torch.dtype] = None,
                 data_format: Optional[str] = None) -> torch.Tensor:
         r"""Feeds forward inputs through the network layers and returns outputs.

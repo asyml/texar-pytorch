@@ -1,4 +1,16 @@
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Unit tests for embedders.
 """
@@ -73,7 +85,7 @@ class EmbedderTest(unittest.TestCase):
         self.assertEqual(emb_dim, hparams_dim)
         self.assertEqual(embedder.position_size, 100)
         seq_length = torch.empty(64).uniform_(0, pos_size).long()
-        outputs = embedder(sequence_length=seq_length)
+        _ = embedder(sequence_length=seq_length)
 
     def test_sinusoids_position_embedder(self):
         """Tests :class:`texar.torch.modules.SinusoidsPositionEmbedder`.
@@ -86,6 +98,11 @@ class EmbedderTest(unittest.TestCase):
         outputs = embedder(inputs)
         self.assertEqual(outputs.size(), input_size + (hparams['dim'],))
         self.assertEqual(outputs.size(-1), embedder.output_size)
+        sequence_length = torch.randint(high=position_size + 1, size=(23,))
+        outputs_ = embedder(sequence_length=sequence_length)
+        self.assertEqual(outputs_.size(),
+                         (23, max(sequence_length).item()) + (hparams['dim'],))
+        self.assertEqual(outputs_.size(-1), embedder.output_size)
 
         embedder_no_cache = SinusoidsPositionEmbedder(
             None, hparams={**hparams, 'cache_embeddings': False})
@@ -156,6 +173,30 @@ class EmbedderTest(unittest.TestCase):
         outputs = embedder(ids=ids)
         soft_outputs = embedder(soft_ids=soft_ids)
         self.assertEqual(outputs, soft_outputs)
+
+    def test_word_embedder_trainable(self):
+        """Tests freezing the embedding parameters.
+        """
+        init_value = np.expand_dims(np.arange(5), 1)
+
+        embedder = WordEmbedder(init_value=init_value,
+                                hparams={"trainable": False})
+        self.assertEqual(len(embedder.trainable_variables), 0)
+
+        embedder = WordEmbedder(init_value=init_value)
+        self.assertEqual(len(embedder.trainable_variables), 1)
+
+    def test_position_embedder_trainable(self):
+        """Tests freezing the embedding parameters.
+        """
+        pos_size = 100
+
+        embedder = PositionEmbedder(
+            position_size=pos_size, hparams={"trainable": False})
+        self.assertEqual(len(embedder.trainable_variables), 0)
+
+        embedder = PositionEmbedder(position_size=pos_size)
+        self.assertEqual(len(embedder.trainable_variables), 1)
 
 
 if __name__ == "__main__":

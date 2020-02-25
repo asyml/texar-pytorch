@@ -129,19 +129,21 @@ def main(arguments) -> None:
     for task in tasks:
         if task == 'MRPC':
             import subprocess
-            if not os.path.exists("data/MRPC"):
-                subprocess.run("mkdir data/MRPC", shell=True)
             # pylint: disable=line-too-long
+            if not os.path.exists("data/MRPC"):
+                subprocess.run("mkdir data/MRPC", shell=True, check=False)
             subprocess.run(
                 'wget -P data/MRPC/ https://dl.fbaipublicfiles.com/senteval/senteval_data/msr_paraphrase_train.txt',
-                shell=True)
+                shell=True, check=False)
             subprocess.run(
                 'wget -P data/MRPC/ https://dl.fbaipublicfiles.com/senteval/senteval_data/msr_paraphrase_test.txt',
-                shell=True)
+                shell=True, check=False)
             # pylint: enable=line-too-long
             format_mrpc(args.data_dir, args.path_to_mrpc)
-            subprocess.run('rm data/MRPC/msr_paraphrase_train.txt', shell=True)
-            subprocess.run('rm data/MRPC/msr_paraphrase_test.txt', shell=True)
+            subprocess.run('rm data/MRPC/msr_paraphrase_train.txt',
+                           shell=True, check=False)
+            subprocess.run('rm data/MRPC/msr_paraphrase_test.txt',
+                           shell=True, check=False)
         elif task == 'diagnostic':
             download_diagnostic(args.data_dir)
         else:

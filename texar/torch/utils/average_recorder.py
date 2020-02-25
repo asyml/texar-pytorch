@@ -176,7 +176,7 @@ class AverageRecorder:
         if isinstance(record, dict):
             record_dict = record
         elif isinstance(record, (list, tuple)):
-            record_dict = {i: vi for i, vi in enumerate(record)}
+            record_dict = dict(enumerate(record))
         else:
             record_dict = {self._default_metric_name: record}
         return record_dict
