@@ -288,11 +288,6 @@ Pre-trained
 .. autoclass:: texar.torch.modules.PretrainedRoBERTaMixin
     :members:
 
-:hidden:`PretrainedSpanBERTMixin`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.torch.modules.PretrainedSpanBERTMixin
-    :members:
-
 :hidden:`PretrainedGPT2Mixin`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.PretrainedGPT2Mixin

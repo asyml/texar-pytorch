@@ -289,7 +289,10 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
                 inputs: Union[torch.Tensor, torch.LongTensor],
                 sequence_length: Optional[torch.LongTensor] = None,
                 segment_ids: Optional[torch.LongTensor] = None):
-        r"""Encodes the inputs.
+        r"""Encodes the inputs. Note that the SpanBERT model does not use
+        segmentation embedding. As a result, SpanBERT does not require
+        `segment_ids` as an input when you use pre-trained SpanBERT checkpoint
+        files.
 
         Args:
             inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
@@ -328,7 +331,9 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
                                      dtype=torch.int64)
         pos_embeds = self.position_embedder(sequence_length=pos_length)
 
-        if self.segment_embedder is not None:
+        if self.segment_embedder is not None and \
+                self.pretrained_model_name is not None and \
+                not self.pretrained_model_name.startswith('spanbert'):
             if segment_ids is None:
                 segment_ids = torch.zeros((inputs.size(0), inputs.size(1)),
                                           dtype=torch.long,
