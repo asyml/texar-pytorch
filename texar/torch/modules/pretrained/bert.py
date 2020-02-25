@@ -211,7 +211,7 @@ class PretrainedBERTMixin(PretrainedMixin, ABC):
         config_path = None
 
         for file in files:
-            if file == 'bert_config.json' or file == 'config.json':
+            if file in ('bert_config.json', 'config.json'):
                 config_path = os.path.join(root, file)
                 with open(config_path) as f:
                     config_ckpt = json.loads(f.read())
