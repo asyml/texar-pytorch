@@ -26,6 +26,7 @@ from texar.torch.modules.pretrained.bert import PretrainedBERTMixin
 from texar.torch.data.tokenizers.tokenizer_base import TokenizerBase
 from texar.torch.data.tokenizers.bert_tokenizer_utils import \
     load_vocab, BasicTokenizer, WordpieceTokenizer
+from texar.torch.hyperparams import HParams
 from texar.torch.utils.utils import truncate_seq_pair
 
 __all__ = [
@@ -74,6 +75,10 @@ class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
         'scibert-scivocab-cased': 512,
         'scibert-basevocab-uncased': 512,
         'scibert-basevocab-cased': 512,
+
+        # SpanBERT
+        'spanbert-base-cased': 512,
+        'spanbert-large-cased': 512,
     }
     _VOCAB_FILE_NAMES = {'vocab_file': 'vocab.txt'}
     _VOCAB_FILE_MAP = {
@@ -98,6 +103,10 @@ class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
             'scibert-scivocab-cased': 'vocab.txt',
             'scibert-basevocab-uncased': 'vocab.txt',
             'scibert-basevocab-cased': 'vocab.txt',
+
+            # SpanBERT
+            'spanbert-base-cased': 'vocab.txt',
+            'spanbert-large-cased': 'vocab.txt',
         }
     }
 
@@ -105,6 +114,19 @@ class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
                  hparams=None):
+
+        # SpanBERT checkpoint files do not include vocabulary file, use
+        # standard BERT directly when user use the pre-trained SpanBERT.
+        if pretrained_model_name is not None:
+            if pretrained_model_name.startswith('spanbert'):
+                pretrained_model_name = pretrained_model_name.lstrip('span')
+        elif hparams is not None:
+            hparams = HParams(hparams, None)
+            if hparams.pretrained_model_name is not None and \
+                    hparams.pretrained_model_name.startswith('spanbert'):
+                pretrained_model_name = \
+                    hparams.pretrained_model_name.lstrip('span')
+
         self.load_pretrained_config(pretrained_model_name, cache_dir, hparams)
 
         super().__init__(hparams=None)
