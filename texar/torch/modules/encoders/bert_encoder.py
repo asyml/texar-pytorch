@@ -75,9 +75,14 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
         # Segment embedding for each type of tokens
         self.segment_embedder = None
         if self._hparams.get('type_vocab_size', 0) > 0:
-            self.segment_embedder = WordEmbedder(
-                vocab_size=self._hparams.type_vocab_size,
-                hparams=self._hparams.segment_embed)
+            if self.pretrained_model_name is not None and \
+                    self.pretrained_model_name.startswith('spanbert'):
+                # Do not construct segment_embedder for SpanBERT
+                pass
+            else:
+                self.segment_embedder = WordEmbedder(
+                    vocab_size=self._hparams.type_vocab_size,
+                    hparams=self._hparams.segment_embed)
 
         # Position embedding
         self.position_embedder = PositionEmbedder(
@@ -331,9 +336,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
                                      dtype=torch.int64)
         pos_embeds = self.position_embedder(sequence_length=pos_length)
 
-        if self.segment_embedder is not None and \
-                self.pretrained_model_name is not None and \
-                not self.pretrained_model_name.startswith('spanbert'):
+        if self.segment_embedder is not None:
             if segment_ids is None:
                 segment_ids = torch.zeros((inputs.size(0), inputs.size(1)),
                                           dtype=torch.long,
