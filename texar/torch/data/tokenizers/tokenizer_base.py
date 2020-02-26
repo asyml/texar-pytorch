@@ -18,13 +18,13 @@ The code structure adapted from:
     `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_utils.py`
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, overload
 
-import os
 import json
+import os
+import warnings
 
 from texar.torch.module_base import ModuleBase
-from texar.torch.utils.types import MaybeList
 
 __all__ = [
     "TokenizerBase",
@@ -83,7 +83,12 @@ class TokenizerBase(ModuleBase):
                     assert isinstance(value, (list, tuple)) and \
                            all(isinstance(v, str) for v in value)
                 else:
-                    assert isinstance(value, str)
+                    if value is not None:
+                        assert isinstance(value, str)
+                    else:
+                        warnings.warn(f"Trying to set None as value special "
+                                      f"token '{key}'. Proceed only if you"
+                                      f" are sure!", UserWarning)
                 setattr(self, key, value)
 
     @classmethod
@@ -329,6 +334,7 @@ class TokenizerBase(ModuleBase):
         Return:
             A list of tokens.
         """
+
         def split_on_tokens(tok_list, string):
             if not string:
                 return []
@@ -352,7 +358,18 @@ class TokenizerBase(ModuleBase):
         """
         raise NotImplementedError
 
-    def map_token_to_id(self, tokens: MaybeList[str]) -> MaybeList[int]:
+    # TODO: Remove these once pylint supports function stubs.
+    # pylint: disable=unused-argument,function-redefined
+
+    @overload
+    def map_token_to_id(self, tokens: str) -> int:
+        ...
+
+    @overload
+    def map_token_to_id(self, tokens: List[str]) -> List[int]:
+        ...
+
+    def map_token_to_id(self, tokens):
         r"""Maps a single token or a sequence of tokens to a integer id
         (resp.) a sequence of ids, using the vocabulary.
 
@@ -369,12 +386,14 @@ class TokenizerBase(ModuleBase):
         for token in tokens:
             ids.append(self._map_token_to_id_with_added_voc(token))
         if len(ids) > self.max_len:
-            raise ValueError(
+            warnings.warn(
                 "Token indices sequence length is longer than the specified "
                 "maximum sequence length for this model ({} > {}). Running "
                 "this sequence through the model will result in indexing "
-                "errors".format(len(ids), self.max_len))
+                "errors".format(len(ids), self.max_len), UserWarning)
         return ids
+
+    # pylint: enable=unused-argument,function-redefined
 
     def _map_token_to_id_with_added_voc(self, token: str) -> int:
         if token in self.added_tokens_encoder:
@@ -384,7 +403,7 @@ class TokenizerBase(ModuleBase):
     def _map_token_to_id(self, token: str) -> int:
         raise NotImplementedError
 
-    def map_text_to_id(self, text: str) -> MaybeList[int]:
+    def map_text_to_id(self, text: str) -> List[int]:
         r"""Maps a string to a sequence of ids (integer), using the
         tokenizer and vocabulary. Same as
         `self.map_token_to_id(self.map_text_to_token(text))`.
@@ -397,9 +416,20 @@ class TokenizerBase(ModuleBase):
         """
         return self.map_token_to_id(self.map_text_to_token(text))
 
-    def map_id_to_token(self,
-                        token_ids: MaybeList[int],
-                        skip_special_tokens: bool = False) -> MaybeList[str]:
+    # TODO: Remove these once pylint supports function stubs.
+    # pylint: disable=unused-argument,function-redefined
+
+    @overload
+    def map_id_to_token(self, token_ids: int,
+                        skip_special_tokens: bool = False) -> str:
+        ...
+
+    @overload
+    def map_id_to_token(self, token_ids: List[int],
+                        skip_special_tokens: bool = False) -> List[str]:
+        ...
+
+    def map_id_to_token(self, token_ids, skip_special_tokens=False):
         r"""Maps a single id or a sequence of ids to a token (resp.) a
         sequence of tokens, using the vocabulary and added tokens.
 
@@ -424,6 +454,8 @@ class TokenizerBase(ModuleBase):
             else:
                 tokens.append(self._map_id_to_token(index))
         return tokens
+
+    # pylint: enable=unused-argument,function-redefined
 
     def _map_id_to_token(self, token_id: int) -> str:
         raise NotImplementedError
@@ -451,7 +483,7 @@ class TokenizerBase(ModuleBase):
         """
         filtered_tokens = self.map_id_to_token(
             token_ids, skip_special_tokens=skip_special_tokens)
-        text = self.map_token_to_text(filtered_tokens)  # type: ignore
+        text = self.map_token_to_text(filtered_tokens)
         if clean_up_tokenization_spaces:
             text = self.clean_up_tokenization(text)
         return text
@@ -500,8 +532,7 @@ class TokenizerBase(ModuleBase):
         (:attr:`cls_token`, :attr:`unk_token`, ...).
         """
         all_toks = self.all_special_tokens
-        all_ids: List[int] = list(
-            self.map_token_to_id(t) for t in all_toks)  # type: ignore
+        all_ids: List[int] = [self.map_token_to_id(t) for t in all_toks]
         return all_ids
 
     @staticmethod
@@ -509,9 +540,9 @@ class TokenizerBase(ModuleBase):
         r"""Clean up a list of simple English tokenization artifacts like
         spaces before punctuations and abbreviated forms.
         """
-        out_string = out_string.replace(' .', '.').replace(' ?', '?').\
-            replace(' !', '!').replace(' ,', ',').replace(" ' ", "'").\
-            replace(" n't", "n't").replace(" 'm", "'m").\
-            replace(" do not", " don't").replace(" 's", "'s").\
+        out_string = out_string.replace(' .', '.').replace(' ?', '?'). \
+            replace(' !', '!').replace(' ,', ',').replace(" ' ", "'"). \
+            replace(" n't", "n't").replace(" 'm", "'m"). \
+            replace(" do not", " don't").replace(" 's", "'s"). \
             replace(" 've", "'ve").replace(" 're", "'re")
         return out_string

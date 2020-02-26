@@ -16,6 +16,7 @@
 
 import argparse
 import importlib
+from typing import Any
 
 import texar.torch as tx
 
@@ -34,7 +35,7 @@ parser.add_argument(
     help="The output directory where the pickle files will be generated. "
          "By default it is set to be the same as `--data-dir`.")
 parser.add_argument(
-    "--pretrained-model-name", type=str, default="gpt2-small",
+    '--pretrained-model-name', type=str, default='gpt2-small',
     choices=tx.modules.GPT2Decoder.available_checkpoints(),
     help="Name of the pre-trained checkpoint to load.")
 parser.add_argument(
@@ -45,7 +46,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-def main():
+def main() -> None:
     """Preprocess raw data and produces pickled files."""
     data_dir = args.data_dir
     if args.output_dir is None:
@@ -59,7 +60,7 @@ def main():
     tokenizer = tx.data.GPT2Tokenizer(
         pretrained_model_name=args.pretrained_model_name)
 
-    config_train = importlib.import_module(args.config_train)
+    config_train: Any = importlib.import_module(args.config_train)
 
     # Produces pickle files
     data_utils.prepare_pickle_data(
@@ -67,7 +68,7 @@ def main():
         max_seq_length=args.max_seq_length,
         tokenizer=tokenizer,
         output_dir=pickle_output_dir,
-        feature_original_types=config_train.feature_original_types)
+        feature_types=config_train.feature_types)
 
 
 if __name__ == "__main__":

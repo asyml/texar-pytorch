@@ -15,6 +15,7 @@
 """
 import argparse
 import random
+import sys
 
 import numpy as np
 import torch
@@ -58,7 +59,7 @@ args = parser.parse_args()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def main():
+def main() -> None:
     if args.seed:
         random.seed(args.seed)
         np.random.seed(args.seed)
@@ -114,7 +115,7 @@ def main():
                     raw_text = input("Model input >>> ")
             except EOFError:
                 print("EOF entered, quitting.")
-                exit(0)
+                sys.exit()
 
             context_tokens = tokenizer.map_text_to_id(raw_text)
             context = torch.tensor(
@@ -148,7 +149,7 @@ def main():
     else:
         # Generate samples from scratch
         start_tokens = torch.full(
-            [batch_size], end_token, dtype=torch.int64, device=device)
+            (batch_size,), end_token, dtype=torch.int64, device=device)
 
         generated = 0
         while nsamples == 0 or generated < nsamples:

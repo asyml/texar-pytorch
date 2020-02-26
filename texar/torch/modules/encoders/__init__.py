@@ -25,3 +25,4 @@ from texar.torch.modules.encoders.rnn_encoders import *
 from texar.torch.modules.encoders.roberta_encoder import *
 from texar.torch.modules.encoders.transformer_encoder import *
 from texar.torch.modules.encoders.xlnet_encoder import *
+from texar.torch.modules.encoders.t5_encoder import *

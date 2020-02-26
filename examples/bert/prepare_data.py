@@ -18,8 +18,10 @@ import argparse
 import importlib
 import logging
 import os
+from typing import Any
 
 import texar.torch as tx
+
 from utils import data_utils
 
 parser = argparse.ArgumentParser()
@@ -42,10 +44,6 @@ parser.add_argument(
     help="The output directory where the pickled files will be generated. "
          "By default it will be set to 'data/{task}'. E.g.: if "
          "task is 'MRPC', it will be set as 'data/MRPC'")
-parser.add_argument(
-    "--lower-case", type=bool, default=True,
-    help="Whether to lower case the input text. Should be True for uncased "
-         "models and False for cased models.")
 parser.add_argument(
     "--config-data", default="config_data", help="The dataset config.")
 args = parser.parse_args()
@@ -92,7 +90,7 @@ def modify_config_data(max_seq_length, num_train_data, num_classes):
     logging.info("Data preparation finished")
 
 
-def main():
+def main() -> None:
     """ Starts the data preparation
     """
     # Loads data
@@ -127,7 +125,7 @@ def main():
     logging.info("num_classes: %d; num_train_data: %d",
                  num_classes, num_train_data)
 
-    config_data = importlib.import_module(args.config_data)
+    config_data: Any = importlib.import_module(args.config_data)
 
     tokenizer = tx.data.BERTTokenizer(
         pretrained_model_name=args.pretrained_model_name)
@@ -139,7 +137,7 @@ def main():
         data_dir=data_dir,
         max_seq_length=args.max_seq_length,
         output_dir=output_dir,
-        feature_original_types=config_data.feature_original_types)
+        feature_types=config_data.feature_types)
     modify_config_data(args.max_seq_length, num_train_data, num_classes)
 
 

@@ -15,15 +15,15 @@
 XLNet encoder.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 from torch import nn
 from torch.nn import functional as F
 
 from texar.torch.modules.encoders.encoder_base import EncoderBase
-from texar.torch.modules.pretrained.pretrained_xlnet import PretrainedXLNetMixin
-from texar.torch.modules.pretrained.xlnet_model_utils import (
+from texar.torch.modules.pretrained.xlnet import PretrainedXLNetMixin
+from texar.torch.modules.pretrained.xlnet_utils import (
     PositionWiseFF, RelativeMultiheadAttention, RelativePositionalEncoding,
     params_except_in)
 from texar.torch.utils.utils import dict_fetch, sum_tensors
@@ -34,7 +34,9 @@ __all__ = [
 
 
 class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
-    r"""Raw XLNet module for encoding sequences.
+    r"""Raw XLNet module for encoding sequences. Please see
+    :class:`~texar.torch.modules.PretrainedXLNetMixin` for a brief description
+    of XLNet.
 
     Args:
         pretrained_model_name (optional): a `str`, the name
@@ -50,14 +52,13 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
             hyperparameter will be set to default values. See
             :meth:`default_hparams` for the hyperparameter structure
             and default values.
-        init (optional): whether to initialize `XLNetEncoder`.
     """
+    _IS_DECODE = False
 
     def __init__(self,
                  pretrained_model_name: Optional[str] = None,
                  cache_dir: Optional[str] = None,
-                 hparams=None,
-                 init=True):
+                 hparams=None):
         super().__init__(hparams=hparams)
         self.load_pretrained_config(pretrained_model_name, cache_dir)
 
@@ -99,8 +100,10 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         self.mask_emb = nn.Parameter(
             torch.Tensor(1, 1, self._hparams.hidden_dim))
 
-        if init:
-            self.init_pretrained_weights()
+        if self._IS_DECODE:
+            self.lm_bias = nn.Parameter(torch.zeros(self._hparams.vocab_size))
+
+        self.init_pretrained_weights()
 
     @staticmethod
     def default_hparams() -> Dict[str, Any]:
@@ -316,7 +319,7 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         return ret
 
     def forward(self,  # type: ignore
-                token_ids: torch.LongTensor,
+                inputs: Union[torch.Tensor, torch.LongTensor],
                 segment_ids: Optional[torch.LongTensor] = None,
                 input_mask: Optional[torch.Tensor] = None,
                 memory: Optional[List[torch.Tensor]] = None,
@@ -332,7 +335,11 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
         r"""Compute XLNet representations for the input.
 
         Args:
-            token_ids: Shape `[batch_size, max_time]`.
+            inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
+                containing the ids of tokens in input sequences, or
+                a **3D Tensor** of shape `[batch_size, max_time, vocab_size]`,
+                containing soft token ids (i.e., weights or probabilities)
+                used to mix the embedding vectors.
             segment_ids: Shape `[batch_size, max_time]`.
             input_mask: Float tensor of shape `[batch_size, max_time]`. Note
                 that positions with value 1 are masked out.
@@ -371,7 +378,15 @@ class XLNetEncoder(EncoderBase, PretrainedXLNetMixin):
               `[batch_size, cache_len, hidden_dim]`.
               This can be used as the :attr:`memory` argument in the next batch.
         """
-        return self._forward(self.word_embed(token_ids),
+        if inputs.dim() == 2:
+            word_embeds = self.word_embed(inputs)
+        elif inputs.dim() == 3:
+            word_embeds = torch.tensordot(inputs, self.word_embed.weight,
+                                          dims=([-1], [0]))
+        else:
+            raise ValueError("'inputs' should be a 2D or 3D tensor.")
+
+        return self._forward(word_embed=word_embeds,
                              segment_ids=segment_ids,
                              input_mask=input_mask,
                              memory=memory,

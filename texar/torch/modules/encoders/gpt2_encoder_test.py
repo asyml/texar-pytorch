@@ -1,3 +1,16 @@
+# Copyright 2019 The Texar Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Unit tests for GPT2 encoder.
 """
@@ -35,30 +48,34 @@ class GPT2EncoderTest(unittest.TestCase):
         }
         encoder = GPT2Encoder(pretrained_model_name="gpt2-small",
                               hparams=hparams)
-        self.assertEqual(encoder.hparams.num_blocks, 12)
+        self.assertEqual(encoder.hparams.encoder.num_blocks, 12)
         _ = encoder(self.inputs)
 
         # case 2: set "pretrained_mode_name" by hparams
         hparams = {
             "pretrained_model_name": "gpt2-small",
-            "num_blocks": 6,
+            "encoder": {
+                "num_blocks": 6,
+            }
         }
         encoder = GPT2Encoder(hparams=hparams)
-        self.assertEqual(encoder.hparams.num_blocks, 12)
+        self.assertEqual(encoder.hparams.encoder.num_blocks, 12)
         _ = encoder(self.inputs)
 
         # case 3: set to None in both hparams and constructor argument
         hparams = {
             "pretrained_model_name": None,
-            "num_blocks": 6,
+            "encoder": {
+                "num_blocks": 6,
+            }
         }
         encoder = GPT2Encoder(hparams=hparams)
-        self.assertEqual(encoder.hparams.num_blocks, 6)
+        self.assertEqual(encoder.hparams.encoder.num_blocks, 6)
         _ = encoder(self.inputs)
 
         # case 4: using default hparams
         encoder = GPT2Encoder()
-        self.assertEqual(encoder.hparams.num_blocks, 12)
+        self.assertEqual(encoder.hparams.encoder.num_blocks, 12)
         _ = encoder(self.inputs)
 
     @pretrained_test
@@ -94,7 +111,9 @@ class GPT2EncoderTest(unittest.TestCase):
         # case 3: self-designed GPT2
         hparams = {
             "pretrained_model_name": None,
-            "num_blocks": 6,
+            "encoder": {
+                "num_blocks": 6,
+            },
         }
         encoder = GPT2Encoder(hparams=hparams)
         self.assertEqual(len(encoder.trainable_variables), get_variable_num(6))
@@ -126,36 +145,53 @@ class GPT2EncoderTest(unittest.TestCase):
                 'dim': 96,
             },
 
-            'dim': 96,
-            'multihead_attention': {
-                'num_units': 96,
-                'output_dim': 96,
-            },
-            'poswise_feedforward': {
-                'layers': [
-                    {
-                        'kwargs': {
-                            'in_features': 96,
-                            'out_features': 96 * 4,
-                            'bias': True,
+            'encoder': {
+                'dim': 96,
+                'multihead_attention': {
+                    'num_units': 96,
+                    'output_dim': 96,
+                },
+                'poswise_feedforward': {
+                    'layers': [
+                        {
+                            'kwargs': {
+                                'in_features': 96,
+                                'out_features': 96 * 4,
+                                'bias': True,
+                            },
+                            'type': 'Linear',
                         },
-                        'type': 'Linear',
-                    },
-                    {"type": "GPTGELU"},
-                    {
-                        'kwargs': {
-                            'in_features': 96 * 4,
-                            'out_features': 96,
-                            'bias': True,
-                        },
-                        'type': 'Linear',
-                    }
-                ]
-            },
+                        {"type": "GPTGELU"},
+                        {
+                            'kwargs': {
+                                'in_features': 96 * 4,
+                                'out_features': 96,
+                                'bias': True,
+                            },
+                            'type': 'Linear',
+                        }
+                    ]
+                },
+            }
         }
         encoder = GPT2Encoder(hparams=hparams)
 
         outputs = encoder(inputs)
+        self.assertEqual(
+            outputs.shape,
+            torch.Size([self.batch_size, self.max_length, encoder.output_size]))
+
+    def test_soft_ids(self):
+        r"""Tests soft ids.
+        """
+        hparams = {
+            "pretrained_model_name": None,
+        }
+        encoder = GPT2Encoder(hparams=hparams)
+
+        inputs = torch.rand(self.batch_size, self.max_length, 50257)
+        outputs = encoder(inputs)
+
         self.assertEqual(
             outputs.shape,
             torch.Size([self.batch_size, self.max_length, encoder.output_size]))

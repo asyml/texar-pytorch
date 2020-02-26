@@ -223,11 +223,10 @@ class HParams:
                 if allow_new_hparam:
                     parsed_hparams[name] = HParams._parse_value(value, name)
                     continue
-                else:
-                    raise ValueError(
-                        "Unknown hyperparameter: %s. Only hyperparameters "
-                        "named 'kwargs' hyperparameters can contain new "
-                        "entries undefined in default hyperparameters." % name)
+                raise ValueError(
+                    "Unknown hyperparameter: %s. Only hyperparameters "
+                    "named 'kwargs' hyperparameters can contain new "
+                    "entries undefined in default hyperparameters." % name)
 
             if value is None:
                 parsed_hparams[name] = HParams._parse_value(

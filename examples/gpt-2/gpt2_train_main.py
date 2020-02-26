@@ -14,13 +14,13 @@
 """Example of fine-tuning OpenAI GPT-2 language model.
 """
 
-import os
 import argparse
 import importlib
+import os
+from typing import Any
 
 import torch
 import texar.torch as tx
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -60,12 +60,12 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-config_train = importlib.import_module(args.config_train)
+config_train: Any = importlib.import_module(args.config_train)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def main():
+def main() -> None:
     """
     Builds the model and runs.
     """

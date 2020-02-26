@@ -59,7 +59,9 @@ class BasicRNNDecoderOutput(NamedTuple):
     :class:`~texar.torch.modules.BasicRNNDecoder` with decoding strategy of
     ``"train_greedy"``, this is a :tensor:`LongTensor` of shape
     ``[batch_size, max_time]`` containing the sampled token indices of all
-    steps."""
+    steps. Note that the shape of ``sample_id`` is different for different
+    decoding strategy or helper. Please refer to
+    :class:`~texar.torch.modules.Helper` for the detailed information."""
     cell_output: torch.Tensor
     r"""The output of RNN cell (at each step/of all steps). This contains the
     results prior to the output layer. For example, in
@@ -84,7 +86,9 @@ class AttentionRNNDecoderOutput(NamedTuple):
     :class:`~texar.torch.modules.AttentionRNNDecoder` with decoding strategy of
     ``"train_greedy"``, this is a :tensor:`LongTensor` of shape
     ``[batch_size, max_time]`` containing the sampled token indices of all
-    steps."""
+    steps. Note that the shape of ``sample_id`` is different for different
+    decoding strategy or helper. Please refer to
+    :class:`~texar.torch.modules.Helper` for the detailed information."""
     cell_output: torch.Tensor
     r"""The output of RNN cell (at each step/of all steps). This contains the
     results prior to the output layer. For example, in
@@ -725,9 +729,12 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
             if initial_state is not None:
                 state = state._replace(cell_state=initial_state)
 
-            sample_id, log_prob = self.beam_decode(  # type: ignore
+            end_token = kwargs.get('end_token')
+            assert isinstance(end_token, int)
+
+            sample_id, log_prob = self.beam_decode(
                 start_tokens=start_tokens,
-                end_token=kwargs.get('end_token'),
+                end_token=end_token,
                 initial_state=state,
                 beam_width=beam_width,
                 length_penalty=length_penalty,
@@ -757,8 +764,8 @@ class AttentionRNNDecoder(RNNDecoderBase[AttentionWrapperState,
         self._cell.init_batch()
 
         (outputs, final_state,
-         sequence_lengths) = self.dynamic_decode(  # type: ignore
-            helper, inputs, sequence_length, initial_state,
+         sequence_lengths) = self.dynamic_decode(
+            helper, inputs, sequence_length, initial_state,  # type: ignore
             max_decoding_length, impute_finished)
 
         # Release memory and memory_sequence_length in AttentionRNNDecoder

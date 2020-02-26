@@ -19,11 +19,8 @@ import torch
 import texar.torch as tx
 
 
-def main():
-    if torch.cuda.is_available():
-        device = torch.device(torch.cuda.current_device())
-    else:
-        device = 'cpu'
+def main() -> None:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = tx.modules.XLNetDecoder(pretrained_model_name='xlnet-large-cased')
     model = model.to(device)

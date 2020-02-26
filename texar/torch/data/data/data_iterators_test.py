@@ -1,84 +1,35 @@
+# Copyright 2019 The Texar Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Unit tests for data iterator related operations.
 """
 import copy
 import tempfile
 import unittest
-from typing import List, Tuple, no_type_check
+from unittest.mock import patch
+from typing import List, Tuple
 
 import numpy as np
 import torch
 
 from texar.torch.data.data.data_base import (
-    DataBase, DataSource, IterDataSource, SequenceDataSource, ZipDataSource)
+    DatasetBase, IterDataSource, SequenceDataSource, ZipDataSource)
 from texar.torch.data.data.data_iterators import (
-    BufferShuffleSampler, DataIterator, TokenCountBatchingStrategy,
-    TrainTestDataIterator)
+    DataIterator, TrainTestDataIterator)
 from texar.torch.data.data.dataset_utils import Batch
 from texar.torch.data.data.mono_text_data import MonoTextData
-
-
-class SamplerTest(unittest.TestCase):
-    r"""Tests samplers.
-    """
-
-    class MockDataBase(DataBase):
-        def __init__(self, size: int, lazy_strategy: str,
-                     cache_strategy: str, unknown_size: bool = False):
-            data = list(range(size))
-            source: DataSource[int]
-            if unknown_size:
-                source = IterDataSource(data)
-            else:
-                source = SequenceDataSource(data)
-            hparams = {
-                'lazy_strategy': lazy_strategy,
-                'cache_strategy': cache_strategy,
-            }
-            super().__init__(source, hparams=hparams)
-
-    def setUp(self) -> None:
-        self.size = 10
-        self.buffer_size = 5
-
-    @no_type_check
-    def _test_data(self, data: DataBase,
-                   returns_data: bool = False,
-                   always_returns_data: bool = False):
-        sampler = BufferShuffleSampler(data, self.buffer_size)
-        for epoch in range(2):
-            indices = list(iter(sampler))
-            if always_returns_data or (returns_data and epoch == 0):
-                examples = [ex[1] for ex in indices]
-                indices = [ex[0] for ex in indices]
-                np.testing.assert_array_equal(indices, examples)
-            self.assertEqual(len(set(indices)), self.size)
-            self.assertEqual(min(indices), 0)
-            self.assertEqual(max(indices), self.size - 1)
-            data._fully_cached = True
-
-    def test_known_size(self):
-        data = self.MockDataBase(self.size, 'none', 'processed')
-        self._test_data(data)
-        data = self.MockDataBase(self.size, 'all', 'none', unknown_size=True)
-        self._test_data(data, always_returns_data=True)
-
-    def test_non_lazy_loading(self):
-        strategies = [
-            ('none', 'processed'),
-            ('process', 'loaded'),
-            ('process', 'processed'),
-        ]
-        for lazy, cache in strategies:
-            data = self.MockDataBase(self.size, lazy, cache)
-            self._test_data(data)
-
-    def test_lazy_loading(self):
-        data = self.MockDataBase(self.size, 'all', 'loaded', unknown_size=True)
-        self._test_data(data, returns_data=True)
-        data = self.MockDataBase(self.size, 'all', 'processed',
-                                 unknown_size=True)
-        self._test_data(data, returns_data=True)
+from texar.torch.data.data.sampler import TokenCountBatchingStrategy
 
 
 class DataIteratorTest(unittest.TestCase):
@@ -250,7 +201,7 @@ class DataIteratorTest(unittest.TestCase):
         sentences = [['a'] * length for length in sent_lengths]
         data_source = SequenceDataSource(sentences)
 
-        class CustomData(DataBase):
+        class CustomData(DatasetBase):
             def __init__(self, source):
                 super().__init__(source)
 
@@ -269,12 +220,31 @@ class DataIteratorTest(unittest.TestCase):
             self.assertLessEqual(len(batch), batch_size)
             self.assertLessEqual(sum(len(s) for s in batch.text), max_tokens)
 
+    @patch("torch.cuda.is_available", lambda: True)
+    def test_auto_storage_moving(self):
+        cuda_tensors = set()
+
+        def move_tensor(tensor, device, non_blocking=False):
+            if isinstance(device, torch.device) and device.type == "cuda":
+                self.assertTrue(non_blocking)
+                cuda_tensors.add(id(tensor))
+            return tensor
+
+        device = torch.device("cuda:0")
+
+        with patch.object(torch.Tensor, "to", move_tensor):
+            train = MonoTextData(self._train_hparams, device=device)
+            iterator = DataIterator(train)
+            for batch in iterator:
+                self.assertTrue(id(batch.text_ids) in cuda_tensors)
+                self.assertTrue(id(batch.length) in cuda_tensors)
+
 
 RawExample = Tuple[List[int], str]
 Example = Tuple[List[int], List[str]]
 
 
-class MockDataBase(DataBase[RawExample, Example]):
+class MockDataBase(DatasetBase[RawExample, Example]):
     def process(self, raw_example: RawExample) -> Example:
         numbers, string = raw_example
         numbers = [x + 1 for x in numbers]

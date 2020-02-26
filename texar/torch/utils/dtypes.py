@@ -27,6 +27,7 @@ __all__ = [
     'get_numpy_dtype',
     'is_str',
     'is_callable',
+    'get_supported_scalar_types',
     'maybe_hparams_to_dict',
     'compat_as_text',
 ]

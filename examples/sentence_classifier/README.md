@@ -13,7 +13,7 @@ The example shows:
 Use the following command to download and prepare the SST binary data:
 
 ```
-python sst_data_preprocessor.py [--data-path ./data]
+python sst_data_preprocessor.py --data-path ./data
 ```
 
 Here
@@ -23,7 +23,7 @@ Here
 The following command trains the model with Kim's configuration:
 
 ```
-python clas_main.py --config config_kim
+python classifier_main.py --config config_kim
 ```
 
 Here:

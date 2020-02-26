@@ -14,7 +14,7 @@
 """
 GPT2 classifiers.
 """
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import torch
 from torch import nn
@@ -24,7 +24,7 @@ from texar.torch.core.layers import get_initializer
 from texar.torch.hyperparams import HParams
 from texar.torch.modules.classifiers.classifier_base import ClassifierBase
 from texar.torch.modules.encoders.gpt2_encoder import GPT2Encoder
-from texar.torch.modules.pretrained.pretrained_gpt2 import PretrainedGPT2Mixin
+from texar.torch.modules.pretrained.gpt2 import PretrainedGPT2Mixin
 from texar.torch.utils.utils import dict_fetch
 
 __all__ = [
@@ -33,7 +33,9 @@ __all__ = [
 
 
 class GPT2Classifier(ClassifierBase, PretrainedGPT2Mixin):
-    r"""Classifier based on GPT2 modules.
+    r"""Classifier based on GPT2 modules. Please see
+    :class:`~texar.torch.modules.PretrainedGPT2Mixin` for a brief description
+    of GPT2.
 
     This is a combination of the
     :class:`~texar.torch.modules.GPT2Encoder` with a classification
@@ -113,7 +115,7 @@ class GPT2Classifier(ClassifierBase, PretrainedGPT2Mixin):
 
         self.is_binary = (self.num_classes == 1) or \
                          (self.num_classes <= 0 and
-                          self._hparams.dim == 1)
+                          self._hparams.encoder.dim == 1)
 
     @staticmethod
     def default_hparams():
@@ -190,7 +192,7 @@ class GPT2Classifier(ClassifierBase, PretrainedGPT2Mixin):
         return hparams
 
     def forward(self,  # type: ignore
-                inputs: torch.Tensor,
+                inputs: Union[torch.Tensor, torch.LongTensor],
                 sequence_length: Optional[torch.LongTensor] = None) \
             -> Tuple[torch.Tensor, torch.LongTensor]:
         r"""Feeds the inputs through the network and makes classification.
@@ -199,8 +201,11 @@ class GPT2Classifier(ClassifierBase, PretrainedGPT2Mixin):
         :class:`~texar.torch.modules.GPT2Encoder`.
 
         Args:
-            inputs: A 2D Tensor of shape `[batch_size, max_time]`,
-                containing the token ids of tokens in input sequences.
+            inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
+                containing the ids of tokens in input sequences, or
+                a **3D Tensor** of shape `[batch_size, max_time, vocab_size]`,
+                containing soft token ids (i.e., weights or probabilities)
+                used to mix the embedding vectors.
             sequence_length (optional): A 1D Tensor of shape `[batch_size]`.
                 Input tokens beyond respective sequence lengths are masked
                 out automatically.

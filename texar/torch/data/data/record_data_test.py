@@ -1,3 +1,16 @@
+# Copyright 2019 The Texar Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Unit tests for data related operations.
 """
@@ -35,12 +48,12 @@ class RecordDataTest(unittest.TestCase):
             'det.4a09796u.jpg',
             self._test_dir, 'bridge_0.jpg')
 
-        _feature_original_types = {
-            'height': ('tf.int64', 'FixedLenFeature'),
-            'width': ('tf.int64', 'FixedLenFeature'),
-            'label': ('tf.int64', 'FixedLenFeature'),
+        _feature_types = {
+            'height': ('tf.int64', 'FixedLenFeature', 1),
+            'width': ('tf.int64', 'FixedLenFeature', 1),
+            'label': ('tf.int64', 'stacked_tensor', 1),
             'shape': (np.int64, 'VarLenFeature'),
-            'image_raw': (bytes, 'FixedLenFeature'),
+            'image_raw': (bytes, 'stacked_tensor'),
             'variable1': (np.str, 'FixedLenFeature'),
             'variable2': ('tf.int64', 'FixedLenFeature'),
         }
@@ -68,11 +81,10 @@ class RecordDataTest(unittest.TestCase):
             cat_in_snow: (213, 320, 3),
             williamsburg_bridge: (239, 194),
         }
-        _tfrecord_filepath = os.path.join(self._test_dir, 'test.tfrecord')
+        _record_filepath = os.path.join(self._test_dir, 'test.pkl')
 
         # Prepare Validation data
-        with RecordData.writer(_tfrecord_filepath,
-                                       _feature_original_types) as writer:
+        with RecordData.writer(_record_filepath, _feature_types) as writer:
             for image_path, label in _toy_image_labels_valid.items():
                 with open(image_path, 'rb') as fid:
                     image_data = fid.read()
@@ -97,8 +109,8 @@ class RecordDataTest(unittest.TestCase):
             "batch_size": 1,
             "shuffle": False,
             "dataset": {
-                "files": _tfrecord_filepath,
-                "feature_original_types": _feature_original_types,
+                "files": _record_filepath,
+                "feature_original_types": _feature_types,
                 "feature_convert_types": self._feature_convert_types,
                 "image_options": [_image_options],
             }
@@ -182,7 +194,7 @@ class RecordDataTest(unittest.TestCase):
     def test_image_resize(self):
         """Tests the image resize function
         """
-        hparams = copy.copy(self._hparams)
+        hparams = copy.deepcopy(self._hparams)
         _image_options = {
             'image_feature_name': 'image_raw',
             'resize_height': 512,

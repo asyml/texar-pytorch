@@ -14,7 +14,7 @@ Two example datasets are provided:
     translation dataset, following [(Ranzato et al., 2015)](https://arxiv.org/pdf/1511.06732.pdf) for data
     pre-processing.
 
-Download the data with the following cmds:
+Download the data with the following commands:
 
 ```
 python prepare_data.py --data toy_copy
@@ -23,7 +23,7 @@ python prepare_data.py --data iwslt14
 
 ### Train the model ###
 
-Train the model with the following cmd:
+Train the model with the following command:
 
 ```
 python seq2seq_attn.py --config-model config_model --config-data config_toy_copy

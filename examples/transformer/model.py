@@ -92,20 +92,14 @@ class Transformer(nn.Module):
         """
 
         batch_size = encoder_input.size(0)
-        # (text sequence length excluding padding)
+        # Text sequence length excluding padding
         encoder_input_length = (encoder_input != 0).int().sum(dim=1)
+        positions = torch.arange(
+            encoder_input_length.max(), dtype=torch.long,
+            device=encoder_input.device).unsqueeze(0).expand(batch_size, -1)
 
         # Source word embedding
-        src_word_embeds = self.word_embedder(encoder_input)
-        src_word_embeds = src_word_embeds * self.config_model.hidden_dim ** 0.5
-
-        # Position embedding (shared b/w source and target)
-        src_seq_len = torch.full(
-            (batch_size,), encoder_input.size(1),
-            dtype=torch.int32, device=encoder_input.device)
-
-        src_pos_embeds = self.pos_embedder(sequence_length=src_seq_len)
-        src_input_embedding = src_word_embeds + src_pos_embeds
+        src_input_embedding = self._embedding_fn(encoder_input, positions)
 
         encoder_output = self.encoder(
             inputs=src_input_embedding, sequence_length=encoder_input_length)

@@ -33,12 +33,12 @@ class CustomBatchingStrategy(tx.data.BatchingStrategy[Example]):
         max_tokens (int): The maximum number of source or target tokens inside
             each batch.
     """
+    max_src_len: int
+    max_tgt_len: int
+    cur_batch_size: int
 
     def __init__(self, max_tokens: int):
         self.max_tokens = max_tokens
-        self.max_src_len = 0
-        self.max_tgt_len = 0
-        self.cur_batch_size = 0
 
     def reset_batch(self) -> None:
         self.max_src_len = 0
@@ -57,7 +57,7 @@ class CustomBatchingStrategy(tx.data.BatchingStrategy[Example]):
         return True
 
 
-class Seq2SeqData(tx.data.DataBase[Example, Example]):
+class Seq2SeqData(tx.data.DatasetBase[Example, Example]):
     r"""A dataset that reads processed paired text from dumped NumPy files.
 
     Args:
@@ -80,7 +80,7 @@ class Seq2SeqData(tx.data.DataBase[Example, Example]):
     @staticmethod
     def default_hparams():
         return {
-            **tx.data.DataBase.default_hparams(),
+            **tx.data.DatasetBase.default_hparams(),
             "pad_id": 0,
             "bos_id": 1,
             "eos_id": 2,
@@ -100,7 +100,7 @@ class Seq2SeqData(tx.data.DataBase[Example, Example]):
             target_output[:, :-1], ((0, 0), (1, 0)),
             mode="constant", constant_values=self._hparams.bos_id)
         source, target_input, target_output = [
-            torch.from_numpy(x).to(device=self.device)
+            torch.from_numpy(x)
             for x in [source, target_input, target_output]
         ]
         return tx.data.Batch(

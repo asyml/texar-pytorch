@@ -9,6 +9,10 @@ from .storage import _StorageBase
 from .tensor import Tensor as TensorBase
 from .utils.hooks import RemovableHandle
 
+from . import backends as backends
+from . import cuda as cuda
+from . import optim as optim
+
 
 def manual_seed(seed: builtins.int): ...
 
@@ -28,6 +32,12 @@ set_grad_enabled: Any = ...
 
 class device:
     def __init__(self, device: Union[builtins.int, builtins.str]): ...
+
+    @property
+    def index(self) -> Optional[builtins.int]: ...
+
+    @property
+    def type(self) -> builtins.str: ...
 
 
 class finfo:
@@ -97,6 +107,7 @@ double = float64 = _float64()
 short = int16 = _int16()
 long = int64 = _int64()
 uint8 = _uint8()
+int8 = _int8()
 float = float32 = _float32()
 int = int32 = _int32()
 
@@ -2755,9 +2766,14 @@ def tanh(input: Tensor, *, out: Optional[Tensor] = None) -> Tensor: ...
 
 def tanh_(input: Tensor) -> Tensor: ...
 
-
+@overload
 def tensordot(input: Tensor, other: Tensor, dims_self: MaybeTuple[builtins.int],
               dims_other: MaybeTuple[builtins.int]) -> Tensor: ...
+
+@overload
+def tensordot(input: Tensor, other: Tensor,
+              dims: Union[builtins.int, Tuple[
+                  List[builtins.int], List[builtins.int]]]) -> Tensor: ...
 
 
 def th_addmm(input: Tensor, mat1: Tensor, mat2: Tensor, *, beta: builtins.float = 1, alpha: builtins.float = 1,

@@ -107,14 +107,15 @@ class RNNDecoderBase(DecoderBase[State, Output]):
         <https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/dynamic_decode>`_.
 
         See Also:
-            Arguments of :meth:`create_helper`.
+            Arguments of :meth:`create_helper`, for arguments like
+            :attr:`decoding_strategy`.
 
         Args:
             inputs (optional): Input tensors for teacher forcing decoding.
                 Used when :attr:`decoding_strategy` is set to
                 ``"train_greedy"``, or when `hparams`-configured helper is used.
 
-                The attr:`inputs` is a :tensor:`LongTensor` used as index to
+                The :attr:`inputs` is a :tensor:`LongTensor` used as index to
                 look up embeddings and feed in the decoder. For example, if
                 :attr:`embedder` is an instance of
                 :class:`~texar.torch.modules.WordEmbedder`, then :attr:`inputs`
@@ -143,6 +144,10 @@ class RNNDecoderBase(DecoderBase[State, Output]):
                 that defines the decoding strategy. If given,
                 ``decoding_strategy`` and helper configurations in
                 :attr:`hparams` are ignored.
+
+                :meth:`create_helper` can be used to create some of the common
+                helpers for, e.g., teacher-forcing decoding, greedy decoding,
+                sample decoding, etc.
             infer_mode (optional): If not `None`, overrides mode given by
                 `self.training`.
             **kwargs: Other keyword arguments for constructing helpers

@@ -131,6 +131,9 @@ class SentencePieceTokenizer(TokenizerBase):
         a wrapper of `sentencepiece.SentencePieceTrainer.Train`_ function.
 
         Example:
+
+        .. code-block:: python
+
             SentencePieceTokenizer.train('--input=test/botchan.txt
             --model_prefix=m --vocab_size=1000')
 
@@ -231,7 +234,9 @@ class SentencePieceTokenizer(TokenizerBase):
         * If `hparams['vocab_file']` is specified, the tokenizer is directly
           loaded from the vocabulary file. In this case, all other
           configurations in `hparams` are ignored.
-        * Otherwise, the tokenizer is trained based on `hparams['text_file']`.
+        * Otherwise, the tokenizer is automatically trained based on
+          `hparams['text_file']`. In this case, `hparams['vocab_size']` must
+          be specified.
         * `hparams['vocab_file']` and `hparams['text_file']` can not be None
           at the same time.
 

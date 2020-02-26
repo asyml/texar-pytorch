@@ -42,6 +42,11 @@ Tokenizer
 .. autoclass:: texar.torch.data.XLNetTokenizer
     :members:
 
+:hidden:`T5Tokenizer`
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.data.T5Tokenizer
+    :members:
+
 Vocabulary
 ==========
 
@@ -127,9 +132,9 @@ Data Sources
 Data Loaders
 =============
 
-:hidden:`DataBase`
+:hidden:`DatasetBase`
 ~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: texar.torch.data.DataBase
+.. autoclass:: texar.torch.data.DatasetBase
     :members:
 
     .. automethod:: process
@@ -167,6 +172,11 @@ Data Loaders
 
 Data Iterators
 ===============
+
+:hidden:`Batch`
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.data.Batch
+    :members:
 
 :hidden:`DataIterator`
 ~~~~~~~~~~~~~~~~~~~~~~~~

@@ -33,6 +33,7 @@ __all__ = [
     "read_words",
     "make_vocab",
     "count_file_lines",
+    "get_filename"
 ]
 
 Py3 = sys.version_info[0] == 3
@@ -139,6 +140,9 @@ def _download(url: str, filename: str, path: str) -> str:
 def _extract_google_drive_file_id(url: str) -> str:
     # id is between `/d/` and '/'
     url_suffix = url[url.find('/d/') + 3:]
+    if url_suffix.find('/') == -1:
+        # if there's no trailing '/'
+        return url_suffix
     file_id = url_suffix[:url_suffix.find('/')]
     return file_id
 
@@ -208,11 +212,26 @@ def read_words(filename: str, newline_token: Optional[str] = None) -> List[str]:
                 return f.read().replace("\n", newline_token).split()
 
 
+# TODO: Remove these once pylint supports function stubs.
+# pylint: disable=unused-argument,function-redefined,missing-docstring
+
+# A saner overloaded version with default arguments...
+@overload
+def make_vocab(filenames: MaybeList[str], max_vocab_size: int = -1,
+               newline_token: Optional[str] = None) -> List[str]: ...
+
+
+# ... and an insane version.
+@overload
 def make_vocab(filenames: MaybeList[str], max_vocab_size: int = -1,
                newline_token: Optional[str] = None,
                return_type: str = "list", return_count: bool = False) \
         -> Union[Union[List[str], Tuple[List[str], List[int]]],
-                 MaybeTuple[Dict[str, int]]]:
+                 MaybeTuple[Dict[str, int]]]: ...
+
+
+def make_vocab(filenames, max_vocab_size=-1, newline_token=None,
+               return_type="list", return_count=False):
     r"""Builds vocab of the files.
 
     Args:
@@ -270,8 +289,10 @@ def make_vocab(filenames: MaybeList[str], max_vocab_size: int = -1,
             word_to_count = dict(zip(words, counts))
             return word_to_id, word_to_count
     else:
-        raise ValueError("Unknown return_type: {}".format(return_type))
+        raise ValueError(f"Unknown return_type: {return_type}")
 
+
+# pylint: enable=unused-argument,function-redefined,missing-docstring
 
 def count_file_lines(filenames: MaybeList[str]) -> int:
     r"""Counts the number of lines in the file(s).
@@ -288,3 +309,12 @@ def count_file_lines(filenames: MaybeList[str]) -> int:
         filenames = [filenames]
     num_lines = np.sum([_count_lines(fn) for fn in filenames]).item()
     return num_lines
+
+
+def get_filename(url: str) -> str:
+    r"""Extracts the filename of the downloaded checkpoint file from the URL.
+    """
+    if 'drive.google.com' in url:
+        return _extract_google_drive_file_id(url)
+    url, filename = os.path.split(url)
+    return filename or os.path.basename(url)

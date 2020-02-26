@@ -18,7 +18,8 @@ from typing import (Any, Callable, Dict, List, Optional, Tuple, Union)
 
 import torch
 from texar.torch.data.data.data_base import (
-    DataBase, DataSource, FilterDataSource, ZipDataSource, SequenceDataSource)
+    DatasetBase, DataSource,
+    FilterDataSource, ZipDataSource, SequenceDataSource)
 from texar.torch.data.data.dataset_utils import Batch, connect_name
 from texar.torch.data.data.mono_text_data import (
     MonoTextData, _LengthFilterMode, _default_mono_text_dataset_hparams)
@@ -133,8 +134,8 @@ class MultiAlignedData(
                     {
                         'files': 'd.tfrecord',
                         'data_type': 'tf_record',
-                        "feature_original_types": {
-                            'image': ['tf.string', 'FixedLenFeature']
+                        "feature_types": {
+                            'image': ['tf.string', 'stacked_tensor']
                         },
                         'image_options': {
                             'image_feature_name': 'image',
@@ -184,7 +185,7 @@ class MultiAlignedData(
         self._names: List[Dict[str, Any]] = []
         sources: List[DataSource] = []
         filters: List[Optional[Callable[[str], bool]]] = []
-        self._databases: List[DataBase] = []
+        self._databases: List[DatasetBase] = []
         for idx, hparams_i in enumerate(self._hparams.datasets):
             data_type = hparams_i.data_type
             source_i: DataSource
@@ -236,9 +237,13 @@ class MultiAlignedData(
             elif _is_record_data(data_type):
                 source_i = PickleDataSource(file_paths=hparams_i.files)
                 sources.append(source_i)
+                # TODO: Only check `feature_types` when we finally remove
+                #   `feature_original_types`.
+                feature_types = (hparams_i.feature_types or
+                                 hparams_i.feature_original_types)
                 self._names.append({
                     name: connect_name(hparams_i.data_name, name)
-                    for name in hparams_i.feature_original_types.keys()})
+                    for name in feature_types.keys()})
                 filters.append(None)
 
                 dataset_hparams = dict_fetch(
@@ -357,7 +362,7 @@ class MultiAlignedData(
                     `None` which disables the processing sharing.
 
         2. For the **general** hyperparameters, see
-        :meth:`texar.torch.data.DataBase.default_hparams` for details.
+        :meth:`texar.torch.data.DatasetBase.default_hparams` for details.
 
         """
         hparams = TextDataBase.default_hparams()

@@ -96,6 +96,8 @@ class PositionEmbedder(EmbedderBase):
                     }
                 },
                 "dropout_rate": 0,
+                "dropout_strategy": 'element',
+                "trainable": True,
                 "name": "position_embedder"
             }
 
@@ -105,6 +107,9 @@ class PositionEmbedder(EmbedderBase):
         hparams = embedder_utils.default_embedding_hparams()
         hparams["name"] = "position_embedder"
         return hparams
+
+    def extra_repr(self) -> str:
+        return f"position_size={self.position_size}, embedding_dim={self.dim}"
 
     def forward(self,  # type: ignore
                 positions: Optional[torch.LongTensor] = None,
@@ -298,6 +303,9 @@ class SinusoidsPositionEmbedder(EmbedderBase):
             'name': 'sinusoid_position_embedder',
         }
 
+    def extra_repr(self) -> str:
+        return f"embedding_dim={self.dim}"
+
     def _compute_embeddings(self, positions: torch.Tensor,
                             inv_timescales: torch.Tensor) -> torch.Tensor:
         scaled_time = (positions.type_as(inv_timescales).view(-1, 1) *
@@ -355,6 +363,12 @@ class SinusoidsPositionEmbedder(EmbedderBase):
             outputs = mask_sequences(outputs, sequence_length)
 
         return outputs
+
+    @property
+    def dim(self):
+        r"""The embedding dimension.
+        """
+        return self._dim
 
     @property
     def output_size(self) -> int:

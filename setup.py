@@ -17,7 +17,7 @@ if sys.version_info < (3, 6):
 
 setuptools.setup(
     name="texar-pytorch",
-    version="0.0.1",
+    version="0.1.2-unreleased",
     url="https://github.com/asyml/texar-pytorch",
 
     description="Toolkit for Machine Learning and Text Generation",
@@ -26,7 +26,7 @@ setuptools.setup(
 
     packages=[
         f"texar.{name}"
-        for name in setuptools.find_packages(where='texar/')
+        for name in setuptools.find_packages(where='texar')
     ],
     platforms='any',
 
@@ -37,11 +37,12 @@ setuptools.setup(
         'funcsigs',
         'sentencepiece>=0.1.8',
         'mypy_extensions',
+        'packaging>=19.0'
     ],
     extras_require={
-        'torch': ['torch>=1.0'],
+        'torch': ['torch>=1.0.0'],
         'examples': [],
-        'extras': ['Pillow>=3.0'],
+        'extras': ['Pillow>=3.0', 'tensorboardX>=1.8'],
     },
     package_data={
         "texar.torch": [

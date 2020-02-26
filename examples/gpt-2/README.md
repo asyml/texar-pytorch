@@ -196,7 +196,7 @@ python gpt2_train_main.py --do-train --do-eval \
 Here:
 
 - `--config-train`: Configurations of GPT-2 training, including data and optimization hyperparameters. By default, the
-  config file [`configs/config_train.py`](config_train.py) is used. Remember to specify correct data path if you are
+  config file [`config_train.py`](config_train.py) is used. Remember to specify correct data path if you are
   using your own data.
 - `--output-dir`: The output path where checkpoints are saved.
 
@@ -205,7 +205,7 @@ By default, the GPT-2 `gpt2-small` model is used. To use the GPT-2 `gpt2-medium`
 ```bash
 python gpt2_train_main.py --do-train --do-eval \
     --pretrained-model-name=gpt2-medium \
-    --config-train=configs.config_train \
+    --config-train=config_train \
     --output-dir=output
 ```
 

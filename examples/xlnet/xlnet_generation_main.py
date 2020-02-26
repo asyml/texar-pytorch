@@ -15,6 +15,8 @@
 """
 
 import argparse
+import sys
+
 import torch
 
 import texar.torch as tx
@@ -52,11 +54,8 @@ parser.add_argument('--interactive', action='store_true',
 args = parser.parse_args()
 
 
-def main():
-    if torch.cuda.is_available():
-        device = torch.device(torch.cuda.current_device())
-    else:
-        device = 'cpu'
+def main() -> None:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = tx.modules.XLNetDecoder(
         pretrained_model_name=args.pretrained_model_name)
@@ -145,7 +144,7 @@ def main():
                        n_samples=batch_size)
             except EOFError:
                 print("EOF entered, quitting.")
-                exit(0)
+                sys.exit()
     else:
         # Generate samples from scratch
         for _ in range(nsamples // batch_size):

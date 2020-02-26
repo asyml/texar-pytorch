@@ -37,14 +37,14 @@ __all__ = [
 
 def get_record_feature_types(seq_length: int, is_regression: bool):
     name_to_features = {
-        "input_ids": (torch.long, 'FixedLenFeature', seq_length),
-        "input_mask": (torch.float, 'FixedLenFeature', seq_length),
-        "segment_ids": (torch.long, 'FixedLenFeature', seq_length),
-        "label_ids": (torch.long, 'FixedLenFeature'),
-        "is_real_example": (torch.long, 'FixedLenFeature'),
+        "input_ids": (torch.long, 'stacked_tensor', seq_length),
+        "input_mask": (torch.float, 'stacked_tensor', seq_length),
+        "segment_ids": (torch.long, 'stacked_tensor', seq_length),
+        "label_ids": (torch.long, 'stacked_tensor'),
+        "is_real_example": (torch.long, 'stacked_tensor'),
     }
     if is_regression:
-        name_to_features["label_ids"] = (torch.float, 'FixedLenFeature')
+        name_to_features["label_ids"] = (torch.float, 'stacked_tensor')
     return name_to_features
 
 
@@ -90,10 +90,10 @@ def construct_dataset(processor: DataProcessor, output_dir: str,
             features["input_mask"] = feature.input_mask
             features["segment_ids"] = feature.segment_ids
             if not processor.is_regression:
-                features["label_ids"] = [feature.label_id]
+                features["label_ids"] = feature.label_id
             else:
-                features["label_ids"] = [float(feature.label_id)]
-            features["is_real_example"] = [int(feature.is_real_example)]
+                features["label_ids"] = float(feature.label_id)
+            features["is_real_example"] = int(feature.is_real_example)
 
             writer.write(features)
         writer.close()
@@ -129,7 +129,7 @@ def load_datasets(task: str, input_dir: str, seq_length: int, batch_size: int,
             hparams={
                 "dataset": {
                     "files": [input_file],
-                    "feature_original_types": feature_types,
+                    "feature_types": feature_types,
                 },
                 "batch_size": (batch_size if is_training else eval_batch_size),
                 "allow_smaller_final_batch": not drop_remainder,

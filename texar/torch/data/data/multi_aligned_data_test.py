@@ -1,5 +1,16 @@
-# -*- coding: utf-8 -*-
+# Copyright 2019 The Texar Authors. All Rights Reserved.
 #
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Unit tests for data related operations.
 """
@@ -55,12 +66,12 @@ class MultiAlignedDataTest(unittest.TestCase):
         int_3_file.flush()
         self._int_3_file = int_3_file
 
-        self._tfrecord_filepath = os.path.join(tempfile.mkdtemp(),
-                                               'test.tfrecord')
-        self._feature_original_types = {
-            'number1': ('tf.int64', 'FixedLenFeature'),
-            'number2': ('tf.int64', 'FixedLenFeature'),
-            'text': ('tf.string', 'FixedLenFeature')
+        self._record_filepath = os.path.join(
+            tempfile.mkdtemp(), 'test.pkl')
+        self._feature_types = {
+            'number1': ('tf.int64', 'stacked_tensor'),
+            'number2': ('tf.int64', 'stacked_tensor'),
+            'text': ('tf.string', 'stacked_tensor')
         }
 
         features = [{
@@ -74,8 +85,8 @@ class MultiAlignedDataTest(unittest.TestCase):
                 "text": "This is a another sentence for TFRecord 词 词 。"
             }]
         # Prepare Validation data
-        with RecordData.writer(self._tfrecord_filepath,
-                                       self._feature_original_types) as writer:
+        with RecordData.writer(self._record_filepath,
+                               self._feature_types) as writer:
             for feature in features:
                 writer.write(feature)
 
@@ -110,8 +121,8 @@ class MultiAlignedDataTest(unittest.TestCase):
                     "data_name": "label"
                 },
                 {  # dataset 4
-                    "files": self._tfrecord_filepath,
-                    "feature_original_types": self._feature_original_types,
+                    "files": self._record_filepath,
+                    "feature_types": self._feature_types,
                     "feature_convert_types": {
                         'number2': 'tf.float32',
                     },

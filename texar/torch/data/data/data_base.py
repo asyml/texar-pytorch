@@ -36,7 +36,7 @@ __all__ = [
     "ZipDataSource",
     "FilterDataSource",
     "RecordDataSource",
-    "DataBase",
+    "DatasetBase",
 ]
 
 RawExample = TypeVar('RawExample')  # type of a raw example loaded from source
@@ -44,11 +44,14 @@ Example = TypeVar('Example')  # type of a data example
 
 
 class DataSource(Generic[RawExample], ABC):
-    r"""Base class for all datasets. Different to PyTorch
-    :class:`~torch.utils.data.Dataset`, subclasses of this class are not
-    required to implement :meth:`__getitem__` (default implementation raises
-    `TypeError`), which is beneficial for certain sources that only supports
-    iteration (reading from text files, reading Python iterators, etc.)
+    r"""Base class for all data sources. A data source represents the *source*
+    of the data, from which raw data examples are read and returned.
+
+    Different to PyTorch :class:`~torch.utils.data.Dataset`, subclasses of this
+    class are not required to implement :meth:`__getitem__` (default
+    implementation raises `TypeError`), which is beneficial for certain sources
+    that only supports iteration (reading from text files, reading Python
+    iterators, etc.)
     """
 
     def __getitem__(self, index: int) -> RawExample:
@@ -176,7 +179,7 @@ class RecordDataSource(DataSource[Dict[str, RawExample]]):
         keys = list(self._sources.keys())
         iterator = zip(*[iter(source) for source in self._sources.values()])
         for values in iterator:
-            yield {key: value for key, value in zip(keys, values)}
+            yield dict(zip(keys, values))
 
     def __len__(self) -> int:
         return min(len(source) for source in self._sources.values())
@@ -233,7 +236,7 @@ class _TransformedDataSource(DataSource[Example], Generic[RawExample, Example]):
 class _CachedDataSource(DataSource[RawExample]):
     r"""Wrapper for random access support over a data source that does not
     implement `__getitem__`. This class is only used internally in
-    :class:`~texar.torch.data.data.DataBase`, while conforming to user
+    :class:`~texar.torch.data.data.DatasetBase`, while conforming to user
     `cache_strategy` and `shuffle_buffer_size` settings.
     """
 
@@ -247,7 +250,7 @@ class _CachedDataSource(DataSource[RawExample]):
             data_source: The data source to wrap around.
             erase_after_access: If `True`, cached examples are erased after
                 being accessed through `__getitem__`. Useful when
-                :class:`~texar.torch.data.data.DataBase` hyperparameter
+                :class:`~texar.torch.data.data.DatasetBase` hyperparameter
                 `cache_strategy` is set to `none` or `processed`.
         """
         self._source = data_source
@@ -289,26 +292,108 @@ class _CachedDataSource(DataSource[RawExample]):
             self._max_index = -1
 
 
-class DataBase(Dataset, Generic[RawExample, Example], ABC):
+class DatasetBase(Dataset, Generic[RawExample, Example], ABC):
     r"""Base class inherited by all data classes.
+
+    Args:
+        source: An instance of type :class:`~texar.torch.data.DataSource`,
+        hparams: A `dict` or instance of :class:`~texar.torch.HParams`
+            containing hyperparameters. See :meth:`default_hparams` for the
+            defaults.
+        device: The device of the produced batches. For GPU training, set to
+            current CUDA device.
+
+            .. note::
+                When :attr:`device` is set to a CUDA device, tensors in the
+                batch will be automatically moved to the specified device. This
+                may result in performance issues if your data examples contain
+                complex structures (e.g., nested lists with many elements). In
+                this case, it is recommended to set :attr:`device` to `None` and
+                manually move your data.
+
+                For more details, see :meth:`collate`.
+
+    Users can also directly inherit from this class to implement customized data
+    processing routines. Two methods should be implemented in the subclass:
+
+    - :meth:`process`: Process a single data example read from the data source
+      (*raw example*). Default implementation returns the raw example as is.
+    - :meth:`collate`: Combine a list of processed examples into a single batch,
+      and return an object of type :class:`~texar.torch.data.Batch`.
+
+    Example:
+
+        Here, we define a custom data class named ``MyDataset``, which is
+        equivalent to the most basic usage of
+        :class:`~texar.torch.data.MonoTextData`.
+
+        .. code-block:: python
+
+            class MyDataset(tx.data.DatasetBase):
+                def __init__(self, data_path, vocab, hparams=None, device=None):
+                    source = tx.data.TextLineDataSource(data_path)
+                    self.vocab = vocab
+                    super().__init__(source, hparams, device)
+
+                def process(self, raw_example):
+                    # `raw_example` is a data example read from `self.source`,
+                    # in this case, a line of tokenized text, represented as a
+                    # list of `str`.
+                    return {
+                        "text": raw_example,
+                        "ids": self.vocab.map_tokens_to_ids_py(raw_example),
+                    }
+
+                def collate(self, examples):
+                    # `examples` is a list of objects returned from the
+                    # `process` method. These data examples should be collated
+                    # into a batch.
+
+                    # `text` is a list of list of `str`, storing the tokenized
+                    # sentences for each example in the batch.
+                    text = [ex["text"] for ex in examples]
+                    # `ids` is the NumPy tensor built from the token IDs of each
+                    # sentence, and `lengths` the lengths of each sentence.
+                    # The `tx.data.padded_batch` function pads IDs to the same
+                    # length and then stack them together. This function is
+                    # commonly used in `collate` methods.
+                    ids, lengths = tx.data.padded_batch(
+                        [ex["ids"] for ex in examples])
+                    return tx.data.Batch(
+                        len(examples),
+                        text=text,
+                        text_ids=torch.from_numpy(ids),
+                        lengths=torch.tensor(lengths))
+
+            vocab = tx.data.Vocab("vocab.txt")
+            hparams = {'batch_size': 1}
+            data = MyDataset("data.txt", vocab, hparams)
+            iterator = DataIterator(data)
+            for batch in iterator:
+                # batch contains the following
+                # batch_ == {
+                #    'text': [['<BOS>', 'example', 'sequence', '<EOS>']],
+                #    'text_ids': [[1, 5, 10, 2]],
+                #    'length': [4]
+                # }
     """
 
     # pylint: disable=line-too-long
 
-    # The `DataBase` is used in combination with Texar `DataIterator`, which internally uses the PyTorch `DataLoader`
+    # The `DatasetBase` is used in combination with Texar `DataIterator`, which internally uses the PyTorch `DataLoader`
     # for multi-processing support.
     #
     # We divide the entire data pipeline into three stages, namely *load*, *process*, and *batch*:
     # - **Load** refers to loading data from the data source (e.g., a file, a Python list or iterator). In Texar,
     #   loading is handled by `DataSource` classes.
     # - **Process** refers to preprocessing routines for each data example (e.g., vocabulary mapping, tokenization). In
-    #   Texar, this is the `process` function of each `DataBase` class.
+    #   Texar, this is the `process` function of each `DatasetBase` class.
     # - **Batch** refers to combining multiple examples to form a batch, which typically includes padding and moving
-    #   data across devices. In Texar, this is the `collate` function of each `DataBase` class.
+    #   data across devices. In Texar, this is the `collate` function of each `DatasetBase` class.
     #
     # PyTorch DataLoader only performs batching, and since multi-processing is used, the entire dataset is expected to
-    # be in memory before iteration, i.e. loading and processing cannot be lazy. The DataBase class is carefully crafted
-    # to provide laziness and caching options at all possible stages.
+    # be in memory before iteration, i.e. loading and processing cannot be lazy. The `DatasetBase` class is carefully
+    # crafted to provide laziness and caching options at all possible stages.
     #
     # To support laziness, we pass data examples (either raw or processed, depending on whether processing is lazy) to
     # the worker processes. To prevent modifying the underlying `DataLoader` implementation, we hack the PyTorch
@@ -499,7 +584,10 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 "prefetch_buffer_size": 0,
                 "max_dataset_size": -1,
                 "seed": None,
-                "name": "data",
+                "lazy_strategy": 'none',
+                "cache_strategy": 'processed',
+                "parallelize_processing": True,
+                "name": "data"
             }
 
         Here:
@@ -579,9 +667,6 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
                 Manual seeding is not yet supported. This option will be
                 ignored.
 
-        `"name"`: str
-            Name of the data.
-
         `"lazy_strategy"`: str
             Lazy strategy for data examples. Lazy loading/processing defers
             data loading/processing until when it's being accessed.
@@ -623,6 +708,9 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
             Note that this only affects cases where `lazy_strategy` is not
             `none`. If `lazy_strategy` is `none`, processing will be
             performed on a single process regardless of this value.
+
+        `"name"`: str
+            Name of the data.
         """
         # TODO: Sharding not yet supported.
         # TODO: `seed` is not yet applied.
@@ -647,9 +735,8 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
     def to(self, device: Optional[torch.device]):
         r"""Move the dataset to the specific device. Note that we don't actually
-        move data or do anything here --- we rely on correct implementations of
-        :meth:`_process` and :meth:`_collate` to move data to appropriate
-        devices.
+        move data or do anything here -- data will be moved to the appropriate
+        device after :class:`~texar.torch.data.DataIterator` fetches the batch.
         """
         if device is not None:
             self.device = device
@@ -657,7 +744,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
     def _prefetch_processed(self, index: int):
         r"""Performs processing on the main process. This is called in
-        :meth:`texar.torch.data.data.DataBase._prefetch_source` if
+        :meth:`texar.torch.data.data.DatasetBase._prefetch_source` if
         `parallelize_processing` is `False`."""
         if len(self._processed_cache) <= index:
             self._processed_cache.extend(
@@ -824,13 +911,22 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
         The collate routine is called to collate (combine) examples into
         batches. This function takes a list of processed examples, and returns
-        an instance of :class:`~texar.torch.data.data.Batch`.
+        an instance of :class:`~texar.torch.data.Batch`.
 
-        Implementation should make sure that the returned callable is safe and
-        efficient under multi-processing scenarios. Basically, do not rely on
-        variables that could be modified during iteration, and avoid accessing
-        unnecessary variables, as each access would result in a cross-process
-        memory copy.
+        .. note::
+            Implementation should make sure that the returned callable is safe
+            and efficient under multi-processing scenarios. Basically, do not
+            rely on variables that could be modified during iteration, and avoid
+            accessing unnecessary variables, as each access would result in a
+            cross-process memory copy.
+
+        .. warning::
+            The recommended pattern is not to move tensor storage within this
+            method, but you are free to do so.
+
+            However, if multiple workers are used
+            (:attr:`num_parallel_calls` > 0), moving tensors to CUDA devices
+            within this method would result in CUDA errors being thrown.
 
         Args:
             examples: A list of processed examples in a batch.
@@ -842,7 +938,7 @@ class DataBase(Dataset, Generic[RawExample, Example], ABC):
 
     def _collate_and_maybe_return(self, examples: List[Example]) -> \
             Union[Batch, Tuple[List[Example], Batch]]:
-        r"""Called by :class:`~texar.torch.data.data.DataIterator` to obtain the
+        r"""Called by :class:`~texar.torch.data.DataIterator` to obtain the
         collated batch (and processed examples under certain circumstances).
 
         Args:

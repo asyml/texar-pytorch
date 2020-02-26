@@ -20,7 +20,7 @@ from abc import ABC
 from typing import IO, Iterator, List, Optional, TypeVar
 
 import torch
-from texar.torch.data.data.data_base import DataBase, DataSource
+from texar.torch.data.data.data_base import DatasetBase, DataSource
 from texar.torch.utils.types import MaybeList
 
 __all__ = [
@@ -131,8 +131,9 @@ class TextLineDataSource(DataSource[List[str]]):
 
     def _open_file(self, path: str) -> IO[str]:
         if self._compression_type == 'zlib':
-            f: IO[str] = io.TextIOWrapper(  # type: ignore
-                self._ZlibWrapper(open(path, 'rb')), encoding=self._encoding)
+            f: IO[str] = io.TextIOWrapper(
+                self._ZlibWrapper(open(path, 'rb')),  # type: ignore
+                encoding=self._encoding)
         elif self._compression_type == 'gzip':
             import gzip
             f = gzip.open(path, 'rt', encoding=self._encoding)
@@ -151,7 +152,7 @@ class TextLineDataSource(DataSource[List[str]]):
                     yield tokens
 
 
-class TextDataBase(DataBase[RawExample, Example], ABC):
+class TextDataBase(DatasetBase[RawExample, Example], ABC):
     r"""Base class inherited by all text data classes.
     """
 
@@ -165,7 +166,7 @@ class TextDataBase(DataBase[RawExample, Example], ABC):
 
         See the specific subclasses for the details.
         """
-        hparams = DataBase.default_hparams()
+        hparams = DatasetBase.default_hparams()
         hparams.update({
             "bucket_boundaries": [],
             "bucket_batch_sizes": None,

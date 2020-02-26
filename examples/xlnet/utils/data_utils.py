@@ -18,21 +18,15 @@ https://github.com/zihangdai/xlnet/blob/master/classifier_utils.py
 https://github.com/zihangdai/xlnet/blob/master/prepro_utils.py
 """
 
-from typing import Callable, Iterator, List, TypeVar
+from typing import List, TypeVar
 
 import texar.torch as tx
 
 __all__ = [
-    "repeat",
     "convert_single_example",
 ]
 
 T = TypeVar('T')
-
-
-def repeat(fn: Callable[[], Iterator[T]]) -> Iterator[T]:
-    while True:
-        yield from fn()
 
 
 class PaddingInputExample:

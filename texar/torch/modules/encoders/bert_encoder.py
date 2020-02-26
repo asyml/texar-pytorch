@@ -26,7 +26,7 @@ from texar.torch.modules.embedders.position_embedders import \
     PositionEmbedder, SinusoidsPositionEmbedder
 from texar.torch.modules.encoders.encoder_base import EncoderBase
 from texar.torch.modules.encoders.transformer_encoder import TransformerEncoder
-from texar.torch.modules.pretrained.pretrained_bert import PretrainedBERTMixin
+from texar.torch.modules.pretrained.bert import PretrainedBERTMixin
 
 __all__ = [
     "BERTEncoder",
@@ -34,7 +34,9 @@ __all__ = [
 
 
 class BERTEncoder(EncoderBase, PretrainedBERTMixin):
-    r"""Raw BERT Transformer for encoding sequences.
+    r"""Raw BERT Transformer for encoding sequences. Please see
+    :class:`~texar.torch.modules.PretrainedBERTMixin` for a brief description
+    of BERT.
 
     This module basically stacks
     :class:`~texar.torch.modules.WordEmbedder`,
@@ -74,9 +76,14 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
         # Segment embedding for each type of tokens
         self.segment_embedder = None
         if self._hparams.get('type_vocab_size', 0) > 0:
-            self.segment_embedder = WordEmbedder(
-                vocab_size=self._hparams.type_vocab_size,
-                hparams=self._hparams.segment_embed)
+            if self.pretrained_model_name is not None and \
+                    self.pretrained_model_name.startswith('spanbert'):
+                # Do not construct segment_embedder for SpanBERT
+                pass
+            else:
+                self.segment_embedder = WordEmbedder(
+                    vocab_size=self._hparams.type_vocab_size,
+                    hparams=self._hparams.segment_embed)
 
         # Position embedding
         self.position_embedder: Union[SinusoidsPositionEmbedder,
@@ -153,6 +160,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
                     },
                     "name": "encoder",
                     "num_blocks": 12,
+                    "eps": 1e-12,
                     "poswise_feedforward": {
                         "layers": [
                             {
@@ -216,6 +224,9 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
         `"hidden_size"`: int
             Size of the pooler dense layer.
 
+        `"eps"`: float
+            Epsilon values for layer norm layers.
+
         `"initializer"`: dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
@@ -256,6 +267,7 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
                 },
                 'name': 'encoder',
                 'num_blocks': 12,
+                'eps': 1e-12,
                 'poswise_feedforward': {
                     'layers': [
                         {
@@ -287,14 +299,20 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
         }
 
     def forward(self,  # type: ignore
-                inputs: torch.Tensor,
+                inputs: Union[torch.Tensor, torch.LongTensor],
                 sequence_length: Optional[torch.LongTensor] = None,
                 segment_ids: Optional[torch.LongTensor] = None):
-        r"""Encodes the inputs.
+        r"""Encodes the inputs. Note that the SpanBERT model does not use
+        segmentation embedding. As a result, SpanBERT does not require
+        `segment_ids` as an input when you use pre-trained SpanBERT checkpoint
+        files.
 
         Args:
-            inputs: A 2D Tensor of shape `[batch_size, max_time]`,
-                containing the token ids of tokens in the input sequences.
+            inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
+                containing the ids of tokens in input sequences, or
+                a **3D Tensor** of shape `[batch_size, max_time, vocab_size]`,
+                containing soft token ids (i.e., weights or probabilities)
+                used to mix the embedding vectors.
             segment_ids (optional): A 2D Tensor of shape
                 `[batch_size, max_time]`, containing the segment ids
                 of tokens in input sequences. If `None` (default), a
@@ -314,8 +332,13 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
               pre-trained on top of the hidden state associated to the first
               character of the input (`CLS`), see BERT's paper.
         """
+        if inputs.dim() == 2:
+            word_embeds = self.word_embedder(ids=inputs)
+        elif inputs.dim() == 3:
+            word_embeds = self.word_embedder(soft_ids=inputs)
+        else:
+            raise ValueError("'inputs' should be a 2D or 3D tensor.")
 
-        word_embeds = self.word_embedder(inputs)
         batch_size = inputs.size(0)
         pos_length = inputs.new_full((batch_size,), inputs.size(1),
                                      dtype=torch.int64)
@@ -323,7 +346,9 @@ class BERTEncoder(EncoderBase, PretrainedBERTMixin):
 
         if self.segment_embedder is not None:
             if segment_ids is None:
-                segment_ids = torch.zeros_like(inputs)
+                segment_ids = torch.zeros((inputs.size(0), inputs.size(1)),
+                                          dtype=torch.long,
+                                          device=inputs.device)
             segment_embeds = self.segment_embedder(segment_ids)
             inputs_embeds = word_embeds + segment_embeds + pos_embeds
         else:

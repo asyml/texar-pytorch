@@ -16,6 +16,7 @@
 
 import argparse
 import importlib
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -31,8 +32,8 @@ parser.add_argument(
     help="The dataset config.")
 args = parser.parse_args()
 
-config_model = importlib.import_module(args.config_model)
-config_data = importlib.import_module(args.config_data)
+config_model: Any = importlib.import_module(args.config_model)
+config_data: Any = importlib.import_module(args.config_data)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -107,7 +108,7 @@ class Seq2SeqAttn(nn.Module):
             return infer_outputs
 
 
-def main():
+def main() -> None:
     train_data = tx.data.PairedTextData(
         hparams=config_data.train, device=device)
     val_data = tx.data.PairedTextData(

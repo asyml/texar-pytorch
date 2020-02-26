@@ -273,7 +273,6 @@ def sequence_mask(lengths: Union[torch.LongTensor, List[int]],
     size = lengths.size()
     row_vector = torch.arange(max_len, device=device, dtype=lengths.dtype).view(
         *([1] * len(size)), -1).expand(*size, max_len)
-    row_vector = row_vector
     mask = (row_vector < lengths.unsqueeze(-1)).to(device=device)
     if dtype is not None:
         mask = mask.to(dtype=dtype)
@@ -428,7 +427,7 @@ def check_or_get_instance(ins_or_class_or_name: Union[Type[T], T, str],
     return ret
 
 
-def get_instance(class_or_name: Union[Type[T], str], kwargs: Kwargs,
+def get_instance(class_or_name: Union[Type[T], str], kwargs: Optional[Kwargs],
                  module_paths: Optional[List[str]] = None) -> T:
     r"""Creates a class instance.
 

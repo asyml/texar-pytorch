@@ -1,3 +1,16 @@
+# Copyright 2019 The Texar Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Unit tests for connectors.
 """
@@ -34,7 +47,7 @@ class TestConnectors(unittest.TestCase):
         :class:`~texar.torch.modules.connectors.ConstantConnector`.
         """
 
-        state_size = namedtuple('LSTMStateTuple', ['c', 'h'])(256, 256)
+        state_size = namedtuple('LSTMStateTuple', ['h', 'c'])(256, 256)
         connector_0 = ConstantConnector(state_size)
         decoder_initial_state_0 = connector_0(self._batch_size)
         connector_1 = ConstantConnector(
@@ -110,7 +123,7 @@ class TestConnectors(unittest.TestCase):
         r"""Tests the logic of
         :class:`~texar.torch.modules.connectors.MLPTransformConnector`.
         """
-        state_size = namedtuple('LSTMStateTuple', ['c', 'h'])(256, 256)
+        state_size = namedtuple('LSTMStateTuple', ['h', 'c'])(256, 256)
         connector = MLPTransformConnector(state_size, linear_layer_dim=10)
         output = connector(torch.zeros(5, 10))
         output_1 = output[0]

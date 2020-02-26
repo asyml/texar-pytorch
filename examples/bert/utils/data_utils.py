@@ -348,11 +348,10 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
 
 def convert_examples_to_features_and_output_to_files(
         examples, label_list, max_seq_length, tokenizer, output_file,
-        feature_original_types):
+        feature_types):
     r"""Convert a set of `InputExample`s to a pickled file."""
 
-    with tx.data.RecordData.writer(
-            output_file, feature_original_types) as writer:
+    with tx.data.RecordData.writer(output_file, feature_types) as writer:
         for (ex_index, example) in enumerate(examples):
             feature = convert_single_example(ex_index, example, label_list,
                                              max_seq_length, tokenizer)
@@ -361,14 +360,14 @@ def convert_examples_to_features_and_output_to_files(
                 "input_ids": feature.input_ids,
                 "input_mask": feature.input_mask,
                 "segment_ids": feature.segment_ids,
-                "label_ids": [feature.label_id]
+                "label_ids": feature.label_id
             }
             writer.write(features)
 
 
 def prepare_record_data(processor, tokenizer,
                         data_dir, max_seq_length, output_dir,
-                        feature_original_types):
+                        feature_types):
     r"""Prepare record data.
     Args:
         processor: Data Preprocessor, which must have get_labels,
@@ -378,7 +377,7 @@ def prepare_record_data(processor, tokenizer,
         data_dir: The input data directory.
         max_seq_length: Max sequence length.
         output_dir: The directory to save the pickled file in.
-        feature_original_types: The original type of the feature.
+        feature_types: The original type of the feature.
     """
     label_list = processor.get_labels()
 
@@ -386,16 +385,16 @@ def prepare_record_data(processor, tokenizer,
     train_file = os.path.join(output_dir, "train.pkl")
     convert_examples_to_features_and_output_to_files(
         train_examples, label_list, max_seq_length,
-        tokenizer, train_file, feature_original_types)
+        tokenizer, train_file, feature_types)
 
     eval_examples = processor.get_dev_examples(data_dir)
     eval_file = os.path.join(output_dir, "eval.pkl")
     convert_examples_to_features_and_output_to_files(
         eval_examples, label_list,
-        max_seq_length, tokenizer, eval_file, feature_original_types)
+        max_seq_length, tokenizer, eval_file, feature_types)
 
     test_examples = processor.get_test_examples(data_dir)
     test_file = os.path.join(output_dir, "predict.pkl")
     convert_examples_to_features_and_output_to_files(
         test_examples, label_list,
-        max_seq_length, tokenizer, test_file, feature_original_types)
+        max_seq_length, tokenizer, test_file, feature_types)

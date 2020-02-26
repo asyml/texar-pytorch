@@ -1,3 +1,16 @@
+# Copyright 2019 The Texar Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Unit tests for GPT2 decoder.
 """
@@ -34,30 +47,34 @@ class GPT2DecoderTest(unittest.TestCase):
         }
         decoder = GPT2Decoder(pretrained_model_name="gpt2-small",
                               hparams=hparams)
-        self.assertEqual(decoder.hparams.num_blocks, 12)
+        self.assertEqual(decoder.hparams.decoder.num_blocks, 12)
         _ = decoder(self.inputs)
 
         # case 2: set "pretrained_mode_name" by hparams
         hparams = {
             "pretrained_model_name": "gpt2-small",
-            "num_blocks": 6,
+            "decoder": {
+                "num_blocks": 6,
+            },
         }
         decoder = GPT2Decoder(hparams=hparams)
-        self.assertEqual(decoder.hparams.num_blocks, 12)
+        self.assertEqual(decoder.hparams.decoder.num_blocks, 12)
         _ = decoder(self.inputs)
 
         # case 3: set to None in both hparams and constructor argument
         hparams = {
             "pretrained_model_name": None,
-            "num_blocks": 6,
+            "decoder": {
+                "num_blocks": 6,
+            },
         }
         decoder = GPT2Decoder(hparams=hparams)
-        self.assertEqual(decoder.hparams.num_blocks, 6)
+        self.assertEqual(decoder.hparams.decoder.num_blocks, 6)
         _ = decoder(self.inputs)
 
         # case 4: using default hparams
         decoder = GPT2Decoder()
-        self.assertEqual(decoder.hparams.num_blocks, 12)
+        self.assertEqual(decoder.hparams.decoder.num_blocks, 12)
         _ = decoder(self.inputs)
 
     @pretrained_test
@@ -92,7 +109,9 @@ class GPT2DecoderTest(unittest.TestCase):
         # case 3: self-designed GPT2
         hparams = {
             "pretrained_model_name": None,
-            "num_blocks": 6,
+            "decoder": {
+                "num_blocks": 6,
+            },
         }
         decoder = GPT2Decoder(hparams=hparams)
         self.assertEqual(len(decoder.trainable_variables), get_variable_num(6))
@@ -172,9 +191,9 @@ class GPT2DecoderTest(unittest.TestCase):
         self.assertEqual(
             outputs['log_prob'].shape,
             torch.Size([self.batch_size, self.beam_width]))
-        self.assertEqual(
-            outputs['sample_id'].shape,
-            torch.Size([self.batch_size, self.max_length, self.beam_width]))
+        self.assertEqual(outputs['sample_id'].shape[0], self.batch_size)
+        self.assertLessEqual(outputs['sample_id'].shape[1], self.max_length)
+        self.assertEqual(outputs['sample_id'].shape[2], self.beam_width)
 
     def test_greedy_embedding_helper(self):
         r"""Tests with tf.contrib.seq2seq.GreedyEmbeddingHelper

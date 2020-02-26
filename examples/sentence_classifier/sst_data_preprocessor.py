@@ -60,7 +60,7 @@ def transform_raw_sst(data_path: str, raw_filename: str, new_filename: str) -> \
     return fout_x_name, fout_y_name
 
 
-def prepare_data():
+def main() -> None:
     """Preprocesses SST2 data.
     """
     train_path = os.path.join(args.data_path, "sst.train.sentences.txt")
@@ -84,12 +84,6 @@ def prepare_data():
             f_vocab.write(v + '\n')
 
     print('Preprocessing done: {}'.format(args.data_path))
-
-
-def main():
-    """Entrypoint.
-    """
-    prepare_data()
 
 
 if __name__ == '__main__':

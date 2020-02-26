@@ -15,12 +15,12 @@
 RoBERTa encoder.
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 
 from texar.torch.modules.encoders.bert_encoder import BERTEncoder
-from texar.torch.modules.pretrained.pretrained_roberta import \
+from texar.torch.modules.pretrained.roberta import \
     PretrainedRoBERTaMixin
 
 __all__ = [
@@ -29,7 +29,9 @@ __all__ = [
 
 
 class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
-    r"""RoBERTa Transformer for encoding sequences.
+    r"""RoBERTa Transformer for encoding sequences. Please see
+    :class:`~texar.torch.modules.PretrainedRoBERTaMixin` for a brief description
+    of RoBERTa.
 
     This module basically stacks
     :class:`~texar.torch.modules.WordEmbedder`,
@@ -94,6 +96,7 @@ class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
                     },
                     "name": "encoder",
                     "num_blocks": 12,
+                    "eps": 1e-12,
                     "poswise_feedforward": {
                         "layers": [
                             {
@@ -151,6 +154,9 @@ class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
         `"hidden_size"`: int
             Size of the pooler dense layer.
 
+        `"eps"`: float
+            Epsilon values for layer norm layers.
+
         `"initializer"`: dict, optional
             Hyperparameters of the default initializer that initializes
             variables created in this module.
@@ -186,6 +192,7 @@ class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
                 },
                 'name': 'encoder',
                 'num_blocks': 12,
+                'eps': 1e-12,
                 'poswise_feedforward': {
                     'layers': [
                         {
@@ -217,7 +224,7 @@ class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
         }
 
     def forward(self,  # type: ignore
-                inputs: torch.Tensor,
+                inputs: Union[torch.Tensor, torch.LongTensor],
                 sequence_length: Optional[torch.LongTensor] = None,
                 segment_ids: Optional[torch.LongTensor] = None):
         r"""Encodes the inputs. Differing from the standard BERT, the RoBERTa
@@ -225,8 +232,11 @@ class RoBERTaEncoder(PretrainedRoBERTaMixin, BERTEncoder):
         require `segment_ids` as an input.
 
         Args:
-            inputs: A 2D Tensor of shape `[batch_size, max_time]`,
-                containing the token ids of tokens in the input sequences.
+            inputs: Either a **2D Tensor** of shape `[batch_size, max_time]`,
+                containing the ids of tokens in input sequences, or
+                a **3D Tensor** of shape `[batch_size, max_time, vocab_size]`,
+                containing soft token ids (i.e., weights or probabilities)
+                used to mix the embedding vectors.
             sequence_length (optional): A 1D Tensor of shape `[batch_size]`.
                 Input tokens beyond respective sequence lengths are masked
                 out automatically.
