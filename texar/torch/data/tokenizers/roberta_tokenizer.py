@@ -212,10 +212,6 @@ class RoBERTaTokenizer(GPT2Tokenizer):
 
         `"name"`: str
             Name of the tokenizer.
-<<<<<<< HEAD:texar/torch/data/tokenizers/pretrained_roberta_tokenizer.py
-
-=======
->>>>>>> master:texar/torch/data/tokenizers/roberta_tokenizer.py
         """
         return {
             'pretrained_model_name': 'roberta-base',

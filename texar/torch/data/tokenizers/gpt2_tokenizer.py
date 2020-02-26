@@ -355,10 +355,6 @@ class GPT2Tokenizer(TokenizerBase, PretrainedGPT2Mixin):
 
         `"name"`: str
             Name of the tokenizer.
-<<<<<<< HEAD:texar/torch/data/tokenizers/pretrained_gpt2_tokenizer.py
-
-=======
->>>>>>> master:texar/torch/data/tokenizers/gpt2_tokenizer.py
         """
         return {
             'pretrained_model_name': '117M',

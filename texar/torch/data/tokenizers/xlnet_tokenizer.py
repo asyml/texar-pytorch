@@ -412,10 +412,6 @@ class XLNetTokenizer(PretrainedXLNetMixin, TokenizerBase):
 
         `"name"`: str
             Name of the tokenizer.
-<<<<<<< HEAD:texar/torch/data/tokenizers/pretrained_xlnet_tokenizer.py
-
-=======
->>>>>>> master:texar/torch/data/tokenizers/xlnet_tokenizer.py
         """
         return {
             'pretrained_model_name': 'xlnet-base-cased',
