@@ -20,7 +20,7 @@ import torch
 
 import texar.torch as tx
 from texar.torch.run import condition as cond
-from texar.torch.run.executor_test import DummyClassifier, DummyData
+from tests.run.executor_test import DummyClassifier, DummyData
 
 
 class ConditionTest(unittest.TestCase):
