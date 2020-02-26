@@ -33,6 +33,7 @@ setuptools.setup(
     install_requires=[
         'regex>=2018.01.10',
         'numpy',
+        'h5py>=2.10.0',
         'requests',
         'funcsigs',
         'sentencepiece>=0.1.8',
