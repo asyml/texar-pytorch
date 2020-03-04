@@ -186,6 +186,8 @@ class UnidirectionalRNNEncoder(RNNEncoderBase[State]):
     r"""One directional RNN encoder.
 
     Args:
+        input_size (int): The number of expected features in the input for the
+            cell.
         cell: (RNNCell, optional) If not specified,
             a cell is created as specified in :attr:`hparams["rnn_cell"]`.
         output_layer (optional): An instance of
