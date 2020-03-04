@@ -239,6 +239,11 @@ Classifiers
 .. autoclass:: texar.torch.modules.GPT2Classifier
     :members:
 
+:hidden:`UnidirectionalRNNClassifier`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: texar.torch.modules.UnidirectionalRNNClassifier
+    :members:
+
 :hidden:`Conv1DClassifier`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.modules.Conv1DClassifier

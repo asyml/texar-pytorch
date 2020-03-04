@@ -19,5 +19,6 @@ from texar.torch.modules.classifiers.bert_classifier import *
 from texar.torch.modules.classifiers.classifier_base import *
 from texar.torch.modules.classifiers.conv_classifiers import *
 from texar.torch.modules.classifiers.gpt2_classifier import *
+from texar.torch.modules.classifiers.rnn_classifiers import *
 from texar.torch.modules.classifiers.roberta_classifier import *
 from texar.torch.modules.classifiers.xlnet_classifier import *
