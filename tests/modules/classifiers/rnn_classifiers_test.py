@@ -23,8 +23,7 @@ from texar.torch.modules.classifiers.rnn_classifiers import *
 
 
 class UnidirectionalRNNClassifierTest(unittest.TestCase):
-    r"""Tests :class:`~texar.torch.modules.UnidirectionalRNNClassifierTest`
-    class.
+    r"""Tests :class:`~texar.torch.modules.UnidirectionalRNNClassifier` class.
     """
 
     def setUp(self) -> None:
