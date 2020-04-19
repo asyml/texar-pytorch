@@ -17,6 +17,7 @@ Executor metrics for summaries.
 
 from collections import deque
 from typing import Any, Deque, Optional, Sequence
+import weakref
 
 import numpy as np
 from torch.optim.optimizer import Optimizer
@@ -152,14 +153,14 @@ class LR(StreamingMetric[Any, float]):
 
     def __init__(self, optimizer: Optimizer, param_group: int = 0):
         super().__init__(pred_name=None)
-        self.optimizer = optimizer
+        self.optimizer = weakref.ref(optimizer)
         self.group = param_group
 
     def add(self, _, __):
         pass
 
     def value(self) -> float:
-        return self.optimizer.param_groups[self.group]['lr']  # type: ignore
+        return self.optimizer().param_groups[self.group]['lr']  # type: ignore
 
     def better(self, cur: float, prev: float) -> Optional[bool]:
         # Always return `None` to indicate values are uncomparable.
