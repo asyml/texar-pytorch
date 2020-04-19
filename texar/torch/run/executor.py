@@ -1147,16 +1147,8 @@ class Executor:
             torch.save(train_state, str(ckpt_path))
         else:
             torch.save(self.model.state_dict(), str(ckpt_path))
-
-        # Convert the metric dictionaries to values, to avoid saving metric
-        # instances, as they may carry large chunks of data or not be
-        # pickle-able.
-        status_dict = self.status.copy()
-        status_dict["metric"] = utils.to_metric_values(status_dict["metric"])
-        status_dict["eval_metric"] = utils.to_metric_values(
-            status_dict["eval_metric"])
         meta_dict[checkpoint_name] = {
-            "status": status_dict,
+            "status": self.status,
             "timestamp": timestamp,
         }
         with meta_path.open("wb") as f:

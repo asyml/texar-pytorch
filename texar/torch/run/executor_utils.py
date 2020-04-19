@@ -50,7 +50,6 @@ __all__ = [
 ]
 
 T = TypeVar('T')
-R = TypeVar('R')
 OptionalList = Optional[MaybeSeq[T]]
 OptionalDict = Optional[Union[T, Sequence[Union[T, Tuple[str, T]]],
                               Mapping[str, T]]]
@@ -293,12 +292,6 @@ class MetricList:
             if cmp is not None:
                 return cmp
         return False
-
-
-def to_metric_values(metric_dict: 'OrderedDict[str, Metric[T, R]]') \
-        -> 'OrderedDict[str, R]':
-    return OrderedDict(
-        [(name, metric.value()) for name, metric in metric_dict.items()])
 
 
 def update_metrics(return_dict: Dict[str, Any], batch: Batch,

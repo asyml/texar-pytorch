@@ -165,3 +165,13 @@ class LR(StreamingMetric[Any, float]):
     def better(self, cur: float, prev: float) -> Optional[bool]:
         # Always return `None` to indicate values are uncomparable.
         return None
+
+    def __getstate__(self):
+        # There's no point in pickling an `LR` metric; just ignore it.
+        return None
+
+    def __getnewargs__(self):
+        # But when unpickling, we need to make sure we can construct something.
+        # This requires passing a dummy `optimizer` to which a weakref can be
+        # constructed. In this case, we use an arbitrary built-in class.
+        return (int,)
