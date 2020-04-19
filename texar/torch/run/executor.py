@@ -1909,7 +1909,7 @@ class Executor:
             self._fire_event(Event.ValidationIteration, False)
             return_dict = self._validate_step(batch)
 
-            # Update metrics.
+            self._valid_tracker.add(len(batch))
             utils.update_metrics(return_dict, batch, self.valid_metrics)
 
             self._fire_event(Event.ValidationIteration, True)
@@ -1925,8 +1925,7 @@ class Executor:
             return_dict = self._test_step(batch)
 
             self._test_tracker.add(len(batch))
-            utils.update_metrics(
-                return_dict, batch, self.test_metrics)
+            utils.update_metrics(return_dict, batch, self.test_metrics)
 
             self._fire_event(Event.TestingIteration, True)
 
