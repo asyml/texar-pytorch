@@ -1280,8 +1280,12 @@ class Executor:
     def train(self):
         r"""Start the training loop.
         """
-        # open the log files
-        self._open_files()
+        # Check whether files have been opened, to avoid re-opening and closing.
+        # This could happen when, e.g., `test` is called in a registered hook
+        # during training.
+        should_open_file = (len(self._opened_files) == 0)
+        if should_open_file:
+            self._open_files()
 
         if self._directory_exists:
             self.write_log(
@@ -1351,8 +1355,9 @@ class Executor:
 
         self._fire_event(Event.Training, True)
 
-        # close the log files
-        self._close_files()
+        # Close the log files if we opened them here.
+        if should_open_file:
+            self._close_files()
 
     def test(self, dataset: OptionalDict[DatasetBase] = None):
         r"""Start the test loop.
@@ -1369,8 +1374,12 @@ class Executor:
                 If `None`, :attr:`test_data` from the constructor arguments is
                 used. Defaults to `None`.
         """
-        # open the log files
-        self._open_files()
+        # Check whether files have been opened, to avoid re-opening and closing.
+        # This could happen when, e.g., `test` is called in a registered hook
+        # during training.
+        should_open_file = (len(self._opened_files) == 0)
+        if should_open_file:
+            self._open_files()
 
         if dataset is None and self.test_data is None:
             raise ValueError("No testing dataset is specified")
@@ -1417,8 +1426,9 @@ class Executor:
 
         self.model.train(model_mode)
 
-        # close the log files
-        self._close_files()
+        # Close the log files if we opened them here.
+        if should_open_file:
+            self._close_files()
 
     def _register_logging_actions(self, show_live_progress: List[str]):
         # Register logging actions.
@@ -1728,6 +1738,7 @@ class Executor:
     def _close_files(self):
         for file in self._opened_files:
             file.close()
+        self._opened_files = []
 
         if hasattr(self, 'summary_writer'):
             self.summary_writer.close()
@@ -1890,7 +1901,7 @@ class Executor:
             self._fire_event(Event.ValidationIteration, False)
             return_dict = self._validate_step(batch)
 
-            # Update metrics.
+            self._valid_tracker.add(len(batch))
             utils.update_metrics(return_dict, batch, self.valid_metrics)
 
             self._fire_event(Event.ValidationIteration, True)
@@ -1906,8 +1917,7 @@ class Executor:
             return_dict = self._test_step(batch)
 
             self._test_tracker.add(len(batch))
-            utils.update_metrics(
-                return_dict, batch, self.test_metrics)
+            utils.update_metrics(return_dict, batch, self.test_metrics)
 
             self._fire_event(Event.TestingIteration, True)
 

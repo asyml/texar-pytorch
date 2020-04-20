@@ -99,6 +99,7 @@ class ExecutorTest(unittest.TestCase):
         shutil.rmtree(self.tbx_logging_dir)
 
     def test_train_loop(self):
+        optimizer = torch.optim.Adam(self.model.parameters())
         executor = Executor(
             model=self.model,
             train_data=self.datasets["train"],
@@ -110,8 +111,9 @@ class ExecutorTest(unittest.TestCase):
             save_every=[cond.time(seconds=10), cond.validation(better=True)],
             train_metrics=[("loss", metric.RunningAverage(20)),
                            metric.F1(pred_name="preds", mode="macro"),
-                           metric.Accuracy(pred_name="preds")],
-            optimizer={"type": torch.optim.Adam, "kwargs": {}},
+                           metric.Accuracy(pred_name="preds"),
+                           metric.LR(optimizer)],
+            optimizer=optimizer,
             stop_training_on=cond.epoch(10),
             valid_metrics=[metric.F1(pred_name="preds", mode="micro"),
                            ("loss", metric.Average())],
@@ -128,6 +130,9 @@ class ExecutorTest(unittest.TestCase):
 
         executor.train()
         executor.test()
+
+        executor.save()
+        executor.load()
 
     def test_tbx_logging(self):
         executor = Executor(

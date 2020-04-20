@@ -17,6 +17,7 @@ Executor metrics for summaries.
 
 from collections import deque
 from typing import Any, Deque, Optional, Sequence
+import weakref
 
 import numpy as np
 from torch.optim.optimizer import Optimizer
@@ -152,15 +153,25 @@ class LR(StreamingMetric[Any, float]):
 
     def __init__(self, optimizer: Optimizer, param_group: int = 0):
         super().__init__(pred_name=None)
-        self.optimizer = optimizer
+        self.optimizer = weakref.ref(optimizer)
         self.group = param_group
 
     def add(self, _, __):
         pass
 
     def value(self) -> float:
-        return self.optimizer.param_groups[self.group]['lr']  # type: ignore
+        return self.optimizer().param_groups[self.group]['lr']  # type: ignore
 
     def better(self, cur: float, prev: float) -> Optional[bool]:
         # Always return `None` to indicate values are uncomparable.
         return None
+
+    def __getstate__(self):
+        # There's no point in pickling an `LR` metric; just ignore it.
+        return None
+
+    def __getnewargs__(self):
+        # But when unpickling, we need to make sure we can construct something.
+        # This requires passing a dummy `optimizer` to which a weakref can be
+        # constructed. In this case, we use an arbitrary built-in class.
+        return (int,)

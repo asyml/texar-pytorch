@@ -132,9 +132,6 @@ Data Loaders
 .. autoclass:: texar.torch.data.DatasetBase
     :members:
 
-    .. automethod:: process
-    .. automethod:: collate
-
 :hidden:`MonoTextData`
 ~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.data.MonoTextData
