@@ -120,14 +120,24 @@ After convergence, the evaluation performance is around the following. Due to ce
 initialization of the classification layer), the evaluation accuracy is reasonable as long as it's `>0.84`.
 An example output is as follows:
 ```
-Using cached pre-trained BERT checkpoint from texar_download/BERT/bert-base-uncased.
-INFO:root:step: 50; loss: 0.448667
-INFO:root:step: 100; loss: 0.400019
-INFO:root:step: 150; loss: 0.340314
-INFO:root:step: 200; loss: 0.151271
-INFO:root:step: 250; loss: 0.093740
-INFO:root:step: 300; loss: 0.161118
-INFO:root:eval accu: 0.8554; loss: 0.4524; nsamples: 408
+Using cached pre-trained BERT checkpoint from /home/centos/texar_data/BERT/bert-base-uncased.
+INFO:root:step: 50; loss: 0.646327
+INFO:root:step: 100; loss: 0.281063
+INFO:root:eval accu: 0.8260; loss: 0.4123; nsamples: 408
+INFO:root:step: 150; loss: 0.231236
+INFO:root:step: 200; loss: 0.175780
+INFO:root:eval accu: 0.8431; loss: 0.4503; nsamples: 408
+INFO:root:step: 250; loss: 0.077983
+INFO:root:step: 300; loss: 0.009281
+INFO:root:eval accu: 0.8578; loss: 0.5342; nsamples: 408
+INFO:root:step: 350; loss: 0.021876
+INFO:root:step: 400; loss: 0.005707
+INFO:root:eval accu: 0.8676; loss: 0.5084; nsamples: 408
+INFO:root:step: 450; loss: 0.003567
+INFO:root:step: 500; loss: 0.034953
+INFO:root:eval accu: 0.8701; loss: 0.4743; nsamples: 408
+INFO:root:step: 550; loss: 0.008626
+INFO:root:eval accu: 0.8627; loss: 0.5593; nsamples: 408
 ```
 
 ### Restore and Test
