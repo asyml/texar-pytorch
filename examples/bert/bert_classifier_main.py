@@ -162,6 +162,8 @@ def main() -> None:
             eval_steps = config_data.eval_steps
             if eval_steps > 0 and step % eval_steps == 0:
                 _eval_epoch()
+                iterator.switch_to_dataset("train")
+                model.train()
 
     @torch.no_grad()
     def _eval_epoch():
