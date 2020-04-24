@@ -157,6 +157,7 @@ def main() -> None:
 
             if eval_steps > 0 and step % eval_steps == 0:
                 _eval_epoch()
+                model.train()
 
             step += 1
 
