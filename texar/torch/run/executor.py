@@ -1196,7 +1196,7 @@ class Executor:
                          info["timestamp"], name)
                         for name, info in meta_dict.items())
                     status = meta_dict[best_ckpt_name]["status"]
-                    ckpt_path = self.checkpoint_dir / best_ckpt_name
+                    ckpt_path = ckpt_path / best_ckpt_name
                     metric_vals = [(name, best_metric.values[name])
                                    for name in best_metric.metrics]
                     metric_str = ", ".join(
