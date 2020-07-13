@@ -825,8 +825,27 @@ class Executor:
         self._log_destination: List[IO[str]] = []
         self._log_destination_is_tty: List[bool] = []
         self._opened_files: List[IO[str]] = []
-        self.log_destination = log_destination or \
-                               self._defaults["log_destination"]
+        self._files_opened: bool = False
+        self.log_destination: List[LogDest] = utils.to_list(
+            log_destination or self._defaults["log_destination"])
+        # Initialize logging destinations but don't open files yet. Fill file
+        # destinations with `None` so we're still able to log to the terminal.
+        # This helps with pure-terminal logging functions like `set_status_line`
+        # and we explicitly open files in `write_log`, `train`, and `test`.
+        for dest in self.log_destination:
+            if isinstance(dest, (str, Path)):
+                self._log_destination_is_tty.append(False)
+                self._log_destination.append(None)  # type: ignore
+            else:
+                if not hasattr(dest, "write"):
+                    raise ValueError(f"Log destination {dest} is not a "
+                                     f"file-like object")
+                try:
+                    isatty = dest.isatty()
+                except AttributeError:
+                    isatty = False
+                self._log_destination_is_tty.append(isatty)
+                self._log_destination.append(dest)
 
         # Training loop
         self.train_metrics = utils.to_metric_dict(train_metrics)
@@ -890,17 +909,9 @@ class Executor:
         self._register_logging_actions(show_live_progress)
 
         # tbx logging
+        self._tbx_logging_dir = tbx_logging_dir
         if tbx_logging_dir is not None:
-            try:
-                from tensorboardX import SummaryWriter
-            except ImportError:
-                print(
-                    "To use tensorboard support with Executor, please "
-                    "install tensorboardX. Please see "
-                    "https://tensorboardx.readthedocs.io for further "
-                    "details")
-                raise
-            self.summary_writer = SummaryWriter(tbx_logging_dir)
+            # Instantiation of the summary writer is delayed to `_open_files`.
             self._tbx_logging_conditions = utils.to_list(
                 tbx_log_every if tbx_log_every is not None else log_every)
             self._register_tbx_logging_actions()
@@ -941,6 +952,7 @@ class Executor:
             skip_non_tty: If `True`, the log string will not be written to
                 non-terminal (e.g., files) destinations. Defaults to `False`.
         """
+        self._open_files()
         if mode == "log":
             pass
         elif mode == "info":
@@ -1283,9 +1295,7 @@ class Executor:
         # Check whether files have been opened, to avoid re-opening and closing.
         # This could happen when, e.g., `test` is called in a registered hook
         # during training.
-        should_open_file = (len(self._opened_files) == 0)
-        if should_open_file:
-            self._open_files()
+        opened_files = self._open_files()
 
         if self._directory_exists:
             self.write_log(
@@ -1356,7 +1366,7 @@ class Executor:
         self._fire_event(Event.Training, True)
 
         # Close the log files if we opened them here.
-        if should_open_file:
+        if opened_files:
             self._close_files()
 
     def test(self, dataset: OptionalDict[DatasetBase] = None):
@@ -1377,9 +1387,7 @@ class Executor:
         # Check whether files have been opened, to avoid re-opening and closing.
         # This could happen when, e.g., `test` is called in a registered hook
         # during training.
-        should_open_file = (len(self._opened_files) == 0)
-        if should_open_file:
-            self._open_files()
+        opened_files = self._open_files()
 
         if dataset is None and self.test_data is None:
             raise ValueError("No testing dataset is specified")
@@ -1427,7 +1435,7 @@ class Executor:
         self.model.train(model_mode)
 
         # Close the log files if we opened them here.
-        if should_open_file:
+        if opened_files:
             self._close_files()
 
     def _register_logging_actions(self, show_live_progress: List[str]):
@@ -1711,37 +1719,52 @@ class Executor:
             raise ValueError(
                 f"Specified hook point {event_point} is invalid") from None
 
-    def _open_files(self):
-        self._opened_files = []
-        self._log_destination = []
-        self._log_destination_is_tty = []
+    def _open_files(self) -> bool:
+        # Returns whether the files are opened. This is useful when there are
+        # calls to `_open_files` in nested events -- only the top-level event
+        # should close the files.
 
-        for dest in utils.to_list(self.log_destination):
+        if self._files_opened:
+            # Files are already open.
+            return False
+
+        self._opened_files = []
+        for idx, dest in enumerate(self.log_destination):
             if isinstance(dest, (str, Path)):
                 # Append to the logs to prevent accidentally overwriting
                 # previous logs.
                 file = open(dest, "a")
                 self._opened_files.append(file)
-                self._log_destination_is_tty.append(False)
-            else:
-                if not hasattr(dest, "write"):
-                    raise ValueError(f"Log destination {dest} is not a "
-                                     f"file-like object")
-                try:
-                    isatty = dest.isatty()
-                except AttributeError:
-                    isatty = False
-                file = dest
-                self._log_destination_is_tty.append(isatty)
-            self._log_destination.append(file)
+                self._log_destination[idx] = file
+
+        if self._tbx_logging_dir is not None:
+            try:
+                from tensorboardX import SummaryWriter
+            except ImportError:
+                print(
+                    "To use Tensorboard support with Executor, please "
+                    "install tensorboardX. Please see "
+                    "https://tensorboardx.readthedocs.io for further "
+                    "details")
+                raise
+            self.summary_writer = SummaryWriter(self._tbx_logging_dir)
+
+        self._files_opened = True
+        return True
 
     def _close_files(self):
+        if not self._files_opened:
+            return
+
         for file in self._opened_files:
             file.close()
         self._opened_files = []
+        self._log_destination = []
 
         if hasattr(self, 'summary_writer'):
             self.summary_writer.close()
+
+        self._files_opened = False
 
     def _fire_event(self, event: Event, end: bool):
         r"""Signal the beginning or end of an event. Internally, this is where
