@@ -12,7 +12,8 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/asyml/texar-pytorch/blob/master/LICENSE)
  
 
-**Texar-PyTorch** is a toolkit aiming to support a broad set of machine learning, especially natural language processing and text generation tasks. Texar provides a library of easy-to-use ML modules and functionalities for composing whatever models and algorithms. The tool is designed for both researchers and practitioners for fast prototyping and experimentation.
+**Texar-PyTorch** is a toolkit aiming to support a broad set of machine learning, especially natural language processing and text generation tasks. Texar provides a library of easy-to-use ML modules and functionalities for composing whatever models and algorithms. The tool is designed for both researchers and practitioners for fast prototyping and experimentation. Texar-PyTorch was originally developed and is 
+actively contributed by [Petuum](https://petuum.com/) and [CMU](https://www.cmu.edu/) in collaboration with other institutes.
 
 Texar-PyTorch integrates many of the best features of TensorFlow into PyTorch, delivering highly usable and customizable modules superior to PyTorch native ones. 
 
@@ -157,3 +158,10 @@ ACL 2019
 
 ### License
 [Apache License 2.0](./LICENSE)
+
+### Companies and Universities Supporting Texar
+<p float="left">
+   <img src="./docs/_static/img/Petuum.png" width="200" align="top">
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+   <img src="https://asyml.io/assets/institutions/cmu.png", width="200" align="top">
+</p>
