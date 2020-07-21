@@ -126,7 +126,7 @@ class GPT2Tokenizer(TokenizerBase, PretrainedGPT2Mixin):
             raise ValueError("Can't find a merges file at path "
                              "'{}".format(merges_file))
 
-        with open(vocab_file) as fp:
+        with open(vocab_file, encoding="utf-8") as fp:
             self.encoder = json.load(fp)
         self.decoder = {v: k for k, v in self.encoder.items()}
         self.errors = self.hparams["errors"]  # how to handle errors in decoding
@@ -140,8 +140,7 @@ class GPT2Tokenizer(TokenizerBase, PretrainedGPT2Mixin):
 
         # Should haved added re.IGNORECASE so BPE merges can happen for
         # capitalized versions of contractions
-        self.pat = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| """ +
-                              r""""?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
+        self.pat = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")  # pylint: disable=line-too-long
 
     def _map_text_to_token(self, text: str) -> List[str]:  # type: ignore
         r"""Tokenize a string. """
