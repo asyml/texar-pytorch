@@ -113,6 +113,7 @@ if _torch_version >= pkg_resources.parse_version("1.3.0"):
 
         @send_idx.setter
         def send_idx(self, value):
+            # pylint: disable=attribute-defined-outside-init
             self._send_idx = value
 
         @property
@@ -129,6 +130,7 @@ if _torch_version >= pkg_resources.parse_version("1.3.0"):
 
         @tasks_outstanding.setter
         def tasks_outstanding(self, value):
+            # pylint: disable=attribute-defined-outside-init
             self._tasks_outstanding = value
 
         @property
