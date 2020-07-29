@@ -136,7 +136,7 @@ class ConfusionMatrix(_ConfusionMatrix[Input, Optional[np.ndarray]]):
         return self._class_id
 
     def better(self, cur: Value, prev: Value) -> Optional[bool]:
-        #pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         # Always return `None` to indicate values are uncomparable.
         return None
 

@@ -164,7 +164,7 @@ class LR(StreamingMetric[Any, float]):
         return self.optimizer().param_groups[self.group]['lr']  # type: ignore
 
     def better(self, cur: float, prev: float) -> Optional[bool]:
-        #pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         # Always return `None` to indicate values are uncomparable.
         return None
 
