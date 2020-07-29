@@ -11,15 +11,17 @@ Frequent Use
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: texar.torch.utils.AverageRecorder
     :members:
+    :noindex:
 
 :hidden:`compat_as_text`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.torch.utils.compat_as_text
+    :noindex:
 
 :hidden:`write_paired_text`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: texar.torch.utils.write_paired_text
-
+    :noindex:
 
 IO
 ===
