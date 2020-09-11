@@ -14,9 +14,9 @@
 """
 Base classes for Executor metrics.
 """
-
+import sys
 from abc import ABC, abstractmethod
-from typing import Generic, List, Optional, Sequence, TypeVar
+from typing import Generic, List, Optional, Sequence, TYPE_CHECKING, TypeVar
 
 __all__ = [
     "Metric",
@@ -26,6 +26,23 @@ __all__ = [
 
 Input = TypeVar('Input')
 Value = TypeVar('Value')
+
+if not TYPE_CHECKING and sys.version_info[:2] <= (3, 6):
+    # In Python 3.6 and below, pickling a `Generic` subclass that is specialized
+    # would cause an exception. To prevent troubles with `Executor` save & load,
+    # we use a dummy implementation of `Generic` through our home-brew
+    # `GenericMeta`.
+    from abc import ABCMeta
+
+
+    class GenericMeta(ABCMeta):
+        def __getitem__(cls, params):
+            # Whatever the parameters, just return the same class.
+            return cls
+
+
+    class Generic(metaclass=GenericMeta):
+        pass
 
 
 class Metric(Generic[Input, Value], ABC):
