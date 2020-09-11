@@ -111,7 +111,7 @@ class ExecutorTest(unittest.TestCase):
             save_every=[cond.time(seconds=10), cond.validation(better=True)],
             train_metrics=[("loss", metric.RunningAverage(20)),
                            metric.F1(pred_name="preds", mode="macro"),
-                           metric.Accuracy(pred_name="preds"),
+                           metric.Accuracy[float](pred_name="preds"),
                            metric.LR(optimizer)],
             optimizer=optimizer,
             stop_training_on=cond.epoch(10),
