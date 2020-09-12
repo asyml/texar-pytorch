@@ -909,6 +909,7 @@ class Executor:
         self._register_logging_actions(show_live_progress)
 
         # tbx logging
+        self.summary_writer = None
         self._tbx_logging_dir = tbx_logging_dir
         if tbx_logging_dir is not None:
             # Instantiation of the summary writer is delayed to `_open_files`.
@@ -1528,7 +1529,6 @@ class Executor:
             Event.TestingIteration, Event.Testing)
 
     def _register_tbx_logging_actions(self):
-
         # Register logging actions.
         Points = Sequence[Union[Condition, Event]]
 
@@ -1540,16 +1540,15 @@ class Executor:
                     self._register_hook((cond_or_event, True), fn)
 
         def tbx_train_log_fn(executor: 'Executor'):
+            assert self.summary_writer is not None
             train_metrics = executor.train_metrics
-
-            # log the metrics here
             for key, value in train_metrics.items():
                 self.summary_writer.add_scalar(
                     f"train/{key}", value.value(), executor.status["iteration"])
 
         def tbx_valid_log_fn(executor: 'Executor'):
+            assert self.summary_writer is not None
             valid_metrics = executor.valid_metrics
-
             for key, value in valid_metrics.items():
                 self.summary_writer.add_scalar(
                     f"valid/{key}", value.value(), executor.status["iteration"])
@@ -1769,7 +1768,7 @@ class Executor:
         self._opened_files = []
         self._log_destination = []
 
-        if hasattr(self, 'summary_writer'):
+        if self.summary_writer is not None:
             self.summary_writer.close()
 
         self._files_opened = False
