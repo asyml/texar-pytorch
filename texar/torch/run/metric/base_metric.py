@@ -14,6 +14,7 @@
 """
 Base classes for Executor metrics.
 """
+
 import sys
 from abc import ABC, abstractmethod
 from typing import Generic, List, Optional, Sequence, TYPE_CHECKING, TypeVar
@@ -157,6 +158,19 @@ class Metric(Generic[Input, Value], ABC):
             result = not result
         return result
 
+    def finalize(self, executor) -> None:
+        r"""Finalize the metric. Called when the whole dataset has been fully
+        iterated, e.g., at the end of an epoch, or the end of validation or
+        testing.
+
+        The default behavior is no-op. Most metrics won't need this, special
+        ones such as :class:`FileWriterMetric` utilizes this to performs
+        one-time only operations.
+
+        Args:
+            executor: The :class:`Executor` instance.
+        """
+
 
 class SimpleMetric(Metric[Input, Value], ABC):
     r"""Base class of simple metrics. Simple metrics are metrics that do not
@@ -176,11 +190,14 @@ class SimpleMetric(Metric[Input, Value], ABC):
         self._cached_value = None
 
     def add(self, predicted: Sequence[Input], labels: Sequence[Input]):
-        if len(predicted) != len(labels):
+        if (self.requires_pred and self.requires_label and
+                len(predicted) != len(labels)):
             raise ValueError(
                 "Lists `predicted` and `labels` should have the same length")
-        self.predicted.extend(predicted)
-        self.labels.extend(labels)
+        if self.requires_pred:
+            self.predicted.extend(predicted)
+        if self.requires_label:
+            self.labels.extend(labels)
         self._cached_value = None
 
     def value(self):

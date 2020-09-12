@@ -100,6 +100,7 @@ class ExecutorTest(unittest.TestCase):
 
     def test_train_loop(self):
         optimizer = torch.optim.Adam(self.model.parameters())
+        output_path = os.path.join(self.checkpoint_dir, "output_{split}.txt")
         executor = Executor(
             model=self.model,
             train_data=self.datasets["train"],
@@ -118,7 +119,9 @@ class ExecutorTest(unittest.TestCase):
             valid_metrics=[metric.F1(pred_name="preds", mode="micro"),
                            ("loss", metric.Average())],
             validate_every=[cond.epoch()],
-            test_metrics=[metric.F1(pred_name="preds", mode="weighted")],
+            test_metrics=[metric.F1(pred_name="preds", mode="weighted"),
+                          metric.FileWriterMetric(output_path, sep=",",
+                                                  pred_name="preds")],
             plateau_condition=[
                 cond.consecutive(cond.validation(better=False), 2)],
             action_on_plateau=[action.early_stop(patience=2),
@@ -130,6 +133,12 @@ class ExecutorTest(unittest.TestCase):
 
         executor.train()
         executor.test()
+        for split, dataset in [("test", self.datasets["test1"]),
+                               ("t2", self.datasets["test2"])]:
+            path = output_path.format(split=split)
+            self.assertTrue(os.path.exists(path))
+            with open(path, "r") as f:
+                self.assertEqual(len(f.read().split(",")), len(dataset))
 
         executor.save()
         executor.load()

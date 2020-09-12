@@ -847,6 +847,14 @@ class Executor:
                 self._log_destination_is_tty.append(isatty)
                 self._log_destination.append(dest)
 
+        # tbx logging
+        self.summary_writer = None
+        self._tbx_logging_dir = tbx_logging_dir
+        if tbx_logging_dir is not None:
+            # Instantiation of the summary writer is delayed to `_open_files`.
+            self._tbx_logging_conditions = utils.to_list(
+                tbx_log_every if tbx_log_every is not None else log_every)
+
         # Training loop
         self.train_metrics = utils.to_metric_dict(train_metrics)
         self.optimizer = utils.to_instance(
@@ -907,14 +915,7 @@ class Executor:
                for stage in show_live_progress):
             raise ValueError("Invalid value for `show_live_progress`")
         self._register_logging_actions(show_live_progress)
-
-        # tbx logging
-        self.summary_writer = None
-        self._tbx_logging_dir = tbx_logging_dir
         if tbx_logging_dir is not None:
-            # Instantiation of the summary writer is delayed to `_open_files`.
-            self._tbx_logging_conditions = utils.to_list(
-                tbx_log_every if tbx_log_every is not None else log_every)
             self._register_tbx_logging_actions()
 
         # Register other events and actions.
@@ -1440,12 +1441,10 @@ class Executor:
             self._close_files()
 
     def _finalize_metrics(self, metrics: 'OrderedDict[str, Metric]'):
-        # Call `value()` on all metrics at the end of training, validation, or
-        # test. This is required because not all metrics are logged, so its
-        # `value()` might never be called otherwise. Certain non-streaming
-        # metrics (e.g. `FileWriterMetric`) perform operations in `value()`.
+        # Call `finalize()` on all metrics at the end of training epoch,
+        # validation, or test.
         for metric in metrics.values():
-            _ = metric.value()
+            metric.finalize(self)
 
     def _register_logging_actions(self, show_live_progress: List[str]):
         # Register logging actions.
@@ -1652,15 +1651,19 @@ class Executor:
 
             # Check which metrics can be printed with specified format.
             fmt_metrics: Set[str] = set()
+            metrics_to_keep: List[str] = []
             metric_format = format_vars["metric"]
             for name, metric in metrics.items():
                 try:
+                    value = metric.value()
+                    if value is None: continue  # skip non-meaningful metrics
+                    metrics_to_keep.append(name)
                     metric_format.format(metric.value())
                     fmt_metrics.add(name)
                 except ValueError:
                     pass
             metric_format_parts = []
-            for name in metrics:
+            for name in metrics_to_keep:
                 metric_format_parts.append(
                     f"{name}: {{{name}"
                     f"{':' + metric_format if name in fmt_metrics else ''}}}")
