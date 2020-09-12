@@ -32,16 +32,14 @@ if not TYPE_CHECKING and sys.version_info[:2] <= (3, 6):
     # would cause an exception. To prevent troubles with `Executor` save & load,
     # we use a dummy implementation of `Generic` through our home-brew
     # `GenericMeta`.
-    from abc import ABCMeta
-
+    from abc import ABCMeta  # pylint: disable=ungrouped-imports
 
     class GenericMeta(ABCMeta):
         def __getitem__(cls, params):
             # Whatever the parameters, just return the same class.
             return cls
 
-
-    class Generic(metaclass=GenericMeta):
+    class Generic(metaclass=GenericMeta):  # pylint: disable=function-redefined
         pass
 
 
