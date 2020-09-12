@@ -15,6 +15,7 @@
 Unit tests for classification related operations.
 """
 import functools
+import pickle
 import unittest
 
 import numpy as np
@@ -74,3 +75,18 @@ class ClassificationMetricTest(unittest.TestCase):
             self._test_metric(
                 metric, functools.partial(f1_score, average=mode),
                 binary=(mode == 'binary'))
+
+
+class MetricPicklingTest(unittest.TestCase):
+    def test_pickle_unpickle(self):
+        metric = Accuracy(pred_name="123")
+        metric.add([1, 2, 3], [1, 2, 4])
+        metric_new = pickle.loads(pickle.dumps(metric))
+        self.assertEqual(metric.count, metric_new.count)
+        self.assertEqual(metric.correct, metric_new.correct)
+
+        metric = Accuracy[float](pred_name="123")
+        metric.add([1, 2, 3], [1, 2, 4])
+        metric_new = pickle.loads(pickle.dumps(metric))
+        self.assertEqual(metric.count, metric_new.count)
+        self.assertEqual(metric.correct, metric_new.correct)
