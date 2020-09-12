@@ -167,8 +167,7 @@ def main() -> None:
         max_tokens=config_data.max_batch_tokens)
 
     output_dir = Path(args.output_dir)
-    valid_metric = metric.Accuracy[float](
-        pred_name="preds", label_name="label_ids")
+    test_output_path = output_dir / "test.output"
 
     executor = Executor(
         # supply executor with the model
@@ -198,14 +197,15 @@ def main() -> None:
         valid_progress_log_format="{time} : Evaluating on "
                                   "{split} ({progress}%, {speed})",
         test_log_format="{time} : Epoch {epoch}, "
-                        "{split} accuracy = {Accuracy:.3f}",
+                        "{split} results written to " + str(test_output_path),
         # define metrics
         train_metrics=[
             ("loss", metric.RunningAverage(1)),  # only show current loss
             ("lr", metric.LR(optim))],
-        valid_metrics=[valid_metric, ("loss", metric.Average())],
-        test_metrics=[
-            valid_metric, FileWriterMetric(output_dir / "test.output")],
+        valid_metrics=[
+            metric.Accuracy[float](pred_name="preds", label_name="label_ids"),
+            ("loss", metric.Average())],
+        test_metrics=FileWriterMetric(test_output_path),  # only write to file
         # freq of validation
         validate_every=[cond.iteration(config_data.eval_steps)],
         # checkpoint saving location

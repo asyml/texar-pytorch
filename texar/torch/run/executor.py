@@ -1438,6 +1438,14 @@ class Executor:
         if opened_files:
             self._close_files()
 
+    def _finalize_metrics(self, metrics: 'OrderedDict[str, Metric]'):
+        # Call `value()` on all metrics at the end of training, validation, or
+        # test. This is required because not all metrics are logged, so its
+        # `value()` might never be called otherwise. Certain non-streaming
+        # metrics (e.g. `FileWriterMetric`) perform operations in `value()`.
+        for metric in metrics.values():
+            _ = metric.value()
+
     def _register_logging_actions(self, show_live_progress: List[str]):
         # Register logging actions.
         Points = Sequence[Union[Condition, Event]]
@@ -1911,6 +1919,7 @@ class Executor:
                 utils.update_metrics(return_dict, batch, self.train_metrics)
 
                 self._fire_event(Event.Iteration, True)
+            self._finalize_metrics(self.train_metrics)
             self._fire_event(Event.Epoch, True)
             self._train_tracker.reset()
 
@@ -1928,6 +1937,7 @@ class Executor:
             utils.update_metrics(return_dict, batch, self.valid_metrics)
 
             self._fire_event(Event.ValidationIteration, True)
+        self._finalize_metrics(self.valid_metrics)
 
     def _test_loop(self, iterator: DataIterator) -> None:
         r"""Run the entire testing loop given the data iterator.
@@ -1943,6 +1953,7 @@ class Executor:
             utils.update_metrics(return_dict, batch, self.test_metrics)
 
             self._fire_event(Event.TestingIteration, True)
+        self._finalize_metrics(self.test_metrics)
 
     def _validate(self) -> None:
         if self.valid_data is None:
