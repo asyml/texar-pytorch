@@ -20,9 +20,8 @@ import functools
 import importlib
 import os
 import sys
-import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Tuple
 
 import torch
 from torch import nn

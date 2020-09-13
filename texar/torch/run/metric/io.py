@@ -15,10 +15,9 @@
 Executor metrics that are actually not metrics, but for IO.
 """
 from pathlib import Path
-from typing import TypeVar, Sequence, Union
+from typing import TypeVar, Union
 
 from texar.torch.run.metric.base_metric import SimpleMetric
-from texar.torch.utils.types import PathLike
 
 __all__ = [
     "FileWriterMetric",
