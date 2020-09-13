@@ -211,6 +211,7 @@ def main() -> None:
         output_file = os.path.join(args.output_dir, "test_results.tsv")
         with open(output_file, "w+") as writer:
             writer.write("\n".join(str(p) for p in _all_preds))
+        logging.info("test output written to %s", output_file)
 
     if args.checkpoint:
         ckpt = torch.load(args.checkpoint)

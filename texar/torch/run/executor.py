@@ -825,8 +825,35 @@ class Executor:
         self._log_destination: List[IO[str]] = []
         self._log_destination_is_tty: List[bool] = []
         self._opened_files: List[IO[str]] = []
-        self.log_destination = log_destination or \
-                               self._defaults["log_destination"]
+        self._files_opened: bool = False
+        self.log_destination: List[LogDest] = utils.to_list(
+            log_destination or self._defaults["log_destination"])
+        # Initialize logging destinations but don't open files yet. Fill file
+        # destinations with `None` so we're still able to log to the terminal.
+        # This helps with pure-terminal logging functions like `set_status_line`
+        # and we explicitly open files in `write_log`, `train`, and `test`.
+        for dest in self.log_destination:
+            if isinstance(dest, (str, Path)):
+                self._log_destination_is_tty.append(False)
+                self._log_destination.append(None)  # type: ignore
+            else:
+                if not hasattr(dest, "write"):
+                    raise ValueError(f"Log destination {dest} is not a "
+                                     f"file-like object")
+                try:
+                    isatty = dest.isatty()
+                except AttributeError:
+                    isatty = False
+                self._log_destination_is_tty.append(isatty)
+                self._log_destination.append(dest)
+
+        # tbx logging
+        self.summary_writer = None
+        self._tbx_logging_dir = tbx_logging_dir
+        if tbx_logging_dir is not None:
+            # Instantiation of the summary writer is delayed to `_open_files`.
+            self._tbx_logging_conditions = utils.to_list(
+                tbx_log_every if tbx_log_every is not None else log_every)
 
         # Training loop
         self.train_metrics = utils.to_metric_dict(train_metrics)
@@ -888,21 +915,7 @@ class Executor:
                for stage in show_live_progress):
             raise ValueError("Invalid value for `show_live_progress`")
         self._register_logging_actions(show_live_progress)
-
-        # tbx logging
         if tbx_logging_dir is not None:
-            try:
-                from tensorboardX import SummaryWriter
-            except ImportError:
-                print(
-                    "To use tensorboard support with Executor, please "
-                    "install tensorboardX. Please see "
-                    "https://tensorboardx.readthedocs.io for further "
-                    "details")
-                raise
-            self.summary_writer = SummaryWriter(tbx_logging_dir)
-            self._tbx_logging_conditions = utils.to_list(
-                tbx_log_every if tbx_log_every is not None else log_every)
             self._register_tbx_logging_actions()
 
         # Register other events and actions.
@@ -941,6 +954,7 @@ class Executor:
             skip_non_tty: If `True`, the log string will not be written to
                 non-terminal (e.g., files) destinations. Defaults to `False`.
         """
+        self._open_files()
         if mode == "log":
             pass
         elif mode == "info":
@@ -1196,7 +1210,7 @@ class Executor:
                          info["timestamp"], name)
                         for name, info in meta_dict.items())
                     status = meta_dict[best_ckpt_name]["status"]
-                    ckpt_path = self.checkpoint_dir / best_ckpt_name
+                    ckpt_path = ckpt_path / best_ckpt_name
                     metric_vals = [(name, best_metric.values[name])
                                    for name in best_metric.metrics]
                     metric_str = ", ".join(
@@ -1283,9 +1297,7 @@ class Executor:
         # Check whether files have been opened, to avoid re-opening and closing.
         # This could happen when, e.g., `test` is called in a registered hook
         # during training.
-        should_open_file = (len(self._opened_files) == 0)
-        if should_open_file:
-            self._open_files()
+        opened_files = self._open_files()
 
         if self._directory_exists:
             self.write_log(
@@ -1356,7 +1368,7 @@ class Executor:
         self._fire_event(Event.Training, True)
 
         # Close the log files if we opened them here.
-        if should_open_file:
+        if opened_files:
             self._close_files()
 
     def test(self, dataset: OptionalDict[DatasetBase] = None):
@@ -1377,9 +1389,7 @@ class Executor:
         # Check whether files have been opened, to avoid re-opening and closing.
         # This could happen when, e.g., `test` is called in a registered hook
         # during training.
-        should_open_file = (len(self._opened_files) == 0)
-        if should_open_file:
-            self._open_files()
+        opened_files = self._open_files()
 
         if dataset is None and self.test_data is None:
             raise ValueError("No testing dataset is specified")
@@ -1427,8 +1437,14 @@ class Executor:
         self.model.train(model_mode)
 
         # Close the log files if we opened them here.
-        if should_open_file:
+        if opened_files:
             self._close_files()
+
+    def _finalize_metrics(self, metrics: 'OrderedDict[str, Metric]'):
+        # Call `finalize()` on all metrics at the end of training epoch,
+        # validation, or test.
+        for metric in metrics.values():
+            metric.finalize(self)
 
     def _register_logging_actions(self, show_live_progress: List[str]):
         # Register logging actions.
@@ -1512,7 +1528,6 @@ class Executor:
             Event.TestingIteration, Event.Testing)
 
     def _register_tbx_logging_actions(self):
-
         # Register logging actions.
         Points = Sequence[Union[Condition, Event]]
 
@@ -1524,16 +1539,15 @@ class Executor:
                     self._register_hook((cond_or_event, True), fn)
 
         def tbx_train_log_fn(executor: 'Executor'):
+            assert self.summary_writer is not None
             train_metrics = executor.train_metrics
-
-            # log the metrics here
             for key, value in train_metrics.items():
                 self.summary_writer.add_scalar(
                     f"train/{key}", value.value(), executor.status["iteration"])
 
         def tbx_valid_log_fn(executor: 'Executor'):
+            assert self.summary_writer is not None
             valid_metrics = executor.valid_metrics
-
             for key, value in valid_metrics.items():
                 self.summary_writer.add_scalar(
                     f"valid/{key}", value.value(), executor.status["iteration"])
@@ -1637,15 +1651,20 @@ class Executor:
 
             # Check which metrics can be printed with specified format.
             fmt_metrics: Set[str] = set()
+            metrics_to_keep: List[str] = []
             metric_format = format_vars["metric"]
             for name, metric in metrics.items():
                 try:
+                    value = metric.value()
+                    if value is None:
+                        continue  # skip non-meaningful metrics
+                    metrics_to_keep.append(name)
                     metric_format.format(metric.value())
                     fmt_metrics.add(name)
                 except ValueError:
                     pass
             metric_format_parts = []
-            for name in metrics:
+            for name in metrics_to_keep:
                 metric_format_parts.append(
                     f"{name}: {{{name}"
                     f"{':' + metric_format if name in fmt_metrics else ''}}}")
@@ -1711,37 +1730,52 @@ class Executor:
             raise ValueError(
                 f"Specified hook point {event_point} is invalid") from None
 
-    def _open_files(self):
-        self._opened_files = []
-        self._log_destination = []
-        self._log_destination_is_tty = []
+    def _open_files(self) -> bool:
+        # Returns whether the files are opened. This is useful when there are
+        # calls to `_open_files` in nested events -- only the top-level event
+        # should close the files.
 
-        for dest in utils.to_list(self.log_destination):
+        if self._files_opened:
+            # Files are already open.
+            return False
+
+        self._opened_files = []
+        for idx, dest in enumerate(self.log_destination):
             if isinstance(dest, (str, Path)):
                 # Append to the logs to prevent accidentally overwriting
                 # previous logs.
                 file = open(dest, "a")
                 self._opened_files.append(file)
-                self._log_destination_is_tty.append(False)
-            else:
-                if not hasattr(dest, "write"):
-                    raise ValueError(f"Log destination {dest} is not a "
-                                     f"file-like object")
-                try:
-                    isatty = dest.isatty()
-                except AttributeError:
-                    isatty = False
-                file = dest
-                self._log_destination_is_tty.append(isatty)
-            self._log_destination.append(file)
+                self._log_destination[idx] = file
+
+        if self._tbx_logging_dir is not None:
+            try:
+                from tensorboardX import SummaryWriter
+            except ImportError:
+                print(
+                    "To use Tensorboard support with Executor, please "
+                    "install tensorboardX. Please see "
+                    "https://tensorboardx.readthedocs.io for further "
+                    "details")
+                raise
+            self.summary_writer = SummaryWriter(self._tbx_logging_dir)
+
+        self._files_opened = True
+        return True
 
     def _close_files(self):
+        if not self._files_opened:
+            return
+
         for file in self._opened_files:
             file.close()
         self._opened_files = []
+        self._log_destination = []
 
-        if hasattr(self, 'summary_writer'):
+        if self.summary_writer is not None:
             self.summary_writer.close()
+
+        self._files_opened = False
 
     def _fire_event(self, event: Event, end: bool):
         r"""Signal the beginning or end of an event. Internally, this is where
@@ -1888,6 +1922,7 @@ class Executor:
                 utils.update_metrics(return_dict, batch, self.train_metrics)
 
                 self._fire_event(Event.Iteration, True)
+            self._finalize_metrics(self.train_metrics)
             self._fire_event(Event.Epoch, True)
             self._train_tracker.reset()
 
@@ -1905,6 +1940,7 @@ class Executor:
             utils.update_metrics(return_dict, batch, self.valid_metrics)
 
             self._fire_event(Event.ValidationIteration, True)
+        self._finalize_metrics(self.valid_metrics)
 
     def _test_loop(self, iterator: DataIterator) -> None:
         r"""Run the entire testing loop given the data iterator.
@@ -1920,6 +1956,7 @@ class Executor:
             utils.update_metrics(return_dict, batch, self.test_metrics)
 
             self._fire_event(Event.TestingIteration, True)
+        self._finalize_metrics(self.test_metrics)
 
     def _validate(self) -> None:
         if self.valid_data is None:

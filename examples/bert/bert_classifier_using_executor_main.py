@@ -20,9 +20,8 @@ import functools
 import importlib
 import os
 import sys
-import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Tuple
 
 import torch
 from torch import nn
@@ -99,18 +98,6 @@ class ModelWrapper(nn.Module):
         return {"preds": preds}
 
 
-class FileWriterMetric(metric.SimpleMetric[List[int], float]):
-    def __init__(self, file_path: Optional[Union[str, Path]] = None):
-        super().__init__(pred_name="preds", label_name="input_ids")
-        self.file_path = file_path
-
-    def _value(self) -> float:
-        path = self.file_path or tempfile.mktemp()
-        with open(path, "w+") as writer:
-            writer.write("\n".join(str(p) for p in self.predicted))
-        return 1.0
-
-
 def main() -> None:
     """
     Builds the model and runs.
@@ -167,8 +154,7 @@ def main() -> None:
         max_tokens=config_data.max_batch_tokens)
 
     output_dir = Path(args.output_dir)
-    valid_metric = metric.Accuracy[float](
-        pred_name="preds", label_name="label_ids")
+    test_output_path = output_dir / "test.output"
 
     executor = Executor(
         # supply executor with the model
@@ -198,14 +184,16 @@ def main() -> None:
         valid_progress_log_format="{time} : Evaluating on "
                                   "{split} ({progress}%, {speed})",
         test_log_format="{time} : Epoch {epoch}, "
-                        "{split} accuracy = {Accuracy:.3f}",
+                        "{split} results written to " + str(test_output_path),
         # define metrics
         train_metrics=[
             ("loss", metric.RunningAverage(1)),  # only show current loss
             ("lr", metric.LR(optim))],
-        valid_metrics=[valid_metric, ("loss", metric.Average())],
-        test_metrics=[
-            valid_metric, FileWriterMetric(output_dir / "test.output")],
+        valid_metrics=[
+            metric.Accuracy[float](pred_name="preds", label_name="label_ids"),
+            ("loss", metric.Average())],
+        test_metrics=[  # only write to file
+            metric.FileWriterMetric(test_output_path, pred_name="preds")],
         # freq of validation
         validate_every=[cond.iteration(config_data.eval_steps)],
         # checkpoint saving location
