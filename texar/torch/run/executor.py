@@ -1656,7 +1656,8 @@ class Executor:
             for name, metric in metrics.items():
                 try:
                     value = metric.value()
-                    if value is None: continue  # skip non-meaningful metrics
+                    if value is None:
+                        continue  # skip non-meaningful metrics
                     metrics_to_keep.append(name)
                     metric_format.format(metric.value())
                     fmt_metrics.add(name)
