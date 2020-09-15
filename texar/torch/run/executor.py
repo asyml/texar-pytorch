@@ -20,8 +20,8 @@ import random
 import re
 import sys
 import time
-from collections import OrderedDict, \
-    defaultdict  # pylint: disable=unused-import
+from collections import (OrderedDict,  # pylint: disable=unused-import
+                         defaultdict)
 from datetime import datetime
 from pathlib import Path
 from typing import (
@@ -1347,9 +1347,9 @@ class Executor:
             def _try_get_data_size(executor: 'Executor'):
                 assert executor.train_data is not None
                 try:
+                    # pylint: disable=protected-access
                     size = len(executor.train_data)
-                    executor._train_tracker.set_size(
-                        size)  # pylint: disable=protected-access
+                    executor._train_tracker.set_size(size)
                 except TypeError:
                     pass
                 executor.remove_action()
@@ -1469,8 +1469,8 @@ class Executor:
             _register(points, log_fn)
 
         def _flush_log_hook(executor: 'Executor'):
-            executor._write_log("",
-                                skip_non_tty=True)  # pylint: disable=protected-access
+            # pylint: disable=protected-access
+            executor._write_log("", skip_non_tty=True)
 
         def _register_status_fn(update_event: Event, log_fn: LogFn):
             def status_fn(executor: 'Executor'):
@@ -1746,7 +1746,8 @@ class Executor:
 
         if len(self._log_destination) == 0:
             # Make sure we have a list of the right size to store the
-            #   destinations. This may be caused after calling `_close_files`.
+            #   destinations. Sometimes, this list can be empty
+            #   after calling `_close_files`.
             self._log_destination: List[IO[str]] = [None] * len(  # type: ignore
                 self.log_destination)
 
