@@ -178,6 +178,11 @@ class ExecutorTest(unittest.TestCase):
         self.assertTrue(path.exists())
         self.assertEqual(len(list(os.walk(path))), 1)
 
+        # At this point, `executor._files_opened` is True, which will run the
+        #  main steps in the `_open_files()` function, it can cause IndexError
+        #  prior to this bug fix.
+        executor.test()
+
 
 if __name__ == "__main__":
     test = ExecutorTest()

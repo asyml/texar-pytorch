@@ -1758,7 +1758,7 @@ class Executor:
                 self._opened_files.append(file)
                 self._log_destination[idx] = file
             else:
-                self._log_destination.append(dest)
+                self._log_destination[idx] = dest
 
         if self._tbx_logging_dir is not None:
             try:
