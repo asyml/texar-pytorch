@@ -19,6 +19,7 @@ import tempfile
 import unittest
 from pathlib import Path
 import os
+import sys
 from typing import List, Dict, Tuple
 
 import torch
@@ -93,6 +94,7 @@ class ExecutorTest(unittest.TestCase):
 
         self.checkpoint_dir = tempfile.mkdtemp()
         self.tbx_logging_dir = tempfile.mkdtemp()
+        self.log_output_dir = tempfile.mkdtemp()
 
     def tearDown(self) -> None:
         shutil.rmtree(self.checkpoint_dir)
@@ -101,6 +103,7 @@ class ExecutorTest(unittest.TestCase):
     def test_train_loop(self):
         optimizer = torch.optim.Adam(self.model.parameters())
         output_path = os.path.join(self.checkpoint_dir, "output_{split}.txt")
+        log_path = Path(self.log_output_dir) / "log.txt"
         executor = Executor(
             model=self.model,
             train_data=self.datasets["train"],
@@ -127,6 +130,7 @@ class ExecutorTest(unittest.TestCase):
             action_on_plateau=[action.early_stop(patience=2),
                                action.reset_params(),
                                action.scale_lr(0.8)],
+            log_destination=[sys.stdout, log_path],
             log_every=cond.iteration(20),
             show_live_progress=True,
         )
@@ -140,10 +144,13 @@ class ExecutorTest(unittest.TestCase):
             with open(path, "r") as f:
                 self.assertEqual(len(f.read().split(",")), len(dataset))
 
+        self.assertTrue(os.path.exists(log_path))
+
         executor.save()
         executor.load()
 
     def test_tbx_logging(self):
+        log_path = Path(self.log_output_dir) / "log.txt"
         executor = Executor(
             model=self.model,
             train_data=self.datasets["train"],
@@ -169,6 +176,7 @@ class ExecutorTest(unittest.TestCase):
             action_on_plateau=[action.early_stop(patience=2),
                                action.reset_params(),
                                action.scale_lr(0.8)],
+            log_destination=[sys.stdout, log_path],
             log_every=cond.iteration(20),
             show_live_progress=True,
         )
@@ -182,6 +190,7 @@ class ExecutorTest(unittest.TestCase):
         #  main steps in the `_open_files()` function, it can cause IndexError
         #  prior to this bug fix.
         executor.test()
+        self.assertTrue(os.path.exists(log_path))
 
 
 if __name__ == "__main__":

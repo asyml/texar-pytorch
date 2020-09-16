@@ -1744,13 +1744,6 @@ class Executor:
 
         self._opened_files = []
 
-        if len(self._log_destination) == 0:
-            # Make sure we have a list of the right size to store the
-            #   destinations. Sometimes, this list can be empty
-            #   after calling `_close_files`.
-            self._log_destination: List[IO[str]] = [None] * len(  # type: ignore
-                self.log_destination)
-
         for idx, dest in enumerate(self.log_destination):
             if isinstance(dest, (str, Path)):
                 # Append to the logs to prevent accidentally overwriting
@@ -1783,7 +1776,6 @@ class Executor:
         for file in self._opened_files:
             file.close()
         self._opened_files = []
-        self._log_destination = []
 
         if self.summary_writer is not None:
             self.summary_writer.close()
