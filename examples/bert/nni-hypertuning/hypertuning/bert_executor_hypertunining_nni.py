@@ -31,7 +31,6 @@ from torch.nn import functional as F
 import texar.torch as tx
 from texar.torch.run import *
 import nni
-import logging
 import adaptdl
 
 from utils import model_utils
@@ -177,8 +176,8 @@ def main() -> None:
     valid_metric = metric.Accuracy[float](
         pred_name="preds", label_name="label_ids")
 
-    tensorboard_dir = os.path.join(os.getenv("ADAPTDLCTL_TENSORBOARD_LOGDIR", "/tmp"),
-                               adaptdl._env.get_job_name())
+    tensorboard_dir = os.path.join(os.getenv("ADAPTDLCTL_TENSORBOARD_LOGDIR",
+        "/tmp"), adaptdl._env.get_job_name())
     executor = Executor(
         # supply executor with the model
         model=model,
@@ -229,7 +228,8 @@ def main() -> None:
     # get intermediate result every epoch; the interval can be modified with cond
     @executor.on(cond.epoch(1))
     def nni_intermediate(executor):
-        nni.report_intermediate_result(executor.status["eval_metric"]["loss"].value())
+        nni.report_intermediate_result(
+            executor.status["eval_metric"]["loss"].value())
 
     if args.checkpoint is not None:
         executor.load(args.checkpoint)
