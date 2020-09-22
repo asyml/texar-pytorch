@@ -230,7 +230,7 @@ def main() -> None:
     # get intermediate result each epoch
     # the interval can be modified with cond
     @executor.on(cond.epoch(1))
-    def nni_intermediate(executor): # pylint: disable=unused-variable
+    def nni_intermediate(executor):  # pylint: disable=unused-variable
         nni.report_intermediate_result(
             executor.status["eval_metric"]["loss"].value())
 
