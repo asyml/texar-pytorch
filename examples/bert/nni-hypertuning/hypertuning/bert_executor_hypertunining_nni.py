@@ -133,11 +133,11 @@ def main() -> None:
 
     num_train_steps = int(num_train_data / config_data.train_batch_size *
                           config_data.max_train_epoch)
-    #num_warmup_steps = int(num_train_steps * config_data.warmup_proportion)
+    # num_warmup_steps = int(num_train_steps * config_data.warmup_proportion)
     num_warmup_steps = tuner_params['warmup_steps']
 
     # Builds learning rate decay scheduler
-    #static_lr = 2e-5
+    # static_lr = 2e-5
     static_lr = tuner_params['static_lr']
 
     vars_with_decay = []
@@ -189,9 +189,9 @@ def main() -> None:
         batching_strategy=batching_strategy,
         device=device,
         # tbx logging
-        #tbx_logging_dir=os.path.join(config_data.tbx_log_dir,
+        # tbx_logging_dir=os.path.join(config_data.tbx_log_dir,
         #                             "exp" + str(config_data.exp_number)),
-        tbx_logging_dir = tensorboard_dir,
+        tbx_logging_dir=tensorboard_dir,
         tbx_log_every=cond.iteration(config_data.tbx_logging_steps),
         # training and stopping details
         optimizer=optim,
