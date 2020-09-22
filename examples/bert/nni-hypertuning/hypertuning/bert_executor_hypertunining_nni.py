@@ -50,7 +50,8 @@ parser.add_argument(
     help="The output directory where the model checkpoints will be written.")
 parser.add_argument(
     "--checkpoint", type=str, default=None,
-    help="Path to a model checdkpoint (including bert modules) to restore from.")
+    help="Path to a model checdkpoint (including bert modules) \
+    to restore from.")
 parser.add_argument(
     "--do-train", action="store_true", default=True,
     help="Whether to run training.")
@@ -176,6 +177,7 @@ def main() -> None:
     valid_metric = metric.Accuracy[float](
         pred_name="preds", label_name="label_ids")
 
+    # pylint: disable=protected-access
     tensorboard_dir = os.path.join(os.getenv("ADAPTDLCTL_TENSORBOARD_LOGDIR",
         "/tmp"), adaptdl._env.get_job_name())
     executor = Executor(
@@ -225,9 +227,10 @@ def main() -> None:
         show_live_progress=True,
     )
 
-    # get intermediate result every epoch; the interval can be modified with cond
+    # get intermediate result each epoch
+    # the interval can be modified with cond
     @executor.on(cond.epoch(1))
-    def nni_intermediate(executor):
+    def nni_intermediate(executor): # pylint: disable=unused-variable
         nni.report_intermediate_result(
             executor.status["eval_metric"]["loss"].value())
 
