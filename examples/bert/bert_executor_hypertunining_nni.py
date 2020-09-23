@@ -31,7 +31,7 @@ from torch.nn import functional as F
 import texar.torch as tx
 from texar.torch.run import *
 import nni
-import adaptdl
+# import adaptdl
 
 from utils import model_utils
 
@@ -178,8 +178,8 @@ def main() -> None:
         pred_name="preds", label_name="label_ids")
 
     # pylint: disable=protected-access
-    tensorboard_dir = os.path.join(os.getenv("ADAPTDLCTL_TENSORBOARD_LOGDIR",
-        "/tmp"), adaptdl._env.get_job_name())
+    # tensorboard_dir = os.path.join(os.getenv("ADAPTDLCTL_TENSORBOARD_LOGDIR",
+    #    "/tmp"), adaptdl._env.get_job_name())
     executor = Executor(
         # supply executor with the model
         model=model,
