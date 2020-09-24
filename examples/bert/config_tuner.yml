@@ -3,7 +3,6 @@ experimentName: bert
 trialConcurrency: 1
 maxExecDuration: 24h
 maxTrialNum: 36
-#choice: local, adl (TBD)
 trainingServicePlatform: local
 # specify your search space file
 searchSpacePath: search_space.json
@@ -15,8 +14,9 @@ tuner:
    optimize_mode: minimize
 trial:
   # file position in your docker container
-  command: python3 bert_executor_hypertunining_nni.py
+  command: python3 bert_executor_hypertuning_nni.py
   codeDir: .
   gpuNum: 1
 localConfig:
+  useActiveGpu: true
   maxTrialNumPerGpu:  2

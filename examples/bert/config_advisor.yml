@@ -14,8 +14,9 @@ advisor:
     optimize_mode: minimize
 trial:
   # file position in your docker container
-  command: python3 bert_executor_hypertunining_nni.py
+  command: python3 bert_executor_hypertuning_nni.py
   codeDir: .
   gpuNum: 1
 localConfig:
+  useActiveGpu: true
   maxTrialNumPerGpu:  2
