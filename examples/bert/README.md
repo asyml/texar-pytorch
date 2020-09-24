@@ -218,26 +218,25 @@ found at [Hyperopt](https://github.com/hyperopt/hyperopt).
 
 ### Hyperparamter tuning with Neural Network Intelligence (NNI)
 
-To run this example, please install `hyperopt` by issuing the following command
+To run this example, please install `nni` by issuing the following command
 
 ```commandline
-pip install nni
+python3 -m pip install --upgrade nni
 ```
 
-The configuration file and code script are all stored in the directory of `nni-hypertuning`, so 
-please enter this directory to implement this hyperparamter tuning. In this simple example, the 
-hyperparameters to be tuned are provided as a `search_space.json` file, for which how to write 
-add other hyperparameters to tune in the json file should be referred to 
+The code script used for nni hyperparameter tuning is `bert_executor_hypertuning_nni.py`. In this 
+simple example, the hyperparameters to be tuned are provided as a `search_space.json` file, for which 
+how to include additional hyperparameters to tune in the json file should be referred to 
 [link](https://nni.readthedocs.io/en/latest/Tutorial/QuickStart.html). We prepare two configuration yaml
 file, `config_tuner.yml` and `config_advisor.yml` for respectively using build-in nni tuners and 
 advisors on tuning. Some build-in advisors need to be installed, please refer to
 [link](https://nni.readthedocs.io/en/latest/Tuner/BuiltinTuner.html) for how to install in you need to use
 it. In the configuration file, you can modify the number of maximum trials, the maximum running 
-duration and some other arguments (e.g. maximum or minimum). Then to run this example, run the 
+duration and some other arguments (e.g. maximum or minimum). In order to run this example, run the 
 following command
 ```
 nnictl create --config config_tuner.yml --port 9009
 ```  
 The port id can be set with any effective port id. Then you can use the Web UI urls given from your 
-terminal to monitor your tuning progress on the WebUI. More  information about NNI can be 
+terminal to monitor the auto-tuning progress on the WebUI. More  information about NNI can be 
 found at [NNI](https://nni.readthedocs.io/en/latest/index.html).
