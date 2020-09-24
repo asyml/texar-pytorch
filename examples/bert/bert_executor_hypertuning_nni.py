@@ -194,7 +194,7 @@ def main() -> None:
         #                             "exp" + str(config_data.exp_number)),
         # tbx_logging_dir=tensorboard_dir,
         tbx_logging_dir=os.path.join(config_data.tbx_log_dir,
-                                     "exp" + str(config_data.exp_number)),        
+                                     "exp" + str(config_data.exp_number)),
         tbx_log_every=cond.iteration(config_data.tbx_logging_steps),
         # training and stopping details
         optimizer=optim,
