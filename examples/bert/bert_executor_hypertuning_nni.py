@@ -31,7 +31,6 @@ from torch.nn import functional as F
 import texar.torch as tx
 from texar.torch.run import *
 import nni
-# import adaptdl
 
 from utils import model_utils
 
@@ -133,11 +132,9 @@ def main() -> None:
 
     num_train_steps = int(num_train_data / config_data.train_batch_size *
                           config_data.max_train_epoch)
-    # num_warmup_steps = int(num_train_steps * config_data.warmup_proportion)
     num_warmup_steps = tuner_params['warmup_steps']
 
     # Builds learning rate decay scheduler
-    # static_lr = 2e-5
     static_lr = tuner_params['static_lr']
 
     vars_with_decay = []
@@ -176,10 +173,6 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     valid_metric = metric.Accuracy[float](
         pred_name="preds", label_name="label_ids")
-
-    # pylint: disable=protected-access
-    # tensorboard_dir = os.path.join(os.getenv("ADAPTDLCTL_TENSORBOARD_LOGDIR",
-    #    "/tmp"), adaptdl._env.get_job_name())
     executor = Executor(
         # supply executor with the model
         model=model,
@@ -189,10 +182,6 @@ def main() -> None:
         test_data=test_dataset,
         batching_strategy=batching_strategy,
         device=device,
-        # tbx logging
-        # tbx_logging_dir=os.path.join(config_data.tbx_log_dir,
-        #                             "exp" + str(config_data.exp_number)),
-        # tbx_logging_dir=tensorboard_dir,
         tbx_logging_dir=os.path.join(config_data.tbx_log_dir,
                                      "exp" + str(config_data.exp_number)),
         tbx_log_every=cond.iteration(config_data.tbx_logging_steps),

@@ -221,7 +221,7 @@ found at [Hyperopt](https://github.com/hyperopt/hyperopt).
 To run this example, please install `nni` by issuing the following command
 
 ```commandline
-python3 -m pip install --upgrade nni
+python -m pip install --upgrade nni
 ```
 
 The code script used for nni hyperparameter tuning is `bert_executor_hypertuning_nni.py`. In this 
