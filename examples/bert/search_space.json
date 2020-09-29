@@ -1,0 +1,4 @@
+{
+    "warmup_steps":{"_type":"randint","_value":[10000, 20000]},
+    "static_lr":{"_type":"uniform","_value":[1e-3, 1e-2]}
+}
