@@ -3,7 +3,6 @@ kind: AdaptDLJob
 metadata:
   generateName: texar-bert-elastic-
 spec:
-  minReplicas: 2
   template:
     spec:
       containers:
