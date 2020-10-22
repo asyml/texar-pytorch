@@ -40,7 +40,8 @@ class AdaptiveDataIterator(DataIterator):
             name: AdaptiveDataLoader(dataset,
                                      batch_size=dataset.batch_size,
                                      shuffle=dataset.hparams.shuffle,
-                                     collate_fn=dataset.collate)
+                                     collate_fn=dataset.collate,
+                                     pin_memory=pin_memory)
             for name, dataset in datasets.items()}
 
         if len(self._datasets) <= 0:
