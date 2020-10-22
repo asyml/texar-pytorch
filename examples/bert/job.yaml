@@ -1,0 +1,24 @@
+apiVersion: adaptdl.petuum.com/v1
+kind: AdaptDLJob
+metadata:
+  generateName: texar-bert-elastic-
+spec:
+  minReplicas: 2
+  template:
+    spec:
+      containers:
+      - name: main
+        command:
+        - python3
+        - examples/bert/bert_classifier_adaptive.py
+        - --do-train
+        - --do-eval
+        - --config-downstream=config_classifier
+        - --config-data=config_data
+        - --output-dir=output
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "true"
+        resources:
+          limits:
+            nvidia.com/gpu: 1

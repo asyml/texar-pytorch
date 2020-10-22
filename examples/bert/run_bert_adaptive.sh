@@ -11,21 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Modules of Texar library.
-"""
 
-# pylint: disable=wildcard-import
+# Runs adaptive version of Texar Bert model. Expects adaptdl-cli installed
+# locally
 
-from texar.torch.version import VERSION as __version__
-
-from texar.torch import core
-from texar.torch import data
-from texar.torch import evals
-from texar.torch import losses
-from texar.torch import modules
-from texar.torch import run
-from texar.torch import utils
-from texar.torch.hyperparams import *
-from texar.torch.module_base import *
-from texar.torch import distributed
+ROOT=$(dirname $0)/../..
+adaptdl submit -f $ROOT/examples/bert/job.yaml -d $ROOT/docker/Dockerfile -n tx $ROOT

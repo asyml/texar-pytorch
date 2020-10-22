@@ -11,21 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Modules of Texar library.
-"""
 
-# pylint: disable=wildcard-import
+import torch
+import adaptdl.torch
 
-from texar.torch.version import VERSION as __version__
 
-from texar.torch import core
-from texar.torch import data
-from texar.torch import evals
-from texar.torch import losses
-from texar.torch import modules
-from texar.torch import run
-from texar.torch import utils
-from texar.torch.hyperparams import *
-from texar.torch.module_base import *
-from texar.torch import distributed
+class AdaptiveDataParallel(adaptdl.torch.AdaptiveDataParallel):
+    def __init__(self, model, optimizer, lr_scheduler=None, **kwargs):
+        super().__init__(model, optimizer, lr_scheduler, **kwargs)
+
+        # Add missing members from model
+        missing = {k: model.__dict__[k]
+                   for k in set(model.__dict__) - set(self.__dict__)}
+        self.__dict__.update(missing)
+
+
+def init_process_group():
+    adaptdl.torch.init_process_group("nccl" if
+            torch.cuda.is_available() else "gloo")
