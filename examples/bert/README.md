@@ -15,7 +15,7 @@ To summarize, this example showcases:
 * Building and fine-tuning on downstream tasks
 * Use of Texar `RecordData` module for data loading and processing
 * Use of Texar `Executor` module for simplified training loops and TensorBoard visualization
-* Use of [Hyperopt]((https://github.com/hyperopt/hyperopt)) library to tune hyperparameters with 
+* Use of [Hyperopt]((https://github.com/hyperopt/hyperopt)) library to tune hyperparameters with
 `Executor` module
 
 Future work:
@@ -50,7 +50,7 @@ By default, it will download the MRPC dataset into the `data` directory. FYI, th
 
 We first preprocess the downloaded raw data into [pickled](https://docs.python.org/3/library/pickle.html) files. The
 preprocessing step tokenizes raw text with BPE encoding, truncates sequences, adds special tokens, etc. Run the
-following command to this end: 
+following command to this end:
 
 ```bash
 python prepare_data.py --task=MRPC \
@@ -62,7 +62,7 @@ python prepare_data.py --task=MRPC \
 - `--task`: Specifies the dataset name to preprocess. BERT provides default support for
   `{'CoLA', 'MNLI', 'MRPC', 'XNLI', 'SST'}` data.
 - `--max-seq-length`: The maxium length of sequence. This includes BERT special tokens that will be automatically added.
-  Longer sequences will be trimmed. 
+  Longer sequences will be trimmed.
 - `--pretrained-model-name`: The name of a pre-trained model to load selected in the list of: `bert-base-uncased`,
   `bert-large-uncased`, `bert-base-cased`, `bert-large-cased`, `bert-base-multilingual-uncased`,
   `bert-base-multilingual-cased`, and `bert-base-chinese`.
@@ -88,8 +88,8 @@ python prepare_data.py --task=MRPC \
   ```
   **Note that** the data info `num_classes` and `num_train_data`, as well as `max_seq_length` specified in the command,
   are required for BERT training in the following. They should be specified in the data configuration file passed to
-  BERT training (see below). 
-  
+  BERT training (see below).
+
 - For convenience, the above command automatically writes `num_classes`, `num_train_data` and `max_seq_length` to
   `config_data.py`.
 
@@ -114,7 +114,7 @@ Here:
 - `--output-dir`: The output path where checkpoints are saved.
 - `--pretrained-model-name`: The name of a pre-trained model to load selected in the list of: `bert-base-uncased`,
   `bert-large-uncased`, `bert-base-cased`, `bert-large-cased`, `bert-base-multilingual-uncased`,
-  `bert-base-multilingual-cased`, and `bert-base-chinese`. 
+  `bert-base-multilingual-cased`, and `bert-base-chinese`.
 
 After convergence, the evaluation performance is around the following. Due to certain randomness (e.g., random
 initialization of the classification layer), the evaluation accuracy is reasonable as long as it's `>0.84`.
@@ -181,7 +181,7 @@ the `train_metrics` and `valid_metrics` will be logged into tensorboard. To run
 
 ```commandline
 python bert_classifier_using_executor_main.py --do-train --do-test
-``` 
+```
 
 If the logs are in `runs/` folder, the tensorboard server can be started by the following command
 
@@ -202,7 +202,7 @@ To run this example, please install `hyperopt` by issuing the following command
 pip install hyperopt
 ```
 
-`bert_with_hypertuning_main.py` shows an example of how to tune hyperparameters with Executor using `hyperopt`. 
+`bert_with_hypertuning_main.py` shows an example of how to tune hyperparameters with Executor using `hyperopt`.
 To run this example, run the following command
 
 ```commandline
@@ -213,7 +213,7 @@ In this simple example, the hyperparameters to be tuned are provided as a `dict`
 `bert_hypertuning_config_classifier.py` which are fed into `objective_func()` . We use `TPE`
 (Tree-structured Parzen Estimator) algorithm for tuning the hyperparams (provided in `hyperopt`
 library). The example runs for 3 trials to find the best hyperparam settings. The final model is
-saved in `output_dir` provided by the user. More  information about the libary can be 
+saved in `output_dir` provided by the user. More  information about the libary can be
 found at [Hyperopt](https://github.com/hyperopt/hyperopt).
 
 ### Hyperparamter tuning with Neural Network Intelligence (NNI)
@@ -224,19 +224,47 @@ To run this example, please install `nni` by issuing the following command
 python -m pip install --upgrade nni
 ```
 
-The code script used for nni hyperparameter tuning is `bert_executor_hypertuning_nni.py`. In this 
-simple example, the hyperparameters to be tuned are provided as a `search_space.json` file, for which 
-how to include additional hyperparameters to tune in the json file should be referred to 
-this [link](https://nni.readthedocs.io/en/latest/Tutorial/QuickStart.html). We prepare two configuration 
-yaml file, `config_tuner.yml` and `config_advisor.yml` for respectively using build-in nni tuners and 
+The code script used for nni hyperparameter tuning is `bert_executor_hypertuning_nni.py`. In this
+simple example, the hyperparameters to be tuned are provided as a `search_space.json` file, for which
+how to include additional hyperparameters to tune in the json file should be referred to
+this [link](https://nni.readthedocs.io/en/latest/Tutorial/QuickStart.html). We prepare two configuration
+yaml file, `config_tuner.yml` and `config_advisor.yml` for respectively using build-in nni tuners and
 advisors on tuning. Some build-in advisors need to be installed, please refer to
-the [link](https://nni.readthedocs.io/en/latest/Tuner/BuiltinTuner.html) for how to install in you need to 
-use it. In the configuration file, you can modify the number of maximum trials, the maximum running 
-duration and some other arguments (e.g. maximum or minimum). In order to run this example, run the 
+the [link](https://nni.readthedocs.io/en/latest/Tuner/BuiltinTuner.html) for how to install in you need to
+use it. In the configuration file, you can modify the number of maximum trials, the maximum running
+duration and some other arguments (e.g. maximum or minimum). In order to run this example, run the
 following command
 ```
 nnictl create --config config_tuner.yml --port 9009
-```  
-The port id can be set with any effective port id. Then you can use the Web UI urls given from your 
-terminal to monitor the auto-tuning progress on the WebUI. More  information about NNI can be 
+```
+The port id can be set with any effective port id. Then you can use the Web UI urls given from your
+terminal to monitor the auto-tuning progress on the WebUI. More  information about NNI can be
 found at [NNI](https://nni.readthedocs.io/en/latest/index.html).
+
+### Adaptive distributed training on AdaptDL
+
+A version of the BERT example `bert_classifier_adaptive.py` which uses
+`texar.torch.distributed` Adaptive API can be run on a AdaptDL kubernetes
+cluster. With the help of AdaptDL, the classifier can be trained on a cluster
+with multiple replicas in data parallel fashion. The number of replicas is
+automatically decided by the AdaptDL scheduler. Instructions for setting up an
+AdaptDL cluster can be found [here](https://adaptdl.readthedocs.io/en/latest/).
+
+Once the cluster is setup, install AdaptDL CLI package
+```commandline
+python -m pip install --upgrade adaptdl-cli
+```
+Then the BERT AdaptDL job can be run with
+```commandline
+./run_bert_adaptive.sh
+```
+Moreover, the AdaptDL trainer API works locally (without the cluster) with a
+single replica. This can be used for testing changes locally before they are run
+on a cluster.
+
+```bash
+python bert_classifier_adaptive.py --do-train --do-eval \
+    --config-downstream=config_classifier \
+    --config-data=config_data \
+    --output-dir=output
+```

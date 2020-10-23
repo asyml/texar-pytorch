@@ -54,10 +54,6 @@ parser.add_argument(
 args = parser.parse_args()
 
 config_data: Any = importlib.import_module(args.config_data)
-# Prefix pickle paths
-for param in (config_data.train_hparam,
-              config_data.eval_hparam, config_data.test_hparam):
-    param['dataset']['files'] = f"examples/bert/{param['dataset']['files']}"
 config_downstream = importlib.import_module(args.config_downstream)
 config_downstream = {
     k: v for k, v in config_downstream.__dict__.items()
@@ -114,9 +110,12 @@ def main() -> None:
                                  total_steps=num_train_steps,
                                  warmup_steps=num_warmup_steps))
 
-    train_dataset = tx.data.RecordData(hparams=config_data.train_hparam)
-    eval_dataset = tx.data.RecordData(hparams=config_data.eval_hparam)
-    test_dataset = tx.data.RecordData(hparams=config_data.test_hparam)
+    train_dataset = tx.data.RecordData(hparams=config_data.train_hparam,
+                                       device=device)
+    eval_dataset = tx.data.RecordData(hparams=config_data.eval_hparam,
+                                      device=device)
+    test_dataset = tx.data.RecordData(hparams=config_data.test_hparam,
+                                      device=device)
 
     iterator = tx.distributed.AdaptiveDataIterator(
         {"train": train_dataset, "eval": eval_dataset, "test": test_dataset}
