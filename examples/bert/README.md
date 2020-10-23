@@ -241,15 +241,16 @@ The port id can be set with any effective port id. Then you can use the Web UI u
 terminal to monitor the auto-tuning progress on the WebUI. More  information about NNI can be
 found at [NNI](https://nni.readthedocs.io/en/latest/index.html).
 
-## Adaptive distributed training on AdaptDL
+## Adaptive distributed training using AdaptDL
 
 
 A version of the BERT example `bert_classifier_adaptive.py` which uses
-`texar.torch.distributed` Adaptive API can be run on a AdaptDL kubernetes
-cluster. With the help of AdaptDL, the classifier can be trained on a cluster
-with multiple replicas in data parallel fashion. The number of replicas is
-automatically decided by the AdaptDL scheduler. Instructions for setting up an
-AdaptDL cluster can be found [here](https://adaptdl.readthedocs.io/en/latest/).
+`texar.torch.distributed` Adaptive API can be run on a kubernetes cluster with
+AdaptDL scheduler. With the help of AdaptDL, the classifier can be trained on a
+cluster with multiple replicas in data parallel fashion. The number of replicas
+is automatically decided by the AdaptDL scheduler. Instructions for setting up
+an AdaptDL cluster can be found
+[here](https://adaptdl.readthedocs.io/en/latest/).
 
 Once the cluster is setup, install AdaptDL CLI package
 ```commandline
