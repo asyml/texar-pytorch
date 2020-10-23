@@ -15,5 +15,5 @@
 import adaptdl.torch
 
 
-def remaining_epochs_until(epochs):
+def remaining_epochs_until(epochs: int) -> int:
     return adaptdl.torch.remaining_epochs_until(epochs)

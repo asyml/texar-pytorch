@@ -12,12 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Optional
 import torch
+from torch.optim.optimizer import Optimizer
+from torch.optim.lr_scheduler import _LRScheduler as LRScheduler
+from texar.torch.run.executor_utils import Instance
 import adaptdl.torch
 
-
 class AdaptiveDataParallel(adaptdl.torch.AdaptiveDataParallel):
-    def __init__(self, model, optimizer, lr_scheduler=None, **kwargs):
+    def __init__(self,
+                 model: torch.nn.Module,
+                 optimizer: Optimizer,
+                 lr_scheduler: Optional[Instance[LRScheduler]] = None,
+                 **kwargs):
         super().__init__(model, optimizer, lr_scheduler, **kwargs)
 
         # Add missing members from model
