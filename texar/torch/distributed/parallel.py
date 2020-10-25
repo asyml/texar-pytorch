@@ -19,6 +19,7 @@ from torch.optim.lr_scheduler import _LRScheduler as LRScheduler
 from texar.torch.run.executor_utils import Instance
 import adaptdl.torch
 
+
 class AdaptiveDataParallel(adaptdl.torch.AdaptiveDataParallel):
     def __init__(self,
                  model: torch.nn.Module,

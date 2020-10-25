@@ -65,6 +65,7 @@ logging.root.setLevel(logging.INFO)
 
 tx.distributed.init_process_group()
 
+
 def main() -> None:
     """
     Builds the model and runs.

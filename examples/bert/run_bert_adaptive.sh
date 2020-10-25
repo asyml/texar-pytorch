@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Runs adaptive version of Texar Bert model. Expects adaptdl-cli installed
-# locally
+# Runs adaptive version of Texar Bert model.
+
+if ! python3 -m pip show adaptdl-cli > /dev/null 2>&1
+then python3 -m pip install adaptdl-cli
+fi
 
 ROOT=$(dirname $0)/../..
-adaptdl submit -f $ROOT/examples/bert/job.yaml -d $ROOT/docker/Dockerfile -n tx $ROOT
+adaptdl submit $ROOT -f $ROOT/examples/bert/job.yaml -d $ROOT/docker/Dockerfile

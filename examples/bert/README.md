@@ -250,7 +250,7 @@ AdaptDL scheduler. With the help of AdaptDL, the classifier can be trained on a
 cluster with multiple replicas in data parallel fashion. The number of replicas
 is automatically decided by the AdaptDL scheduler. Instructions for setting up
 an AdaptDL cluster can be found
-[here](https://adaptdl.readthedocs.io/en/latest/).
+[here](https://adaptdl.readthedocs.io/en/latest/installation/index.html).
 
 Once the cluster is setup, install AdaptDL CLI package
 ```commandline
@@ -260,13 +260,16 @@ Then the BERT AdaptDL job can be run with
 ```commandline
 ./run_bert_adaptive.sh
 ```
-Moreover, the AdaptDL trainer API works locally (without the cluster) with a
-single replica. This can be used for testing changes locally before they are run
-on a cluster.
-
+Parameters like JobName, number of replicas can be controlled by modifying file
+`job.yaml`.  Moreover, the AdaptDL trainer API works locally (without the
+cluster) by default with a single replica. This can be used for testing changes
+locally before they are run on a cluster. For single replica training you can
+directly run the code as shown.
 ```bash
 python bert_classifier_adaptive.py --do-train --do-eval \
     --config-downstream=config_classifier \
     --config-data=config_data \
     --output-dir=output
 ```
+See [here](https://adaptdl.readthedocs.io/en/latest/standalone-training.html)
+for full documentation on how to train the model in standalone mode.
