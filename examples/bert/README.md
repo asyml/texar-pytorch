@@ -252,11 +252,7 @@ is automatically decided by the AdaptDL scheduler. Instructions for setting up
 an AdaptDL cluster can be found
 [here](https://adaptdl.readthedocs.io/en/latest/installation/index.html).
 
-Once the cluster is setup, install AdaptDL CLI package
-```commandline
-python -m pip install --upgrade adaptdl-cli
-```
-Then the BERT AdaptDL job can be run with
+Once the cluster is setup and ready, the BERT AdaptDL job can be run with
 ```commandline
 ./run_bert_adaptive.sh
 ```
