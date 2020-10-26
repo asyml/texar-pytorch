@@ -24,6 +24,7 @@ from typing import Any
 import torch
 import torch.nn.functional as F
 import texar.torch as tx
+import adaptdl
 
 from utils import model_utils
 
@@ -65,13 +66,15 @@ logging.root.setLevel(logging.INFO)
 
 tx.distributed.init_process_group()
 
+if adaptdl.env.share_path():  # Will be set by the AdaptDL controller
+    OUTPUT_DIR = adaptdl.env.share_path()
+else:
+    OUTPUT_DIR = args.output_dir
 
 def main() -> None:
     """
     Builds the model and runs.
     """
-    tx.utils.maybe_create_dir(args.output_dir)
-
     # Loads data
     num_train_data = config_data.num_train_data
 
@@ -145,9 +148,9 @@ def main() -> None:
 
         for batch in iterator:
             optim.zero_grad()
-            input_ids = batch["input_ids"].to(device)
-            segment_ids = batch["segment_ids"].to(device)
-            labels = batch["label_ids"].to(device)
+            input_ids = batch["input_ids"]
+            segment_ids = batch["segment_ids"]
+            labels = batch["label_ids"]
 
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
@@ -173,9 +176,9 @@ def main() -> None:
         nsamples = 0
         avg_rec = tx.utils.AverageRecorder()
         for batch in iterator:
-            input_ids = batch["input_ids"].to(device)
-            segment_ids = batch["segment_ids"].to(device)
-            labels = batch["label_ids"].to(device)
+            input_ids = batch["input_ids"]
+            segment_ids = batch["segment_ids"]
+            labels = batch["label_ids"]
 
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
@@ -198,8 +201,8 @@ def main() -> None:
 
         _all_preds = []
         for batch in iterator:
-            input_ids = batch["input_ids"].to(device)
-            segment_ids = batch["segment_ids"].to(device)
+            input_ids = batch["input_ids"]
+            segment_ids = batch["segment_ids"]
 
             input_length = (1 - (input_ids == 0).int()).sum(dim=1)
 
@@ -207,10 +210,11 @@ def main() -> None:
 
             _all_preds.extend(preds.tolist())
 
-        output_file = os.path.join(args.output_dir, "test_results.tsv")
-        with open(output_file, "w+") as writer:
-            writer.write("\n".join(str(p) for p in _all_preds))
-        logging.info("test output written to %s", output_file)
+        if adaptdl.env.replica_rank() == 0:
+            output_file = os.path.join(OUTPUT_DIR, "test_results.tsv")
+            with open(output_file, "w+") as writer:
+                writer.write("\n".join(str(p) for p in _all_preds))
+            logging.info("test output written to %s", output_file)
 
     if args.checkpoint:
         ckpt = torch.load(args.checkpoint)
@@ -226,7 +230,8 @@ def main() -> None:
             'optimizer': optim.state_dict(),
             'scheduler': scheduler.state_dict(),
         }
-        torch.save(states, os.path.join(args.output_dir, 'model.ckpt'))
+        if adaptdl.env.replica_rank() == 0:
+            torch.save(states, os.path.join(OUTPUT_DIR, 'model.ckpt'))
 
     if args.do_eval:
         _eval_epoch()

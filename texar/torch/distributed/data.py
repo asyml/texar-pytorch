@@ -17,7 +17,8 @@ from adaptdl.torch.data import AdaptiveDataLoader
 
 from texar.torch.data.data.sampler import BatchingStrategy
 from texar.torch.data.data.data_base import DatasetBase
-from texar.torch.data.data.data_iterators import (DatasetsType, DataIterator)
+from texar.torch.data.data.data_iterators import (DatasetsType, DataIterator,
+                                                  move_memory)
 
 
 class AdaptiveDataIterator(DataIterator):
@@ -48,3 +49,10 @@ class AdaptiveDataIterator(DataIterator):
             raise ValueError("`datasets` must not be empty.")
 
         self._current_dataset_name: Optional[str] = None
+
+    def __iter__(self):
+        device = self._datasets[self._current_dataset_name].dataset.device
+        for batch in super().__iter__():
+            if device is not None:
+                batch = move_memory(batch, device)
+            yield batch
