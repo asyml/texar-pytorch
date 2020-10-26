@@ -262,7 +262,7 @@ AdaptDL trainer API works locally (without the cluster) by default with a
 single replica. This can be used for testing changes locally before they are
 run on a cluster. For single replica training you can directly run the code as
 shown.
-
+```commandline
 python bert_classifier_adaptive.py --do-train --do-eval \
     --config-downstream=config_classifier \
     --config-data=config_data \
