@@ -19,4 +19,28 @@ then python3 -m pip install adaptdl-cli
 fi
 
 ROOT=$(dirname $0)/../..
-adaptdl submit $ROOT -f $ROOT/examples/bert/job.yaml -d $ROOT/docker/Dockerfile
+cat << EOF | adaptdl submit $ROOT -d $ROOT/docker/Dockerfile -f -
+apiVersion: adaptdl.petuum.com/v1
+kind: AdaptDLJob
+metadata:
+  generateName: texar-bert-elastic-
+spec:
+  template:
+    spec:
+      containers:
+      - name: main
+        command:
+        - python3
+        - examples/bert/bert_classifier_adaptive.py
+        - --do-train
+        - --do-eval
+        - --config-downstream=config_classifier
+        - --config-data=config_data
+        - --output-dir=output
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "true"
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+EOF

@@ -256,12 +256,12 @@ Once the cluster is setup and ready, the BERT AdaptDL job can be run with
 ```commandline
 ./run_bert_adaptive.sh
 ```
-Parameters like JobName, number of replicas can be controlled by modifying file
-`job.yaml`.  Moreover, the AdaptDL trainer API works locally (without the
-cluster) by default with a single replica. This can be used for testing changes
-locally before they are run on a cluster. For single replica training you can
-directly run the code as shown.
-```bash
+Parameters like JobName, number of replicas can be controlled by modifying the
+embedded job manifest in the file `run_bert_adaptive.sh.` Moreover, the AdaptDL
+trainer API works locally (without the cluster) by default with a single
+replica. This can be used for testing changes locally before they are run on a
+cluster. For single replica training you can directly run the code as shown.
+
 python bert_classifier_adaptive.py --do-train --do-eval \
     --config-downstream=config_classifier \
     --config-data=config_data \
