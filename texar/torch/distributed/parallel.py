@@ -31,8 +31,3 @@ class AdaptiveDataParallel(adaptdl.torch.AdaptiveDataParallel):
         missing = {k: model.__dict__[k]
                    for k in set(model.__dict__) - set(self.__dict__)}
         self.__dict__.update(missing)
-
-
-def init_process_group():
-    adaptdl.torch.init_process_group("nccl" if
-            torch.cuda.is_available() else "gloo")

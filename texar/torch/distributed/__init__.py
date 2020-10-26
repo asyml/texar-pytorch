@@ -14,4 +14,3 @@
 
 from texar.torch.distributed.parallel import *
 from texar.torch.distributed.data import *
-from texar.torch.distributed.epoch import *

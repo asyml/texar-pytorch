@@ -64,7 +64,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 logging.root.setLevel(logging.INFO)
 
-tx.distributed.init_process_group()
+adaptdl.torch.init_process_group("nccl" if
+            torch.cuda.is_available() else "gloo")
 
 if adaptdl.env.share_path():  # Will be set by the AdaptDL controller
     OUTPUT_DIR = adaptdl.env.share_path()
@@ -223,7 +224,7 @@ def main() -> None:
         scheduler.load_state_dict(ckpt['scheduler'])
 
     if args.do_train:
-        for epoch in tx.distributed.remaining_epochs_until(config_data.max_train_epoch):
+        for epoch in adaptdl.torch.remaining_epochs_until(config_data.max_train_epoch):
             _train_epoch(epoch)
         states = {
             'model': model.state_dict(),
