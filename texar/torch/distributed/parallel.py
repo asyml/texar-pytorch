@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Optional
 import torch
 import adaptdl.torch
-from typing import Optional
 from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler as LRScheduler
 from texar.torch.run.executor_utils import Instance
+
 
 class AdaptiveDataParallel(adaptdl.torch.AdaptiveDataParallel):
     def __init__(self,

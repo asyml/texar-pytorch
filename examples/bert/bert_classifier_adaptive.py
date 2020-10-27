@@ -24,9 +24,9 @@ from typing import Any
 import torch
 import torch.nn.functional as F
 import texar.torch as tx
-import adaptdl
 
 from utils import model_utils
+import adaptdl
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -72,10 +72,12 @@ if adaptdl.env.share_path():  # Will be set by the AdaptDL controller
 else:
     OUTPUT_DIR = args.output_dir
 
+
 def main() -> None:
     """
     Builds the model and runs.
     """
+
     # Loads data
     num_train_data = config_data.num_train_data
 
@@ -224,7 +226,8 @@ def main() -> None:
         scheduler.load_state_dict(ckpt['scheduler'])
 
     if args.do_train:
-        for epoch in adaptdl.torch.remaining_epochs_until(config_data.max_train_epoch):
+        for epoch in adaptdl.torch.remaining_epochs_until(
+                                     config_data.max_train_epoch):
             _train_epoch(epoch)
         states = {
             'model': model.state_dict(),
