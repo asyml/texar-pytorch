@@ -37,7 +37,8 @@ setuptools.setup(
         'funcsigs',
         'sentencepiece>=0.1.8',
         'mypy_extensions',
-        'packaging>=19.0'
+        'packaging>=19.0',
+        'adaptdl>=0.2.4'
     ],
     extras_require={
         'torch': ['torch>=1.0.0'],
