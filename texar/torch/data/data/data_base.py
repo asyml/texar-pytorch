@@ -731,6 +731,9 @@ class DatasetBase(Dataset, Generic[RawExample, Example], ABC):
             "lazy_strategy": 'none',
             "cache_strategy": 'processed',
             "parallelize_processing": True,
+            "max_batch_size": None,
+            "local_bsz_bounds": None,
+            "gradient_accumulation": False
         }
 
     def to(self, device: Optional[torch.device]):

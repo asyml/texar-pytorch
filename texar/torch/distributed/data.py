@@ -37,13 +37,18 @@ class AdaptiveDataIterator(DataIterator):
             if len(datasets) < num_datasets:
                 raise ValueError("Names of datasets must be unique.")
 
-        self._datasets = {
-            name: AdaptiveDataLoader(dataset,
-                                     batch_size=dataset.batch_size,
-                                     shuffle=dataset.hparams.shuffle,
-                                     collate_fn=dataset.collate,
-                                     pin_memory=pin_memory)
-            for name, dataset in datasets.items()}
+        self._datasets = {}
+        for name, dataset in datasets.items():
+            hparams = dataset.hparams
+            self._datasets[name] = AdaptiveDataLoader(dataset,
+                                             batch_size=dataset.batch_size,
+                                             shuffle=hparams.shuffle,
+                                             collate_fn=dataset.collate,
+                                             pin_memory=pin_memory)
+            if hparams.max_batch_size is not None:
+                self._datasets[name]. \
+                autoscale_batch_size(hparams.max_batch_size,
+                                     local_bsz_bounds=hparams.local_bsz_bounds)
 
         if len(self._datasets) <= 0:
             raise ValueError("`datasets` must not be empty.")
