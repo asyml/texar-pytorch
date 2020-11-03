@@ -82,11 +82,11 @@ tensorboard_dir = os.path.join(os.getenv("ADAPTDL_TENSORBOARD_LOGDIR", "/tmp")
                                "bert" if adaptdl.env.job_id() is None else
                                adaptdl.env.job_id())
 
+
 def main() -> None:
     """
     Builds the model and runs.
     """
-
     # Loads data
     num_train_data = config_data.num_train_data
 
