@@ -25,10 +25,10 @@ import torch
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 import adaptdl
+from utils import model_utils
 
 import texar.torch as tx
-import texar.torch.distributed
-from utils import model_utils
+import texar.torch.distributed  # pylint: disable=unused-import
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -45,7 +45,7 @@ parser.add_argument(
     help="The output directory where the model checkpoints will be written.")
 parser.add_argument(
     "--checkpoint", type=str, default=None,
-    help="Path to a model checkpoint (including bert modules) to restore from.")
+    help="Path to a model checkpoint (including bert modules) to restore from")
 parser.add_argument(
     "--do-train", action="store_true", help="Whether to run training.")
 parser.add_argument(
@@ -67,7 +67,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logging.root.setLevel(logging.INFO)
 
 # Initialize process group with distributed training backend.
-# See https://adaptdl.readthedocs.io/en/latest/adaptdl-pytorch.html#initializing-adaptdl
+# adaptdl.readthedocs.io/en/latest/adaptdl-pytorch.html#initializing-adaptdl
 adaptdl.torch.init_process_group("nccl" if
             torch.cuda.is_available() else "gloo")
 
@@ -77,6 +77,10 @@ if adaptdl.env.share_path():  # Will be set by the AdaptDL controller
 else:
     OUTPUT_DIR = args.output_dir
 
+tensorboard_dir = os.path.join(os.getenv("ADAPTDL_TENSORBOARD_LOGDIR", "/tmp")
+                               if adaptdl.env.replica_rank() == 0 else "/tmp/",
+                               "bert" if adaptdl.env.job_id() is None else
+                               adaptdl.env.job_id())
 
 def main() -> None:
     """
@@ -174,7 +178,8 @@ def main() -> None:
 
             dis_steps = config_data.display_steps
             if dis_steps > 0 and step % dis_steps == 0:
-                logging.info(f"epoch: {epoch}, step: {step}, loss: {loss}")
+                logging.info("epoch: %d, step: %d, loss: %.4f",
+                             epoch, step, loss)
 
             gain = model.gain
             batchsize = iterator.current_batch_size
@@ -245,14 +250,9 @@ def main() -> None:
         optim.load_state_dict(ckpt['optimizer'])
         scheduler.load_state_dict(ckpt['scheduler'])
 
-    tensorboard_dir = os.path.join(os.getenv("ADAPTDL_TENSORBOARD_LOGDIR", "/tmp")
-                                   if adaptdl.env.replica_rank() == 0 else "/tmp/",
-                                   "bert" if adaptdl.env.job_id() is None else
-                                   adaptdl.env.job_id())
     with SummaryWriter(tensorboard_dir) as writer:
         if args.do_train:
             # We get remaining epochs from AdaptDL in a restart-safe way.
-            # See https://adaptdl.readthedocs.io/en/latest/adaptdl-pytorch.html#training-loop
             for epoch in adaptdl.torch.remaining_epochs_until(
                                          config_data.max_train_epoch):
                 _train_epoch(epoch)

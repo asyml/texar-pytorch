@@ -22,7 +22,7 @@ from texar.torch.data.data.data_iterators import (DatasetsType, DataIterator,
 
 
 class AdaptiveDataIterator(DataIterator):
-    def __init__(self, datasets: DatasetsType,
+    def __init__(self, datasets: DatasetsType,  # pylint: disable=super-init-not-called
                  batching_strategy: Optional[BatchingStrategy] = None,
                  pin_memory: Optional[bool] = None):
         self._default_dataset_name = 'data'
