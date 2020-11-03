@@ -23,10 +23,12 @@ from typing import Any
 
 import torch
 import torch.nn.functional as F
-import texar.torch as tx
-
-from utils import model_utils
+from torch.utils.tensorboard import SummaryWriter
 import adaptdl
+
+import texar.torch as tx
+import texar.torch.distributed
+from utils import model_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -64,9 +66,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 logging.root.setLevel(logging.INFO)
 
+# Initialize process group with distributed training backend.
+# See https://adaptdl.readthedocs.io/en/latest/adaptdl-pytorch.html#initializing-adaptdl
 adaptdl.torch.init_process_group("nccl" if
             torch.cuda.is_available() else "gloo")
 
+# Get the shared path on distributed shared storage
 if adaptdl.env.share_path():  # Will be set by the AdaptDL controller
     OUTPUT_DIR = adaptdl.env.share_path()
 else:
@@ -128,6 +133,7 @@ def main() -> None:
         {"train": train_dataset, "eval": eval_dataset, "test": test_dataset}
     )
 
+    # We wrap the model in AdaptiveDataParallel to make it distributed
     model = tx.distributed.AdaptiveDataParallel(model, optim, scheduler)
 
     def _compute_loss(logits, labels):
@@ -148,6 +154,7 @@ def main() -> None:
         """
         iterator.switch_to_dataset("train")
         model.train()
+        stats = adaptdl.torch.Accumulator()
 
         for batch in iterator:
             optim.zero_grad()
@@ -168,6 +175,18 @@ def main() -> None:
             dis_steps = config_data.display_steps
             if dis_steps > 0 and step % dis_steps == 0:
                 logging.info(f"epoch: {epoch}, step: {step}, loss: {loss}")
+
+            gain = model.gain
+            batchsize = iterator.current_batch_size
+            writer.add_scalar("Throughput/Gain", gain, epoch)
+            writer.add_scalar("Throughput/Global_Batchsize",
+                              batchsize, epoch)
+            stats["loss_sum"] += loss.item() * labels.size(0)
+            stats["total"] += labels.size(0)
+
+        with stats.synchronized():
+            stats["loss_avg"] = stats["loss_sum"] / stats["total"]
+            writer.add_scalar("Loss/Train", stats["loss_avg"], epoch)
 
     @torch.no_grad()
     def _eval_epoch():
@@ -214,6 +233,7 @@ def main() -> None:
             _all_preds.extend(preds.tolist())
 
         if adaptdl.env.replica_rank() == 0:
+            # Only allow writes by the main replica
             output_file = os.path.join(OUTPUT_DIR, "test_results.tsv")
             with open(output_file, "w+") as writer:
                 writer.write("\n".join(str(p) for p in _all_preds))
@@ -225,17 +245,25 @@ def main() -> None:
         optim.load_state_dict(ckpt['optimizer'])
         scheduler.load_state_dict(ckpt['scheduler'])
 
-    if args.do_train:
-        for epoch in adaptdl.torch.remaining_epochs_until(
-                                     config_data.max_train_epoch):
-            _train_epoch(epoch)
-        states = {
-            'model': model.state_dict(),
-            'optimizer': optim.state_dict(),
-            'scheduler': scheduler.state_dict(),
-        }
-        if adaptdl.env.replica_rank() == 0:
-            torch.save(states, os.path.join(OUTPUT_DIR, 'model.ckpt'))
+    tensorboard_dir = os.path.join(os.getenv("ADAPTDL_TENSORBOARD_LOGDIR", "/tmp")
+                                   if adaptdl.env.replica_rank() == 0 else "/tmp/",
+                                   "bert" if adaptdl.env.job_id() is None else
+                                   adaptdl.env.job_id())
+    with SummaryWriter(tensorboard_dir) as writer:
+        if args.do_train:
+            # We get remaining epochs from AdaptDL in a restart-safe way.
+            # See https://adaptdl.readthedocs.io/en/latest/adaptdl-pytorch.html#training-loop
+            for epoch in adaptdl.torch.remaining_epochs_until(
+                                         config_data.max_train_epoch):
+                _train_epoch(epoch)
+            states = {
+                'model': model.state_dict(),
+                'optimizer': optim.state_dict(),
+                'scheduler': scheduler.state_dict(),
+            }
+            if adaptdl.env.replica_rank() == 0:
+                # Only allow writes by the main replica
+                torch.save(states, os.path.join(OUTPUT_DIR, 'model.ckpt'))
 
     if args.do_eval:
         _eval_epoch()

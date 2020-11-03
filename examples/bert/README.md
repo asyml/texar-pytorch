@@ -17,10 +17,7 @@ To summarize, this example showcases:
 * Use of Texar `Executor` module for simplified training loops and TensorBoard visualization
 * Use of [Hyperopt]((https://github.com/hyperopt/hyperopt)) library to tune hyperparameters with
 `Executor` module
-
-Future work:
-
-* Train or fine-tune the model with distributed GPU
+* Adaptive distributed training using AdaptDL
 
 ## Prerequisite
 

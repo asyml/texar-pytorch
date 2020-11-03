@@ -1,4 +1,4 @@
-# Copyright 2019 The Texar Authors. All Rights Reserved.
+# Copyright 2020 The Texar Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -61,3 +61,11 @@ class AdaptiveDataIterator(DataIterator):
             if device is not None:
                 batch = move_memory(batch, device)
             yield batch
+
+    @property
+    def current_batch_size(self):
+        return self._datasets[self._current_dataset_name].current_batch_size
+
+    @property
+    def current_local_bsz(self):
+        return self._datasets[self._current_dataset_name].current_local_bsz

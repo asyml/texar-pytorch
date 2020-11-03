@@ -26,7 +26,7 @@ ARG TEXAR_VERSION=0.0.0
 RUN TEXAR_VERSION=${TEXAR_VERSION} pip install dist/*.whl
 RUN pip install -r requirements.txt
 
-RUN pip install tensorflow
+RUN pip install tensorflow adaptdl>=0.2.4 tensorboard
 RUN rm -rf dist
 
 ENV PYTHONUNBUFFERED=true

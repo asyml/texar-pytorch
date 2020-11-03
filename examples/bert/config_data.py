@@ -8,7 +8,7 @@ num_train_data = 3668
 max_batch_tokens = 128
 
 train_batch_size = 32
-max_train_epoch = 50
+max_train_epoch = 5
 display_steps = 50  # Print training loss every display_steps; -1 to disable
 
 # tbx config
@@ -45,7 +45,7 @@ train_hparam = {
     "shuffle": True,
     "shuffle_buffer_size": 100,
     "max_batch_size": 1024,
-    "local_bsz_bounds": (train_batch_size, 1024),
+    "local_bsz_bounds": (train_batch_size, 256),
     "gradient_accumulation": False
 }
 

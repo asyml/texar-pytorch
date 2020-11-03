@@ -19,7 +19,8 @@ then python3 -m pip install adaptdl-cli
 fi
 
 ROOT=$(dirname $0)/../..
-cat << EOF | adaptdl submit $ROOT -d $ROOT/docker/Dockerfile -f -
+adaptdl tensorboard create tensorboard --nodeport || true
+cat << EOF | adaptdl submit $ROOT --tensorboard tensorboard -d $ROOT/docker/Dockerfile -f -
 apiVersion: adaptdl.petuum.com/v1
 kind: AdaptDLJob
 metadata:
