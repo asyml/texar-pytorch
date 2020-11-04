@@ -53,7 +53,7 @@ def kl_divg_loss_with_logits(
     with torch.no_grad():
         tgt_probs: torch.Tensor = F.softmax(
             tgt_log_probs / softmax_temp,
-            axis=-1
+            dim=-1
         )
 
     # Calculate the KL divergence.
@@ -62,7 +62,7 @@ def kl_divg_loss_with_logits(
     if confidence_thres != -1:
         # Mask the training sample based on confidence.
         largest_prob, _ = torch.max(
-            F.softmax(input_log_probs, axis=-1),
+            F.softmax(input_log_probs, dim=-1),
             dim=-1
         )
         loss_mask: torch.Tensor = torch.gt(
