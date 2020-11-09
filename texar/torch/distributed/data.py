@@ -48,7 +48,7 @@ class AdaptiveDataIterator(DataIterator):
             if hparams.max_batch_size is not None:
                 dataloader.autoscale_batch_size(hparams.max_batch_size,
                                       local_bsz_bounds=hparams.local_bsz_bounds)
-                self._datasets[name] = dataloader
+            self._datasets[name] = dataloader
 
         if len(self._datasets) <= 0:
             raise ValueError("`datasets` must not be empty.")
