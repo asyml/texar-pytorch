@@ -24,7 +24,7 @@ __all__ = [
 
 
 def kl_divg_loss_with_logits(
-    tgt_logits: torch.Tensor,
+    target_logits: torch.Tensor,
     input_logits: torch.Tensor,
     softmax_temperature: float = 1,
     confidence_threshold: float = -1,
@@ -38,10 +38,10 @@ def kl_divg_loss_with_logits(
     Please refer to the UDA paper for more details.
     (https://arxiv.org/abs/1904.12848)
     Args:
-        - tgt_logits (Tensor):
+        - target_logits (Tensor):
             A Tensor of arbitrary shape containing the target logits.
         - input_logits (Tensor):
-            A Tensor of the same shape as tgt_logits
+            A Tensor of the same shape as 'target_logits'
             containing the input logits.
         - softmax_temperature (float, optional):
             The softmax temperature for sharpening the distribution.
@@ -50,24 +50,24 @@ def kl_divg_loss_with_logits(
             of the probability in [0, 1], rather than of the logit.
             If set to -1, the threshold will be ignored.
         - reduction (optional):
+            Default: 'mean'.
             This is the same as the `reduction` argument in :torch_docs:
             `torch.nn.functional.kl_div <https://pytorch.org/docs/stable/nn.functional.html#torch.nn.functional.kl_div>`  # pylint: disable=line-too-long
             Specifies the reduction to apply to the output:
-            'none' | 'batchmean' | 'sum' | 'mean'.
-            'none': no reduction will be applied
-            'batchmean': the sum of the output will be
-                divided by the batchsize
-            'sum': the output will be summed
-            'mean': the output will be divided by
-                the number of elements in the output
-            Default: 'mean'
+
+            - :attr:`'none'`: no reduction will be applied.
+            - :attr:`'batchmean'`: the sum of the output will be
+                divided by the batchsize.
+            - :attr:`'sum'`: the output will be summed.
+            - :attr:`'mean'`: the output will be divided by
+                the number of elements in the output.
     Returns:
-        The loss, as a pytorch scalar float tensor
+        The loss, as a pytorch scalar float tensor.
     """  # noqa
     # Sharpening the target distribution.
     with torch.no_grad():
-        tgt_probs: torch.Tensor = F.softmax(
-            tgt_logits / softmax_temperature,
+        target_probs: torch.Tensor = F.softmax(
+            target_logits / softmax_temperature,
             dim=-1
         )
 
@@ -77,7 +77,7 @@ def kl_divg_loss_with_logits(
     )
     # Calculate the KL divergence.
     # No reduction before the confidence masking.
-    loss = F.kl_div(input_log_probs, tgt_probs, reduction="none")
+    loss = F.kl_div(input_log_probs, target_probs, reduction="none")
 
     if confidence_threshold != -1:
         # Mask the training sample based on confidence.
