@@ -18,8 +18,6 @@ Unit tests for informational theory losses.
 import unittest
 
 import torch
-from torch.nn.functional import log_softmax
-
 from texar.torch.losses import info_loss
 from texar.torch.utils.shapes import get_rank
 
