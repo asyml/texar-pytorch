@@ -35,7 +35,7 @@ setuptools.setup(
         'numpy',
         'requests',
         'funcsigs',
-        'sentencepiece>=0.1.8',
+        'sentencepiece==0.1.91',
         'mypy_extensions',
         'packaging>=19.0'
     ],
