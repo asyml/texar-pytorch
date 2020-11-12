@@ -1,4 +1,5 @@
-pickle_data_dir = "data/MRPC"
+import os
+pickle_data_dir = f"{os.path.dirname(__file__)}/data/MRPC"
 max_seq_length = 128
 num_classes = 2
 num_train_data = 3668
@@ -42,7 +43,10 @@ train_hparam = {
         "files": "{}/train.pkl".format(pickle_data_dir)
     },
     "shuffle": True,
-    "shuffle_buffer_size": 100
+    "shuffle_buffer_size": 100,
+    "max_batch_size": 1024,
+    "local_bsz_bounds": (train_batch_size, 256),
+    "gradient_accumulation": False
 }
 
 eval_hparam = {

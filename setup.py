@@ -35,7 +35,7 @@ setuptools.setup(
         'numpy',
         'requests',
         'funcsigs',
-        'sentencepiece>=0.1.8',
+        'sentencepiece==0.1.91',
         'mypy_extensions',
         'packaging>=19.0'
     ],
@@ -43,6 +43,7 @@ setuptools.setup(
         'torch': ['torch>=1.0.0'],
         'examples': [],
         'extras': ['Pillow>=3.0', 'tensorboardX>=1.8'],
+        'dist': ['adaptdl>=0.2.4']
     },
     package_data={
         "texar.torch": [

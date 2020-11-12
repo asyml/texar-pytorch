@@ -709,6 +709,17 @@ class DatasetBase(Dataset, Generic[RawExample, Example], ABC):
             `none`. If `lazy_strategy` is `none`, processing will be
             performed on a single process regardless of this value.
 
+        `"max_batch_size"`: int
+            AdaptDL parameter. Maximum global batch size used for distributed
+            training with AdaptDL.
+
+        `"local_bsz_bounds"`: (int, int)
+            AdaptDL parameter. Local batch size bounds (min, max) per replica
+            for distributed training.
+
+        `"gradient_accumulation"`: bool
+            AdaptDL parameter. Enable gradient accumulation.
+
         `"name"`: str
             Name of the data.
         """
@@ -731,6 +742,9 @@ class DatasetBase(Dataset, Generic[RawExample, Example], ABC):
             "lazy_strategy": 'none',
             "cache_strategy": 'processed',
             "parallelize_processing": True,
+            "max_batch_size": None,
+            "local_bsz_bounds": None,
+            "gradient_accumulation": False
         }
 
     def to(self, device: Optional[torch.device]):
