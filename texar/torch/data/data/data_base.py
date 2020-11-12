@@ -711,7 +711,7 @@ class DatasetBase(Dataset, Generic[RawExample, Example], ABC):
 
         `"max_batch_size"`: int
             AdaptDL parameter. Maximum global batch size used for distributed
-            training with AdaptDL backend.
+            training with AdaptDL.
 
         `"local_bsz_bounds"`: (int, int)
             AdaptDL parameter. Local batch size bounds (min, max) per replica
