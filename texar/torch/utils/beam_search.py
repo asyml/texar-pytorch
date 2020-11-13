@@ -487,7 +487,7 @@ def beam_search(
         topk_log_probs = topk_scores * length_penalty
 
         # Work out what beam the top probabilities are in.
-        topk_beam_index = topk_ids / vocab_size
+        topk_beam_index = topk_ids // vocab_size
         topk_ids %= vocab_size  # Un-flatten the ids
 
         # The next three steps are to create coordinates for torch.gather_nd
