@@ -1,0 +1,3 @@
+{
+    "static_lr":{"_type":"uniform","_value":[1e-3, 1e-2]}
+}

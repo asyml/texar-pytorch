@@ -2,7 +2,7 @@ authorName: default
 experimentName: bert_adl
 trialConcurrency: 1
 maxExecDuration: 24h
-maxTrialNum: 36
+maxTrialNum: 12
 nniManagerIp: 10.20.41.120
 trainingServicePlatform: adl
 # specify your search space file
@@ -15,7 +15,7 @@ tuner:
    optimize_mode: minimize
 trial:
   # file position in your docker container
-  command: python3 /root/examples/bert/bert_classifier_adaptive_nni.py
+  command: python3 /workspace/texar-pytorch/examples/bert/bert_classifier_adaptive_nni.py
   codeDir: .
   gpuNum: 1
   image: registry.petuum.com/dev/nni:texar-bert-classifier

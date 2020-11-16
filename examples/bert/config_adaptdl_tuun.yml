@@ -1,0 +1,33 @@
+authorName: default
+experimentName: bert_adl
+trialConcurrency: 1
+maxExecDuration: 24h
+maxTrialNum: 36
+nniManagerIp: 10.20.41.120
+trainingServicePlatform: adl
+# specify your search space file
+searchSpacePath: search_space2.json
+useAnnotation: false
+tuner:
+  codeDir: /home/zeya.wang/ers/tuun/tuun-dev/tuun
+  classFileName: nni_tuner.py
+  className: TuunTuner
+  classArgs:
+   optimize_mode: minimize
+   tuun_config: {
+    'seed': 11,
+    'acqfunction_config': {'name': 'default', 'acq_str': 'ei', 'n_gen': 500},
+    'acqoptimizer_config': {'name': 'neldermead', 'n_init_rs': 5},
+    'model_config': {'name': 'standistmatgp'},
+    } 
+trial:
+  # file position in your docker container
+  command: python3 /workspace/texar-pytorch/examples/bert/bert_classifier_adaptive_nni_tuun.py
+  codeDir: .
+  gpuNum: 1
+  image: registry.petuum.com/dev/nni:texar-bert-classifier
+  imagePullSecrets:
+    - name: stagingsecret
+  checkpoint:
+    storageClass: aws-efs
+    storageSize: 1Gi

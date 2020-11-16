@@ -104,7 +104,7 @@ def main() -> None:
 
     num_train_steps = int(num_train_data / config_data.train_batch_size *
                           config_data.max_train_epoch)
-    num_warmup_steps = tuner_params['warmup_steps']
+    num_warmup_steps = int(num_train_steps * config_data.warmup_proportion)
 
     # Builds learning rate decay scheduler
     static_lr = tuner_params['static_lr']
