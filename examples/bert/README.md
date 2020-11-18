@@ -267,3 +267,22 @@ python bert_classifier_adaptive.py --do-train --do-eval \
 ```
 See [here](https://adaptdl.readthedocs.io/en/latest/standalone-training.html)
 for full documentation on how to train the model in standalone mode.
+
+
+## Running NNI tuners with adaptdl
+A version of the BERT example `bert_classifier_adaptive_nni.py` is provided based on the above example for the adaptive distributed training using AdaptDL, which tune the hyperparameters specified in the `search_space.json` file. Accordingly, we prepare a configuration file `config_bert_classifier.yml` for the user to run the experiment with NNI tuners. In this configuration file, everything but several arguments follows the rule of running local NNI experiments as we introduced above. Compared with 'config_tuner.yml' we provide for running local experiment, one difference is that the user needs to specify a `nniManagerIp`, which is an IP address of the machine on which NNI manager process runs and typically on which you submit the job. Also, notice `trainingServicePlatform` is changed to `adl`. The other difference is that the user needs to prepare a docker image to be pulled when submitting the job. In order to build a docker image for the demonstrated example, the user only needs to go to the root directly of texar and run a docker build command followed by a docker push command. We provide an example about how we build and push a docker image:
+
+```
+docker build -t registry.petuum.com/dev/nni:texar-bert-classifier -f docker/Dockerfile
+```
+
+```
+docker push registry.petuum.com/dev/nni:texar-bert-classifier
+```
+Then in the configuration file, we just provide the command line with the code path in the docker image. With the docker image, similarly to running a local job, we run:
+
+```
+nnictl create --config config_bert_classifier.yml --port 9009
+```
+
+
