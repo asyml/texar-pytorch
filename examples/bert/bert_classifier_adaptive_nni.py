@@ -234,12 +234,10 @@ def main() -> None:
             writer.add_scalar("Loss/Validation", stats["loss_avg"], epoch)
             if IS_CHIEF:
                 if epoch < config_data.max_train_epoch - 1:
-                    nni.report_intermediate_result(stats['loss_avg'], 
+                    nni.report_intermediate_result(stats['loss_avg'],
                         accum=stats)
                 else:
                     nni.report_final_result(stats['loss_avg'])
-
-
 
     @torch.no_grad()
     def _test_epoch():
@@ -291,9 +289,6 @@ def main() -> None:
             if adaptdl.env.replica_rank() == 0:
                 # Only allow writes by the main replica
                 torch.save(states, os.path.join(OUTPUT_DIR, 'model.ckpt'))
-
-
-
 
     if args.do_test:
         _test_epoch()
