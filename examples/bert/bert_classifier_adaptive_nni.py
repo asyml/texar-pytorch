@@ -199,7 +199,6 @@ def main() -> None:
             stats["loss_avg"] = stats["loss_sum"] / stats["total"]
             writer.add_scalar("Loss/Train", stats["loss_avg"], epoch)
 
-
     @torch.no_grad()
     def _eval_epoch(epoch):
         """Evaluates on the dev set.
