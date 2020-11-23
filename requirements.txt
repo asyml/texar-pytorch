@@ -4,7 +4,5 @@ numpy >= 1.15.4
 mypy_extensions >= 0.4.1
 regex >= 2018.01.10
 sentencepiece >= 0.1.8
---extra-index-url http://pypi.int.petuum.com:8080/simple
---trusted-host pypi.int.petuum.com
-nni==1.8.24+petuum
+
 
