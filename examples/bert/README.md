@@ -279,7 +279,7 @@ docker build -t registry.petuum.com/dev/nni:texar-bert-classifier -f docker/Dock
 ```
 docker push registry.petuum.com/dev/nni:texar-bert-classifier
 ```
-Then in the configuration file, we provide the command line for running the training job with its code path in the docker image, e.g., in our case we feed `python3 /workspace/texar-pytorch/examples/bert/bert_classifier_adaptive_nni.py` to `config_tuner.yml`, where `/workspace/texar-pytorch/examples/bert` is the path of the training script `bert_classifier_adaptive_nni.py` in the docker image. In addition to these changes, the user needs to set up [AdaptDL](https://adaptdl.readthedocs.io/en/latest/installation/index.html) cluster and install [NNI/petuum-dev](https://github.com/petuum/nni) locally. After all the setups, similarly to running a local job, just run:
+Then in the configuration file, we provide the command line for running the training job with its code path in the docker container, e.g., in our case we feed `python3 /workspace/texar-pytorch/examples/bert/bert_classifier_adaptive_nni.py` to `config_tuner.yml`, where `/workspace/texar-pytorch/examples/bert` is the path of the training script `bert_classifier_adaptive_nni.py` in the docker container. In addition to these changes, the user needs to set up [AdaptDL](https://adaptdl.readthedocs.io/en/latest/installation/index.html) cluster and install [NNI/petuum-dev](https://github.com/petuum/nni) locally. After all the setups, similarly to running a local job, just run:
 
 ```
 nnictl create --config config_bert_classifier.yml --port 9009
