@@ -214,7 +214,7 @@ saved in `output_dir` provided by the user. More  information about the libary c
 found at [Hyperopt](https://github.com/hyperopt/hyperopt).
 
 ### Hyperparamter tuning with Neural Network Intelligence (NNI)
-This page describes NNI (neural network intelligence) and its usage can be found at this [link](https://github.com/microsoft/nni).
+The page describing NNI (neural network intelligence) and its usage can be found at this [link](https://github.com/microsoft/nni).
 To run this example, please install `nni` by issuing the following command
 
 ```commandline
@@ -239,7 +239,7 @@ terminal to monitor the auto-tuning progress on the WebUI. More  information abo
 found at [NNI](https://nni.readthedocs.io/en/latest/index.html).
 
 ## Adaptive distributed training using AdaptDL
-This page describes AdaptDL and its usage and setup can be found at this [link](https://github.com/petuum/adaptdl).
+The page describing AdaptDL and its usage and setup can be found at this [link](https://github.com/petuum/adaptdl).
 
 A version of the BERT example `bert_classifier_adaptive.py` which uses
 `texar.torch.distributed` Adaptive API can be run on a kubernetes cluster with
