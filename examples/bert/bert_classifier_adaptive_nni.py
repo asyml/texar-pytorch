@@ -233,8 +233,7 @@ def main() -> None:
             writer.add_scalar("Loss/Validation", stats["loss_avg"], epoch)
             if IS_CHIEF:
                 if epoch < config_data.max_train_epoch - 1:
-                    nni.report_intermediate_result(stats['loss_avg'],
-                        accum=stats)
+                    nni.report_intermediate_result(stats['loss_avg'])
                 else:
                     nni.report_final_result(stats['loss_avg'])
 
