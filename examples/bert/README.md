@@ -214,7 +214,7 @@ saved in `output_dir` provided by the user. More  information about the libary c
 found at [Hyperopt](https://github.com/hyperopt/hyperopt).
 
 ### Hyperparamter tuning with Neural Network Intelligence (NNI)
-
+The page describing NNI (neural network intelligence) and its usage can be found at this [link](https://github.com/microsoft/nni).
 To run this example, please install `nni` by issuing the following command
 
 ```commandline
@@ -239,7 +239,7 @@ terminal to monitor the auto-tuning progress on the WebUI. More  information abo
 found at [NNI](https://nni.readthedocs.io/en/latest/index.html).
 
 ## Adaptive distributed training using AdaptDL
-
+The page describing AdaptDL and its usage and setup can be found at this [link](https://github.com/petuum/adaptdl).
 
 A version of the BERT example `bert_classifier_adaptive.py` which uses
 `texar.torch.distributed` Adaptive API can be run on a kubernetes cluster with
@@ -267,3 +267,22 @@ python bert_classifier_adaptive.py --do-train --do-eval \
 ```
 See [here](https://adaptdl.readthedocs.io/en/latest/standalone-training.html)
 for full documentation on how to train the model in standalone mode.
+
+
+## Run NNI tuners with adaptdl
+In this pratice, we follow the aforementioned setup of AdaptDL cluster. A version of the BERT example `bert_classifier_adaptive_nni.py` is provided based on the above example from the adaptive distributed training using AdaptDL, which auto-tunes the hyperparameters specified in `search_space.json`. Accordingly, we prepare a configuration file `config_bert_classifier.yml` for the user to run the experiment with NNI tuners. In this configuration file, everything but several arguments follows the rule of running local NNI experiments as we introduced above. Compared with `config_tuner.yml` we provide for running a local experiment, one difference is that the user needs to specify a `nniManagerIp`, which is an IP address of the machine on which NNI manager process runs and typically on which you submit the job. Also, notice `trainingServicePlatform` is changed to `adl`, and please see this [link](https://github.com/microsoft/nni/blob/master/docs/en_US/TrainingService/AdaptDLMode.rst) for more details to set up a configuration file for `adl` training service platform. The other difference is that the user needs to prepare a docker image to be pulled from their docker registry repository when submitting the job. In order to build a docker image for the example, the user needs to go to the root directory of texar and run a docker build command followed by a docker push command. In order to pull the image from the private docker registry, the user needs to provide a Secret in the configuration file (e.g., `stagingsecret` in our example). Please check this [link](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/) for how to create a Secrete and pull an image from a private registry with a Secrete in Kubernetes. Please see below for our example about how we build and push a docker image to our docker registry repository:
+
+```
+docker build -t registry.petuum.com/dev/nni:texar-bert-classifier -f docker/Dockerfile .
+```
+
+```
+docker push registry.petuum.com/dev/nni:texar-bert-classifier
+```
+
+Then in the configuration file, we provide the command line for running the training job with its code path in the docker container, e.g., in our case we feed `python3 /workspace/texar-pytorch/examples/bert/bert_classifier_adaptive_nni.py` to `config_bert_classifier.yml`, where `/workspace/texar-pytorch/examples/bert` is the path of the training script `bert_classifier_adaptive_nni.py` in the docker container. In addition to these changes, the user needs to set up [AdaptDL](https://adaptdl.readthedocs.io/en/latest/installation/index.html) cluster and install [NNI](https://github.com/microsoft/nni) locally. After all the setups, similarly to running a local job, just run:
+
+```
+nnictl create --config config_bert_classifier.yml --port 9009
+```
+
