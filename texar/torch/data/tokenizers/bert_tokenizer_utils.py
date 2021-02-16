@@ -273,9 +273,9 @@ class WordpieceTokenizer:
             else:
                 output_tokens.extend(sub_tokens)
         return output_tokens
-    
+
     def tokenize_with_span(self, text: str) -> List[Tuple[str, int, int]]:
-        r"""Tokenizes a piece of text into its word pieces and their start 
+        r"""Tokenizes a piece of text into its word pieces and their start
         and end indexes.
 
         Args:
