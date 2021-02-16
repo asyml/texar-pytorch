@@ -17,7 +17,7 @@ Code structure adapted from:
     `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_bert.py`
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import collections
 import unicodedata
@@ -270,6 +270,52 @@ class WordpieceTokenizer:
 
             if is_bad:
                 output_tokens.append(self.unk_token)
+            else:
+                output_tokens.extend(sub_tokens)
+        return output_tokens
+    
+    def tokenize_with_span(self, text: str) -> List[Tuple[str, int, int]]:
+        r"""Tokenizes a piece of text into its word pieces and their start 
+        and end indexes.
+
+        Args:
+            text: A single token or whitespace separated tokens. This should
+                have already been passed through `BasicTokenizer`.
+
+        Returns:
+            A list of wordpiece tokens and their start and end indexes
+            in text.
+        """
+        output_tokens = []
+        for token in whitespace_tokenize(text):
+            assert token is not None
+            chars = list(token)
+            if len(chars) > self.max_input_chars_per_word:
+                output_tokens.append((self.unk_token, 0, len(token) - 1))
+                continue
+
+            is_bad = False
+            start = 0
+            sub_tokens = []
+            while start < len(chars):
+                end = len(chars)
+                cur_substr = None
+                while start < end:
+                    substr = "".join(chars[start:end])
+                    if start > 0:
+                        substr = "##" + substr
+                    if substr in self.vocab:
+                        cur_substr = substr
+                        break
+                    end -= 1
+                if cur_substr is None:
+                    is_bad = True
+                    break
+                sub_tokens.append((cur_substr, start, end - 1))
+                start = end
+
+            if is_bad:
+                output_tokens.append((self.unk_token, 0, len(token) - 1))
             else:
                 output_tokens.extend(sub_tokens)
         return output_tokens
