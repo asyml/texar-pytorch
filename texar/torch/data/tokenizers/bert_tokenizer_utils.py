@@ -291,7 +291,7 @@ class WordpieceTokenizer:
             assert token is not None
             chars = list(token)
             if len(chars) > self.max_input_chars_per_word:
-                output_tokens.append((self.unk_token, 0, len(token) - 1))
+                output_tokens.append((self.unk_token, 0, len(token)))
                 continue
 
             is_bad = False
@@ -311,11 +311,11 @@ class WordpieceTokenizer:
                 if cur_substr is None:
                     is_bad = True
                     break
-                sub_tokens.append((cur_substr, start, end - 1))
+                sub_tokens.append((cur_substr, start, end))
                 start = end
 
             if is_bad:
-                output_tokens.append((self.unk_token, 0, len(token) - 1))
+                output_tokens.append((self.unk_token, 0, len(token)))
             else:
                 output_tokens.extend(sub_tokens)
         return output_tokens
