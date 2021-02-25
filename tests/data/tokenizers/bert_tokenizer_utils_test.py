@@ -39,6 +39,7 @@ class BERTTokenizerUtilsTest(unittest.TestCase):
         self.assertListEqual(
             tokenizer.tokenize(u" \tHeLLo!how  \n Are yoU?  "),
             ["hello", "!", "how", "are", "you", "?"])
+
         self.assertListEqual(tokenizer.tokenize(u"H\u00E9llo"), ["hello"])
 
     def test_basic_tokenizer_no_lower(self):
@@ -62,13 +63,24 @@ class BERTTokenizerUtilsTest(unittest.TestCase):
         tokenizer = WordpieceTokenizer(vocab=vocab, unk_token="[UNK]")
 
         self.assertListEqual(tokenizer.tokenize(""), [])
+        self.assertListEqual(tokenizer.tokenize("", with_span=True), [])
 
         self.assertListEqual(
             tokenizer.tokenize("unwanted running"),
             ["un", "##want", "##ed", "runn", "##ing"])
+        self.assertListEqual(
+            tokenizer.tokenize("unwanted running", with_span=True), [
+                ('un', 0, 2), ('##want', 2, 6),
+                ('##ed', 6, 8), ('runn', 0, 4),
+                ('##ing', 4, 7)])
 
         self.assertListEqual(
             tokenizer.tokenize("unwantedX running"), ["[UNK]", "runn", "##ing"])
+        self.assertListEqual(
+            tokenizer.tokenize("unwantedX running", with_span=True), [
+                ('[UNK]', 0, 9), 
+                ('runn', 0, 4),
+                 ('##ing', 4, 7)])
 
     def test_is_whitespace(self):
 
