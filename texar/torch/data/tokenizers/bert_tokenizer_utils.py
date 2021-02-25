@@ -17,7 +17,7 @@ Code structure adapted from:
     `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_bert.py`
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import collections
 import unicodedata
@@ -223,7 +223,8 @@ class WordpieceTokenizer:
         self.unk_token = unk_token
         self.max_input_chars_per_word = max_input_chars_per_word
 
-    def tokenize(self, text: str) -> List[str]:
+    def tokenize(self, text: str, with_span: bool = False) -> \
+        List[Union[str, Tuple[str, int, int]]]:
         r"""Tokenizes a piece of text into its word pieces.
 
         This uses a greedy longest-match-first algorithm to perform tokenization
@@ -236,21 +237,25 @@ class WordpieceTokenizer:
         Args:
             text: A single token or whitespace separated tokens. This should
                 have already been passed through `BasicTokenizer`.
+            with_span: Whether return the span of each each tokens.
 
         Returns:
-            A list of wordpiece tokens.
+            A list of wordpiece tokens w/wo span information (begin, end).
         """
         output_tokens = []
+        output_tokens_and_span = []
         for token in whitespace_tokenize(text):
             assert token is not None
             chars = list(token)
             if len(chars) > self.max_input_chars_per_word:
                 output_tokens.append(self.unk_token)
+                output_tokens_and_span.append((self.unk_token, 0, len(chars)))
                 continue
 
             is_bad = False
             start = 0
             sub_tokens = []
+            sub_tokens_and_span = []
             while start < len(chars):
                 end = len(chars)
                 cur_substr = None
@@ -266,58 +271,18 @@ class WordpieceTokenizer:
                     is_bad = True
                     break
                 sub_tokens.append(cur_substr)
+                sub_tokens_and_span.append((cur_substr, start, end))
                 start = end
 
             if is_bad:
                 output_tokens.append(self.unk_token)
+                output_tokens_and_span.append((self.unk_token, 0, len(chars)))
             else:
                 output_tokens.extend(sub_tokens)
-        return output_tokens
+                output_tokens_and_span.extend(sub_tokens_and_span)
 
-    def tokenize_with_span(self, text: str) -> List[Tuple[str, int, int]]:
-        r"""Tokenizes a piece of text into its word pieces and their start
-        and end indexes.
-
-        Args:
-            text: A single token or whitespace separated tokens. This should
-                have already been passed through `BasicTokenizer`.
-
-        Returns:
-            A list of wordpiece tokens and their start and end indexes
-            in text.
-        """
-        output_tokens = []
-        for token in whitespace_tokenize(text):
-            assert token is not None
-            chars = list(token)
-            if len(chars) > self.max_input_chars_per_word:
-                output_tokens.append((self.unk_token, 0, len(chars)))
-                continue
-
-            is_bad = False
-            start = 0
-            sub_tokens = []
-            while start < len(chars):
-                end = len(chars)
-                cur_substr = None
-                while start < end:
-                    substr = "".join(chars[start:end])
-                    if start > 0:
-                        substr = "##" + substr
-                    if substr in self.vocab:
-                        cur_substr = substr
-                        break
-                    end -= 1
-                if cur_substr is None:
-                    is_bad = True
-                    break
-                sub_tokens.append((cur_substr, start, end))
-                start = end
-
-            if is_bad:
-                output_tokens.append((self.unk_token, 0, len(chars)))
-            else:
-                output_tokens.extend(sub_tokens)
+        if with_span:
+            return output_tokens_and_span
         return output_tokens
 
 
