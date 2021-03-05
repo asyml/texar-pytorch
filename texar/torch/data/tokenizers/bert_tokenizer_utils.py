@@ -17,7 +17,7 @@ Code structure adapted from:
     `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_bert.py`
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union, Tuple
 
 import collections
 import unicodedata
@@ -223,7 +223,8 @@ class WordpieceTokenizer:
         self.unk_token = unk_token
         self.max_input_chars_per_word = max_input_chars_per_word
 
-    def tokenize(self, text: str, with_span: bool = False) -> List[str]:
+    def tokenize(self, text: str, with_span: bool = False) -> \
+        Union[List[str], List[Tuple[str, int, int]]]:
         r"""Tokenizes a piece of text into its word pieces.
 
         This uses a greedy longest-match-first algorithm to perform tokenization
@@ -232,7 +233,7 @@ class WordpieceTokenizer:
         For example:
             input = "unaffable"
             output = ["un", "##aff", "##able"]
-                  or ["un\t0\t2", "##aff\t2\t5", "##able\t5\t9"]
+                  or [("un", 0, 2), ("##aff", 2, 5), ("##able", 5, 9)]
                   when with_span is True
 
         Args:
@@ -250,8 +251,7 @@ class WordpieceTokenizer:
             chars = list(token)
             if len(chars) > self.max_input_chars_per_word:
                 output_tokens.append(self.unk_token)
-                output_tokens_and_span.append(
-                    '\t'.join([self.unk_token, '0', str(len(chars))]))
+                output_tokens_and_span.append((self.unk_token, 0, len(chars)))
                 continue
 
             is_bad = False
@@ -273,14 +273,12 @@ class WordpieceTokenizer:
                     is_bad = True
                     break
                 sub_tokens.append(cur_substr)
-                sub_tokens_and_span.append(
-                    '\t'.join([cur_substr, str(start), str(end)]))
+                sub_tokens_and_span.append((cur_substr, start, end))
                 start = end
 
             if is_bad:
                 output_tokens.append(self.unk_token)
-                output_tokens_and_span.append(
-                    '\t'.join([self.unk_token, '0', str(len(chars))]))
+                output_tokens_and_span.append((self.unk_token, 0, len(chars)))
             else:
                 output_tokens.extend(sub_tokens)
                 output_tokens_and_span.extend(sub_tokens_and_span)

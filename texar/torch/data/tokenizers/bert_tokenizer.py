@@ -18,7 +18,7 @@ Code structure adapted from:
     `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_bert.py`
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import os
 
@@ -166,7 +166,8 @@ class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab,
                                                       unk_token=self.unk_token)
 
-    def _map_text_to_token(self, text: str) -> List[str]:  # type: ignore
+    def _map_text_to_token(self, text: str) -> \
+        Union[List[str], List[Tuple[str, int, int]]]:  # type: ignore
         split_tokens = []
         if self.do_basic_tokenize:
             for token in self.basic_tokenizer.tokenize(
