@@ -245,7 +245,7 @@ class WordpieceTokenizer:
             A list of wordpiece tokens w/wo span information (begin, end).
         """
         output_tokens = []
-        output_tokens_and_span = []
+        output_tokens_and_span: List[Tuple[str, int, int]] = []
         for token in whitespace_tokenize(text):
             assert token is not None
             chars = list(token)

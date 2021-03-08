@@ -167,7 +167,7 @@ class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
                                                       unk_token=self.unk_token)
 
     def _map_text_to_token(self, text: str) -> \
-        Union[List[str], List[Tuple[str, int, int]]]:  # type: ignore
+        Union[List[str], List[Tuple[str, int, int]]]:  
         split_tokens = []
         if self.do_basic_tokenize:
             for token in self.basic_tokenizer.tokenize(
