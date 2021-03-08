@@ -223,34 +223,28 @@ class WordpieceTokenizer:
         self.unk_token = unk_token
         self.max_input_chars_per_word = max_input_chars_per_word
 
-    def tokenize(self, text: str, with_span: bool = False) -> \
-        Union[List[str], List[Tuple[str, int, int]]]:
-        r"""Tokenizes a piece of text into its word pieces.
+    def tokenize_with_span(self, text: str) -> List[Tuple[str, int, int]]:
+        r"""Tokenizes a piece of text into its word pieces with span info.
 
         This uses a greedy longest-match-first algorithm to perform tokenization
         using the given vocabulary.
 
         For example:
             input = "unaffable"
-            output = ["un", "##aff", "##able"]
-                  or [("un", 0, 2), ("##aff", 2, 5), ("##able", 5, 9)]
+            output = [("un", 0, 2), ("##aff", 2, 5), ("##able", 5, 9)]
                   when with_span is True
 
         Args:
             text: A single token or whitespace separated tokens. This should
                 have already been passed through `BasicTokenizer`.
-            with_span: Whether return the span of each each tokens.
-
         Returns:
-            A list of wordpiece tokens w/wo span information (begin, end).
+            A list of wordpiece tokens with span information (begin, end).
         """
-        output_tokens = []
         output_tokens_and_span: List[Tuple[str, int, int]] = []
         for token in whitespace_tokenize(text):
             assert token is not None
             chars = list(token)
             if len(chars) > self.max_input_chars_per_word:
-                output_tokens.append(self.unk_token)
                 output_tokens_and_span.append((self.unk_token, 0, len(chars)))
                 continue
 
@@ -272,21 +266,25 @@ class WordpieceTokenizer:
                 if cur_substr is None:
                     is_bad = True
                     break
-                sub_tokens.append(cur_substr)
                 sub_tokens_and_span.append((cur_substr, start, end))
                 start = end
 
             if is_bad:
-                output_tokens.append(self.unk_token)
                 output_tokens_and_span.append((self.unk_token, 0, len(chars)))
             else:
-                output_tokens.extend(sub_tokens)
                 output_tokens_and_span.extend(sub_tokens_and_span)
 
-        if with_span:
-            return output_tokens_and_span
-        return output_tokens
+        return output_tokens_and_span
 
+    def tokenize(self, text: str) -> List[str]:
+        """
+        Tokenizes a piece of text into its word pieces, remove span info.
+        """
+        output_tokens_and_span = self.tokenize_with_span(text)
+        output_tokens: List[str] = []
+        for tokens_with_span in output_tokens_and_span:
+            output_tokens.append(tokens_with_span[0])
+        return output_tokens
 
 def whitespace_tokenize(text: str) -> List[str]:
     r"""Runs basic whitespace cleaning and splitting on a piece of text."""
