@@ -250,8 +250,7 @@ class WordpieceTokenizer:
 
             is_bad = False
             start = 0
-            sub_tokens = []
-            sub_tokens_and_span = []
+            sub_tokens_and_span: List[Tuple[str, int, int]] = []
             while start < len(chars):
                 end = len(chars)
                 cur_substr = None
