@@ -285,6 +285,7 @@ class WordpieceTokenizer:
             output_tokens.append(tokens_with_span[0])
         return output_tokens
 
+
 def whitespace_tokenize(text: str) -> List[str]:
     r"""Runs basic whitespace cleaning and splitting on a piece of text."""
     text = text.strip()
