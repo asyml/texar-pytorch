@@ -63,13 +63,13 @@ class BERTTokenizerUtilsTest(unittest.TestCase):
         tokenizer = WordpieceTokenizer(vocab=vocab, unk_token="[UNK]")
 
         self.assertListEqual(tokenizer.tokenize(""), [])
-        self.assertListEqual(tokenizer.tokenize("", with_span=True), [])
+        self.assertListEqual(tokenizer.tokenize_with_span(""), [])
 
         self.assertListEqual(
             tokenizer.tokenize("unwanted running"),
             ["un", "##want", "##ed", "runn", "##ing"])
         self.assertListEqual(
-            tokenizer.tokenize("unwanted running", with_span=True), [
+            tokenizer.tokenize_with_span("unwanted running"), [
                 ('un', 0, 2), ('##want', 2, 6),
                 ('##ed', 6, 8), ('runn', 0, 4),
                 ('##ing', 4, 7)])
@@ -77,7 +77,7 @@ class BERTTokenizerUtilsTest(unittest.TestCase):
         self.assertListEqual(
             tokenizer.tokenize("unwantedX running"), ["[UNK]", "runn", "##ing"])
         self.assertListEqual(
-            tokenizer.tokenize("unwantedX running", with_span=True), [
+            tokenizer.tokenize_with_span("unwantedX running"), [
                 ('[UNK]', 0, 9),
                 ('runn', 0, 4),
                  ('##ing', 4, 7)])
