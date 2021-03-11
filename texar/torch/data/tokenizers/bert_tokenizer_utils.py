@@ -232,7 +232,6 @@ class WordpieceTokenizer:
         For example:
             input = "unaffable"
             output = [("un", 0, 2), ("##aff", 2, 5), ("##able", 5, 9)]
-                  when with_span is True
 
         Args:
             text: A single token or whitespace separated tokens. This should
@@ -277,7 +276,20 @@ class WordpieceTokenizer:
 
     def tokenize(self, text: str) -> List[str]:
         """
-        Tokenizes a piece of text into its word pieces, remove span info.
+        Tokenizes a piece of text into its word pieces.
+
+        This calls self.tokenize_with_span to extract tokens with span info,
+        then extracts only tokens to form a list.
+
+        For example:
+            input = "unaffable"
+            output = ["un", "##aff", "##able"]
+
+        Args:
+            text: A single token or whitespace separated tokens. This should
+                have already been passed through `BasicTokenizer`.
+        Returns:
+            A list of wordpiece tokens.
         """
         output_tokens_and_span = self.tokenize_with_span(text)
         output_tokens: List[str] = []
