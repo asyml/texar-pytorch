@@ -166,8 +166,9 @@ class BERTTokenizer(PretrainedBERTMixin, TokenizerBase):
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab,
                                                       unk_token=self.unk_token)
 
-    def _map_text_to_token(self, text: str) -> List[str]:  # type: ignore
-        split_tokens = []
+    def _map_text_to_token(  # type: ignore
+        self, text: str) -> List[str]:
+        split_tokens: List[str] = []
         if self.do_basic_tokenize:
             for token in self.basic_tokenizer.tokenize(
                     text, never_split=self.all_special_tokens):

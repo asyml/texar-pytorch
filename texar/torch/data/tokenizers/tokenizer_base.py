@@ -18,7 +18,7 @@ The code structure adapted from:
     `https://github.com/huggingface/pytorch-transformers/blob/master/pytorch_transformers/tokenization_utils.py`
 """
 
-from typing import Any, Dict, List, Optional, Tuple, overload
+from typing import Any, Dict, List, Optional, Tuple, Union, overload
 
 import json
 import os
@@ -350,7 +350,8 @@ class TokenizerBase(ModuleBase):
         tokenized_text = split_on_tokens(added_tokens, text)
         return tokenized_text
 
-    def _map_text_to_token(self, text: str, **kwargs) -> List[str]:
+    def _map_text_to_token(self, text: str, **kwargs) -> \
+        Union[List[str], List[Tuple[str, int, int]]]:
         r"""Maps a string to a sequence of tokens (string), using the
         tokenizer. Split in words for word-based vocabulary or sub-words for
         sub-word-based vocabularies (`BPE`/`SentencePiece`/`WordPiece`).
