@@ -29,18 +29,18 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --progress-bar off --upgrade pip
-          pip install --progress-bar off torch==${{ matrix.python-version }}
+          pip install --progress-bar off torch==${{ matrix.torch-version }}
           pip install --progress-bar off .[extras]
-          if [[ ${{ matrix.python-version }} == "1.4.0" ]]; then pip install pylint==2.4.4 flake8==3.7.9; fi
+          if [[ ${{ matrix.torch-version }} == "1.4.0" ]]; then pip install pylint==2.4.4 flake8==3.7.9; fi
           if [[ ${{ matrix.python-version }} != "1.0.1" ]]; then pip install mypy==0.761; fi
           pip install pytest
           pip install --progress-bar off coverage codecov
       - name: Linting
         run: |
-          if [[ ${{ matrix.python-version }} == "1.4.0" ]]; then pylint texar/ examples/; fi
-          if [[ ${{ matrix.python-version }} == "1.4.0" ]]; then flake8 texar/ examples/; fi
-          if [[ ${{ matrix.python-version }} != "1.0.1" ]]; then mypy .; fi
-          if [[ ${{ matrix.python-version }} != "1.0.1" ]]; then _rc=0; for dir in `echo examples/**/`; do mypy $dir || _rc=$?; done && [[ $_rc == 0 ]]; fi
+          if [[ ${{ matrix.torch-version }} == "1.4.0" ]]; then pylint texar/ examples/; fi
+          if [[ ${{ matrix.torch-version }} == "1.4.0" ]]; then flake8 texar/ examples/; fi
+          if [[ ${{ matrix.torch-version }} != "1.0.1" ]]; then mypy .; fi
+          if [[ ${{ matrix.torch-version }} != "1.0.1" ]]; then _rc=0; for dir in `echo examples/**/`; do mypy $dir || _rc=$?; done && [[ $_rc == 0 ]]; fi
       - name: Test with pytest and run coverage
         run: |
           coverage run -m pytest
