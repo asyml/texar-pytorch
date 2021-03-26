@@ -76,6 +76,8 @@ Autoencoder
 boolean
 sigmoid
 sinusoid
+optimizer
+
 parallelized
 subclasses
 subclass
@@ -108,3 +110,5 @@ attentional
 summarization
 modularized
 modularize
+optimizers
+optimizer
