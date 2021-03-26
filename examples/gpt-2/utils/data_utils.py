@@ -54,7 +54,7 @@ def convert_examples_to_features_and_output_to_files(
                 "text_ids": text_ids,
                 "length": length
             }
-            writer.write(features)  # type: ignore
+            writer.write(features)
 
 
 def prepare_pickle_data(data_dir: str,
