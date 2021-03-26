@@ -132,7 +132,7 @@ class TextLineDataSource(DataSource[List[str]]):
     def _open_file(self, path: str) -> IO[str]:
         if self._compression_type == 'zlib':
             f: IO[str] = io.TextIOWrapper(
-                self._ZlibWrapper(open(path, 'rb')),  # type: ignore
+                self._ZlibWrapper(open(path, 'rb')),
                 encoding=self._encoding)
         elif self._compression_type == 'gzip':
             import gzip
