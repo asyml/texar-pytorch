@@ -32,7 +32,7 @@ setuptools.setup(
 
     install_requires=[
         'regex>=2018.01.10',
-        'numpy',
+        'numpy>=1.15.4, <=1.19.5',
         'requests',
         'funcsigs',
         'sentencepiece==0.1.91',
