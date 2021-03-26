@@ -6,7 +6,7 @@
 -----------------
 
 [![pypi](https://img.shields.io/pypi/v/texar_pytorch.svg)](https://pypi.python.org/pypi/texar-pytorch)
-[![Build Status](https://travis-ci.org/asyml/texar-pytorch.svg?branch=master)](https://travis-ci.org/asyml/texar-pytorch)
+[![Python Build](https://github.com/asyml/texar-pytorch/actions/workflows/main.yml/badge.svg)](https://github.com/asyml/texar-pytorch/actions/workflows/main.yml)
 [![codecov](https://codecov.io/gh/asyml/texar-pytorch/branch/master/graph/badge.svg)](https://codecov.io/gh/asyml/texar-pytorch)
 [![Documentation Status](https://readthedocs.org/projects/texar-pytorch/badge/?version=latest)](https://texar-pytorch.readthedocs.io/en/latest/?badge=latest)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/asyml/texar-pytorch/blob/master/LICENSE)
