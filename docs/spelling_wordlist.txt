@@ -76,13 +76,15 @@ Autoencoder
 boolean
 sigmoid
 sinusoid
+sinusoids
 optimizer
-
 parallelized
 subclasses
 subclass
 submodules
 submodule
+subsequence
+et
 variational
 punctuations
 preprocessing
