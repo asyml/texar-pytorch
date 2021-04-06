@@ -43,7 +43,6 @@ __all__ = [
 # `Dict` is invariant, `Mapping` is not.
 DatasetsType = Union[Mapping[str, DatasetBase], MaybeSeq[DatasetBase]]
 
-
 # pylint: disable=ungrouped-imports
 if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
     from torch.utils.data._utils.pin_memory import (  # type: ignore
@@ -95,6 +94,7 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
     from texar.torch.data.data.data_iterators_utils import \
         TexarMultiProcessingDataLoaderIter as _MultiProcessingDataLoaderIter
 
+
     class _DataLoaderIter(_BaseDataLoaderIter):
         r"""Iterates once over the DataLoader's dataset. This is almost
         identical to PyTorch
@@ -128,11 +128,14 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
                 batch = move_memory(batch, self.device)
             return batch
 
+
     class _SPDataLoaderIter(_DataLoaderIter, _SingleProcessDataLoaderIter):
         pass
 
+
     class _MPDataLoaderIter(_DataLoaderIter, _MultiProcessingDataLoaderIter):
         pass
+
 
     class _CacheDataLoaderIter(_BaseDataLoaderIter):
         r"""Iterates once over the DataLoader's dataset. This class is used when
@@ -155,6 +158,7 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
             self.device = loader.device
             super().__init__(loader)
 
+
     class _SPCacheDataLoaderIter(_CacheDataLoaderIter,
                                  _SingleProcessDataLoaderIter):
         def __next__(self):
@@ -167,6 +171,7 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
             if self.pin_memory:
                 data = move_memory(_pin_memory(data), self.device)
             return data
+
 
     class _MPCacheDataLoaderIter(_CacheDataLoaderIter,
                                  _MultiProcessingDataLoaderIter):
@@ -219,6 +224,7 @@ else:
     from torch.utils.data.dataloader import (  # type: ignore
         _DataLoaderIter as torch_DataLoaderIter)
 
+
     class _DataLoaderIter(torch_DataLoaderIter):  # type: ignore
         r"""Iterates once over the DataLoader's dataset. This is almost
         identical to PyTorch
@@ -244,6 +250,7 @@ else:
                 raise StopIteration
             batch = move_memory(batch, self.device)
             return batch
+
 
     class _CacheDataLoaderIter(torch_DataLoaderIter):  # type: ignore
         r"""Iterates once over the DataLoader's dataset. This class is used when
@@ -549,7 +556,7 @@ class DataIterator:
         return self.get_iterator()
 
     def __len__(self):
-        return len(self._datasets[self._validate_dataset_name(None)])
+        return len(self._datasets[self._validate_dataset_name(self._current_dataset_name)])
 
 
 class TrainTestDataIterator(DataIterator):
