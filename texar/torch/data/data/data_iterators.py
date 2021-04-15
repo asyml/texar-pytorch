@@ -94,7 +94,6 @@ if _torch_version >= pkg_resources.parse_version("1.2.0"):  # PyTorch 1.2.0 +
     from texar.torch.data.data.data_iterators_utils import \
         TexarMultiProcessingDataLoaderIter as _MultiProcessingDataLoaderIter
 
-
     class _DataLoaderIter(_BaseDataLoaderIter):
         r"""Iterates once over the DataLoader's dataset. This is almost
         identical to PyTorch
