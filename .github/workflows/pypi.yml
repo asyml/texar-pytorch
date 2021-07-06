@@ -2,8 +2,6 @@ name: PYPI
 
 on:
   push:
-    branches:
-      - master
     tags:
       - v*
   # Trigger this workflow manually from the Actions tab
