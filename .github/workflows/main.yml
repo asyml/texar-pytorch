@@ -26,8 +26,6 @@ jobs:
           - python-version: 3.8
             torch-version: 1.8.1
           - python-version: 3.9
-            torch-version: 1.7.1
-          - python-version: 3.9
             torch-version: 1.8.1
 
     steps:
