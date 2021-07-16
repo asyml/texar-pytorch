@@ -29,7 +29,7 @@ __all__ = [
     "PretrainedGPT2Mixin",
 ]
 
-_GPT2_PATH = "https://storage.googleapis.com/gpt-2/models/"
+_GPT2_PATH = "https://openaipublic.blob.core.windows.net/gpt-2/models/"
 _CHECKPOINT_FILES = [
     "checkpoint", "encoder.json", "hparams.json", "vocab.bpe",
     "model.ckpt.data-00000-of-00001", "model.ckpt.index", "model.ckpt.meta"]
