@@ -240,11 +240,14 @@ class WordpieceTokenizer:
             A list of wordpiece tokens with span information (begin, end).
         """
         output_tokens_and_span: List[Tuple[str, int, int]] = []
+        token_start = 0
         for token in whitespace_tokenize(text):
             assert token is not None
             chars = list(token)
             if len(chars) > self.max_input_chars_per_word:
-                output_tokens_and_span.append((self.unk_token, 0, len(chars)))
+                output_tokens_and_span.append((self.unk_token,
+                                               token_start,
+                                               token_start + len(chars)))
                 continue
 
             is_bad = False
@@ -264,13 +267,19 @@ class WordpieceTokenizer:
                 if cur_substr is None:
                     is_bad = True
                     break
-                sub_tokens_and_span.append((cur_substr, start, end))
+                sub_tokens_and_span.append((cur_substr,
+                                            token_start + start,
+                                            token_start + end))
                 start = end
 
             if is_bad:
-                output_tokens_and_span.append((self.unk_token, 0, len(chars)))
+                output_tokens_and_span.append((self.unk_token,
+                                               token_start,
+                                               token_start + len(chars)))
             else:
                 output_tokens_and_span.extend(sub_tokens_and_span)
+
+            token_start += len(chars) + 1
 
         return output_tokens_and_span
 

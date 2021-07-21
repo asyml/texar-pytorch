@@ -71,16 +71,16 @@ class BERTTokenizerUtilsTest(unittest.TestCase):
         self.assertListEqual(
             tokenizer.tokenize_with_span("unwanted running"), [
                 ('un', 0, 2), ('##want', 2, 6),
-                ('##ed', 6, 8), ('runn', 0, 4),
-                ('##ing', 4, 7)])
+                ('##ed', 6, 8), ('runn', 9, 13),
+                ('##ing', 13, 16)])
 
         self.assertListEqual(
             tokenizer.tokenize("unwantedX running"), ["[UNK]", "runn", "##ing"])
         self.assertListEqual(
             tokenizer.tokenize_with_span("unwantedX running"), [
                 ('[UNK]', 0, 9),
-                ('runn', 0, 4),
-                 ('##ing', 4, 7)])
+                ('runn', 10, 14),
+                 ('##ing', 14, 17)])
 
     def test_is_whitespace(self):
 
