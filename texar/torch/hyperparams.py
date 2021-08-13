@@ -225,8 +225,8 @@ class HParams:
                     continue
                 raise ValueError(
                     "Unknown hyperparameter: %s. "
-		    "Only when allow_new_hparam is set to True and "
-		    "only hyperparameters named 'kwargs' can contain new "
+                    "Only when allow_new_hparam is set to True and "
+                    "only hyperparameters named 'kwargs' can contain new "
                     "entries undefined in default hyperparameters." % name)
 
             if value is None:
