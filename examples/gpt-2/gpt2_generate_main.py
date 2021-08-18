@@ -75,7 +75,7 @@ def main() -> None:
     model = tx.modules.GPT2Decoder(args.pretrained_model_name)
     if args.checkpoint:
         ckpt = torch.load(args.checkpoint)
-        model.load_state_dict(ckpt['model'])
+        model.load_state_dict(ckpt)
     model.to(device)
 
     if max_decoding_length > model.hparams.position_size:
