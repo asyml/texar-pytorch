@@ -47,7 +47,7 @@ loss_label_confidence = 0.9
 opt = {
     "optimizer": {
         "type": "Adam",
-        "kwargs": {"beta1": 0.9, "beta2": 0.997, "epsilon": 1e-9},
+        "kwargs": {},
     }
 }
 
