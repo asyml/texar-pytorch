@@ -14,7 +14,7 @@ class PretrainedModel(unittest.TestCase):
         'It has 130M parameters and it is from OpenAI.'
 
         # texar output
-        model = tx.modules.GPT2Decoder("gpt2-small")
+        model = tx.modules.GPT2Decoder()
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model.to(device)
         tokenizer = tx.data.GPT2Tokenizer(
