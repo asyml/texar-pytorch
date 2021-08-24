@@ -5,8 +5,11 @@ import unittest
 import torch
 import texar.torch as tx
 
+
 class PretrainedModel(unittest.TestCase):
+
     def test_equal(self):
+        # default input for testing
         input_sentence = 'This is GPT-2 small. ' + \
         'It has 130M parameters and it is from OpenAI.'
 
@@ -26,12 +29,14 @@ class PretrainedModel(unittest.TestCase):
             [len(context_tokens) for _ in range(1)],
             device=device)
         start_tokens = context[:, 0]
+
         def _get_helper(start_tokens):
             return tx.modules.TopKSampleEmbeddingHelper(
                 start_tokens=start_tokens,
                 end_token=end_token,
                 top_k=40,
                 softmax_temperature=0.7)
+
         helper = _get_helper(start_tokens)
         output, _ = model(
             context=context,
@@ -48,6 +53,7 @@ class PretrainedModel(unittest.TestCase):
 
         self.assertTrue(torch.allclose(
             texar_logits[0, 0:20:4, 10000:50000:10000], baseline))
+
 
 if __name__ == "__main__":
     unittest.main()
