@@ -7,7 +7,6 @@ import numpy as np
 from numpy.core.numeric import allclose
 from numpy.lib.function_base import select
 import torch
-from torch.functional import Tensor
 import texar.torch as tx
 
 class PretrainedModel(unittest.TestCase):
