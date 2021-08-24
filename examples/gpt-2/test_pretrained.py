@@ -1,17 +1,14 @@
 """
 Unit tests for pretrained models.
 """
-import os
 import unittest
-import numpy as np
-from numpy.core.numeric import allclose
-from numpy.lib.function_base import select
 import torch
 import texar.torch as tx
 
 class PretrainedModel(unittest.TestCase):
     def test_equal(self):
-        input_sentence = 'This is GPT-2 small. It has 130M parameters and it is from OpenAI.'
+        input_sentence = 'This is GPT-2 small. ' + \
+        'It has 130M parameters and it is from OpenAI.'
 
         # texar output
         model = tx.modules.GPT2Decoder("gpt2-small")
@@ -43,11 +40,14 @@ class PretrainedModel(unittest.TestCase):
             helper=helper)
         texar_logits = output.logits
 
-        baseline = torch.tensor([[-39.3447,  -40.9561,  -42.0426,  -40.7665], 
-        [-86.7560,  -82.9948,  -87.1625,  -87.2382], [-97.7438, -102.7465, -104.9421, -104.8722],
-        [-106.1100, -107.3229, -107.4181, -109.5231], [-103.8968, -105.6753, -104.8125, -108.4072]])
+        baseline = torch.tensor([[-39.3447, -40.9561, -42.0426, -40.7665],
+        [-86.7560, -82.9948, -87.1625, -87.2382],
+        [-97.7438, -102.7465, -104.9421, -104.8722],
+        [-106.1100, -107.3229, -107.4181, -109.5231],
+        [-103.8968, -105.6753, -104.8125, -108.4072]])
 
-        self.assertTrue(torch.allclose(texar_logits[0, 0:20:4, 10000:50000:10000], baseline))
+        self.assertTrue(torch.allclose(
+            texar_logits[0, 0:20:4, 10000:50000:10000], baseline))
 
 if __name__ == "__main__":
     unittest.main()
