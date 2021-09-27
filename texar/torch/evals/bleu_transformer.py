@@ -156,7 +156,7 @@ class UnicodeRegex:
         )
 
 
-uregex = UnicodeRegex()
+uregex = None
 
 
 def bleu_transformer_tokenize(string: str) -> List[str]:
@@ -188,6 +188,9 @@ def bleu_transformer_tokenize(string: str) -> List[str]:
     Returns:
         a list of tokens
     """
+    global uregex
+    if uregex is None:
+        uregex = UnicodeRegex()
     string = uregex.nondigit_punct_re.sub(r"\1 \2 ", string)
     string = uregex.punct_nondigit_re.sub(r" \1 \2", string)
     string = uregex.symbol_re.sub(r" \1 ", string)
