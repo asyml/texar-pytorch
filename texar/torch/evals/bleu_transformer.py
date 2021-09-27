@@ -155,7 +155,7 @@ class UnicodeRegex:
             if unicodedata.category(chr(x)).startswith(prefix)
         )
 
-
+# pylint: disable=global-statement
 uregex = None
 
 
