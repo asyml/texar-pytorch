@@ -23,8 +23,8 @@ import sys
 import unicodedata
 import collections
 import math
-import numpy as np
 import functools
+import numpy as np
 
 from texar.torch.evals.bleu import corpus_bleu
 from texar.torch.evals.bleu_moses import corpus_bleu_moses
@@ -155,6 +155,7 @@ class UnicodeRegex:
             for x in range(sys.maxunicode)
             if unicodedata.category(chr(x)).startswith(prefix)
         )
+
 
 @functools.lru_cache(1)
 def _get_unicode_regex() -> UnicodeRegex:
