@@ -24,6 +24,7 @@ import unicodedata
 import collections
 import math
 import numpy as np
+import functools
 
 from texar.torch.evals.bleu import corpus_bleu
 from texar.torch.evals.bleu_moses import corpus_bleu_moses
@@ -155,8 +156,9 @@ class UnicodeRegex:
             if unicodedata.category(chr(x)).startswith(prefix)
         )
 
-# pylint: disable=global-statement
-uregex = None
+@functools.lru_cache(1)
+def _get_unicode_regex() -> UnicodeRegex:
+    return UnicodeRegex()
 
 
 def bleu_transformer_tokenize(string: str) -> List[str]:
@@ -188,9 +190,7 @@ def bleu_transformer_tokenize(string: str) -> List[str]:
     Returns:
         a list of tokens
     """
-    global uregex
-    if uregex is None:
-        uregex = UnicodeRegex()
+    uregex = _get_unicode_regex()
     string = uregex.nondigit_punct_re.sub(r"\1 \2 ", string)
     string = uregex.punct_nondigit_re.sub(r" \1 \2", string)
     string = uregex.symbol_re.sub(r" \1 ", string)
