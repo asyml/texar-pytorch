@@ -549,7 +549,9 @@ class DataIterator:
         return self.get_iterator()
 
     def __len__(self):
-        return len(self._datasets[self._validate_dataset_name(None)])
+        return len(self._datasets[
+            self._validate_dataset_name(self._current_dataset_name)
+        ])
 
 
 class TrainTestDataIterator(DataIterator):
