@@ -42,7 +42,7 @@ setuptools.setup(
     extras_require={
         'torch': ['torch>=1.0.0'],
         'examples': [],
-        'extras': ['Pillow>=3.0', 'tensorboardX>=1.8'],
+        'extras': ['Pillow>=3.0', 'tensorboardX>=1.8', 'six>=1.15'],
         'dist': ['adaptdl>=0.2.4']
     },
     package_data={
