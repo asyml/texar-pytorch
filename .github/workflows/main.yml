@@ -14,7 +14,7 @@ jobs:
       matrix:
         python-version: [ 3.6, 3.7 ]
         torch-version: [ 1.0.1, 1.1.0, 1.2.0, 1.3.0, 1.4.0]
-        numpy-version: [ 1.18, 1.19 ]
+        numpy-version: [ 1.19, 1.20, 1.21 ]
         exclude:
           - python-version: 3.6
             numpy-version: 1.20
@@ -31,22 +31,22 @@ jobs:
         include:
           - python-version: 3.8
             torch-version: 1.7.1
-            numpy-version: 1.18
+            numpy-version: 1.19
           - python-version: 3.8
             torch-version: 1.7.1
+            numpy-version: 1.20
+          - python-version: 3.8
+            torch-version: 1.8.1
             numpy-version: 1.19
           - python-version: 3.8
             torch-version: 1.8.1
-            numpy-version: 1.18
-          - python-version: 3.8
+            numpy-version: 1.20
+          - python-version: 3.9
             torch-version: 1.8.1
             numpy-version: 1.19
           - python-version: 3.9
             torch-version: 1.8.1
-            numpy-version: 1.18
-          - python-version: 3.9
-            torch-version: 1.8.1
-            numpy-version: 1.19
+            numpy-version: 1.20
 
     steps:
       - uses: actions/checkout@v2
@@ -111,6 +111,7 @@ jobs:
           pip install --progress-bar off -r requirements.txt
           pip install --progress-bar off .[extras]
           pip install --progress-bar off -r docs/requirements.txt
+          pip install --progress-bar off --upgrade numpy==${{ matrix.numpy-version }}
       - name: Build Docs
         run: |
           cd docs
