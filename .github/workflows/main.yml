@@ -111,7 +111,7 @@ jobs:
           pip install --progress-bar off -r requirements.txt
           pip install --progress-bar off .[extras]
           pip install --progress-bar off -r docs/requirements.txt
-          pip install --progress-bar off --upgrade numpy==${{ matrix.numpy-version }}
+          pip install --progress-bar off --upgrade numpy==1.21
       - name: Build Docs
         run: |
           cd docs
