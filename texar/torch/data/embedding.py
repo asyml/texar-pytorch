@@ -140,7 +140,7 @@ class Embedding:
                 ["texar.torch.data.embedding", "texar.torch.data",
                  "texar.torch.custom"])
 
-            self._word_vecs = read_fn(self._hparams.file,
+            self._word_vecs = read_fn(self._hparams.file,   # type: ignore
                                       vocab, self._word_vecs)
 
     @staticmethod

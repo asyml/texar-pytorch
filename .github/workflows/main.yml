@@ -14,7 +14,7 @@ jobs:
       matrix:
         python-version: [ 3.6, 3.7 ]
         torch-version: [ 1.0.1, 1.1.0, 1.2.0, 1.3.0, 1.4.0]
-        numpy-version: [ 1.21 ]
+        numpy-version: [ 1.19, 1.21 ]
         exclude:
           - python-version: 3.6
             numpy-version: 1.21

@@ -88,7 +88,7 @@ class _ConfusionMatrix(StreamingMetric[Input, Value], ABC):
                 cnt += 1
             ids.append(self._class_id[klass])
         if self.matrix is None:
-            self.matrix = np.zeros((cnt, cnt), dtype=np.int)
+            self.matrix = np.zeros((cnt, cnt), dtype=int)
         else:
             self.matrix = np.pad(self.matrix, [(0, cnt), (0, cnt)],
                                  "constant", constant_values=0)

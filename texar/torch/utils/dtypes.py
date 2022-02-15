@@ -50,9 +50,9 @@ DTYPE_MAP = {
     np.int16: ['int16', 'tf.int16', 'torch.int16', np.int16, torch.int16],
     np.int8: ['int8', 'char', 'tf.int8', 'torch.int8', np.int8, torch.int8],
     np.uint8: ['uint8', 'tf.uint8', 'torch.uint8', np.uint8, torch.uint8],
-    np.bool_: ['bool', 'tf.bool', 'torch.bool', bool, np.bool, np.bool_,
+    np.bool_: ['bool', 'tf.bool', 'torch.bool', bool, np.bool_,
                torch_bool],
-    np.str_: ['string', 'str', 'tf.string', str, np.str, np.str_],
+    np.str_: ['string', 'str', 'tf.string', str, np.str_],
     np.bytes_: ['bytes', 'np.bytes', bytes, np.bytes_]
 }
 

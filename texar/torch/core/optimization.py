@@ -374,7 +374,7 @@ class BertAdam(Optimizer):
             Default: 1.0
     """
 
-    param_groups: List[BertAdamParamDict]
+    param_groups: List[BertAdamParamDict]  # type: ignore
     state: Dict[nn.Parameter, BertAdamStateDict]
 
     def __init__(self, params: OptimParamType,

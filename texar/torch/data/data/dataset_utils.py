@@ -43,7 +43,7 @@ def padded_batch(examples: Union[List[np.ndarray], List[List[int]]],
     padded = np.full((len(examples), pad_length), pad_value, dtype=np.int64)
     for b_idx, sent in enumerate(examples):
         length = lengths[b_idx]
-        padded[b_idx, :length] = sent[:length]
+        padded[b_idx, :length] = sent[:length]  # type: ignore
     return padded, lengths
 
 
