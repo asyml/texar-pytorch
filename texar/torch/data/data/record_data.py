@@ -710,12 +710,12 @@ class RecordData(DatasetBase[Dict[str, Any], Dict[str, Any]]):
             if descriptor.collate_method is not CollateMethod.List:
                 # NumPy functions work on PyTorch tensors too.
                 if descriptor.collate_method is CollateMethod.StackedTensor:
-                    values = np.stack(values, axis=0)
+                    values = np.stack(values, axis=0)  # type: ignore
                 else:  # padded_tensor
-                    values, _ = padded_batch(values)
+                    values, _ = padded_batch(values)  # type: ignore
                 if (not isinstance(values, torch.Tensor) and
                         descriptor.dtype not in [np.str_, np.bytes_]):
-                    values = torch.from_numpy(values)
+                    values = torch.from_numpy(values)  # type: ignore
             else:
                 # Just put everything in a Python list.
                 pass

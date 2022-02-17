@@ -306,16 +306,16 @@ def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]],
             # text == [['<BOS>', 'a', 'sentence', '<EOS>', '<PAD>', '<PAD>'],
             #          ['<BOS>', 'parsed', 'from', 'ids', '<EOS>', '<PAD>']]
     """
-    tokens = vocab.map_ids_to_tokens_py(ids)
+    tokens = vocab.map_ids_to_tokens_py(ids)  # type: ignore
     if isinstance(ids, (list, tuple)):
         tokens = tokens.tolist()
 
-    str_ = str_join(tokens)
+    str_ = str_join(tokens)  # type: ignore
 
     str_ = strip_special_tokens(
         str_, strip_pad=strip_pad, strip_bos=strip_bos, strip_eos=strip_eos)
 
     if join:
-        return str_
+        return str_  # type: ignore
     else:
         return _recur_split(str_, ids)  # type: ignore

@@ -43,14 +43,14 @@ def _maybe_list_to_str(list_or_str: MaybeList[str]) -> str:
 def _parse_multi_bleu_ret(bleu_str: str,
                           return_all: bool = False) -> MaybeList[float]:
     bleu_score = re.search(r"BLEU = (.+?),", bleu_str).group(1)  # type: ignore
-    bleu_score = np.float32(bleu_score)
+    bleu_score = float(np.float32(bleu_score))
 
     if return_all:
         bleus = re.search(r", (.+?)/(.+?)/(.+?)/(.+?) ", bleu_str)
         bleus = [bleus.group(group_idx)  # type: ignore
                  for group_idx in range(1, 5)]
-        bleus = [np.float32(b) for b in bleus]
-        bleu_score = [bleu_score] + bleus
+        bleus = [float(np.float32(b)) for b in bleus]
+        return [bleu_score] + bleus
 
     return bleu_score
 
@@ -115,7 +115,7 @@ def corpus_bleu_moses(list_of_references: List[List[MaybeList[str]]],
     hypotheses = compat_as_text(hypotheses)
 
     if np.size(hypotheses) == 0:
-        return np.float32(0.)
+        return float(np.float32(0.))
 
     # Get multi-bleu.perl
     cur_dir = os.path.dirname(os.path.realpath(__file__))
@@ -160,10 +160,10 @@ def corpus_bleu_moses(list_of_references: List[List[MaybeList[str]]],
                 logging.warning("multi-bleu.perl returned non-zero exit code")
                 logging.warning(error.output)
             if return_all:
-                bleu_score = [np.float32(0.0)] * 5
+                bleu_score = [0.] * 5
             else:
-                bleu_score = np.float32(0.0)
+                bleu_score = 0.
 
     shutil.rmtree(result_path)
 
-    return np.float32(bleu_score)
+    return bleu_score
