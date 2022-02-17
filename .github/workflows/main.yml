@@ -31,16 +31,25 @@ jobs:
         include:
           - python-version: 3.8
             torch-version: 1.7.1
+            numpy-version: 1.22
+          - python-version: 3.8
+            torch-version: 1.7.1
             numpy-version: 1.21
           - python-version: 3.8
             torch-version: 1.7.1
             numpy-version: 1.19
           - python-version: 3.8
             torch-version: 1.8.1
+            numpy-version: 1.22
+          - python-version: 3.8
+            torch-version: 1.8.1
             numpy-version: 1.21
           - python-version: 3.8
             torch-version: 1.8.1
             numpy-version: 1.19
+          - python-version: 3.9
+            torch-version: 1.8.1
+            numpy-version: 1.22
           - python-version: 3.9
             torch-version: 1.8.1
             numpy-version: 1.21
