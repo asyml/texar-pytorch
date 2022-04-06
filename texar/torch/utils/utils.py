@@ -758,7 +758,7 @@ def dict_fetch(src_dict: Optional[ParamDict],
     if isinstance(tgt_dict_or_keys, HParams):
         tgt_dict_or_keys = tgt_dict_or_keys.todict()
     if isinstance(tgt_dict_or_keys, MutableMapping):
-        tgt_dict_or_keys = tgt_dict_or_keys.keys()  # type: ignore
+        tgt_dict_or_keys = tgt_dict_or_keys.keys()
     keys = list(tgt_dict_or_keys)
 
     if isinstance(src_dict, HParams):
