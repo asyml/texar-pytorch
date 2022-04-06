@@ -732,7 +732,7 @@ def dict_fetch(src_dict: ParamDict,
 
 
 @overload
-def dict_fetch(src_dict: None, tgt_dict_or_keys: Any) -> None: ...
+def dict_fetch(src_dict: None, tgt_dict_or_keys: Any) -> Optional[AnyDict]: ...
 
 
 def dict_fetch(src_dict: Optional[ParamDict],
