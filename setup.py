@@ -38,7 +38,7 @@ setuptools.setup(
         'sentencepiece>=0.1.96',
         'mypy_extensions',
         'packaging>=19.0',
-        'asyml-utilities>=0.0.1'
+        'asyml-utilities>=0.0.1.dev1'
     ],
     extras_require={
         'torch': ['torch>=1.0.0'],
