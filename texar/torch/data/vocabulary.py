@@ -18,6 +18,7 @@ Helper functions and classes for vocabulary processing.
 import warnings
 from collections import defaultdict
 from typing import DefaultDict, Dict, List, Optional, Sequence, Tuple, Union
+from asyml_utilities.special_tokens import SpecialTokens
 
 import numpy as np
 
@@ -29,17 +30,6 @@ __all__ = [
     "Vocab",
     "map_ids_to_strs",
 ]
-
-
-class SpecialTokens:
-    r"""Special tokens, including :attr:`PAD`, :attr:`BOS`, :attr:`EOS`,
-    :attr:`UNK`. These tokens will by default have token ids 0, 1, 2, 3,
-    respectively.
-    """
-    PAD = "<PAD>"
-    BOS = "<BOS>"
-    EOS = "<EOS>"
-    UNK = "<UNK>"
 
 
 def _make_defaultdict(keys: Sequence[Union[int, str]],
