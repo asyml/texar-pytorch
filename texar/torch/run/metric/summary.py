@@ -76,7 +76,7 @@ class AveragePerplexity(Average):
     higher_is_better = False
 
     def add(self, predicted: Sequence[float], _) -> None:
-        super().add(np.exp(predicted), _)
+        super().add(np.exp(predicted).tolist(), _)
 
 
 class RunningAverage(StreamingMetric[float, float]):

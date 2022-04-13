@@ -136,7 +136,7 @@ def corpus_bleu_transformer(reference_corpus: List[List[str]],
 
     bleu = geo_mean * bp
 
-    return np.float32(bleu) * 100
+    return float(np.float32(bleu)) * 100
 
 
 class UnicodeRegex:

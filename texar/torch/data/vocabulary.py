@@ -18,6 +18,7 @@ Helper functions and classes for vocabulary processing.
 import warnings
 from collections import defaultdict
 from typing import DefaultDict, Dict, List, Optional, Sequence, Tuple, Union
+from asyml_utilities.special_tokens import SpecialTokens
 
 import numpy as np
 
@@ -29,17 +30,6 @@ __all__ = [
     "Vocab",
     "map_ids_to_strs",
 ]
-
-
-class SpecialTokens:
-    r"""Special tokens, including :attr:`PAD`, :attr:`BOS`, :attr:`EOS`,
-    :attr:`UNK`. These tokens will by default have token ids 0, 1, 2, 3,
-    respectively.
-    """
-    PAD = "<PAD>"
-    BOS = "<BOS>"
-    EOS = "<EOS>"
-    UNK = "<UNK>"
 
 
 def _make_defaultdict(keys: Sequence[Union[int, str]],
@@ -306,16 +296,16 @@ def map_ids_to_strs(ids: Union[np.ndarray, Sequence[int]],
             # text == [['<BOS>', 'a', 'sentence', '<EOS>', '<PAD>', '<PAD>'],
             #          ['<BOS>', 'parsed', 'from', 'ids', '<EOS>', '<PAD>']]
     """
-    tokens = vocab.map_ids_to_tokens_py(ids)
+    tokens = vocab.map_ids_to_tokens_py(ids)  # type: ignore
     if isinstance(ids, (list, tuple)):
         tokens = tokens.tolist()
 
-    str_ = str_join(tokens)
+    str_ = str_join(tokens)  # type: ignore
 
     str_ = strip_special_tokens(
         str_, strip_pad=strip_pad, strip_bos=strip_bos, strip_eos=strip_eos)
 
     if join:
-        return str_
+        return str_  # type: ignore
     else:
         return _recur_split(str_, ids)  # type: ignore

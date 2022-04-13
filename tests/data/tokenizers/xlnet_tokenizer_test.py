@@ -32,8 +32,8 @@ class XLNetTokenizerTest(unittest.TestCase):
     def setUp(self):
         self.tmp_dir = tempfile.TemporaryDirectory()
         self.SAMPLE_VOCAB = maybe_download(
-            'https://github.com/huggingface/transformers/blob/master/'
-            'tests/fixtures/test_sentencepiece.model?raw=true',
+            'https://github.com/huggingface/transformers/raw/main/tests/'
+            'fixtures/test_sentencepiece.model',
             self.tmp_dir.name)
 
         self.tokenizer = XLNetTokenizer.load(

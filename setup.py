@@ -32,18 +32,19 @@ setuptools.setup(
 
     install_requires=[
         'regex>=2018.01.10',
-        'numpy>=1.16.6, <=1.19.5',
+        'numpy>=1.16.6',
         'requests',
         'funcsigs',
         'sentencepiece>=0.1.96',
         'mypy_extensions',
         'packaging>=19.0',
         'six'
+        'asyml-utilities>=0.0.1.dev1'
     ],
     extras_require={
         'torch': ['torch>=1.0.0'],
         'examples': [],
-        'extras': ['Pillow>=3.0', 'tensorboardX>=1.8'],
+        'extras': ['Pillow>=3.0', 'tensorboardX>=1.8', 'six>=1.15'],
         'dist': ['adaptdl>=0.2.4']
     },
     package_data={

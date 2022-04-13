@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -11,7 +14,12 @@ jobs:
       matrix:
         python-version: [ 3.6, 3.7 ]
         torch-version: [ 1.0.1, 1.1.0, 1.2.0, 1.3.0, 1.4.0]
+        numpy-version: [ 1.15, 1.16, 1.17, 1.18, 1.19, 1.20.3, 1.21 ]
         exclude:
+          - python-version: 3.6
+            numpy-version: 1.21
+          - python-version: 3.6
+            numpy-version: 1.20.3
           - python-version: 3.6
             torch-version: 1.0.1
           - python-version: 3.6
@@ -23,10 +31,31 @@ jobs:
         include:
           - python-version: 3.8
             torch-version: 1.7.1
+            numpy-version: 1.22
+          - python-version: 3.8
+            torch-version: 1.7.1
+            numpy-version: 1.21
+          - python-version: 3.8
+            torch-version: 1.7.1
+            numpy-version: 1.19
           - python-version: 3.8
             torch-version: 1.8.1
+            numpy-version: 1.22
+          - python-version: 3.8
+            torch-version: 1.8.1
+            numpy-version: 1.21
+          - python-version: 3.8
+            torch-version: 1.8.1
+            numpy-version: 1.19
           - python-version: 3.9
             torch-version: 1.8.1
+            numpy-version: 1.22
+          - python-version: 3.9
+            torch-version: 1.8.1
+            numpy-version: 1.21
+          - python-version: 3.9
+            torch-version: 1.8.1
+            numpy-version: 1.19
 
     steps:
       - uses: actions/checkout@v2
@@ -51,14 +80,15 @@ jobs:
           if [[ ${{ matrix.torch-version }} != "1.0.1" ]]; then pip install mypy==0.790; fi
           pip install pytest
           pip install --progress-bar off coverage codecov
+          pip install --progress-bar off --upgrade numpy==${{ matrix.numpy-version }}
       - name: Linting pylint and flake8 if torch version is 1.4.0
         run: |
           if [[ ${{ matrix.torch-version }} == "1.4.0" ]]; then pylint texar/ examples/; fi
           if [[ ${{ matrix.torch-version }} == "1.4.0" ]]; then flake8 texar/ examples/; fi
-      - name: Linting with mypy if torch versoin is not 1.0.1
+      - name: Linting with mypy if torch versoin is not 1.0.1 and numpy==1.21
         run: |
-          if [[ ${{ matrix.torch-version }} != "1.0.1" && ${{ matrix.torch-version }} != "1.7.1" && ${{ matrix.torch-version }} != "1.8.1" ]]; then mypy .; fi
-          if [[ ${{ matrix.torch-version }} != "1.0.1" && ${{ matrix.torch-version }} != "1.7.1" && ${{ matrix.torch-version }} != "1.8.1" ]]; then _rc=0; for dir in `echo examples/**/`; do mypy $dir || _rc=$?; done && [[ $_rc == 0 ]]; fi
+          if [[ ${{ matrix.numpy-version }} == "1.21" && ${{ matrix.torch-version }} != "1.0.1" && ${{ matrix.torch-version }} != "1.7.1" && ${{ matrix.torch-version }} != "1.8.1" ]]; then mypy .; fi
+          if [[ ${{ matrix.numpy-version }} == "1.21" && ${{ matrix.torch-version }} != "1.0.1" && ${{ matrix.torch-version }} != "1.7.1" && ${{ matrix.torch-version }} != "1.8.1" ]]; then _rc=0; for dir in `echo examples/**/`; do mypy $dir || _rc=$?; done && [[ $_rc == 0 ]]; fi
       - name: Test with pytest and run coverage
         run: |
           coverage run -m pytest
@@ -90,6 +120,7 @@ jobs:
           pip install --progress-bar off -r requirements.txt
           pip install --progress-bar off .[extras]
           pip install --progress-bar off -r docs/requirements.txt
+          pip install --progress-bar off --upgrade numpy==1.21
       - name: Build Docs
         run: |
           cd docs
