@@ -23,6 +23,7 @@ import sys
 import unicodedata
 import collections
 import math
+import functools
 import numpy as np
 
 from texar.torch.evals.bleu import corpus_bleu
@@ -156,7 +157,9 @@ class UnicodeRegex:
         )
 
 
-uregex = UnicodeRegex()
+@functools.lru_cache(1)
+def _get_unicode_regex() -> UnicodeRegex:
+    return UnicodeRegex()
 
 
 def bleu_transformer_tokenize(string: str) -> List[str]:
@@ -188,6 +191,7 @@ def bleu_transformer_tokenize(string: str) -> List[str]:
     Returns:
         a list of tokens
     """
+    uregex = _get_unicode_regex()
     string = uregex.nondigit_punct_re.sub(r"\1 \2 ", string)
     string = uregex.punct_nondigit_re.sub(r" \1 \2", string)
     string = uregex.symbol_re.sub(r" \1 ", string)

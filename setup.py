@@ -38,18 +38,19 @@ setuptools.setup(
         'sentencepiece>=0.1.96',
         'mypy_extensions',
         'packaging>=19.0',
-        'asyml-utilities>=0.0.1.dev1'
+        'six',
+        'asyml-utilities>=0.0.1.dev1',
     ],
     extras_require={
         'torch': ['torch>=1.0.0'],
         'examples': [],
         'extras': ['Pillow>=3.0', 'tensorboardX>=1.8', 'six>=1.15'],
-        'dist': ['adaptdl>=0.2.4']
+        'dist': ['adaptdl>=0.2.4'],
     },
     package_data={
         "texar.torch": [
             "../../bin/utils/multi-bleu.perl",
-        ]
+        ],
     },
     classifiers=[
         'Intended Audience :: Developers',
