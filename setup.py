@@ -17,7 +17,7 @@ if sys.version_info < (3, 6):
 
 setuptools.setup(
     name="texar-pytorch",
-    version="0.1.3",
+    version="0.1.4",
     url="https://github.com/asyml/texar-pytorch",
 
     description="Toolkit for Machine Learning and Text Generation",
