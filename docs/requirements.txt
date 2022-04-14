@@ -10,5 +10,9 @@ sphinxcontrib-spelling
 regex >= 2018.01.10
 sentencepiece >= 0.1.8
 
+# Other utilities
+asyml-utilities>=0.0.1.dev1
+
 # PyTorch installation for ReadTheDocs
 https://download.pytorch.org/whl/cpu/torch-1.1.0-cp37-cp37m-linux_x86_64.whl
+
