@@ -26,6 +26,7 @@ More examples are continuously added...
 
 * [bert](./bert): Pre-trained BERT model for text representation
 * [sentence_classifier](./sentence_classifier): Basic CNN-based sentence classifier
+* [sequence_tagging](./sequence_tagging): BiLSTM-CNN model for Named Entity Recognition (NER)
 * [xlnet](./xlnet): Pre-trained XLNet model for text classification/regression
 
 ---
@@ -49,3 +50,6 @@ More examples are continuously added...
 * [sentence_classifier](./sentence_classifier): Basic CNN-based sentence classifier
 * [xlnet](./xlnet): Pre-trained XLNet model for text classification/regression
 
+### Sequence Tagging ###
+
+* [sequence_tagging](./sequence_tagging): BiLSTM-CNN model for Named Entity Recognition (NER)
