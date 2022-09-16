@@ -56,7 +56,7 @@ class TextLineDataSource(DataSource[List[str]]):
 
     def __init__(self, file_paths: MaybeList[str],
                  compression_type: Optional[str] = None,
-                 encoding: Optional[str] = None,
+                 encoding: Optional[str] = "utf-8",
                  delimiter: Optional[str] = None,
                  max_length: Optional[int] = None):
         if compression_type is not None:

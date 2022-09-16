@@ -199,7 +199,7 @@ def read_words(filename: str, newline_token: Optional[str] = None) -> List[str]:
     Returns:
         A list of words.
     """
-    with open(filename, "r") as f:
+    with open(filename, "r", encoding="utf-8") as f:
         if Py3:
             if newline_token is None:
                 return f.read().split()
